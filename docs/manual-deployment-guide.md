@@ -46,9 +46,7 @@ cd "$DEVOPS_DIR"
 yq --version || (echo "Install yq: https://github.com/mikefarah/yq" && exit 1)
 
 # Update image repo and tag
-yq -yi \
-  ".image.repository = \"$IMAGE_REPO\" | .image.tag = \"$IMAGE_TAG\"" \
-  apps/erp-ui/values.yaml
+yq e -i ".image.repository = \"$IMAGE_REPO\" | .image.tag = \"$IMAGE_TAG\"" apps/erp-ui/values.yaml
 
 # Commit and push
 git checkout main || git checkout -b main
