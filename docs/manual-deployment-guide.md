@@ -19,9 +19,10 @@ export DEVOPS_DIR=~/devops-k8s
 export NAMESPACE=erp
 export VALUES_FILE_PATH="apps/${APP_NAME}/values.yaml"
 # Optional (for automated push in build.sh)
-export GH_PAT="ghp_..."          # GitHub PAT with repo write permissions for Bengo-Hub/devops-k8s
+export GH_PAT="gh.."          # GitHub PAT with repo write permissions for Bengo-Hub/devops-k8s
 export REGISTRY_USERNAME="codevertex"
 export REGISTRY_PASSWORD="@REDACTED_PG_ADMIN_PASSWORD"
+REGISTRY_EMAIL="codevertexitsolutions@gmail.com"
 # Optional: KUBE_CONFIG (base64) if running remotely or from CI
 # export KUBE_CONFIG="$(base64 -w0 ~/.kube/config)"
 ```
