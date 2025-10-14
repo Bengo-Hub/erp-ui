@@ -34,6 +34,8 @@ jobs:
         echo "DEPLOYMENT_SUMMARY_TITLE=BengoERP UI Deployment Summary" >> $GITHUB_ENV
         echo "DEPLOYMENT_SUCCESS_MESSAGE=BengoERP UI deployment completed! The UI should be accessible via the URLs above." >> $GITHUB_ENV
         echo "APPLICATION_DISPLAY_NAME=BengoERP UI" >> $GITHUB_ENV
+        echo "VITE_API_URL=https://erpapi.masterspace.co.ke" >> $GITHUB_ENV
+        echo "VITE_WEBSOCKET_URL=wss://erpapi.masterspace.co.ke/ws/pos/" >> $GITHUB_ENV
 
     - name: Run production deployment
       env:
@@ -42,6 +44,7 @@ jobs:
         # Use GH token for HTTPS auth fallback in build.sh
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         GH_PAT: ${{ secrets.GH_PAT }}
+        GITHUB_SECRET: ${{ secrets.GITHUB_SECRET }}
         REGISTRY_USERNAME: ${{ secrets.REGISTRY_USERNAME }}
         REGISTRY_PASSWORD: ${{ secrets.REGISTRY_PASSWORD }}
         GITHUB_SHA: ${{ github.sha }}
@@ -55,6 +58,9 @@ jobs:
         VALUES_FILE_PATH: apps/erp-ui/values.yaml
         GIT_USER: ${{ secrets.GIT_USER }}
         GIT_EMAIL: ${{ secrets.GIT_EMAIL }}
+        # Vite build-time environment variables for API configuration
+        VITE_API_URL: https://erpapi.masterspace.co.ke
+        VITE_WEBSOCKET_URL: wss://erpapi.masterspace.co.ke/ws/pos/
         # SSH deployment variables
         SSH_HOST: ${{ secrets.SSH_HOST }}
         SSH_USER: ${{ secrets.SSH_USER }}

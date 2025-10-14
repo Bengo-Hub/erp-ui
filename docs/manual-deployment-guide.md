@@ -63,17 +63,18 @@ cd /bengobox-erp-ui
 
 ## Step 1 — Build the Docker image (matches build.sh behavior)
 
-**SSH support** (only if you need private submodules — build.sh supports injecting an SSH key):
+**Production build with API URL** (baked into the frontend at build time):
 ```bash
-# If you need to allow Dockerfile to access private git via SSH, set DOCKER_SSH_KEY (base64)
-# echo "$DOCKER_SSH_KEY" | base64 -d > ~/.ssh/id_rsa; chmod 600 ~/.ssh/id_rsa; ssh-keyscan github.com >> ~/.ssh/known_hosts
-
-# Build (BuildKit recommended)
-DOCKER_BUILDKIT=1 docker build -t "${IMAGE_REPO}:${IMAGE_TAG}" .
+# Build with production API configuration
+DOCKER_BUILDKIT=1 docker build \
+  --build-arg VITE_API_URL=https://erpapi.masterspace.co.ke \
+  --build-arg VITE_WEBSOCKET_URL=wss://erpapi.masterspace.co.ke/ws/pos/ \
+  -t "${IMAGE_REPO}:${IMAGE_TAG}" .
 ```
 
 **Notes:**
-- `build.sh` will attempt to add SSH key with `ssh-add` if `DOCKER_SSH_KEY` is provided.
+- `VITE_API_URL` and `VITE_WEBSOCKET_URL` are baked into the build. To change them, rebuild with different `--build-arg` values.
+- `build.sh` will attempt to add SSH key with `ssh-add` if `DOCKER_SSH_KEY` is provided (for private git submodules).
 - `build.sh` also uses `trivy fs` and `trivy image` to scan filesystem and image — run those after build if desired.
 
 ---

@@ -6,20 +6,22 @@ metadata:
 type: Opaque
 stringData:
   # ============================================
-  # API CONFIGURATION
+  # API CONFIGURATION (Build-time for Vite)
   # ============================================
-  NEXT_PUBLIC_API_URL: "https://erpapi.masterspace.co.ke"
-  VITE_API_URL: "https://erpapi.masterspace.co.ke"
+  # NOTE: VITE_* variables are baked into the build at Docker build time.
+  # To change API URL, rebuild the image with:
+  #   docker build --build-arg VITE_API_URL=https://erpapi.example.com ...
+  # Runtime values below are for server.js (Node backend) if needed.
   API_URL: "https://erpapi.masterspace.co.ke"
 
   # ============================================
   # WEBSOCKET CONFIGURATION
   # ============================================
-  NEXT_PUBLIC_WS_URL: "wss://erpapi.masterspace.co.ke/ws"
-  VITE_WEBSOCKET_URL: "wss://erpapi.masterspace.co.ke/ws/pos/"
+  # Also baked at build time; override via Docker build args if needed
+  WEBSOCKET_URL: "wss://erpapi.masterspace.co.ke/ws/pos/"
 
   # ============================================
   # APPLICATION CONFIGURATION
   # ============================================
   NODE_ENV: "production"
-  NEXT_PUBLIC_ENV: "production"
+  PORT: "3000"

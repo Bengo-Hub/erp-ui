@@ -154,14 +154,21 @@ else
     SSH_CONFIGURED=false
 fi
 
+VITE_API_URL=${VITE_API_URL:-https://erpapi.masterspace.co.ke}
+VITE_WEBSOCKET_URL=${VITE_WEBSOCKET_URL:-wss://erpapi.masterspace.co.ke/ws/pos/}
+
 if [[ "$SSH_CONFIGURED" == "true" ]]; then
     log_info "Building with SSH support"
     DOCKER_BUILDKIT=1 docker build . \
         --ssh default="$SSH_AUTH_SOCK" \
+        --build-arg VITE_API_URL="${VITE_API_URL}" \
+        --build-arg VITE_WEBSOCKET_URL="${VITE_WEBSOCKET_URL}" \
         -t "${IMAGE_REPO}:${GIT_COMMIT_ID}"
 else
     log_info "Building without SSH"
     DOCKER_BUILDKIT=1 docker build . \
+        --build-arg VITE_API_URL="${VITE_API_URL}" \
+        --build-arg VITE_WEBSOCKET_URL="${VITE_WEBSOCKET_URL}" \
         -t "${IMAGE_REPO}:${GIT_COMMIT_ID}"
 fi
 

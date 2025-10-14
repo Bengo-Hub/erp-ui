@@ -53,16 +53,32 @@ import axiosInstance, { updateBaseURL } from '@/utils/axiosConfig';
 // import ExportingModule from 'highcharts/modules/exporting';
 // ExportingModule(Highcharts);
 
-//API ENDPOINT CONFIG
-var href = window.location.href;
-var arr = href.split('/');
-var arr2 = arr[2].split(':');
-var ref = arr[0] + '//' + arr2[0] + ':8000'; //http://127.0.0.1:8000
-window.$http = ref + '/api/v1'; //http://127.0.0.1:8000/api/v1
-//window.$http = 'http://127.0.0.1:8000/api/v1';
+// API ENDPOINT CONFIG - flexible for dev and production
+function getApiBaseUrl() {
+    // 1. Check environment variable (highest priority - from build args)
+    if (import.meta.env.VITE_API_URL) {
+        return import.meta.env.VITE_API_URL;
+    }
+    
+    // 2. Development mode detection (localhost or 127.0.0.1)
+    const hostname = window.location.hostname;
+    if (hostname === 'localhost' || hostname === '127.0.0.1') {
+        // Development: use localhost with port 8000
+        return `http://${hostname}:8000`;
+    }
+    
+    // 3. Production fallback
+    return 'https://erpapi.masterspace.co.ke';
+}
 
-// Update axios instance base URL with dynamic endpoint
+const apiBaseUrl = getApiBaseUrl();
+window.$http = apiBaseUrl + '/api/v1';
+
+// Update axios instance base URL with configured endpoint
 updateBaseURL(window.$http);
+
+// Log for debugging
+console.log(`API Base URL: ${window.$http}`);
 
 // Make axios instance available globally for backward compatibility
 window.axios = axiosInstance;
