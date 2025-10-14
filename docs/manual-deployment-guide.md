@@ -1,209 +1,313 @@
-# 🧭 Manual Deployment Guide - BengoERP UI (Improved & Corrected)
+# Manual Deployment Guide — BengoERP UI (Includes Automated Workflow Steps)
 
-This guide walks you through **manual deployment of the BengoERP UI** when automated CI/CD pipelines are unavailable.  
-It includes **gap fixes**, improved **Git handling**, and **deployment verification steps**.
+**Target:** `erp-ui` (BengoERP frontend)  
+**Purpose:** Manual deployment steps identical to what `build.sh` and `deploy.yml` automate. Use this when you need to run the pipeline manually or debug failures (e.g., ImagePullBackOff).
 
----
-
-## 🚦 Deployment Overview
-
-The manual deployment involves five main phases:
-
-1. **Build & Push Docker Image**
-2. **Verify Prerequisites**
-3. **Deploy via ArgoCD**
-4. **Monitor and Verify Deployment**
-5. **Troubleshoot if needed**
+> ⚠️ *Security:* keep secrets (GH tokens, Docker creds, kubeconfig) safe. Prefer environment variables or CI secrets, **do not** commit them.
 
 ---
 
-## 🧱 Phase 0: Build & Push Docker Image
-
-This phase builds your Docker image, pushes it to the registry, and updates the Helm values in your DevOps repository.
-
-### 0.1 Set Environment Variables
+## Quick variables (set these before running any commands)
 ```bash
+export APP_NAME=erp-ui
 export REGISTRY_SERVER=docker.io
 export REGISTRY_NAMESPACE=codevertex
-export APP_NAME=erp-ui
 export IMAGE_REPO="$REGISTRY_SERVER/$REGISTRY_NAMESPACE/$APP_NAME"
 export IMAGE_TAG=$(git rev-parse --short=8 HEAD)
-export DEVOPS_REPO=https://github.com/Bengo-Hub/devops-k8s.git
+export DEVOPS_REPO="https://github.com/Bengo-Hub/devops-k8s.git"
 export DEVOPS_DIR=~/devops-k8s
+export NAMESPACE=erp
+export VALUES_FILE_PATH="apps/${APP_NAME}/values.yaml"
+# Optional (for automated push in build.sh)
+export GH_PAT="ghp_..."          # GitHub PAT with repo write permissions for Bengo-Hub/devops-k8s
+export REGISTRY_USERNAME="codevertex"
+export REGISTRY_PASSWORD="@REDACTED_PG_ADMIN_PASSWORD"
+# Optional: KUBE_CONFIG (base64) if running remotely or from CI
+# export KUBE_CONFIG="$(base64 -w0 ~/.kube/config)"
 ```
-
-### 0.2 Log in to Registry
-```bash
-docker login $REGISTRY_SERVER
-```
-
-### 0.3 Build & Push Image
-```bash
-docker build -t "$IMAGE_REPO:$IMAGE_TAG" .
-docker push "$IMAGE_REPO:$IMAGE_TAG"
-```
-
-### 0.4 Update Helm Values
-```bash
-# Clone or update the DevOps repo
-if [ ! -d "$DEVOPS_DIR" ]; then
-  git clone "$DEVOPS_REPO" "$DEVOPS_DIR"
-fi
-
-cd "$DEVOPS_DIR"
-
-# Ensure clean working directory
-git reset --hard HEAD
-git pull origin main
-
-# Update image tag using yq
-yq e -i ".image.repository = \"$IMAGE_REPO\" | .image.tag = \"$IMAGE_TAG\"" apps/erp-ui/values.yaml
-
-# Commit and push changes
-git add apps/erp-ui/values.yaml
-git commit -m "erp-ui:$IMAGE_TAG released" || echo "No changes to commit."
-git push origin main
-```
-
-✅ **Fixes introduced here:**
-- Added `git reset --hard` before pull to avoid unstaged changes error.
-- Avoided rebase conflicts by using direct pull.
-- Handles empty commits gracefully.
 
 ---
 
-## 🔍 Phase 1: Prerequisites Verification
+## Overview: 1-line summary of automated steps performed by `build.sh` / `deploy.yml`
 
-Before deploying, ensure all tools and permissions are in place.
+1. Build container (with optional SSH support for private submodules).
+2. Run `trivy` filesystem + image vulnerability scans.
+3. Push image to configured registry.
+4. Create/update Kubernetes secrets (JWT, registry pull secret).
+5. Optionally install databases (Postgres/Redis) via Helm.
+6. Update `devops-k8s` Helm values file with new image tag and `imagePullSecrets` if needed (uses `yq` and GH token).
+7. ArgoCD auto-syncs deployed application (or you can manually trigger sync).
 
-### 1.1 Verify Access
+This guide gives the exact manual commands that reproduce those steps.
+
+---
+
+## Step 0 — Prerequisites & quick checks
 ```bash
+# Tools
+which git docker kubectl helm yq jq argocd trivy || echo "Install missing tools"
+
+# kube access
 kubectl cluster-info
 kubectl get pods -n argocd
-argocd version
-```
 
-### 1.2 Verify Tools
-```bash
-which kubectl git docker helm argocd yq
-docker login docker.io
-```
+# argocd CLI (for manual sync)
+argocd version || echo "Install argocd CLI: https://github.com/argoproj/argo-cd/releases"
 
-### 1.3 Verify Repo Access
-```bash
-cd $DEVOPS_DIR || git clone $DEVOPS_REPO $DEVOPS_DIR
-ls apps/erp-ui/
+# Ensure working directory is the UI source
+cd /bengobox-erp-ui
 ```
 
 ---
 
-## 🚀 Phase 2: ArgoCD Application Deployment
+## Step 1 — Build the Docker image (matches build.sh behavior)
 
-Deploy and manage ERP UI through ArgoCD.
-
-### 2.1 Apply ArgoCD Application Definitions
+**SSH support** (only if you need private submodules — build.sh supports injecting an SSH key):
 ```bash
-cd $DEVOPS_DIR
-kubectl apply -f apps/erp-api/app.yaml -n argocd
-kubectl apply -f apps/erp-ui/app.yaml -n argocd
+# If you need to allow Dockerfile to access private git via SSH, set DOCKER_SSH_KEY (base64)
+# echo "$DOCKER_SSH_KEY" | base64 -d > ~/.ssh/id_rsa; chmod 600 ~/.ssh/id_rsa; ssh-keyscan github.com >> ~/.ssh/known_hosts
+
+# Build (BuildKit recommended)
+DOCKER_BUILDKIT=1 docker build -t "${IMAGE_REPO}:${IMAGE_TAG}" .
 ```
 
-### 2.2 Sync Applications
+**Notes:**
+- `build.sh` will attempt to add SSH key with `ssh-add` if `DOCKER_SSH_KEY` is provided.
+- `build.sh` also uses `trivy fs` and `trivy image` to scan filesystem and image — run those after build if desired.
+
+---
+
+## Step 2 — Security scans (optional but recommended)
 ```bash
-argocd app sync erp-api
-sleep 30
-argocd app sync erp-ui
+# Filesystem scan (trivy)
+trivy fs . --exit-code 0 --format table --skip-files "localhost*.pem,*.key,*.crt"
+
+# Image scan
+trivy image "${IMAGE_REPO}:${IMAGE_TAG}" --exit-code 0 --format table --ignorefile .trivyignore
 ```
 
-### 2.3 Verify Sync Status
+---
+
+## Step 3 — Push image to registry (what build.sh does)
 ```bash
-argocd app get erp-api
+# Login (if not already)
+docker login ${REGISTRY_SERVER} -u "${REGISTRY_USERNAME}" --password-stdin <<< "${REGISTRY_PASSWORD}"
+
+# Push
+docker push "${IMAGE_REPO}:${IMAGE_TAG}"
+
+# Verify locally that the tag exists
+docker pull "${IMAGE_REPO}:${IMAGE_TAG}"
+```
+
+If push succeeds but cluster still fails to pull, ensure the cluster has the pull secret (Step 6).
+
+---
+
+## Step 4 — Update DevOps repo (values.yaml) exactly like build.sh
+
+`build.sh` clones the `devops-k8s` repo, edits `apps/erp-ui/values.yaml` using `yq` (with env injection), commits and pushes using a GH token.
+
+Manual commands (preferred: use GH_PAT env variable):
+```bash
+# Clone/update
+[ -d "$DEVOPS_DIR" ] || git clone "https://github.com/Bengo-Hub/devops-k8s.git" "$DEVOPS_DIR"
+cd "$DEVOPS_DIR"
+git fetch origin main
+git checkout main
+git reset --hard origin/main
+
+# Update values using yq (env injection, safe)
+IMAGE_REPO_ENV="$IMAGE_REPO" IMAGE_TAG_ENV="$IMAGE_TAG" yq e -i '.image.repository = env(IMAGE_REPO_ENV) | .image.tag = env(IMAGE_TAG_ENV)' "$VALUES_FILE_PATH"
+
+# Ensure imagePullSecrets are set if registry requires auth
+if [[ -n "${REGISTRY_USERNAME:-}" && -n "${REGISTRY_PASSWORD:-}" ]]; then
+  yq e -i '.image.pullSecrets = [{"name":"registry-credentials"}]' "$VALUES_FILE_PATH"
+fi
+
+# Commit & push (use GH token or SSH with write-access)
+git add "$VALUES_FILE_PATH"
+git commit -m "${APP_NAME}:${IMAGE_TAG} released" || echo "No changes to commit"
+
+# Push with token (build.sh uses x-access-token if GH_PAT present)
+if [[ -n "${GH_PAT:-}" ]]; then
+  git remote remove push-origin 2>/dev/null || true
+  git remote add push-origin "https://x-access-token:${GH_PAT}@github.com/Bengo-Hub/devops-k8s.git"
+  git push push-origin HEAD:main
+else
+  git push origin main
+fi
+```
+
+**Why env injection?** `yq e -i '.image.tag = env(IMAGE_TAG_ENV)'` prevents quoting/escaping issues and works reliably.
+
+---
+
+## Step 5 — Ensure the cluster can pull images (imagePullSecret)
+
+`build.sh` creates `registry-credentials` in the `$NAMESPACE` if `REGISTRY_USERNAME` and `REGISTRY_PASSWORD` are provided.
+
+Manual equivalent:
+```bash
+kubectl -n ${NAMESPACE} delete secret registry-credentials --ignore-not-found
+kubectl -n ${NAMESPACE} create secret docker-registry registry-credentials   --docker-server="${REGISTRY_SERVER}"   --docker-username="${REGISTRY_USERNAME}"   --docker-password="${REGISTRY_PASSWORD}"   --docker-email="you@example.com"
+```
+
+**Verify secret:**
+```bash
+kubectl get secret registry-credentials -n ${NAMESPACE} -o jsonpath='{.data.\.dockerconfigjson}' | base64 -d | jq
+```
+
+**Important:** ensure `apps/erp-ui/values.yaml` contains:
+```yaml
+imagePullSecrets:
+  - name: registry-credentials
+```
+(build.sh writes this as `.image.pullSecrets` — verify chart uses that value to set `spec.template.spec.imagePullSecrets`).
+
+---
+
+## Step 6 — Optional: Database setup (if using build.sh SETUP_DATABASES=true)
+
+`build.sh` can install Postgres/Redis using Bitnami charts. Manual:
+```bash
+kubectl create ns ${NAMESPACE} --dry-run=client -o yaml | kubectl apply -f -
+helm repo add bitnami https://charts.bitnami.com/bitnami || true
+helm repo update
+
+# Postgres
+helm upgrade --install postgresql bitnami/postgresql -n ${NAMESPACE}   --set global.postgresql.auth.postgresPassword="${POSTGRES_PASSWORD}"   --set global.postgresql.auth.database="appdb" --wait --timeout=300s
+
+# Redis
+helm upgrade --install redis bitnami/redis -n ${NAMESPACE}   --set global.redis.password="${REDIS_PASSWORD}" --wait --timeout=300s
+```
+
+Create secret with DB URL (build.sh creates Jwt secret and DB secret):
+```bash
+kubectl -n ${NAMESPACE} create secret generic ${ENV_SECRET_NAME}   --from-literal=DATABASE_URL="postgresql://postgres:${POSTGRES_PASSWORD}@postgresql.${NAMESPACE}.svc.cluster.local:5432/appdb"   --dry-run=client -o yaml | kubectl apply -f -
+```
+
+---
+
+## Step 7 — Trigger / verify ArgoCD sync
+
+`build.sh` relies on automated sync; if auto-sync is enabled ArgoCD will detect the commit and sync. If not, do:
+
+```bash
+argocd login argocd.masterspace.co.ke --username admin --password "<ADMIN_PASS>" --grpc-web --insecure
+argocd app refresh erp-ui
+argocd app sync erp-ui --force
 argocd app get erp-ui
 ```
 
----
-
-## 📊 Phase 3: Monitor Deployment
-
-### 3.1 Monitor Application Status
+**Check status:**
 ```bash
-kubectl get applications.argoproj.io -n argocd -w
-argocd app get erp-ui --watch
-```
-
-### 3.2 Monitor Namespace Resources
-```bash
-kubectl get all,ingress,secrets,pvc -n erp
-kubectl get pods -n erp -w
-kubectl get svc -n erp
+kubectl get all,ingress -n ${NAMESPACE}
 ```
 
 ---
 
-## ✅ Phase 4: Post-Deployment Verification
+## Step 8 — Post-sync checks & troubleshooting (ImagePullBackOff diagnosis)
 
-### 4.1 Application Health
+If pods show `ImagePullBackOff` or `ErrImagePull`:
+
+1. Confirm the exact image referenced by the Deployment:
 ```bash
-argocd app get erp-ui --health
-kubectl get deployment erp-ui -n erp
-kubectl get pods -n erp
+kubectl -n ${NAMESPACE} get deployment erp-ui-app -o jsonpath='{.spec.template.spec.containers[*].image}'
 ```
 
-### 4.2 Check Ingress & SSL
+2. Confirm image exists and is pullable from the VPS:
 ```bash
-kubectl get ingress -n erp
-kubectl get certificates -n erp
-kubectl describe certificate erp-masterspace-tls -n erp
+docker pull "${IMAGE_REPO}:${IMAGE_TAG}"
 ```
 
-### 4.3 Validate Access
+3. Confirm `imagePullSecrets` is present on the Deployment:
 ```bash
-curl -k https://erp.masterspace.co.ke/
-curl -k https://erp.masterspace.co.ke/health
+kubectl -n ${NAMESPACE} get deployment erp-ui-app -o yaml | yq e '.spec.template.spec.imagePullSecrets' -
+```
+If empty, ensure the Helm chart maps `values.image.pullSecrets` -> `spec.template.spec.imagePullSecrets`. If not, patch values or chart.
+
+4. Confirm secret contents:
+```bash
+kubectl -n ${NAMESPACE} get secret registry-credentials -o jsonpath='{.data.\.dockerconfigjson}' | base64 -d | jq
 ```
 
----
-
-## 🧰 Phase 5: Troubleshooting
-
-### 5.1 Git Push Denied (Deploy Key)
-- Ensure the deploy key has **write permissions** in GitHub repository settings.
-- Use a **personal access token (PAT)** with repo permissions for automation.
-- If using SSH key, confirm key path and permissions:
-  ```bash
-  chmod 600 ~/.ssh/git_deploy_key
-  eval "$(ssh-agent -s)"
-  ssh-add ~/.ssh/git_deploy_key
-  ```
-
-### 5.2 ArgoCD Sync Issues
+5. Force a rolling restart (if secret fixed or image updated):
 ```bash
-kubectl logs -n argocd deployment/argocd-application-controller
-kubectl get events -n argocd --field-selector involvedObject.name=erp-ui
+kubectl rollout restart deployment/erp-ui-app -n ${NAMESPACE}
+kubectl rollout status deployment/erp-ui-app -n ${NAMESPACE}
+kubectl get pods -n ${NAMESPACE} -w
 ```
 
-### 5.3 Ingress or Service Not Working
+6. If orchestration still fails, inspect image pull events:
 ```bash
-kubectl -n erp describe ingress erp-ui
-kubectl -n erp get svc erp-ui -o wide
-kubectl -n erp get endpoints erp-ui -o wide
-kubectl -n ingress-nginx logs deploy/ingress-nginx-controller --tail=200
+kubectl describe pod -n ${NAMESPACE} <pod-name>   # look for Events -> pull error messages
+kubectl logs deployment/erp-ui-app -n ${NAMESPACE} --tail=200 || true
 ```
 
 ---
 
-## 🧾 Summary of Fixes and Improvements
+## Extra: Mapping between the automated files and manual steps
 
-| Issue | Original Cause | Fix |
-|-------|----------------|-----|
-| Git unstaged changes during pull | `git pull --rebase` with local edits | Added `git reset --hard` before pulling |
-| Permission denied on push | Deploy key had read-only access | Clarified need for write-enabled key or PAT |
-| Incomplete cleanup | Manual directory reuse | Added conditional clone & cleanup |
-| No handling for empty commits | Commit fails if no change | Added graceful handling with `|| echo` |
-| Rebase conflicts | Rebase on dirty branch | Replaced with `git pull origin main` |
+- `build.sh`:
+  - Build image, trivy scans, docker push, create registry secret, update `values.yaml` with `yq`, push to `devops-k8s` with GH token, and optionally setup DBs.
+  - Use this guide's Step 1–7 for manual equivalence.
+
+- `deploy.yml` (CI workflow):
+  - Triggers `build.sh` in CI and uses GH_PAT and registry creds from secrets. If CI exists, prefer running CI to deploy.
 
 ---
 
-**Final Note:**  
-Always verify ArgoCD sync status and ingress accessibility after updates.  
-For repeated deployment automation, integrate this guide into your GitHub Actions or CI/CD pipeline.
+## Safety & Best Practices
+
+- Do not store `GH_PAT` or `REGISTRY_PASSWORD` in plain files on disk. Use environment variables or your vault/CI secrets.
+- Prefer SSH write access (deploy key with write enabled) or GitHub PAT for automation.
+- Monitor ArgoCD UI and controller logs when troubleshooting sync issues:
+```bash
+kubectl logs -n argocd deployment/argocd-application-controller -f
+```
+
+---
+
+## Quick checklist (copy/paste)
+
+```bash
+# Build & push
+cd /bengobox-erp-ui
+docker build -t "${IMAGE_REPO}:${IMAGE_TAG}" .
+docker push "${IMAGE_REPO}:${IMAGE_TAG}"
+
+# Create registry secret in cluster
+kubectl -n ${NAMESPACE} create secret docker-registry registry-credentials   --docker-server="${REGISTRY_SERVER}"   --docker-username="${REGISTRY_USERNAME}"   --docker-password="${REGISTRY_PASSWORD}"   --dry-run=client -o yaml | kubectl apply -f -
+
+# Update values & push
+cd $DEVOPS_DIR
+IMAGE_REPO_ENV="$IMAGE_REPO" IMAGE_TAG_ENV="$IMAGE_TAG" yq e -i '.image.repository = env(IMAGE_REPO_ENV) | .image.tag = env(IMAGE_TAG_ENV)' "$VALUES_FILE_PATH"
+yq e -i '.image.pullSecrets = [{"name":"registry-credentials"}]' "$VALUES_FILE_PATH"
+git add "$VALUES_FILE_PATH"
+git commit -m "${APP_NAME}:${IMAGE_TAG} released" || echo "No changes to commit"
+git push push-origin HEAD:main   # or git push origin main
+
+# Force ArgoCD sync
+argocd app refresh erp-ui
+argocd app sync erp-ui --force
+
+# Restart and monitor
+kubectl rollout restart deployment/erp-ui-app -n ${NAMESPACE}
+kubectl get pods -n ${NAMESPACE} -w
+```
+
+---
+
+## Contact / Escalation
+If issues persist, collect:
+
+- `argocd app get erp-ui -o yaml`
+- `kubectl describe pod -n erp <pod>`
+- `kubectl get events -n erp --sort-by='.metadata.creationTimestamp' | tail -n 50`
+
+Share these with the DevOps team (Titus) for further debugging.
+
+---
+
+*Generated: 2025-10-14 — includes automation steps from `build.sh` and recommended manual equivalents.*
