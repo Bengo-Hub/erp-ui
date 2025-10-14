@@ -143,7 +143,7 @@ If push succeeds but cluster still fails to pull, ensure the cluster has the pul
 
 `build.sh` clones the `devops-k8s` repo, edits `apps/erp-ui/values.yaml` using `yq` (with env injection), commits and pushes using a GH token.
 
-Manual commands (preferred: use GH_PAT env variable):
+### 4.1 Clone/update devops-k8s
 ```bash
 # Clone/update
 [ -d "$DEVOPS_DIR" ] || git clone "https://github.com/Bengo-Hub/devops-k8s.git" "$DEVOPS_DIR"
@@ -151,27 +151,64 @@ cd "$DEVOPS_DIR"
 git fetch origin main
 git checkout main
 git reset --hard origin/main
+```
 
-# Update values using yq (env injection, safe)
-IMAGE_REPO_ENV="$IMAGE_REPO" IMAGE_TAG_ENV="$IMAGE_TAG" yq e -i '.image.repository = env(IMAGE_REPO_ENV) | .image.tag = env(IMAGE_TAG_ENV)' "$VALUES_FILE_PATH"
+### 4.2 CRITICAL: Verify ArgoCD uses the values file you're editing
+```bash
+# Check which values file ArgoCD uses
+yq e '.spec.source.helm' apps/erp-ui/app.yaml
+
+# MUST show:
+#   valueFiles:
+#     - ../../apps/erp-ui/values.yaml
+#
+# If it shows "values: |" with inline YAML, ArgoCD ignores apps/erp-ui/values.yaml!
+# Fix: The app.yaml must use valueFiles, NOT inline values
+```
+
+**⚠️ CRITICAL FIX APPLIED**: ArgoCD app.yaml now uses `valueFiles` instead of inline values. This allows build.sh updates to work.
+
+### 4.3 Update values using yq (env injection, safe)
+```bash
+# Update image repo and tag
+IMAGE_REPO_ENV="$IMAGE_REPO" IMAGE_TAG_ENV="$IMAGE_TAG" \
+yq e -i '.image.repository = env(IMAGE_REPO_ENV) | .image.tag = env(IMAGE_TAG_ENV)' "$VALUES_FILE_PATH"
 
 # Ensure imagePullSecrets are set if registry requires auth
 if [[ -n "${REGISTRY_USERNAME:-}" && -n "${REGISTRY_PASSWORD:-}" ]]; then
   yq e -i '.image.pullSecrets = [{"name":"registry-credentials"}]' "$VALUES_FILE_PATH"
 fi
 
-# Commit & push (use GH token or SSH with write-access)
+# Verify the update worked
+echo "=== Updated values.yaml ==="
+yq e '.image' "$VALUES_FILE_PATH"
+```
+
+### 4.4 Commit & push with token
+```bash
+# Commit changes
 git add "$VALUES_FILE_PATH"
 git commit -m "${APP_NAME}:${IMAGE_TAG} released" || echo "No changes to commit"
 
-# Push with token (build.sh uses x-access-token if GH_PAT present)
+# Push with token (REQUIRED for cross-repo push)
 if [[ -n "${GH_PAT:-}" ]]; then
   git remote remove push-origin 2>/dev/null || true
   git remote add push-origin "https://x-access-token:${GH_PAT}@github.com/Bengo-Hub/devops-k8s.git"
   git push push-origin HEAD:main
 else
-  git push origin main
+  echo "ERROR: GH_PAT required for cross-repo push"
+  exit 1
 fi
+```
+
+### 4.5 Verify push succeeded
+```bash
+# Check latest commit on GitHub
+git log --oneline -n 1
+
+# Confirm on GitHub web UI:
+# https://github.com/Bengo-Hub/devops-k8s/commits/main
+# Should show your commit "${APP_NAME}:${IMAGE_TAG} released"
 ```
 
 **Why env injection?** `yq e -i '.image.tag = env(IMAGE_TAG_ENV)'` prevents quoting/escaping issues and works reliably.
@@ -229,16 +266,99 @@ kubectl -n ${NAMESPACE} create secret generic ${ENV_SECRET_NAME}   --from-litera
 
 ---
 
-## Step 7 — Trigger / verify ArgoCD sync
+## Step 7 — Verify ArgoCD detects changes and syncs
 
-`build.sh` relies on automated sync; if auto-sync is enabled ArgoCD will detect the commit and sync. If not, do:
+After pushing to devops-k8s, ArgoCD should auto-detect and sync. **This is where deployments often fail silently.**
 
+### 7.1 Check ArgoCD app status
 ```bash
+# Login to ArgoCD CLI
 argocd login argocd.masterspace.co.ke --username admin --password "<ADMIN_PASS>" --grpc-web --insecure
-argocd app refresh erp-ui
-argocd app sync erp-ui --force
+
+# Check if app is OutOfSync (means changes not applied yet)
 argocd app get erp-ui
+
+# Look for:
+# Sync Status:    OutOfSync  ← Changes pending
+# Health Status:  Healthy
+# Last Sync:      <timestamp>
 ```
+
+**If Sync Status is OutOfSync**, ArgoCD sees the git change but hasn't applied it yet.
+
+### 7.2 Force ArgoCD to sync NOW
+```bash
+# Refresh app (re-check git)
+argocd app refresh erp-ui
+
+# Sync with Replace=true (handles immutable field updates)
+argocd app sync erp-ui --force --replace
+
+# Watch sync progress
+argocd app wait erp-ui --sync --timeout 300
+```
+
+### 7.3 Verify Helm rendered the correct values
+```bash
+# CRITICAL: Check what Helm template will generate
+# This is what ArgoCD actually applies to the cluster
+argocd app manifests erp-ui | grep -A 2 "kind: Deployment" | grep "image:"
+
+# Expected output:
+#   image: "docker.io/codevertex/erp-ui:8333e8cd"
+#
+# If you see :latest here, ArgoCD is using wrong values source!
+# Go back to Step 4.2 and verify app.yaml uses valueFiles
+```
+
+### 7.4 Verify deployment updated with new image
+```bash
+# Check what image the Deployment YAML has (should match values.yaml)
+kubectl -n erp get deploy erp-ui-app -o jsonpath='{.spec.template.spec.containers[0].image}'
+echo ""
+
+# Expected: docker.io/codevertex/erp-ui:8333e8cd (or your IMAGE_TAG)
+# If still showing :latest, ArgoCD sync didn't apply
+
+# Check actual running pods
+kubectl -n erp get pods -l app=erp-ui-app -o jsonpath='{range .items[*]}{.metadata.name}{"\t"}{.spec.containers[0].image}{"\n"}{end}'
+```
+
+### 7.5 Troubleshoot image mismatch
+**If Deployment shows correct tag but pods show different tag**:
+```bash
+# Case 1: Pods are still old (rollout not started)
+kubectl -n erp rollout restart deploy/erp-ui-app
+kubectl -n erp rollout status deploy/erp-ui-app --timeout=5m
+
+# Case 2: Pods failed to pull new image (check events)
+kubectl -n erp describe pod -l app=erp-ui-app | grep -A 10 "Events:"
+
+# Case 3: Someone manually edited Deployment (check annotations)
+kubectl -n erp get deploy erp-ui-app -o jsonpath='{.metadata.annotations}'
+```
+
+### 7.4 Debug: Why ArgoCD won't sync
+
+**Check ArgoCD app events**:
+```bash
+kubectl -n argocd get application erp-ui -o yaml | yq e '.status.conditions' -
+
+# Look for errors like:
+# - "ComparisonError: Failed to load target state"
+# - "SyncError: one or more objects failed to apply"
+```
+
+**Check ArgoCD controller logs**:
+```bash
+kubectl -n argocd logs deploy/argocd-application-controller --tail=100 | grep -i "erp-ui"
+```
+
+**Common issues**:
+1. **Auto-sync disabled**: Check app.yaml has `syncPolicy.automated: {}`
+2. **Sync failed silently**: Check logs for YAML errors
+3. **Immutable field conflict**: Add `Replace=true` to syncOptions
+4. **Git repo not accessible**: ArgoCD can't fetch devops-k8s
 
 **Check status:**
 ```bash
