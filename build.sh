@@ -307,6 +307,12 @@ if [[ "$DEPLOY" == "true" ]]; then
 
             # Clone or update devops-k8s repo into DEVOPS_DIR using token when available
             TOKEN="${GH_PAT:-${GITHUB_TOKEN:-}}"
+            ORIGIN_REPO="${GITHUB_REPOSITORY:-}"
+            if [[ -n "$ORIGIN_REPO" && "$DEVOPS_REPO" != "$ORIGIN_REPO" && -z "${GH_PAT:-}" ]]; then
+                log_error "GH_PAT is required to push to ${DEVOPS_REPO} from ${ORIGIN_REPO}."
+                log_error "Add a repository secret GH_PAT with repo:write on ${DEVOPS_REPO}."
+                exit 1
+            fi
             CLONE_URL="https://github.com/${DEVOPS_REPO}.git"
             [[ -n "$TOKEN" ]] && CLONE_URL="https://x-access-token:${TOKEN}@github.com/${DEVOPS_REPO}.git"
             if [[ ! -d "$DEVOPS_DIR" ]]; then
