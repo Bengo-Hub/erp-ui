@@ -150,8 +150,13 @@ fi
 
 Manual equivalent:
 ```bash
-kubectl -n ${NAMESPACE} delete secret registry-credentials --ignore-not-found
-kubectl -n ${NAMESPACE} create secret docker-registry registry-credentials   --docker-server="${REGISTRY_SERVER}"   --docker-username="${REGISTRY_USERNAME}"   --docker-password="${REGISTRY_PASSWORD}"   --docker-email="${REGISTRY_EMAIL"
+kubectl -n "${NAMESPACE}" delete secret registry-credentials --ignore-not-found
+
+kubectl -n "${NAMESPACE}" create secret docker-registry registry-credentials \
+  --docker-server="${REGISTRY_SERVER}" \
+  --docker-username="${REGISTRY_USERNAME}" \
+  --docker-password="${REGISTRY_PASSWORD}" \
+  --docker-email="${REGISTRY_EMAIL}"
 ```
 
 **Verify secret:**
