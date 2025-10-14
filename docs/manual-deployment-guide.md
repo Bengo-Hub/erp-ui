@@ -18,28 +18,42 @@ export DEVOPS_REPO="https://github.com/Bengo-Hub/devops-k8s.git"
 export DEVOPS_DIR=~/devops-k8s
 export NAMESPACE=erp
 export VALUES_FILE_PATH="apps/${APP_NAME}/values.yaml"
-# Optional (for automated push in build.sh)
-export GH_PAT="gh.."          # GitHub PAT with repo write permissions for Bengo-Hub/devops-k8s
+
+# REQUIRED for cross-repo push (deploy keys DON'T work for this)
+export GH_PAT="ghp_..."      # GitHub PAT with repo:write to Bengo-Hub/devops-k8s
+
+# REQUIRED for private registry
 export REGISTRY_USERNAME="codevertex"
-export REGISTRY_PASSWORD="@REDACTED_PG_ADMIN_PASSWORD"
-REGISTRY_EMAIL="codevertexitsolutions@gmail.com"
-# Optional: KUBE_CONFIG (base64) if running remotely or from CI
-# export KUBE_CONFIG="$(base64 -w0 ~/.kube/config)"
+export REGISTRY_PASSWORD="your-registry-token"
+
+# REQUIRED for kubectl operations
+export KUBE_CONFIG="$(cat ~/.kube/config | base64 -w0)"
+
+# Optional: API URL configuration (baked into build)
+export VITE_API_URL="https://erpapi.masterspace.co.ke"
+export VITE_WEBSOCKET_URL="wss://erpapi.masterspace.co.ke/ws/pos/"
 ```
 
 ---
 
-## Overview: 1-line summary of automated steps performed by `build.sh` / `deploy.yml`
+## Overview: Automated steps performed by `build.sh` / `deploy.yml`
 
-1. Build container (with optional SSH support for private submodules).
-2. Run `trivy` filesystem + image vulnerability scans.
-3. Push image to configured registry.
-4. Create/update Kubernetes secrets (JWT, registry pull secret).
-5. Optionally install databases (Postgres/Redis) via Helm.
-6. Update `devops-k8s` Helm values file with new image tag and `imagePullSecrets` if needed (uses `yq` and GH token).
-7. ArgoCD auto-syncs deployed application (or you can manually trigger sync).
+1. ✅ Build container with production API URL (via build args)
+2. ✅ Run `trivy` filesystem + image vulnerability scans
+3. ✅ Push image to configured registry
+4. ✅ Create/update Kubernetes secrets (`erp-ui-env`, `registry-credentials`)
+5. ✅ Update `devops-k8s/apps/erp-ui/values.yaml` with new image tag and imagePullSecrets
+6. ✅ Commit and push to devops-k8s using GH_PAT (requires PAT token)
+7. ✅ ArgoCD auto-syncs and performs rolling update with health checks
+8. ✅ Zero-downtime deployment: new pods validated before traffic switch
+9. ✅ Old pods removed only after new ones pass readiness probe
 
 This guide gives the exact manual commands that reproduce those steps.
+
+**Key Requirements**:
+- GH_PAT or GITHUB_SECRET must be set (deploy keys don't work for cross-repo push)
+- Health endpoint `/health` must respond with 200 OK
+- imagePullSecrets configured if using private registry
 
 ---
 
@@ -79,7 +93,26 @@ DOCKER_BUILDKIT=1 docker build \
 
 ---
 
-## Step 2 — Security scans (optional but recommended)
+## Step 2 — Create registry pull secret (for private images)
+```bash
+# Decode kubeconfig first
+mkdir -p ~/.kube
+echo "$KUBE_CONFIG" | base64 -d > ~/.kube/config
+
+# Create namespace
+kubectl get ns $NAMESPACE >/dev/null 2>&1 || kubectl create ns $NAMESPACE
+
+# Create docker-registry secret
+kubectl -n $NAMESPACE create secret docker-registry registry-credentials \
+  --docker-server=$REGISTRY_SERVER \
+  --docker-username=$REGISTRY_USERNAME \
+  --docker-password=$REGISTRY_PASSWORD \
+  --dry-run=client -o yaml | kubectl apply -f -
+
+echo "✅ Registry pull secret created"
+```
+
+## Step 3 — Security scans (optional but recommended)
 ```bash
 # Filesystem scan (trivy)
 trivy fs . --exit-code 0 --format table --skip-files "localhost*.pem,*.key,*.crt"
