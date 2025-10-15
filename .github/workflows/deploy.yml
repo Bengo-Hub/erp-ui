@@ -87,3 +87,21 @@ jobs:
       run: |
         chmod +x build.sh
         ./build.sh
+
+    - name: Tag and push :latest
+      if: success()
+      env:
+        REGISTRY_USERNAME: ${{ secrets.REGISTRY_USERNAME }}
+        REGISTRY_PASSWORD: ${{ secrets.REGISTRY_PASSWORD }}
+      run: |
+        set -e
+        : "${REGISTRY_SERVER:=docker.io}"
+        : "${REGISTRY_NAMESPACE:=codevertex}"
+        IMAGE_REPO="${REGISTRY_SERVER}/${REGISTRY_NAMESPACE}/erp-ui"
+        SHORT_SHA=${GITHUB_SHA::8}
+        echo "Tagging ${IMAGE_REPO}:${SHORT_SHA} as :latest and pushing"
+        echo "$REGISTRY_PASSWORD" | docker login "$REGISTRY_SERVER" -u "$REGISTRY_USERNAME" --password-stdin
+        # Ensure the commit-tagged image is available locally
+        docker pull "${IMAGE_REPO}:${SHORT_SHA}" || true
+        docker tag "${IMAGE_REPO}:${SHORT_SHA}" "${IMAGE_REPO}:latest"
+        docker push "${IMAGE_REPO}:latest"
