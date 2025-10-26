@@ -1,11 +1,5 @@
 <script setup>
 import { employeeService } from '@/services/hrm/employeeService';
-import Button from 'primevue/button';
-import Calendar from 'primevue/calendar';
-import Dialog from 'primevue/dialog';
-import Dropdown from 'primevue/dropdown';
-import InputNumber from 'primevue/inputnumber';
-import Textarea from 'primevue/textarea';
 import { useToast } from 'primevue/usetoast';
 import { computed, reactive, ref } from 'vue';
 

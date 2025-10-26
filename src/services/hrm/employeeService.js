@@ -1,6 +1,6 @@
 // employeeService.js
 import axios from '@/utils/axiosConfig';
-import { handleError } from '../errorHandler';
+import { handleError } from '../utils/errorHandler';
 
 // Align with versioned API and backend URL structure
 const V1_HRM_BASE = '/hrm';
@@ -128,6 +128,55 @@ export const employeeService = {
     },
     bulkUpsertLoans(records = []) {
         return axios.post(`${EMPLOYEES_BASE}/loans/`, records);
+    },
+
+    // ESS (Employee Self-Service) Management
+    async activateESS(employeeId) {
+        try {
+            const response = await axios.post(`${EMPLOYEES_BASE}/${employeeId}/ess/activate/`);
+            return response.data;
+        } catch (error) {
+            return handleError(error);
+        }
+    },
+
+    async deactivateESS(employeeId) {
+        try {
+            const response = await axios.post(`${EMPLOYEES_BASE}/${employeeId}/ess/deactivate/`);
+            return response.data;
+        } catch (error) {
+            return handleError(error);
+        }
+    },
+
+    // ESS Settings
+    async getESSSettings() {
+        try {
+            const response = await axios.get(`${EMPLOYEES_BASE}/ess-settings/`);
+            return response.data;
+        } catch (error) {
+            return handleError(error);
+        }
+    },
+
+    async updateESSSettings(settingsData) {
+        try {
+            const response = await axios.put(`${EMPLOYEES_BASE}/ess-settings/1/`, settingsData);
+            return response.data;
+        } catch (error) {
+            return handleError(error);
+        }
+    },
+
+    async resetESSPassword(employeeId, newPassword = null) {
+        try {
+            const response = await axios.post(`${EMPLOYEES_BASE}/${employeeId}/ess/reset-password/`, {
+                new_password: newPassword
+            });
+            return response.data;
+        } catch (error) {
+            return handleError(error);
+        }
     },
 
     // Non-REST removal helpers used by UI
@@ -705,12 +754,106 @@ export const employeeService = {
         }
     },
 
-    // Attendance
+    // HRM Settings - Job Titles
+    listJobTitles(params = {}) {
+        return axios.get(`${V1_HRM_BASE}/employees/job-titles/`, { params });
+    },
+    getJobTitle(id) {
+        return axios.get(`${V1_HRM_BASE}/employees/job-titles/${id}/`);
+    },
+    createJobTitle(data) {
+        return axios.post(`${V1_HRM_BASE}/employees/job-titles/`, data);
+    },
+    updateJobTitle(id, data) {
+        return axios.put(`${V1_HRM_BASE}/employees/job-titles/${id}/`, data);
+    },
+    deleteJobTitle(id) {
+        return axios.delete(`${V1_HRM_BASE}/employees/job-titles/${id}/`);
+    },
+
+    // HRM Settings - Job Groups
+    listJobGroups(params = {}) {
+        return axios.get(`${V1_HRM_BASE}/employees/job-groups/`, { params });
+    },
+    getJobGroup(id) {
+        return axios.get(`${V1_HRM_BASE}/employees/job-groups/${id}/`);
+    },
+    createJobGroup(data) {
+        return axios.post(`${V1_HRM_BASE}/employees/job-groups/`, data);
+    },
+    updateJobGroup(id, data) {
+        return axios.put(`${V1_HRM_BASE}/employees/job-groups/${id}/`, data);
+    },
+    deleteJobGroup(id) {
+        return axios.delete(`${V1_HRM_BASE}/employees/job-groups/${id}/`);
+    },
+
+    // HRM Settings - Holidays (Public Holidays)
+    listHolidays(params = {}) {
+        return axios.get(`${V1_HRM_BASE}/leave/holidays/`, { params });
+    },
+    getHoliday(id) {
+        return axios.get(`${V1_HRM_BASE}/leave/holidays/${id}/`);
+    },
+    createHoliday(data) {
+        return axios.post(`${V1_HRM_BASE}/leave/holidays/`, data);
+    },
+    updateHoliday(id, data) {
+        return axios.put(`${V1_HRM_BASE}/leave/holidays/${id}/`, data);
+    },
+    deleteHoliday(id) {
+        return axios.delete(`${V1_HRM_BASE}/leave/holidays/${id}/`);
+    },
+
+    // Attendance - Work Shifts
     listWorkShifts(params = {}) {
         return axios.get(`${ATTENDANCE_ROOT}/work-shifts/`, { params });
     },
+    getWorkShift(id) {
+        return axios.get(`${ATTENDANCE_ROOT}/work-shifts/${id}/`);
+    },
     createWorkShift(data) {
         return axios.post(`${ATTENDANCE_ROOT}/work-shifts/`, data);
+    },
+    updateWorkShift(id, data) {
+        return axios.put(`${ATTENDANCE_ROOT}/work-shifts/${id}/`, data);
+    },
+    deleteWorkShift(id) {
+        return axios.delete(`${ATTENDANCE_ROOT}/work-shifts/${id}/`);
+    },
+
+    // Attendance - Shift Rotations
+    listShiftRotations(params = {}) {
+        return axios.get(`${ATTENDANCE_ROOT}/shift-rotations/`, { params });
+    },
+    getShiftRotation(id) {
+        return axios.get(`${ATTENDANCE_ROOT}/shift-rotations/${id}/`);
+    },
+    createShiftRotation(data) {
+        return axios.post(`${ATTENDANCE_ROOT}/shift-rotations/`, data);
+    },
+    updateShiftRotation(id, data) {
+        return axios.put(`${ATTENDANCE_ROOT}/shift-rotations/${id}/`, data);
+    },
+    deleteShiftRotation(id) {
+        return axios.delete(`${ATTENDANCE_ROOT}/shift-rotations/${id}/`);
+    },
+
+    // Workers Unions
+    listWorkersUnions(params = {}) {
+        return axios.get(`${V1_HRM_BASE}/employees/workers-unions/`, { params });
+    },
+    getWorkersUnion(id) {
+        return axios.get(`${V1_HRM_BASE}/employees/workers-unions/${id}/`);
+    },
+    createWorkersUnion(data) {
+        return axios.post(`${V1_HRM_BASE}/employees/workers-unions/`, data);
+    },
+    updateWorkersUnion(id, data) {
+        return axios.put(`${V1_HRM_BASE}/employees/workers-unions/${id}/`, data);
+    },
+    deleteWorkersUnion(id) {
+        return axios.delete(`${V1_HRM_BASE}/employees/workers-unions/${id}/`);
     },
     listOffDays(params = {}) {
         return axios.get(`${ATTENDANCE_ROOT}/off-days/`, { params });

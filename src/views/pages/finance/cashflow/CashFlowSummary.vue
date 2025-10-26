@@ -1,6 +1,6 @@
 <script setup>
 import { useToast } from '@/composables/useToast';
-import { financeService } from '@/services/FinanceService';
+import { financeService } from '@/services/finance/financeService';
 import { formatCurrency, formatDate } from '@/utils/formatters';
 import Chart from 'chart.js/auto';
 import { computed, onMounted, reactive, ref, watch } from 'vue';

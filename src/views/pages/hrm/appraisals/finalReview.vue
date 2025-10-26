@@ -3,8 +3,6 @@ import { useToast } from '@/composables/useToast';
 import { appraisalService } from '@/services/hrm/appraisalService';
 import { useVuelidate } from '@vuelidate/core';
 import { maxValue, minValue, required } from '@vuelidate/validators';
-import InputText from 'primevue/inputtext';
-import Textarea from 'primevue/textarea';
 import { useConfirm } from 'primevue/useconfirm';
 import { onMounted, ref } from 'vue';
 

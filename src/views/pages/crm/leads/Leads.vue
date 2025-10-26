@@ -1,21 +1,11 @@
 <script setup>
 import { usePermissions } from '@/composables/usePermissions';
 import { useToast } from '@/composables/useToast';
-import { CustomerService } from '@/services/CustomerService';
+import { CustomerService } from '@/services/ecommerce/customerService';
 import { formatCurrency, formatDate } from '@/utils/formatters';
 import { computed, onMounted, ref } from 'vue';
 
 // PrimeVue components
-import Button from 'primevue/button';
-import Card from 'primevue/card';
-import Column from 'primevue/column';
-import DataTable from 'primevue/datatable';
-import Dialog from 'primevue/dialog';
-import Dropdown from 'primevue/dropdown';
-import InputNumber from 'primevue/inputnumber';
-import InputText from 'primevue/inputtext';
-import Tag from 'primevue/tag';
-
 const { showToast } = useToast();
 const { hasPermission, hasAnyPermission } = usePermissions();
 
@@ -73,7 +63,7 @@ const contactsDisplayName = computed(() => {
 const fetchLeads = async () => {
     loading.value = true;
     try {
-        const response = await CustomerService.listLeads();
+        const response = await customerService.listLeads();
         leads.value = response.results || response || [];
     } catch (error) {
         console.error('Error fetching leads:', error);
@@ -86,7 +76,7 @@ const fetchLeads = async () => {
 
 const fetchContacts = async () => {
     try {
-        const response = await CustomerService.getCustomers({ limit: 1000 });
+        const response = await customerService.getCustomers({ limit: 1000 });
         contacts.value = response.results || response || [];
     } catch (error) {
         console.error('Error fetching contacts:', error);
@@ -137,10 +127,10 @@ const saveLead = async () => {
     saving.value = true;
     try {
         if (isEditing.value) {
-            await CustomerService.updateLead(selectedLeadId.value, form.value);
+            await customerService.updateLead(selectedLeadId.value, form.value);
             showToast('success', 'Success', 'Lead updated successfully');
         } else {
-            await CustomerService.createLead(form.value);
+            await customerService.createLead(form.value);
             showToast('success', 'Success', 'Lead created successfully');
         }
 
@@ -161,7 +151,7 @@ const removeLead = (id) => {
 
 const confirmDelete = async () => {
     try {
-        await CustomerService.deleteLead(selectedLeadId.value);
+        await customerService.deleteLead(selectedLeadId.value);
         showToast('success', 'Success', 'Lead deleted successfully');
         await fetchLeads();
     } catch (error) {

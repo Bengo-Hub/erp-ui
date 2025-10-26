@@ -4,6 +4,7 @@ import { appraisalService } from '@/services/hrm/appraisalService';
 import { format } from 'date-fns';
 import { computed, onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
+import { formatCurrency, formatDate } from '@/utils/formatters';
 
 const { showToast } = useToast();
 const router = useRouter();
@@ -67,10 +68,6 @@ const calculateProgress = (appraisal) => {
     const answeredQuestions = appraisal.responses.filter((r) => r.response || r.rating).length;
 
     return (answeredQuestions / totalQuestions) * 100;
-};
-
-const formatDate = (date) => {
-    return date ? format(new Date(date), 'MMM dd, yyyy') : '-';
 };
 
 const getStatusSeverity = (status) => {

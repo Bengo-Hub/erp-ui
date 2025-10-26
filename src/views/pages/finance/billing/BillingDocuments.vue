@@ -304,9 +304,10 @@
 
 <script setup>
 import { ref, reactive, onMounted } from 'vue';
-import { financeService } from '@/services/FinanceService';
+import { financeService } from '@/services/finance/financeService';
 import { useToast } from '@/composables/useToast';
 import BillingDocumentForm from '@/components/finance/billing/BillingDocumentForm.vue';
+import { formatCurrency, formatDate } from '@/utils/formatters';
 
 const { showToast } = useToast();
 
@@ -469,11 +470,6 @@ const getStatusSeverity = (status) => {
     cancelled: 'danger'
   };
   return severityMap[status] || 'info';
-};
-
-const formatDate = (date) => {
-  if (!date) return '';
-  return new Date(date).toLocaleDateString('en-GB');
 };
 
 const formatCurrency = (amount) => {

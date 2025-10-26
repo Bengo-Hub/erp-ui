@@ -368,6 +368,7 @@ const toggleProcessDropdown = () => {
 };
 
 // Remove local formatCurrency since we're importing it
+import { formatCurrency, formatDate } from '@/utils/formatters';
 // const formatCurrency = (data) => {
 //     return `KES ${data.toLocaleString()}`;
 // };

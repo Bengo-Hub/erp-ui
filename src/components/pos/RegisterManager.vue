@@ -1,5 +1,5 @@
 <script setup>
-import { POSService } from '@/services/POSService';
+import { POSService } from '@/services/ecommerce/posService';
 import { formatCurrency } from '@/utils/formatters';
 import { useToast } from 'primevue/usetoast';
 import { computed, onMounted, ref } from 'vue';
@@ -63,7 +63,7 @@ const formatDateTime = (dateString) => {
 const checkRegisterStatus = async () => {
     try {
         isProcessing.value = true;
-        const response = await POSService.getRegisterStatus(props.userId, props.branchCode);
+        const response = await posService.getRegisterStatus(props.userId, props.branchCode);
 
         if (response.data.register_exists) {
             registerDetails.value = {
@@ -118,13 +118,13 @@ const openRegister = async () => {
         isProcessing.value = true;
 
         // First check if register exists
-        const checkResponse = await POSService.getRegisterStatus(props.userId, props.branchCode);
+        const checkResponse = await posService.getRegisterStatus(props.userId, props.branchCode);
 
         let registerId = null;
 
         if (!checkResponse.data.register_exists) {
             // Create a new register
-            const createResponse = await POSService.createOrGetRegister({
+            const createResponse = await posService.createOrGetRegister({
                 user_id: props.userId,
                 branch_code: props.branchCode
             });
@@ -139,7 +139,7 @@ const openRegister = async () => {
             notes: openingNotes.value
         };
 
-        const response = await POSService.openRegister(registerId, openData);
+        const response = await posService.openRegister(registerId, openData);
 
         toast.add({
             severity: 'success',
@@ -185,7 +185,7 @@ const closeRegister = async () => {
             notes: closingNotes.value
         };
 
-        const response = await POSService.closeRegister(registerDetails.value.id, closeData);
+        const response = await posService.closeRegister(registerDetails.value.id, closeData);
 
         toast.add({
             severity: 'success',

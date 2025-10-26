@@ -2,7 +2,7 @@
 import PageBreadcrumb from '@/components/common/PageBreadcrumb.vue';
 import Spinner from '@/components/ui/Spinner.vue';
 import { useToast } from '@/composables/useToast';
-import { financeService } from '@/services/FinanceService';
+import { financeService } from '@/services/finance/financeService';
 import { formatCurrency, formatDate } from '@/utils/formatters';
 import { computed, onMounted, reactive, ref, watch } from 'vue';
 

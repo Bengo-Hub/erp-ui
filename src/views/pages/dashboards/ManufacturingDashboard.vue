@@ -1,514 +1,335 @@
 <script setup>
-import { ref, onMounted, onUnmounted, computed, watch } from 'vue';
+import { useChartOptions } from '@/composables/useChartOptions';
+import { useDashboardState } from '@/composables/useDashboardState';
+import { useToast } from '@/composables/useToast';
+import { dashboardService } from '@/services/shared/dashboardService';
+import { PERIOD_OPTIONS } from '@/utils/constants';
+import Chart from 'primevue/chart';
+import { onMounted, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
-import { useToast } from 'primevue/usetoast';
-import { manufacturingService } from '@/services/manufacturingService';
-import BreadcrumbNav from '@/components/manufacturing/BreadcrumbNav.vue';
-import ManufacturingToolbar from '@/components/manufacturing/ManufacturingToolbar.vue';
-import StatsCard from '@/components/manufacturing/StatsCard.vue';
-import AddPurchase from '@/components/purchase/AddPurchase.vue';
 
 const router = useRouter();
-const toast = useToast();
+const { showToast } = useToast();
+const { barChartOptions } = useChartOptions();
+const { state, executeDataFetch } = useDashboardState();
+
 const loading = ref(false);
 const period = ref('month');
-const periodOptions = ref([
-    { name: 'This Week', value: 'week' },
-    { name: 'This Month', value: 'month' },
-    { name: 'This Quarter', value: 'quarter' },
-    { name: 'This Year', value: 'year' }
-]);
+const periodOptions = PERIOD_OPTIONS;
 
-// Stats
-const stats = ref({
-    total_batches: 0,
-    planned_batches: 0,
-    completion_rate: 0,
-    completed_batches: 0,
-    in_progress_batches: 0,
-    material_alerts_count: 0
+// Manufacturing dashboard data
+const dashboardData = ref({
+    total_production_orders: 0,
+    total_output: 0,
+    equipment_utilization: 0,
+    production_efficiency: 0,
+    waste_percentage: 0,
+    defect_rate: 0,
+    maintenance_alerts: 0,
+    downtime_hours: 0,
+    production_by_line: [],
+    efficiency_trends: [],
+    equipment_status: [],
+    quality_metrics: []
 });
 
-// Charts data
-const productionChartData = ref(null);
-const materialsChartData = ref({
-    labels: ['Sodium hydroxide', 'Sodium laureth sulfate', 'Citric acid', 'Fragrance', 'Colorant'],
-    datasets: [
-        {
-            backgroundColor: ['#42A5F5', '#66BB6A', '#FFA726', '#EC407A', '#AB47BC'],
-            hoverBackgroundColor: ['#64B5F6', '#81C784', '#FFB74D', '#F48FB1', '#CE93D8'],
-            data: [45, 20, 15, 10, 10]
-        }
-    ]
-});
-
-// Tables
-const materialAlerts = ref([]);
-const recentBatches = ref([]);
-
-// Period selection
-const selectedPeriod = ref({ name: 'Last 30 Days', value: 30 });
+// Chart data
+const productionByLineChartData = ref(null);
+const efficiencyTrendsChartData = ref(null);
+const equipmentStatusChartData = ref(null);
+const qualityMetricsChartData = ref(null);
 
 // Load dashboard data
-const loadDashboardData = () => {
+const loadDashboardData = async () => {
     loading.value = true;
-    // Simulate data loading
-    setTimeout(() => {
-        loading.value = false;
-        toast.add({
-            severity: 'success',
-            summary: 'Period Updated',
-            detail: `Dashboard data updated for ${selectedPeriod.value.name}`,
-            life: 3000
-        });
-    }, 1000);
+
+    const result = await executeDataFetch(
+        () => dashboardService.getManufacturingDashboardData(period.value),
+        null,
+        `Manufacturing data updated for ${periodOptions.find((p) => p.value === period.value)?.label}`
+    );
+
+    if (result) {
+        dashboardData.value = result.data || result;
+        processChartData();
+    }
+
+    loading.value = false;
+};
+
+// Process chart data for visualization
+const processChartData = () => {
+    // Production by line chart
+    if (dashboardData.value.production_by_line?.length > 0) {
+        productionByLineChartData.value = {
+            labels: dashboardData.value.production_by_line.map((item) => item.line_name),
+            datasets: [
+                {
+                    label: 'Output',
+                    data: dashboardData.value.production_by_line.map((item) => item.output),
+                    backgroundColor: '#42A5F5',
+                    borderColor: '#1E88E5',
+                    borderWidth: 1
+                }
+            ]
+        };
+    }
+
+    // Efficiency trends chart
+    if (dashboardData.value.efficiency_trends?.length > 0) {
+        efficiencyTrendsChartData.value = {
+            labels: dashboardData.value.efficiency_trends.map((item) => item.period),
+            datasets: [
+                {
+                    label: 'Efficiency %',
+                    data: dashboardData.value.efficiency_trends.map((item) => item.efficiency),
+                    borderColor: '#66BB6A',
+                    backgroundColor: 'rgba(102, 187, 106, 0.1)',
+                    tension: 0.4
+                }
+            ]
+        };
+    }
+
+    // Equipment status chart
+    if (dashboardData.value.equipment_status?.length > 0) {
+        equipmentStatusChartData.value = {
+            labels: dashboardData.value.equipment_status.map((item) => item.equipment_name),
+            datasets: [
+                {
+                    label: 'Utilization %',
+                    data: dashboardData.value.equipment_status.map((item) => item.utilization),
+                    backgroundColor: '#FFA726',
+                    borderColor: '#FB8C00',
+                    borderWidth: 1
+                }
+            ]
+        };
+    }
+
+    // Quality metrics chart
+    if (dashboardData.value.quality_metrics?.length > 0) {
+        qualityMetricsChartData.value = {
+            labels: dashboardData.value.quality_metrics.map((item) => item.metric_name),
+            datasets: [
+                {
+                    label: 'Score',
+                    data: dashboardData.value.quality_metrics.map((item) => item.score),
+                    backgroundColor: '#EC407A',
+                    borderColor: '#C2185B',
+                    borderWidth: 1
+                }
+            ]
+        };
+    }
 };
 
 // Navigation functions
-const navigateToNewBatch = () => {
-    router.push('/manufacturing/batches/new');
+const navigateToOrders = () => {
+    router.push('/manufacturing/orders');
 };
 
-const navigateToRawMaterials = () => {
-    router.push('/inventory/raw-materials');
-    toast.add({ severity: 'info', summary: 'Navigation', detail: 'Navigating to Raw Materials page', life: 3000 });
+const navigateToEquipment = () => {
+    router.push('/manufacturing/equipment');
+};
+
+const navigateToMaintenance = () => {
+    router.push('/manufacturing/maintenance');
+};
+
+const navigateToQuality = () => {
+    router.push('/manufacturing/quality');
 };
 
 // Watch for period changes
 watch(period, () => {
-    fetchDashboardData();
+    loadDashboardData();
 });
-
-// Main dashboard data fetching function
-const fetchDashboardData = () => {
-    loading.value = true;
-
-    // Call the manufacturing service API
-    manufacturingService
-        .getDashboardData(period.value)
-        .then((response) => {
-            // Process the response data according to the provided format
-            const data = response.data;
-
-            // Update stats
-            stats.value = data.stats || {
-                total_batches: 0,
-                completed_batches: 0,
-                in_progress_batches: 0,
-                planned_batches: 0,
-                completion_rate: 0,
-                material_alerts_count: 0
-            };
-
-            // Set up production chart data from the API response
-            if (data.production_chart) {
-                productionChartData.value = data.production_chart;
-            }
-
-            // Set up materials chart data from the API response
-            if (data.materials_chart) {
-                materialsChartData.value = data.materials_chart;
-            }
-
-            // Set material alerts
-            materialAlerts.value = data.material_alerts || [];
-
-            // Set recent batches
-            recentBatches.value = data.recent_batches || [];
-
-            loading.value = false;
-            toast.add({
-                severity: 'success',
-                summary: 'Dashboard Updated',
-                detail: `Manufacturing data loaded for ${periodOptions.value.find((p) => p.value === period.value)?.name || 'selected period'}`,
-                life: 3000
-            });
-        })
-        .catch((error) => {
-            console.error('Error fetching dashboard data:', error);
-            loading.value = false;
-            toast.add({
-                severity: 'error',
-                summary: 'Error',
-                detail: 'Failed to load dashboard data. Please try again.',
-                life: 5000
-            });
-        });
-};
-
-const navigateToDetails = (id) => {
-    router.push(`/manufacturing/batches/${id}`);
-};
-
-const navigateToForecasting = () => {
-    router.push('/manufacturing/material-forecasting');
-};
-
-const navigateToInventory = () => {
-    router.push('/ecommerce/inventory');
-};
-
-const navigateToMaterialAlerts = () => {
-    router.push('/ecommerce/inventory?filter=below_reorder');
-};
-
-const navigateToBatches = () => {
-    router.push('/manufacturing/batches');
-};
-
-const navigateToSchedule = () => {
-    router.push('/manufacturing/schedule');
-};
-
-const refreshDashboard = () => {
-    fetchDashboardData();
-};
-
-// Helper functions
-const getBatchStatusSeverity = (status) => {
-    switch (status) {
-        case 'completed':
-            return 'success';
-        case 'in_progress':
-            return 'warning';
-        case 'planned':
-            return 'info';
-        case 'cancelled':
-            return 'secondary';
-        case 'failed':
-            return 'danger';
-        default:
-            return 'info';
-    }
-};
-
-const formatDate = (dateString) => {
-    if (!dateString) return '--';
-    const date = new Date(dateString);
-    return date.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
-};
-
-const formatStatus = (status) => {
-    if (!status) return '';
-    return status.replace(/_/g, ' ').replace(/\b\w/g, (l) => l.toUpperCase());
-};
-
-// Format metric values with appropriate units
-const formatMetric = (value) => {
-    if (value === null || value === undefined) return '0';
-    if (value >= 1000) {
-        return (value / 1000).toFixed(1) + 'k';
-    }
-    return value.toString();
-};
-
-const requestMaterialPurchase = (material) => {
-    router.push({
-        path: '/procurement/purchase-order/new',
-        query: { material_id: material.id }
-    });
-};
-
-// Helper function to handle API errors
-const handleApiError = (error, message) => {
-    console.error(`${message}:`, error);
-    toast.add({
-        severity: 'error',
-        summary: 'Error',
-        detail: message,
-        life: 5000
-    });
-};
-
-// Colors for chart datasets
-const chartColors = ['#2196F3', '#4CAF50', '#FF9800', '#E91E63', '#9C27B0', '#607D8B'];
-
-// Chart options for better appearance
-const productionChartOptions = ref({
-    responsive: true,
-    maintainAspectRatio: false,
-    plugins: {
-        legend: {
-            position: 'bottom',
-            labels: {
-                usePointStyle: true,
-                font: {
-                    size: 12
-                }
-            }
-        },
-        tooltip: {
-            mode: 'index',
-            intersect: false
-        }
-    },
-    scales: {
-        y: {
-            beginAtZero: true,
-            grid: {
-                display: true,
-                drawBorder: false
-            }
-        },
-        x: {
-            grid: {
-                display: false
-            }
-        }
-    }
-});
-
-const materialsChartOptions = ref({
-    responsive: true,
-    maintainAspectRatio: false,
-    plugins: {
-        legend: {
-            position: 'right',
-            labels: {
-                usePointStyle: true,
-                font: {
-                    size: 12
-                }
-            }
-        },
-        tooltip: {
-            callbacks: {
-                label: (context) => {
-                    const label = context.label || '';
-                    const value = context.raw || 0;
-                    const total = context.dataset.data.reduce((acc, val) => acc + val, 0);
-                    const percentage = Math.round((value / total) * 100);
-                    return `${label}: ${value} (${percentage}%)`;
-                }
-            }
-        }
-    }
-});
-
-// Add a simulated purchase order creation function
-const createPurchaseOrderForMaterial = (material) => {
-    router.push({
-        path: '/procurement/purchase-orders/new',
-        query: {
-            material_id: material.id,
-            material_name: material.name
-        }
-    });
-};
 
 onMounted(() => {
-    fetchDashboardData();
-
-    // Close dropdowns when clicking outside
-    document.addEventListener('click', (e) => {
-        if (!e.target.closest('.filter-item')) {
-            // Close any open dropdowns
-        }
-    });
-});
-
-// Cleanup event listeners
-onUnmounted(() => {
-    document.removeEventListener('click', () => {});
+    loadDashboardData();
 });
 </script>
 
 <template>
     <div class="manufacturing-dashboard">
-        <!-- Header Section -->
-        <div class="dashboard-header">
-            <div class="header-content">
-                <BreadcrumbNav :items="[{ label: 'Manufacturing', to: '/manufacturing' }, { label: 'Dashboard' }]" class="breadcrumb" />
-
-                <div class="header-actions">
-                    <Dropdown v-model="period" :options="periodOptions" optionLabel="name" optionValue="value" placeholder="Select Period" class="period-selector" />
-                    <Button label="New Batch" icon="pi pi-plus" class="new-batch-btn" @click="navigateToNewBatch" />
-                </div>
-            </div>
+        <div class="flex justify-between items-center mb-6">
+            <h1 class="text-3xl font-bold text-gray-900">Manufacturing Dashboard</h1>
+            <Dropdown v-model="period" :options="periodOptions" option-label="label" option-value="value" placeholder="Select Period" class="w-48" />
         </div>
 
-        <!-- Stats Cards Grid -->
-        <div class="stats-grid">
-            <!-- Total Batches -->
-            <div class="stat-card">
-                <div class="stat-content">
-                    <div class="stat-text">
-                        <span class="stat-label">Total Batches</span>
-                        <span class="stat-value">{{ stats.total_batches || 0 }}</span>
-                    </div>
-                    <div class="stat-icon bg-blue-100">
-                        <i class="pi pi-box text-blue-500"></i>
-                    </div>
-                </div>
-                <Button icon="pi pi-plus" label="New Batch" class="stat-action" @click="navigateToNewBatch" />
-            </div>
-
-            <!-- Completed Batches -->
-            <div class="stat-card">
-                <div class="stat-content">
-                    <div class="stat-text">
-                        <span class="stat-label">Completed</span>
-                        <span class="stat-value">{{ stats.completed_batches || 0 }}</span>
-                    </div>
-                    <div class="stat-icon bg-green-100">
-                        <i class="pi pi-check-circle text-green-500"></i>
-                    </div>
-                </div>
-                <div class="completion-progress">
-                    <ProgressBar :value="stats.completion_rate || 0" :class="completionBarClass" />
-                    <span class="completion-text">{{ stats.completion_rate || 0 }}% completion</span>
-                </div>
-            </div>
-
-            <!-- In Progress -->
-            <div class="stat-card">
-                <div class="stat-content">
-                    <div class="stat-text">
-                        <span class="stat-label">In Progress</span>
-                        <span class="stat-value">{{ stats.in_progress_batches || 0 }}</span>
-                    </div>
-                    <div class="stat-icon bg-orange-100">
-                        <i class="pi pi-spin pi-sync text-orange-500"></i>
-                    </div>
-                </div>
-                <Button icon="pi pi-eye" label="View Active" class="stat-action" @click="navigateToBatches" />
-            </div>
-
-            <!-- Planned Batches -->
-            <div class="stat-card">
-                <div class="stat-content">
-                    <div class="stat-text">
-                        <span class="stat-label">Planned</span>
-                        <span class="stat-value">{{ stats.planned_batches || 0 }}</span>
-                    </div>
-                    <div class="stat-icon bg-blue-100">
-                        <i class="pi pi-calendar text-blue-500"></i>
-                    </div>
-                </div>
-                <Button icon="pi pi-calendar" label="Schedule" class="stat-action" @click="navigateToSchedule" />
-            </div>
+        <div v-if="loading" class="flex justify-center items-center h-64">
+            <ProgressSpinner />
         </div>
 
-        <!-- Charts Row -->
-        <div class="charts-row">
-            <!-- Production Activity Chart -->
-            <div class="chart-card">
-                <div class="chart-header">
-                    <h3><i class="pi pi-chart-line"></i> Production Activity</h3>
-                    <div class="chart-actions">
-                        <Button icon="pi pi-refresh" text rounded @click="refreshDashboard" />
-                        <Button icon="pi pi-download" text rounded />
-                    </div>
-                </div>
-                <div class="chart-container">
-                    <Chart type="bar" :data="productionChartData" :options="productionChartOptions" />
-                </div>
-            </div>
-
-            <!-- Materials Usage Chart -->
-            <div class="chart-card">
-                <div class="chart-header">
-                    <h3><i class="pi pi-percentage"></i> Materials Usage</h3>
-                    <div class="chart-actions">
-                        <Button icon="pi pi-plus" label="Order" severity="success" size="small" @click="navigateToForecasting" />
-                        <Button icon="pi pi-search-plus" label="Details" text size="small" @click="navigateToInventory" />
-                    </div>
-                </div>
-                <div class="chart-container">
-                    <Chart type="doughnut" :data="materialsChartData" :options="materialsChartOptions" />
-                </div>
-            </div>
-        </div>
-
-        <!-- Material Alerts -->
-        <div class="material-alerts">
-            <div class="section-header">
-                <h3><i class="pi pi-exclamation-triangle"></i> Material Alerts</h3>
-                <div class="section-actions">
-                    <Button icon="pi pi-search" label="View All" text size="small" @click="navigateToMaterialAlerts" />
-                    <Button icon="pi pi-plus" label="Order" severity="success" size="small" @click="navigateToForecasting" />
-                </div>
-            </div>
-
-            <DataTable :value="materialAlerts" :loading="loading" stripedRows class="alerts-table">
-                <Column field="name" header="Material">
-                    <template #body="{ data }">
-                        <div class="material-info">
-                            <i class="pi pi-box"></i>
-                            <span>{{ data.name }}</span>
+        <div v-else class="space-y-6">
+            <!-- Key Metrics Cards -->
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                <Card class="bg-gradient-to-r from-blue-500 to-blue-600 text-white">
+                    <template #title>
+                        <div class="flex items-center justify-between">
+                            <span>Production Orders</span>
+                            <i class="pi pi-list text-2xl opacity-75"></i>
                         </div>
                     </template>
-                </Column>
-                <Column field="current_stock" header="Current Stock">
-                    <template #body="{ data }"> {{ data.current_stock }} {{ data.unit }} </template>
-                </Column>
-                <Column field="reorder_level" header="Reorder Level">
-                    <template #body="{ data }"> {{ data.reorder_level }} {{ data.unit }} </template>
-                </Column>
-                <Column field="status" header="Status">
-                    <template #body="{ data }">
-                        <Tag :severity="data.status === 'critical' ? 'danger' : 'warning'" :value="data.status === 'critical' ? 'Critical' : 'Low'" />
+                    <template #content>
+                        <div class="text-3xl font-bold">
+                            {{ dashboardData.total_production_orders }}
+                        </div>
                     </template>
-                </Column>
-                <Column header="Actions">
-                    <template #body="{ data }">
-                        <Button icon="pi pi-shopping-cart" text rounded severity="success" @click="requestMaterialPurchase(data)" />
+                </Card>
+
+                <Card class="bg-gradient-to-r from-green-500 to-green-600 text-white">
+                    <template #title>
+                        <div class="flex items-center justify-between">
+                            <span>Total Output</span>
+                            <i class="pi pi-chart-bar text-2xl opacity-75"></i>
+                        </div>
                     </template>
-                </Column>
-                <template #empty>
-                    <div class="empty-state">
-                        <i class="pi pi-check-circle"></i>
-                        <p>No material alerts at this time</p>
+                    <template #content>
+                        <div class="text-3xl font-bold">
+                            {{ dashboardData.total_output.toLocaleString() }}
+                        </div>
+                        <div class="text-sm opacity-75">units</div>
+                    </template>
+                </Card>
+
+                <Card class="bg-gradient-to-r from-orange-500 to-orange-600 text-white">
+                    <template #title>
+                        <div class="flex items-center justify-between">
+                            <span>Equipment Utilization</span>
+                            <i class="pi pi-cog text-2xl opacity-75"></i>
+                        </div>
+                    </template>
+                    <template #content>
+                        <div class="text-3xl font-bold">
+                            {{ (dashboardData.equipment_utilization * 100).toFixed(1) }}%
+                        </div>
+                    </template>
+                </Card>
+
+                <Card class="bg-gradient-to-r from-purple-500 to-purple-600 text-white">
+                    <template #title>
+                        <div class="flex items-center justify-between">
+                            <span>Production Efficiency</span>
+                            <i class="pi pi-bolt text-2xl opacity-75"></i>
+                        </div>
+                    </template>
+                    <template #content>
+                        <div class="text-3xl font-bold">
+                            {{ (dashboardData.production_efficiency * 100).toFixed(1) }}%
+                        </div>
+                    </template>
+                </Card>
+            </div>
+
+            <!-- Quality & Maintenance Metrics -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <Card class="bg-gradient-to-r from-red-500 to-red-600 text-white">
+                    <template #title>
+                        <div class="flex items-center justify-between">
+                            <span>Defect Rate</span>
+                            <i class="pi pi-exclamation-triangle text-2xl opacity-75"></i>
+                        </div>
+                    </template>
+                    <template #content>
+                        <div class="text-3xl font-bold">
+                            {{ (dashboardData.defect_rate * 100).toFixed(2) }}%
+                        </div>
+                    </template>
+                </Card>
+
+                <Card class="bg-gradient-to-r from-teal-500 to-teal-600 text-white">
+                    <template #title>
+                        <div class="flex items-center justify-between">
+                            <span>Waste Percentage</span>
+                            <i class="pi pi-trash text-2xl opacity-75"></i>
+                        </div>
+                    </template>
+                    <template #content>
+                        <div class="text-3xl font-bold">
+                            {{ (dashboardData.waste_percentage * 100).toFixed(1) }}%
+                        </div>
+                    </template>
+                </Card>
+
+                <Card class="bg-gradient-to-r from-indigo-500 to-indigo-600 text-white">
+                    <template #title>
+                        <div class="flex items-center justify-between">
+                            <span>Maintenance Alerts</span>
+                            <i class="pi pi-bell text-2xl opacity-75"></i>
+                        </div>
+                    </template>
+                    <template #content>
+                        <div class="text-3xl font-bold">
+                            {{ dashboardData.maintenance_alerts }}
+                        </div>
+                    </template>
+                </Card>
+            </div>
+
+            <!-- Charts Row -->
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <!-- Production by Line -->
+                <Card>
+                    <template #title>Production by Line</template>
+                    <template #content>
+                        <div class="h-80">
+                            <Chart v-if="productionByLineChartData" type="bar" :data="productionByLineChartData" :options="barChartOptions" class="h-full" />
+                            <div v-else class="flex items-center justify-center h-full text-gray-500">No production data available</div>
+                        </div>
+                    </template>
+                </Card>
+
+                <!-- Efficiency Trends -->
+                <Card>
+                    <template #title>Efficiency Trends</template>
+                    <template #content>
+                        <div class="h-80">
+                            <Chart v-if="efficiencyTrendsChartData" type="line" :data="efficiencyTrendsChartData" :options="barChartOptions" class="h-full" />
+                            <div v-else class="flex items-center justify-center h-full text-gray-500">No efficiency data available</div>
+                        </div>
+                    </template>
+                </Card>
+            </div>
+
+            <!-- Additional Charts Row -->
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <!-- Equipment Status -->
+                <Card>
+                    <template #title>Equipment Utilization</template>
+                    <template #content>
+                        <div class="h-80">
+                            <Chart v-if="equipmentStatusChartData" type="bar" :data="equipmentStatusChartData" :options="barChartOptions" class="h-full" />
+                            <div v-else class="flex items-center justify-center h-full text-gray-500">No equipment data available</div>
+                        </div>
+                    </template>
+                </Card>
+
+                <!-- Quality Metrics -->
+                <Card>
+                    <template #title>Quality Metrics</template>
+                    <template #content>
+                        <div class="h-80">
+                            <Chart v-if="qualityMetricsChartData" type="bar" :data="qualityMetricsChartData" :options="barChartOptions" class="h-full" />
+                            <div v-else class="flex items-center justify-center h-full text-gray-500">No quality data available</div>
+                        </div>
+                    </template>
+                </Card>
+            </div>
+
+            <!-- Quick Actions -->
+            <Card>
+                <template #title>Quick Actions</template>
+                <template #content>
+                    <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                        <Button label="Production Orders" icon="pi pi-list" class="p-button-outlined" @click="navigateToOrders" />
+                        <Button label="Equipment" icon="pi pi-cog" class="p-button-outlined" @click="navigateToEquipment" />
+                        <Button label="Maintenance" icon="pi pi-wrench" class="p-button-outlined" @click="navigateToMaintenance" />
+                        <Button label="Quality Control" icon="pi pi-check-circle" class="p-button-outlined" @click="navigateToQuality" />
                     </div>
                 </template>
-            </DataTable>
-        </div>
-
-        <!-- Recent Batches -->
-        <div class="recent-batches">
-            <div class="section-header">
-                <h3><i class="pi pi-list"></i> Recent Production Batches</h3>
-                <Button icon="pi pi-plus" label="New Batch" @click="navigateToNewBatch" />
-            </div>
-
-            <DataTable :value="recentBatches" :paginator="true" :rows="5" class="batches-table">
-                <Column field="batch_number" header="Batch #">
-                    <template #body="{ data }">
-                        <router-link :to="'/manufacturing/batches/' + data.id" class="batch-link">
-                            {{ data.batch_number }}
-                        </router-link>
-                    </template>
-                </Column>
-                <Column field="formula_details.name" header="Formula" />
-                <Column field="scheduled_date" header="Scheduled">
-                    <template #body="{ data }">
-                        {{ formatDate(data.scheduled_date) }}
-                    </template>
-                </Column>
-                <Column field="planned_quantity" header="Planned Qty" />
-                <Column field="status" header="Status">
-                    <template #body="{ data }">
-                        <Tag :value="formatStatus(data.status)" :severity="getBatchStatusSeverity(data.status)" />
-                    </template>
-                </Column>
-                <Column header="Actions">
-                    <template #body="{ data }">
-                        <Button icon="pi pi-eye" text rounded @click="navigateToDetails(data.id)" />
-                        <Button icon="pi pi-pencil" text rounded v-if="data.status === 'planned'" @click="navigateToDetails(data.id)" />
-                    </template>
-                </Column>
-            </DataTable>
-        </div>
-
-        <!-- Analytics CTA -->
-        <div class="analytics-cta">
-            <div class="cta-content">
-                <div>
-                    <h3>Need more detailed insights?</h3>
-                    <p>View comprehensive production analytics including trends, cost analysis, and AI-powered insights.</p>
-                </div>
-                <Button icon="pi pi-chart-bar" label="Manufacturing Analytics" severity="secondary" />
-            </div>
+            </Card>
         </div>
     </div>
 </template>
@@ -516,278 +337,15 @@ onUnmounted(() => {
 <style scoped>
 .manufacturing-dashboard {
     padding: 1.5rem;
-    max-width: 1800px;
-    margin: 0 auto;
 }
 
-.dashboard-header {
-    margin-bottom: 1.5rem;
+:deep(.p-card) {
+    box-shadow:
+        0 4px 6px -1px rgba(0, 0, 0, 0.1),
+        0 2px 4px -1px rgba(0, 0, 0, 0.06);
 }
 
-.header-content {
-    display: flex;
-    flex-direction: column;
-    gap: 1rem;
-}
-
-.breadcrumb {
-    margin-bottom: 0.5rem;
-}
-
-.header-actions {
-    display: flex;
-    gap: 1rem;
-    align-items: center;
-}
-
-.period-selector {
-    min-width: 180px;
-}
-
-.new-batch-btn {
-    margin-left: auto;
-}
-
-.stats-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-    gap: 1rem;
-    margin-bottom: 1.5rem;
-}
-
-.stat-card {
-    background: var(--surface-card);
-    padding: 1.5rem;
-    border-radius: 12px;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
-    transition:
-        transform 0.2s,
-        box-shadow 0.2s;
-}
-
-.stat-card:hover {
-    transform: translateY(-3px);
-    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
-}
-
-.stat-content {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 1rem;
-}
-
-.stat-text {
-    display: flex;
-    flex-direction: column;
-}
-
-.stat-label {
-    font-size: 0.875rem;
-    color: var(--text-color-secondary);
-    margin-bottom: 0.25rem;
-}
-
-.stat-value {
-    font-size: 1.75rem;
-    font-weight: 600;
-    color: var(--text-color);
-}
-
-.stat-icon {
-    width: 48px;
-    height: 48px;
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
-
-.stat-icon i {
-    font-size: 1.5rem;
-}
-
-.stat-action {
-    width: 100%;
-}
-
-.completion-progress {
-    display: flex;
-    flex-direction: column;
-    gap: 0.25rem;
-}
-
-.completion-text {
-    font-size: 0.75rem;
-    color: var(--text-color-secondary);
-}
-
-.charts-row {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
-    gap: 1.5rem;
-    margin-bottom: 1.5rem;
-}
-
-.chart-card {
-    background: var(--surface-card);
-    padding: 1.5rem;
-    border-radius: 12px;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
-}
-
-.chart-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 1rem;
-}
-
-.chart-header h3 {
-    margin: 0;
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    font-size: 1.1rem;
-}
-
-.chart-actions {
-    display: flex;
-    gap: 0.5rem;
-}
-
-.chart-container {
-    height: 300px;
-    position: relative;
-}
-
-.material-alerts,
-.recent-batches {
-    background: var(--surface-card);
-    padding: 1.5rem;
-    border-radius: 12px;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
-    margin-bottom: 1.5rem;
-}
-
-.section-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 1rem;
-}
-
-.section-header h3 {
-    margin: 0;
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    font-size: 1.1rem;
-}
-
-.section-actions {
-    display: flex;
-    gap: 0.5rem;
-}
-
-.alerts-table,
-.batches-table {
-    margin-top: 1rem;
-}
-
-.material-info {
-    display: flex;
-    align-items: center;
-    gap: 0.75rem;
-}
-
-.material-info i {
-    color: var(--primary-color);
-    font-size: 1.25rem;
-}
-
-.batch-link {
-    color: var(--primary-color);
-    text-decoration: none;
-    font-weight: 500;
-}
-
-.batch-link:hover {
-    text-decoration: underline;
-}
-
-.empty-state {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    padding: 2rem;
-    color: var(--text-color-secondary);
-    text-align: center;
-}
-
-.empty-state i {
-    font-size: 2rem;
-    color: var(--green-500);
-    margin-bottom: 0.5rem;
-}
-
-.analytics-cta {
-    background: var(--surface-card);
-    padding: 1.5rem;
-    border-radius: 12px;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
-}
-
-.cta-content {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    gap: 1.5rem;
-}
-
-.cta-content h3 {
-    margin: 0 0 0.5rem 0;
-}
-
-.cta-content p {
-    margin: 0;
-    color: var(--text-color-secondary);
-}
-
-@media (max-width: 768px) {
-    .header-actions {
-        flex-direction: column;
-        align-items: stretch;
-    }
-
-    .new-batch-btn {
-        margin-left: 0;
-    }
-
-    .charts-row {
-        grid-template-columns: 1fr;
-    }
-
-    .cta-content {
-        flex-direction: column;
-        align-items: flex-start;
-    }
-}
-
-@media (max-width: 480px) {
-    .manufacturing-dashboard {
-        padding: 1rem;
-    }
-
-    .stat-card {
-        padding: 1rem;
-    }
-
-    .chart-card,
-    .material-alerts,
-    .recent-batches,
-    .analytics-cta {
-        padding: 1rem;
-    }
+:deep(.p-card.p-card--gradient) {
+    background: linear-gradient(135deg, var(--primary-color) 0%, var(--primary-600) 100%);
 }
 </style>

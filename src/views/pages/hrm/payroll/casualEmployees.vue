@@ -21,8 +21,6 @@ const dt = ref();
 const isNodeExpanded = ref(false);
 const employees = ref([]);
 // Department filter options
-const departments = ref([]);
-const regions = ref([]);
 const selectedDateFilter = ref(null);
 const selectedEmployee = ref(null);
 const selectedRegion = ref(null);
@@ -136,12 +134,11 @@ const filterByStatus = (status) => {
     }
 };
 
-onMounted(() => {
+onMounted(async () => {
     fromDate.value = new Date(new Date().getFullYear(), new Date().getMonth() - 3, 1).toISOString().split('T')[0];
     toDate.value = new Date(new Date().getFullYear(), new Date().getMonth(), 2).toISOString().split('T')[0];
     fetchEmployees();
-    fetchDepartments();
-    fetchRegions();
+    await loadFilters();
     fetchPayslips();
 });
 const fetchEmployees = () => {
@@ -159,34 +156,6 @@ const fetchEmployees = () => {
         .catch((error) => {
             showToast('error', 'Error', error.toString(), 3000);
             console.error('Error fetching employees:', error);
-        })
-        .finally(() => {
-            isLoading.value = false; // Always hide the loading spinner
-        });
-};
-const fetchDepartments = () => {
-    coreService
-        .getDepartmentsV1()
-        .then((response) => {
-            departments.value = response.data.results;
-        })
-        .catch((error) => {
-            showToast('error', 'Error', error.toString(), 3000);
-            console.error('Error fetching departments:', error);
-        })
-        .finally(() => {
-            isLoading.value = false; // Always hide the loading spinner
-        });
-};
-const fetchRegions = () => {
-    coreService
-        .getRegionsV1()
-        .then((response) => {
-            regions.value = response.data.results;
-        })
-        .catch((error) => {
-            showToast('error', 'Error', error.toString(), 3000);
-            console.error('Error fetching regions:', error);
         })
         .finally(() => {
             isLoading.value = false; // Always hide the loading spinner

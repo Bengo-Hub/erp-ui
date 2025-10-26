@@ -1,10 +1,8 @@
 <script setup>
 import { useToast } from '@/composables/useToast';
 import { leaveService } from '@/services/hrm/leaveService';
-import Calendar from 'primevue/calendar';
-import Dropdown from 'primevue/dropdown';
-import FileUpload from 'primevue/fileupload';
 import { computed, ref, watch } from 'vue';
+import { formatCurrency, formatDate } from '@/utils/formatters';
 
 const { showToast } = useToast();
 const emit = defineEmits(['submitted', 'cancel']);
@@ -160,9 +158,6 @@ const onFileSelect = (event) => {
     }
 };
 
-const formatDate = (date) => {
-    return date ? new Date(date).toISOString().split('T')[0] : null;
-};
 </script>
 
 <template>

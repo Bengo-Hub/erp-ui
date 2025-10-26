@@ -236,12 +236,10 @@
 <script setup>
 import { ref, onMounted } from 'vue';
 import { useToast } from 'primevue/usetoast';
-import Button from 'primevue/button';
-import Tag from 'primevue/tag';
 import Chart from 'primevue/chart';
 import {formatCurrency, formatDateTime, formatDate} from '@/utils/formatters';
 
-import assetService from '@/services/assetService';
+import assetService from '@/services/assets/assetService';
 
 // Composables
 const toast = useToast();

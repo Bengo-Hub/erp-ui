@@ -2,11 +2,11 @@
 import { ref, onMounted } from 'vue';
 import { useToast } from '@/composables/useToast';
 import { manufacturingService } from '@/services/manufacturingService';
-import Tag from 'primevue/tag';
 import BreadcrumbNav from '@/components/manufacturing/BreadcrumbNav.vue';
 import ManufacturingToolbar from '@/components/manufacturing/ManufacturingToolbar.vue';
 import InsightsPanel from '@/components/manufacturing/InsightsPanel.vue';
 import StatCard from '@/components/manufacturing/StatsCard.vue';
+import { formatCurrency, formatDate } from '@/utils/formatters';
 
 const { showToast } = useToast();
 

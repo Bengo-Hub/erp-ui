@@ -1,7 +1,7 @@
 <script setup>
 import { useToast } from '@/composables/useToast';
 import { ref, onMounted } from 'vue';
-import { financeService } from '@/services/FinanceService';
+import { financeService } from '@/services/finance/financeService';
 
 const { showToast } = useToast();
 const loading = ref(false);

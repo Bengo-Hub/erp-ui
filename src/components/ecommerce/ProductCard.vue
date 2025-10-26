@@ -2,7 +2,7 @@
 import { computed, ref, defineEmits } from 'vue';
 import { useRouter } from 'vue-router';
 import { useToast } from 'primevue/usetoast';
-import { EcommerceService } from '@/services/EcommerceService';
+import { ecommerceService } from '@/services/ecommerce/ecommerceService';
 import { getProductImage } from '@/utils/productUtils';
 
 const props = defineProps({
@@ -77,9 +77,9 @@ const quickView = (product) => {
 const toggleFavorite = async () => {
     try {
         if (props.product.isFavorite) {
-            await EcommerceService.removeFromFavorites(props.product.id);
+            await ecommerceService.removeFromFavorites(props.product.id);
         } else {
-            await EcommerceService.addToFavorites(props.product.id);
+            await ecommerceService.addToFavorites(props.product.id);
         }
 
         // Update the favorite status locally (emit to parent)
@@ -107,7 +107,7 @@ const toggleFavorite = async () => {
 
 const addToCart = async () => {
     try {
-        await EcommerceService.addToCart({ stock_item_id: props.product.id, quantity: 1 });
+        await ecommerceService.addToCart({ stock_item_id: props.product.id, quantity: 1 });
 
         // Emit to parent component
         emits('add-to-cart', props.product);

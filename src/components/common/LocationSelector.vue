@@ -1,13 +1,6 @@
 <script setup>
 import { ref, defineProps, defineEmits, watch, onMounted } from 'vue';
-import { EcommerceService } from '@/services/EcommerceService';
-import Dialog from 'primevue/dialog';
-import Button from 'primevue/button';
-import InputText from 'primevue/inputtext';
-import Dropdown from 'primevue/dropdown';
-import ProgressSpinner from 'primevue/progressspinner';
-import Divider from 'primevue/divider';
-
+import { ecommerceService } from '@/services/ecommerce/ecommerceService';
 const props = defineProps({
     modelValue: {
         type: Boolean,
@@ -49,7 +42,7 @@ onMounted(() => {
 async function fetchDeliveryRegions() {
     loading.value = true;
     try {
-        const response = await EcommerceService.getRegionsWithPickupStations();
+        const response = await ecommerceService.getRegionsWithPickupStations();
         regions.value = response.data.results || response.data;
 
         // If we have regions and regions were previously saved, try to select that region
@@ -87,7 +80,7 @@ async function onRegionChange() {
 
     loadingStations.value = true;
     try {
-        const response = await EcommerceService.getPickupStationsByRegion(selectedRegion.value.id);
+        const response = await ecommerceService.getPickupStationsByRegion(selectedRegion.value.id);
         pickupStations.value = response.data.results || response.data;
     } catch (error) {
         console.error('Error fetching pickup stations:', error);

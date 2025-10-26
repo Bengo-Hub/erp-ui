@@ -1,24 +1,21 @@
 <script setup>
+import { useChartOptions } from '@/composables/useChartOptions';
+import { useDashboardState } from '@/composables/useDashboardState';
 import { useToast } from '@/composables/useToast';
-import Button from 'primevue/button';
-import Card from 'primevue/card';
+import { dashboardService } from '@/services/shared/dashboardService';
+import { PERIOD_OPTIONS } from '@/utils/constants';
 import Chart from 'primevue/chart';
-import Dropdown from 'primevue/dropdown';
-import ProgressSpinner from 'primevue/progressspinner';
 import { onMounted, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
 
 const router = useRouter();
 const { showToast } = useToast();
+const { currencyChartOptions } = useChartOptions();
+const { state, executeDataFetch } = useDashboardState();
+
 const loading = ref(false);
 const period = ref('month');
-
-const periodOptions = [
-    { label: 'This Week', value: 'week' },
-    { label: 'This Month', value: 'month' },
-    { label: 'This Quarter', value: 'quarter' },
-    { label: 'This Year', value: 'year' }
-];
+const periodOptions = PERIOD_OPTIONS;
 
 // Dashboard data
 const dashboardData = ref({
@@ -43,20 +40,18 @@ const cashFlowChartData = ref(null);
 const loadDashboardData = async () => {
     loading.value = true;
     try {
-        // Import dashboard service
-        const { dashboardService } = await import('@/services/dashboardService');
+        const result = await executeDataFetch(
+            () => dashboardService.getFinanceDashboardData(period.value),
+            null,
+            `Finance data updated for ${periodOptions.find((p) => p.value === period.value)?.label}`
+        );
 
-        const result = await dashboardService.getFinanceDashboardData(period.value);
-        // Handle both direct data and wrapped data responses
-        dashboardData.value = result.data || result;
-
-        // Process chart data
-        processChartData();
-
-        showToast('success', `Finance data updated for ${periodOptions.find((p) => p.value === period.value)?.label}`);
+        if (result) {
+            dashboardData.value = result.data || result;
+            processChartData();
+        }
     } catch (error) {
         console.error('Error loading finance dashboard:', error);
-        showToast('error', 'Failed to load finance dashboard data');
     } finally {
         loading.value = false;
     }
@@ -107,30 +102,6 @@ const processChartData = () => {
                 }
             ]
         };
-    }
-};
-
-// Chart options
-const chartOptions = {
-    responsive: true,
-    maintainAspectRatio: false,
-    plugins: {
-        legend: {
-            position: 'bottom'
-        }
-    },
-    scales: {
-        y: {
-            beginAtZero: true,
-            ticks: {
-                callback: function (value) {
-                    return new Intl.NumberFormat('en-KE', {
-                        style: 'currency',
-                        currency: 'KES'
-                    }).format(value);
-                }
-            }
-        }
     }
 };
 
@@ -239,7 +210,7 @@ onMounted(() => {
                     <template #title>Revenue Trends</template>
                     <template #content>
                         <div class="h-80">
-                            <Chart v-if="revenueChartData" type="line" :data="revenueChartData" :options="chartOptions" class="h-full" />
+                            <Chart v-if="revenueChartData" type="line" :data="revenueChartData" :options="currencyChartOptions" class="h-full" />
                             <div v-else class="flex items-center justify-center h-full text-gray-500">No revenue data available</div>
                         </div>
                     </template>
@@ -250,7 +221,7 @@ onMounted(() => {
                     <template #title>Expense Breakdown</template>
                     <template #content>
                         <div class="h-80">
-                            <Chart v-if="expenseChartData" type="doughnut" :data="expenseChartData" :options="chartOptions" class="h-full" />
+                            <Chart v-if="expenseChartData" type="doughnut" :data="expenseChartData" :options="currencyChartOptions" class="h-full" />
                             <div v-else class="flex items-center justify-center h-full text-gray-500">No expense data available</div>
                         </div>
                     </template>
@@ -262,7 +233,7 @@ onMounted(() => {
                 <template #title>Cash Flow Overview</template>
                 <template #content>
                     <div class="h-80">
-                        <Chart v-if="cashFlowChartData" type="line" :data="cashFlowChartData" :options="chartOptions" class="h-full" />
+                        <Chart v-if="cashFlowChartData" type="line" :data="cashFlowChartData" :options="currencyChartOptions" class="h-full" />
                         <div v-else class="flex items-center justify-center h-full text-gray-500">No cash flow data available</div>
                     </div>
                 </template>

@@ -1,16 +1,10 @@
 <script setup>
 import { useToast } from '@/composables/useToast';
-import { CustomerService } from '@/services/CustomerService';
+import { CustomerService } from '@/services/ecommerce/customerService';
 import { formatCurrency, formatDate } from '@/utils/formatters';
 import { onMounted, ref } from 'vue';
 
 // PrimeVue components
-import Button from 'primevue/button';
-import Card from 'primevue/card';
-import Column from 'primevue/column';
-import DataTable from 'primevue/datatable';
-import Tag from 'primevue/tag';
-
 const { showToast } = useToast();
 
 // Reactive data
@@ -21,7 +15,7 @@ const loading = ref(false);
 const fetchData = async () => {
     loading.value = true;
     try {
-        const response = await CustomerService.listOpportunities();
+        const response = await customerService.listOpportunities();
         opportunities.value = response.results || response || [];
     } catch (error) {
         console.error('Error fetching opportunities:', error);

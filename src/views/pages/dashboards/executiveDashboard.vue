@@ -1,26 +1,21 @@
 <script setup>
+import { useChartOptions } from '@/composables/useChartOptions';
+import { useDashboardState } from '@/composables/useDashboardState';
 import { useToast } from '@/composables/useToast';
-import Button from 'primevue/button';
-import Card from 'primevue/card';
+import { dashboardService } from '@/services/shared/dashboardService';
+import { PERIOD_OPTIONS } from '@/utils/constants';
 import Chart from 'primevue/chart';
-import Dropdown from 'primevue/dropdown';
-import ProgressSpinner from 'primevue/progressspinner';
 import { onMounted, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
-import { useStore } from 'vuex';
 
 const router = useRouter();
 const { showToast } = useToast();
-const store = useStore();
+const { currencyChartOptions } = useChartOptions();
+const { state, executeDataFetch } = useDashboardState();
+
 const loading = ref(false);
 const period = ref('month');
-
-const periodOptions = [
-    { label: 'This Week', value: 'week' },
-    { label: 'This Month', value: 'month' },
-    { label: 'This Quarter', value: 'quarter' },
-    { label: 'This Year', value: 'year' }
-];
+const periodOptions = PERIOD_OPTIONS;
 
 // Executive dashboard data
 const dashboardData = ref({
@@ -58,31 +53,20 @@ const customerGrowthChartData = ref(null);
 // Load dashboard data
 const loadDashboardData = async () => {
     loading.value = true;
-    try {
-        // Import dashboard service
-        const { dashboardService } = await import('@/services/dashboardService');
+    
+    const result = await executeDataFetch(
+        () => dashboardService.getExecutiveDashboardData(period.value),
+        null,
+        `Executive dashboard updated for ${periodOptions.find((p) => p.value === period.value)?.label}`
+    );
 
-        // Call the executive dashboard service
-        const result = await dashboardService.getExecutiveDashboardData(period.value);
-
-        if (result.success) {
-            dashboardData.value = result.data;
-            // Process chart data
-            processChartData();
-
-            showToast('success', `Executive dashboard updated for ${periodOptions.find((p) => p.value === period.value)?.label}`);
-        } else {
-            throw new Error(result.error || 'Failed to load dashboard data');
-        }
-    } catch (error) {
-        console.error('Error loading executive dashboard:', error);
-        showToast('error', 'Failed to load executive dashboard data');
-    } finally {
-        loading.value = false;
+    if (result) {
+        dashboardData.value = result.data || result;
+        processChartData();
     }
-};
 
-// Executive dashboard data loading from backend API
+    loading.value = false;
+};
 
 // Generate trend data for charts
 const generateTrendData = (baseValue, periods, isInteger = false) => {
@@ -162,33 +146,6 @@ const processChartData = () => {
                 }
             ]
         };
-    }
-};
-
-// Chart options
-const chartOptions = {
-    responsive: true,
-    maintainAspectRatio: false,
-    plugins: {
-        legend: {
-            position: 'bottom'
-        }
-    },
-    scales: {
-        y: {
-            beginAtZero: true,
-            ticks: {
-                callback: function (value) {
-                    if (this.chart.data.datasets[0].label === 'Revenue' || this.chart.data.datasets[0].label === 'Profit') {
-                        return new Intl.NumberFormat('en-KE', {
-                            style: 'currency',
-                            currency: 'KES'
-                        }).format(value);
-                    }
-                    return value;
-                }
-            }
-        }
     }
 };
 
@@ -357,7 +314,7 @@ onMounted(() => {
                     <template #title>Revenue Trends</template>
                     <template #content>
                         <div class="h-80">
-                            <Chart v-if="revenueTrendsChartData" type="line" :data="revenueTrendsChartData" :options="chartOptions" class="h-full" />
+                            <Chart v-if="revenueTrendsChartData" type="line" :data="revenueTrendsChartData" :options="currencyChartOptions" class="h-full" />
                             <div v-else class="flex items-center justify-center h-full text-gray-500">No revenue data available</div>
                         </div>
                     </template>
@@ -368,7 +325,7 @@ onMounted(() => {
                     <template #title>Profit Trends</template>
                     <template #content>
                         <div class="h-80">
-                            <Chart v-if="profitTrendsChartData" type="line" :data="profitTrendsChartData" :options="chartOptions" class="h-full" />
+                            <Chart v-if="profitTrendsChartData" type="line" :data="profitTrendsChartData" :options="currencyChartOptions" class="h-full" />
                             <div v-else class="flex items-center justify-center h-full text-gray-500">No profit data available</div>
                         </div>
                     </template>
@@ -382,7 +339,7 @@ onMounted(() => {
                     <template #title>Order Trends</template>
                     <template #content>
                         <div class="h-80">
-                            <Chart v-if="orderTrendsChartData" type="line" :data="orderTrendsChartData" :options="chartOptions" class="h-full" />
+                            <Chart v-if="orderTrendsChartData" type="line" :data="orderTrendsChartData" :options="currencyChartOptions" class="h-full" />
                             <div v-else class="flex items-center justify-center h-full text-gray-500">No order data available</div>
                         </div>
                     </template>
@@ -393,7 +350,7 @@ onMounted(() => {
                     <template #title>Customer Growth</template>
                     <template #content>
                         <div class="h-80">
-                            <Chart v-if="customerGrowthChartData" type="line" :data="customerGrowthChartData" :options="chartOptions" class="h-full" />
+                            <Chart v-if="customerGrowthChartData" type="line" :data="customerGrowthChartData" :options="currencyChartOptions" class="h-full" />
                             <div v-else class="flex items-center justify-center h-full text-gray-500">No customer data available</div>
                         </div>
                     </template>

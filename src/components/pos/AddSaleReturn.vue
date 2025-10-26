@@ -3,9 +3,7 @@ import { ref, reactive, computed, onMounted } from 'vue';
 import { useToast } from 'primevue/usetoast';
 import moment from 'moment';
 import Receipt from '@/views/pages/ecommerce/pos/printReceipt.vue';
-import { POSService } from '@/services/POSService';
-import ProgressSpinner from 'primevue/progressspinner';
-
+import { POSService } from '@/services/ecommerce/posService';
 const toast = useToast();
 
 // Props
@@ -133,7 +131,7 @@ const handleReturn = async () => {
         formData.append('attendant', JSON.parse(sessionStorage.user).id);
         console.log(formData);
 
-        const response = await POSService.createSalesReturn(formData);
+        const response = await posService.createSalesReturn(formData);
 
         toast.add({
             severity: 'success',

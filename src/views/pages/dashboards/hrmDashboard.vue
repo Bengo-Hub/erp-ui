@@ -1,8 +1,10 @@
 <script setup>
+import { KPICard } from '@/components/charts';
 import { useHrmFilters } from '@/composables/useHrmFilters';
 import { usePermissions } from '@/composables/usePermissions';
 import { hrmAnalyticsService } from '@/services/hrm';
-import { formatCurrency } from '@/utils/formatters';
+import { calculatePercentageChange, formatMetricValue } from '@/utils/analyticsUtils';
+import { formatTime } from '@/utils/helpers';
 import Chart from 'primevue/chart';
 import { useToast } from 'primevue/usetoast';
 import { computed, onMounted, ref, watch } from 'vue';
@@ -361,21 +363,6 @@ const navigateTo = async (route, action = null) => {
     }
 };
 
-const formatTime = (timestamp) => {
-    const now = new Date();
-    const timeDiff = now - timestamp;
-    const minutes = Math.floor(timeDiff / (1000 * 60));
-    const hours = Math.floor(timeDiff / (1000 * 60 * 60));
-    const days = Math.floor(timeDiff / (1000 * 60 * 60 * 24));
-
-    if (minutes < 60) {
-        return `${minutes} minutes ago`;
-    } else if (hours < 24) {
-        return `${hours} hours ago`;
-    } else {
-        return `${days} days ago`;
-    }
-};
 
 // Lifecycle
 onMounted(() => {
@@ -433,7 +420,7 @@ watch(
                         <select id="department-filter" v-model="filters.department" class="compact-filter-select">
                             <option value="">All Departments</option>
                             <option v-for="dept in departments" :key="dept.id" :value="dept.id">
-                                {{ dept.name }}
+                                {{ dept.title }}
                             </option>
                         </select>
                     </div>
@@ -443,7 +430,7 @@ watch(
                         <select id="region-filter" v-model="filters.region" class="compact-filter-select">
                             <option value="">All Regions</option>
                             <option v-for="region in regions" :key="region.id" :value="region.id">
-                                {{ region.name }}
+                                {{ region.title }}
                             </option>
                         </select>
                     </div>
@@ -468,125 +455,107 @@ watch(
         <div v-else class="dashboard-content">
             <!-- Summary Cards -->
             <div class="summary-cards">
-                <div class="card summary-card">
-                    <div class="card-icon employees-icon">
-                        <i class="pi pi-users"></i>
-                    </div>
-                    <div class="card-content">
-                        <h3 class="card-title">Total Employees</h3>
-                        <p class="card-value">{{ dashboardData?.headcount_metrics?.total_employees || 0 }}</p>
-                        <p class="card-change positive">
-                            <i class="pi pi-arrow-up"></i>
-                            {{ dashboardData?.headcount_metrics?.new_hires_this_month || 0 }} new this month
-                        </p>
-                    </div>
-                </div>
+                <KPICard
+                    title="Total Employees"
+                    :value="dashboardData?.headcount_metrics?.total_employees || 0"
+                    subtitle="Active employees"
+                    icon="pi pi-users"
+                    :trend="calculatePercentageChange(dashboardData?.headcount_metrics?.total_employees || 0, dashboardData?.headcount_metrics?.previous_total || 0)"
+                    trendLabel="vs previous period"
+                    :colors="{ from: '#3b82f6', to: '#1d4ed8' }"
+                    :formatter="v => v"
+                />
 
-                <div class="card summary-card">
-                    <div class="card-icon attendance-icon">
-                        <i class="pi pi-calendar-check"></i>
-                    </div>
-                    <div class="card-content">
-                        <h3 class="card-title">Attendance Rate</h3>
-                        <p class="card-value">{{ (dashboardData?.attendance_metrics?.attendance_rate || 0).toFixed(1) }}%</p>
-                        <p class="card-change">
-                            <i class="pi pi-info-circle"></i>
-                            {{ dashboardData?.attendance_metrics?.total_days || 0 }} total days
-                        </p>
-                    </div>
-                </div>
+                <KPICard
+                    title="Attendance Rate"
+                    :value="dashboardData?.attendance_metrics?.attendance_rate || 0"
+                    subtitle="Current period"
+                    icon="pi pi-calendar-check"
+                    :trend="calculatePercentageChange(dashboardData?.attendance_metrics?.attendance_rate || 0, dashboardData?.attendance_metrics?.previous_rate || 0)"
+                    trendLabel="vs previous period"
+                    :colors="{ from: '#10b981', to: '#059669' }"
+                    :formatter="v => v.toFixed(1)"
+                    additionalInfo="Higher is better"
+                />
 
-                <div class="card summary-card">
-                    <div class="card-icon payroll-icon">
-                        <i class="pi pi-credit-card"></i>
-                    </div>
-                    <div class="card-content">
-                        <h3 class="card-title">Total Payroll</h3>
-                        <p class="card-value">KES {{ formatCurrency(dashboardData?.salary_analysis?.salary_statistics?.total_payroll || 0) }}</p>
-                        <p class="card-change">
-                            <i class="pi pi-chart-line"></i>
-                            {{ formatCurrency(dashboardData?.salary_analysis?.salary_statistics?.avg_basic_salary || 0) }} per employee
-                        </p>
-                    </div>
-                </div>
+                <KPICard
+                    title="Total Payroll"
+                    :value="dashboardData?.salary_analysis?.salary_statistics?.total_payroll || 0"
+                    subtitle="Current month"
+                    icon="pi pi-credit-card"
+                    :colors="{ from: '#f59e0b', to: '#d97706' }"
+                    :formatter="v => formatMetricValue(v, 'currency', 0)"
+                />
 
-                <div class="card summary-card">
-                    <div class="card-icon leave-icon">
-                        <i class="pi pi-calendar-times"></i>
-                    </div>
-                    <div class="card-content">
-                        <h3 class="card-title">Leave Approval</h3>
-                        <p class="card-value">{{ (dashboardData?.leave_metrics?.approval_rate || 0).toFixed(1) }}%</p>
-                        <p class="card-change">
-                            <i class="pi pi-clock"></i>
-                            {{ dashboardData?.leave_metrics?.pending_requests || 0 }} pending
-                        </p>
-                    </div>
-                </div>
+                <KPICard
+                    title="Leave Approval"
+                    :value="dashboardData?.leave_metrics?.approval_rate || 0"
+                    subtitle="Approval rate"
+                    icon="pi pi-calendar-times"
+                    :trend="calculatePercentageChange(dashboardData?.leave_metrics?.approval_rate || 0, dashboardData?.leave_metrics?.previous_approval_rate || 0)"
+                    trendLabel="vs previous period"
+                    :colors="{ from: '#ef4444', to: '#dc2626' }"
+                    :formatter="v => v.toFixed(1)"
+                    additionalInfo="`${dashboardData?.leave_metrics?.pending_requests || 0} pending`"
+                />
             </div>
 
-            <!-- Additional Metrics -->
+            <!-- Additional Metrics Grid -->
             <div class="additional-metrics">
                 <div class="metrics-grid">
-                    <div class="metric-card">
-                        <div class="metric-icon">
-                            <i class="pi pi-chart-line"></i>
-                        </div>
-                        <div class="metric-content">
-                            <h4 class="metric-title">Turnover Rate</h4>
-                            <p class="metric-value">{{ (dashboardData?.headcount_metrics?.turnover_rate || 0).toFixed(1) }}%</p>
-                        </div>
-                    </div>
+                    <KPICard
+                        title="Turnover Rate"
+                        :value="dashboardData?.headcount_metrics?.turnover_rate || 0"
+                        subtitle="Annual rate"
+                        icon="pi pi-chart-line"
+                        :colors="{ from: '#8b5cf6', to: '#7c3aed' }"
+                        :formatter="v => v.toFixed(1)"
+                    />
 
-                    <div class="metric-card">
-                        <div class="metric-icon">
-                            <i class="pi pi-calendar-times"></i>
-                        </div>
-                        <div class="metric-content">
-                            <h4 class="metric-title">Expiring Contracts</h4>
-                            <p class="metric-value">{{ dashboardData?.headcount_metrics?.expiring_contracts || 0 }}</p>
-                        </div>
-                    </div>
+                    <KPICard
+                        title="Expiring Contracts"
+                        :value="dashboardData?.headcount_metrics?.expiring_contracts || 0"
+                        subtitle="Next 30 days"
+                        icon="pi pi-calendar-times"
+                        :colors="{ from: '#ec4899', to: '#be185d' }"
+                        :formatter="v => v"
+                    />
 
-                    <div class="metric-card">
-                        <div class="metric-icon">
-                            <i class="pi pi-dollar"></i>
-                        </div>
-                        <div class="metric-content">
-                            <h4 class="metric-title">Avg Basic Salary</h4>
-                            <p class="metric-value">KES {{ formatCurrency(dashboardData?.salary_analysis?.salary_statistics?.avg_basic_salary || 0) }}</p>
-                        </div>
-                    </div>
+                    <KPICard
+                        title="Avg Basic Salary"
+                        :value="dashboardData?.salary_analysis?.salary_statistics?.avg_basic_salary || 0"
+                        subtitle="Monthly average"
+                        icon="pi pi-dollar"
+                        :colors="{ from: '#06b6d4', to: '#0891b2' }"
+                        :formatter="v => formatMetricValue(v, 'currency', 0)"
+                    />
 
-                    <div class="metric-card">
-                        <div class="metric-icon">
-                            <i class="pi pi-clock"></i>
-                        </div>
-                        <div class="metric-content">
-                            <h4 class="metric-title">Late Rate</h4>
-                            <p class="metric-value">{{ (dashboardData?.attendance_metrics?.late_rate || 0).toFixed(1) }}%</p>
-                        </div>
-                    </div>
+                    <KPICard
+                        title="Late Rate"
+                        :value="dashboardData?.attendance_metrics?.late_rate || 0"
+                        subtitle="Attendance metric"
+                        icon="pi pi-clock"
+                        :colors="{ from: '#f97316', to: '#ea580c' }"
+                        :formatter="v => v.toFixed(1)"
+                    />
 
-                    <div class="metric-card">
-                        <div class="metric-icon">
-                            <i class="pi pi-check-circle"></i>
-                        </div>
-                        <div class="metric-content">
-                            <h4 class="metric-title">Performance Reviews</h4>
-                            <p class="metric-value">{{ dashboardData?.performance_metrics?.total_reviews || 0 }}</p>
-                        </div>
-                    </div>
+                    <KPICard
+                        title="Performance Reviews"
+                        :value="dashboardData?.performance_metrics?.total_reviews || 0"
+                        subtitle="Completed"
+                        icon="pi pi-check-circle"
+                        :colors="{ from: '#84cc16', to: '#65a30d' }"
+                        :formatter="v => v"
+                    />
 
-                    <div class="metric-card">
-                        <div class="metric-icon">
-                            <i class="pi pi-percentage"></i>
-                        </div>
-                        <div class="metric-content">
-                            <h4 class="metric-title">Review Completion</h4>
-                            <p class="metric-value">{{ (dashboardData?.performance_metrics?.review_completion_rate || 0).toFixed(1) }}%</p>
-                        </div>
-                    </div>
+                    <KPICard
+                        title="Review Completion"
+                        :value="dashboardData?.performance_metrics?.review_completion_rate || 0"
+                        subtitle="Current cycle"
+                        icon="pi pi-percentage"
+                        :colors="{ from: '#14b8a6', to: '#0d9488' }"
+                        :formatter="v => v.toFixed(1)"
+                    />
                 </div>
             </div>
 
@@ -815,7 +784,7 @@ watch(
 }
 
 .dashboard-header {
-    background: white;
+    background: var(--surface-card);
     border-radius: 16px;
     padding: 2rem;
     margin-bottom: 2rem;
@@ -823,7 +792,7 @@ watch(
 }
 
 .filters-section {
-    background: white;
+    background: var(--surface-card);
     border-radius: 16px;
     padding: 1.5rem;
     margin-bottom: 2rem;
@@ -839,17 +808,17 @@ watch(
 
 .filters-header h3 {
     margin: 0;
-    color: #1f2937;
+    color: var(--text-color);
     font-size: 1.1rem;
     font-weight: 600;
 }
 
 .reset-filters-btn {
-    background: #f3f4f6;
+    background: var(--surface-100);
     border: 1px solid #d1d5db;
     border-radius: 8px;
     padding: 0.5rem 1rem;
-    color: #6b7280;
+    color: var(--text-color-secondary);
     cursor: pointer;
     transition: all 0.2s;
     display: flex;
@@ -858,8 +827,8 @@ watch(
 }
 
 .reset-filters-btn:hover {
-    background: #e5e7eb;
-    border-color: #9ca3af;
+    background: var(--surface-200);
+    border-color: var(--surface-400);
 }
 
 .filters-content {
@@ -877,27 +846,27 @@ watch(
 .filter-group label {
     font-size: 0.9rem;
     font-weight: 500;
-    color: #6b7280;
+    color: var(--text-color-secondary);
 }
 
 .filter-select {
     padding: 0.5rem;
     border: 1px solid #d1d5db;
     border-radius: 8px;
-    background: white;
+    background: var(--surface-card);
     min-width: 200px;
     transition: border-color 0.2s;
 }
 
 .filter-select:focus {
     outline: none;
-    border-color: #3b82f6;
+    border-color: var(--primary-color);
     box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
 }
 
 /* Compact Filters Styles */
 .compact-filters {
-    background: #f8fafc;
+    background: var(--surface-50);
     border-radius: 12px;
     padding: 1rem;
     margin-top: 1rem;
@@ -921,7 +890,7 @@ watch(
 .filter-item label {
     font-size: 0.8rem;
     font-weight: 500;
-    color: #6b7280;
+    color: var(--text-color-secondary);
     text-transform: uppercase;
     letter-spacing: 0.05em;
 }
@@ -930,7 +899,7 @@ watch(
     padding: 0.5rem 0.75rem;
     border: 1px solid #d1d5db;
     border-radius: 6px;
-    background: white;
+    background: var(--surface-card);
     font-size: 0.9rem;
     transition: all 0.2s;
     min-width: 160px;
@@ -938,16 +907,16 @@ watch(
 
 .compact-filter-select:focus {
     outline: none;
-    border-color: #3b82f6;
+    border-color: var(--primary-color);
     box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.1);
 }
 
 .compact-reset-btn {
-    background: #f3f4f6;
+    background: var(--surface-100);
     border: 1px solid #d1d5db;
     border-radius: 6px;
     padding: 0.5rem 1rem;
-    color: #6b7280;
+    color: var(--text-color-secondary);
     cursor: pointer;
     transition: all 0.2s;
     display: flex;
@@ -959,9 +928,9 @@ watch(
 }
 
 .compact-reset-btn:hover {
-    background: #e5e7eb;
-    border-color: #9ca3af;
-    color: #374151;
+    background: var(--surface-200);
+    border-color: var(--surface-400);
+    color: var(--text-color);
 }
 
 .compact-reset-btn i {
@@ -979,12 +948,12 @@ watch(
 .title-section h1 {
     font-size: 2.5rem;
     font-weight: 700;
-    color: #1f2937;
+    color: var(--text-color);
     margin: 0 0 0.5rem 0;
 }
 
 .dashboard-subtitle {
-    color: #6b7280;
+    color: var(--text-color-secondary);
     font-size: 1.1rem;
     margin: 0;
 }
@@ -1004,23 +973,23 @@ watch(
 
 .period-label {
     font-weight: 600;
-    color: #374151;
+    color: var(--text-color);
 }
 
 .period-select {
     padding: 0.5rem 1rem;
     border: 2px solid #e5e7eb;
     border-radius: 8px;
-    background: white;
+    background: var(--surface-card);
     font-size: 0.9rem;
-    color: #374151;
+    color: var(--text-color);
     cursor: pointer;
     transition: all 0.2s;
 }
 
 .period-select:focus {
     outline: none;
-    border-color: #3b82f6;
+    border-color: var(--primary-color);
     box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
 }
 
@@ -1029,7 +998,7 @@ watch(
     align-items: center;
     gap: 0.5rem;
     padding: 0.75rem 1.5rem;
-    background: #3b82f6;
+    background: var(--primary-color);
     color: white;
     border: none;
     border-radius: 8px;
@@ -1039,7 +1008,7 @@ watch(
 }
 
 .refresh-btn:hover:not(:disabled) {
-    background: #2563eb;
+    background: var(--primary-600);
     transform: translateY(-1px);
 }
 
@@ -1057,13 +1026,13 @@ watch(
 
 .loading-spinner {
     text-align: center;
-    color: #6b7280;
+    color: var(--text-color-secondary);
 }
 
 .loading-spinner i {
     font-size: 3rem;
     margin-bottom: 1rem;
-    color: #3b82f6;
+    color: var(--primary-color);
 }
 
 .dashboard-content {
@@ -1079,7 +1048,7 @@ watch(
 }
 
 .additional-metrics {
-    background: white;
+    background: var(--surface-card);
     border-radius: 16px;
     padding: 1.5rem;
     box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
@@ -1097,15 +1066,15 @@ watch(
     align-items: center;
     gap: 1rem;
     padding: 1rem;
-    background: #f8fafc;
+    background: var(--surface-50);
     border-radius: 12px;
     border: 1px solid #e5e7eb;
     transition: all 0.2s;
 }
 
 .metric-card:hover {
-    background: #f1f5f9;
-    border-color: #3b82f6;
+    background: var(--surface-100);
+    border-color: var(--primary-color);
     transform: translateY(-2px);
 }
 
@@ -1128,7 +1097,7 @@ watch(
 .metric-title {
     font-size: 0.8rem;
     font-weight: 600;
-    color: #6b7280;
+    color: var(--text-color-secondary);
     margin: 0 0 0.25rem 0;
     text-transform: uppercase;
     letter-spacing: 0.05em;
@@ -1137,12 +1106,12 @@ watch(
 .metric-value {
     font-size: 1.25rem;
     font-weight: 700;
-    color: #1f2937;
+    color: var(--text-color);
     margin: 0;
 }
 
 .summary-card {
-    background: white;
+    background: var(--surface-card);
     border-radius: 16px;
     padding: 1.5rem;
     display: flex;
@@ -1152,9 +1121,18 @@ watch(
     transition: all 0.3s;
 }
 
+:root.app-dark .summary-card {
+    background: var(--surface-800);
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3);
+}
+
 .summary-card:hover {
     transform: translateY(-4px);
     box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+}
+
+:root.app-dark .summary-card:hover {
+    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.4);
 }
 
 .card-icon {
@@ -1188,26 +1166,38 @@ watch(
 .card-title {
     font-size: 0.9rem;
     font-weight: 600;
-    color: #6b7280;
+    color: var(--text-color-secondary);
     margin: 0 0 0.5rem 0;
     text-transform: uppercase;
     letter-spacing: 0.05em;
 }
 
+:root.app-dark .card-title {
+    color: var(--surface-400);
+}
+
 .card-value {
     font-size: 2rem;
     font-weight: 700;
-    color: #1f2937;
+    color: var(--text-color);
     margin: 0 0 0.5rem 0;
+}
+
+:root.app-dark .card-value {
+    color: var(--surface-0);
 }
 
 .card-change {
     font-size: 0.8rem;
-    color: #6b7280;
+    color: var(--text-color-secondary);
     margin: 0;
     display: flex;
     align-items: center;
     gap: 0.25rem;
+}
+
+:root.app-dark .card-change {
+    color: var(--surface-400);
 }
 
 .card-change.positive {
@@ -1221,10 +1211,15 @@ watch(
 }
 
 .chart-container {
-    background: white;
+    background: var(--surface-card);
     border-radius: 16px;
     padding: 1.5rem;
     box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+}
+
+:root.app-dark .chart-container {
+    background: var(--surface-800);
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3);
 }
 
 .chart-container.full-width {
@@ -1241,8 +1236,12 @@ watch(
 .chart-title {
     font-size: 1.25rem;
     font-weight: 600;
-    color: #1f2937;
+    color: var(--text-color);
     margin: 0;
+}
+
+:root.app-dark .chart-title {
+    color: var(--surface-0);
 }
 
 .chart-actions {
@@ -1253,21 +1252,21 @@ watch(
 .chart-toggle-btn {
     padding: 0.5rem;
     border: 2px solid #e5e7eb;
-    background: white;
+    background: var(--surface-card);
     border-radius: 6px;
     cursor: pointer;
     transition: all 0.2s;
-    color: #6b7280;
+    color: var(--text-color-secondary);
 }
 
 .chart-toggle-btn:hover {
-    border-color: #3b82f6;
-    color: #3b82f6;
+    border-color: var(--primary-color);
+    color: var(--primary-color);
 }
 
 .chart-toggle-btn.active {
-    background: #3b82f6;
-    border-color: #3b82f6;
+    background: var(--primary-color);
+    border-color: var(--primary-color);
     color: white;
 }
 
@@ -1282,17 +1281,26 @@ watch(
 }
 
 .quick-actions {
-    background: white;
+    background: var(--surface-card);
     border-radius: 16px;
     padding: 1.5rem;
     box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
 }
 
+:root.app-dark .quick-actions {
+    background: var(--surface-800);
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3);
+}
+
 .section-title {
     font-size: 1.25rem;
     font-weight: 600;
-    color: #1f2937;
+    color: var(--text-color);
     margin: 0 0 1rem 0;
+}
+
+:root.app-dark .section-title {
+    color: var(--surface-0);
 }
 
 .action-buttons {
@@ -1306,18 +1314,24 @@ watch(
     align-items: center;
     gap: 0.75rem;
     padding: 1rem 1.5rem;
-    background: #f8fafc;
-    border: 2px solid #e5e7eb;
+    background: var(--surface-50);
+    border: 2px solid var(--surface-200);
     border-radius: 12px;
-    color: #374151;
+    color: var(--text-color);
     font-weight: 600;
     cursor: pointer;
     transition: all 0.2s;
 }
 
+:root.app-dark .action-btn {
+    background: var(--surface-700);
+    border-color: var(--surface-600);
+    color: var(--surface-0);
+}
+
 .action-btn:hover:not(:disabled) {
-    background: #3b82f6;
-    border-color: #3b82f6;
+    background: var(--primary-color);
+    border-color: var(--primary-color);
     color: white;
     transform: translateY(-2px);
 }
@@ -1346,10 +1360,15 @@ watch(
 }
 
 .recent-activity {
-    background: white;
+    background: var(--surface-card);
     border-radius: 16px;
     padding: 1.5rem;
     box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+}
+
+:root.app-dark .recent-activity {
+    background: var(--surface-800);
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3);
 }
 
 .activity-list {
@@ -1363,14 +1382,22 @@ watch(
     align-items: center;
     gap: 1rem;
     padding: 1rem;
-    background: #f8fafc;
+    background: var(--surface-50);
     border-radius: 8px;
     transition: all 0.2s;
 }
 
+:root.app-dark .activity-item {
+    background: var(--surface-700);
+}
+
 .activity-item:hover {
-    background: #f1f5f9;
+    background: var(--surface-100);
     transform: translateX(4px);
+}
+
+:root.app-dark .activity-item:hover {
+    background: var(--surface-600);
 }
 
 .activity-icon {
@@ -1385,7 +1412,7 @@ watch(
 }
 
 .activity-icon.employee {
-    background: #3b82f6;
+    background: var(--primary-color);
 }
 .activity-icon.leave {
     background: #10b981;
@@ -1403,14 +1430,22 @@ watch(
 
 .activity-text {
     font-weight: 500;
-    color: #1f2937;
+    color: var(--text-color);
     margin: 0 0 0.25rem 0;
+}
+
+:root.app-dark .activity-text {
+    color: var(--surface-0);
 }
 
 .activity-time {
     font-size: 0.8rem;
-    color: #6b7280;
+    color: var(--text-color-secondary);
     margin: 0;
+}
+
+:root.app-dark .activity-time {
+    color: var(--surface-400);
 }
 
 /* Responsive Design */

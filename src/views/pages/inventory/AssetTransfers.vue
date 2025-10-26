@@ -566,15 +566,8 @@
 import { ref, onMounted, computed } from 'vue';
 import { useToast } from 'primevue/usetoast';
 import { FilterMatchMode } from '@primevue/core/api';
-import Button from 'primevue/button';
-import InputText from 'primevue/inputtext';
-import Calendar from 'primevue/calendar';
-import Tag from 'primevue/tag';
-import Dialog from 'primevue/dialog';
-import Toast from 'primevue/toast';
-
 import AssetTransferDialog from '@/components/inventory/AssetTransferDialog.vue';
-import assetService from '@/services/assetService';
+import assetService from '@/services/assets/assetService';
 
 // Composables
 const toast = useToast();

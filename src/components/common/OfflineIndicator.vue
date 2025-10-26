@@ -73,9 +73,9 @@
 </template>
 
 <script>
-import { ref, computed, onMounted, onUnmounted } from 'vue';
+import networkService from '@/services/utils/networkService';
 import { useToast } from 'primevue/usetoast';
-import networkService from '@/services/networkService';
+import { computed, onMounted, onUnmounted, ref } from 'vue';
 
 export default {
   name: 'OfflineIndicator',

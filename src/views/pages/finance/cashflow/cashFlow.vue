@@ -1,7 +1,7 @@
 <script setup>
 import reportdet from '@/components/report/header.vue';
 import { useToast } from '@/composables/useToast';
-import { financeService } from '@/services/FinanceService';
+import { financeService } from '@/services/finance/financeService';
 import { useConfirm } from 'primevue/useconfirm';
 import { computed, onMounted, ref } from 'vue';
 

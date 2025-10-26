@@ -2,9 +2,6 @@
 import { useAppraisalData } from '@/composables/useAppraisalData';
 import { useToast } from '@/composables/useToast';
 import { appraisalService } from '@/services/hrm/appraisalService';
-import Badge from 'primevue/badge';
-import Button from 'primevue/button';
-import Toolbar from 'primevue/toolbar';
 import { onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import AppraisalCycle from './appraisalCycle.vue';

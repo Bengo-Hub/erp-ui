@@ -1,5 +1,5 @@
 <script setup>
-import { UserService } from '@/services/UserService';
+import { UserService } from '@/services/auth/userService';
 import { useToast } from 'primevue/usetoast';
 import { computed, onMounted, ref } from 'vue';
 import { useStore } from 'vuex';

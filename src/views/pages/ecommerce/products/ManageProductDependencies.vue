@@ -1,15 +1,9 @@
 <script setup>
 import { ref, onMounted } from 'vue';
 import { useToast } from 'primevue/usetoast';
-import Card from 'primevue/card';
-import Button from 'primevue/button';
-import TabView from 'primevue/tabview';
-import TabPanel from 'primevue/tabpanel';
-import Dialog from 'primevue/dialog';
-import InputText from 'primevue/inputtext';
 import CategoryManager from '@/components/products/CategoryManager.vue';
 import SimpleItemManager from '@/components/products/SimpleItemManager.vue';
-import { EcommerceService } from '@/services/EcommerceService';
+import { ecommerceService } from '@/services/ecommerce/ecommerceService';
 
 const toast = useToast();
 
@@ -33,7 +27,7 @@ onMounted(async () => {
 // Fetch functions
 const fetchMainCategories = async () => {
     try {
-        const response = await EcommerceService.getMainCategories();
+        const response = await ecommerceService.getMainCategories();
         mainCategories.value = response.data.results;
     } catch (error) {
         showError('Failed to fetch main categories');
@@ -42,7 +36,7 @@ const fetchMainCategories = async () => {
 
 const fetchCategories = async () => {
     try {
-        const response = await EcommerceService.getCategories();
+        const response = await ecommerceService.getCategories();
         categories.value = response.data.results;
     } catch (error) {
         showError('Failed to fetch categories');
@@ -51,7 +45,7 @@ const fetchCategories = async () => {
 
 const fetchSubcategories = async () => {
     try {
-        const response = await EcommerceService.getSubcategories();
+        const response = await ecommerceService.getSubcategories();
         subcategories.value = response.data.results;
     } catch (error) {
         showError('Failed to fetch subcategories');
@@ -60,7 +54,7 @@ const fetchSubcategories = async () => {
 
 const fetchBrands = async () => {
     try {
-        const response = await EcommerceService.getBrands();
+        const response = await ecommerceService.getBrands();
         brands.value = response.data.results;
     } catch (error) {
         showError('Failed to fetch brands');
@@ -69,7 +63,7 @@ const fetchBrands = async () => {
 
 const fetchModels = async () => {
     try {
-        const response = await EcommerceService.getModels();
+        const response = await ecommerceService.getModels();
         models.value = response.data.results;
     } catch (error) {
         showError('Failed to fetch models');
@@ -80,10 +74,10 @@ const fetchModels = async () => {
 const handleSaveMainCategory = async (categoryData) => {
     try {
         if (categoryData.id) {
-            await EcommerceService.updateMainCategory(categoryData.id, categoryData);
+            await ecommerceService.updateMainCategory(categoryData.id, categoryData);
             toast.add({ severity: 'success', summary: 'Success', detail: 'Main category updated', life: 3000 });
         } else {
-            await EcommerceService.createMainCategory(categoryData);
+            await ecommerceService.createMainCategory(categoryData);
             toast.add({ severity: 'success', summary: 'Success', detail: 'Main category created', life: 3000 });
         }
         await fetchMainCategories();
@@ -95,10 +89,10 @@ const handleSaveMainCategory = async (categoryData) => {
 const handleSaveCategory = async (categoryData) => {
     try {
         if (categoryData.id) {
-            await EcommerceService.updateCategory(categoryData.id, categoryData);
+            await ecommerceService.updateCategory(categoryData.id, categoryData);
             toast.add({ severity: 'success', summary: 'Success', detail: 'Category updated', life: 3000 });
         } else {
-            await EcommerceService.createCategory(categoryData);
+            await ecommerceService.createCategory(categoryData);
             toast.add({ severity: 'success', summary: 'Success', detail: 'Category created', life: 3000 });
         }
         await fetchCategories();
@@ -110,10 +104,10 @@ const handleSaveCategory = async (categoryData) => {
 const handleSaveSubcategory = async (categoryData) => {
     try {
         if (categoryData.id) {
-            await EcommerceService.updateSubcategory(categoryData.id, categoryData);
+            await ecommerceService.updateSubcategory(categoryData.id, categoryData);
             toast.add({ severity: 'success', summary: 'Success', detail: 'Subcategory updated', life: 3000 });
         } else {
-            await EcommerceService.createSubcategory(categoryData);
+            await ecommerceService.createSubcategory(categoryData);
             toast.add({ severity: 'success', summary: 'Success', detail: 'Subcategory created', life: 3000 });
         }
         await fetchSubcategories();
@@ -125,10 +119,10 @@ const handleSaveSubcategory = async (categoryData) => {
 const handleSaveBrand = async (brandData) => {
     try {
         if (brandData.id) {
-            await EcommerceService.updateBrand(brandData.id, brandData);
+            await ecommerceService.updateBrand(brandData.id, brandData);
             toast.add({ severity: 'success', summary: 'Success', detail: 'Brand updated', life: 3000 });
         } else {
-            await EcommerceService.createBrand(brandData);
+            await ecommerceService.createBrand(brandData);
             toast.add({ severity: 'success', summary: 'Success', detail: 'Brand created', life: 3000 });
         }
         await fetchBrands();
@@ -140,10 +134,10 @@ const handleSaveBrand = async (brandData) => {
 const handleSaveModel = async (modelData) => {
     try {
         if (modelData.id) {
-            await EcommerceService.updateModel(modelData.id, modelData);
+            await ecommerceService.updateModel(modelData.id, modelData);
             toast.add({ severity: 'success', summary: 'Success', detail: 'Model updated', life: 3000 });
         } else {
-            await EcommerceService.createModel(modelData);
+            await ecommerceService.createModel(modelData);
             toast.add({ severity: 'success', summary: 'Success', detail: 'Model created', life: 3000 });
         }
         await fetchModels();
@@ -155,7 +149,7 @@ const handleSaveModel = async (modelData) => {
 // Delete handlers
 const handleDeleteMainCategory = async (id) => {
     try {
-        await EcommerceService.deleteMainCategory(id);
+        await ecommerceService.deleteMainCategory(id);
         toast.add({ severity: 'success', summary: 'Success', detail: 'Main category deleted', life: 3000 });
         await fetchMainCategories();
     } catch (error) {
@@ -165,7 +159,7 @@ const handleDeleteMainCategory = async (id) => {
 
 const handleDeleteCategory = async (id) => {
     try {
-        await EcommerceService.deleteCategory(id);
+        await ecommerceService.deleteCategory(id);
         toast.add({ severity: 'success', summary: 'Success', detail: 'Category deleted', life: 3000 });
         await fetchCategories();
     } catch (error) {
@@ -175,7 +169,7 @@ const handleDeleteCategory = async (id) => {
 
 const handleDeleteSubcategory = async (id) => {
     try {
-        await EcommerceService.deleteSubcategory(id);
+        await ecommerceService.deleteSubcategory(id);
         toast.add({ severity: 'success', summary: 'Success', detail: 'Subcategory deleted', life: 3000 });
         await fetchSubcategories();
     } catch (error) {
@@ -185,7 +179,7 @@ const handleDeleteSubcategory = async (id) => {
 
 const handleDeleteBrand = async (id) => {
     try {
-        await EcommerceService.deleteBrand(id);
+        await ecommerceService.deleteBrand(id);
         toast.add({ severity: 'success', summary: 'Success', detail: 'Brand deleted', life: 3000 });
         await fetchBrands();
     } catch (error) {
@@ -195,7 +189,7 @@ const handleDeleteBrand = async (id) => {
 
 const handleDeleteModel = async (id) => {
     try {
-        await EcommerceService.deleteModel(id);
+        await ecommerceService.deleteModel(id);
         toast.add({ severity: 'success', summary: 'Success', detail: 'Model deleted', life: 3000 });
         await fetchModels();
     } catch (error) {

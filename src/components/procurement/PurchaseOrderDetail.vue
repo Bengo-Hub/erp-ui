@@ -184,11 +184,6 @@ const getTimelineIcon = (status) => {
     return status === 'approved' ? 'pi pi-check' : 'pi pi-times';
 };
 
-const formatDate = (dateString) => {
-    if (!dateString) return 'Not specified';
-    return new Date(dateString).toLocaleDateString();
-};
-
 const formatDateTime = (dateString) => {
     if (!dateString) return '';
     return new Date(dateString).toLocaleString();
@@ -551,6 +546,7 @@ onMounted(() => {
 
 .approve-btn:hover {
     background: var(--green-600) !important;
+import { formatCurrency, formatDate } from '@/utils/formatters';
 }
 
 .reject-btn {

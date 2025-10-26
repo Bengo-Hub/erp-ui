@@ -1,9 +1,8 @@
 <script setup>
 import { formatCurrency } from '@/components/hrm/payroll/payslipGenerator';
-import { POSService } from '@/services/POSService';
-import { coreService } from '@/services/coreService';
+import { POSService } from '@/services/ecommerce/posService';
+import { coreService } from '@/services/shared/coreService';
 import Receipt from '@/views/pages/ecommerce/pos/printReceipt.vue';
-import ProgressSpinner from 'primevue/progressspinner';
 import { useToast } from 'primevue/usetoast';
 import { computed, defineEmits, defineProps, onMounted, ref } from 'vue';
 
@@ -74,7 +73,7 @@ const playBeepSound = (audio_url) => {
 };
 
 const submitRefund = (data) => {
-    POSService.processSalesReturnRefund(data)
+    posService.processSalesReturnRefund(data)
         .then((res) => {
             toast.add({
                 severity: 'success',

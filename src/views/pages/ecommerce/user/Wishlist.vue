@@ -1,7 +1,7 @@
 <script setup>
 import { useToast } from '@/composables/useToast';
-import { CartService } from '@/services/CartService';
-import { ProductService } from '@/services/ProductService';
+import { cartService } from '@/services/ecommerce/cartService';
+import { productService } from '@/services/ecommerce/productService';
 import { useBusinessBranding } from '@/utils/businessBranding';
 import { formatCurrency } from '@/utils/formatters';
 import { useConfirm } from 'primevue/useconfirm';
@@ -47,7 +47,7 @@ const getProductImage = (item) => {
 const fetchFavorites = async () => {
     try {
         loading.value = true;
-        const response = await ProductService.getFavorites();
+        const response = await productService.getFavorites();
 
         // Add selected property to each favorite item
         favorites.value = response.data.results.map((favorite) => ({
@@ -72,7 +72,7 @@ const viewProduct = (product) => {
 
 const addToCart = async (product) => {
     try {
-        await CartService.addToCart({
+        await cartService.addToCart({
             product_id: product.id,
             quantity: 1
         });
@@ -96,7 +96,7 @@ const addSelectedToCart = async () => {
         // Add each selected product to cart
         for (const product of selectedProducts) {
             if (product.in_stock) {
-                await CartService.addToCart({
+                await cartService.addToCart({
                     product_id: product.id,
                     quantity: 1
                 });
@@ -144,7 +144,7 @@ const confirmRemoveSelected = () => {
 
 const removeFromWishlist = async (favoriteId) => {
     try {
-        await ProductService.removeFromFavorites(favoriteId);
+        await productService.removeFromFavorites(favoriteId);
 
         // Remove item from local state
         favorites.value = favorites.value.filter((item) => item.id !== favoriteId);
@@ -162,7 +162,7 @@ const removeSelectedFromWishlist = async () => {
     try {
         // Remove each selected favorite
         for (const favoriteId of selectedFavoriteIds) {
-            await ProductService.removeFromFavorites(favoriteId);
+            await productService.removeFromFavorites(favoriteId);
         }
 
         // Update local state

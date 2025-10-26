@@ -1,21 +1,10 @@
 <script setup>
 import { useToast } from '@/composables/useToast';
-import { CustomerService } from '@/services/CustomerService';
+import { CustomerService } from '@/services/ecommerce/customerService';
 import { formatCurrency, formatDate } from '@/utils/formatters';
 import { computed, onMounted, ref } from 'vue';
 
 // PrimeVue components
-import Button from 'primevue/button';
-import Calendar from 'primevue/calendar';
-import Card from 'primevue/card';
-import Column from 'primevue/column';
-import DataTable from 'primevue/datatable';
-import Dialog from 'primevue/dialog';
-import Dropdown from 'primevue/dropdown';
-import InputNumber from 'primevue/inputnumber';
-import InputText from 'primevue/inputtext';
-import Tag from 'primevue/tag';
-
 const { showToast } = useToast();
 
 // Reactive data
@@ -54,7 +43,7 @@ const contactsDisplayName = computed(() => {
 const fetchData = async () => {
     loading.value = true;
     try {
-        const [stagesRes, dealsRes, contactsRes] = await Promise.all([CustomerService.listStages(), CustomerService.listDeals(), CustomerService.getCustomers({ limit: 1000 })]);
+        const [stagesRes, dealsRes, contactsRes] = await Promise.all([customerService.listStages(), customerService.listDeals(), customerService.getCustomers({ limit: 1000 })]);
 
         stages.value = stagesRes.results || stagesRes || [];
         deals.value = dealsRes.results || dealsRes || [];
@@ -116,10 +105,10 @@ const saveDeal = async () => {
     saving.value = true;
     try {
         if (isEditing.value) {
-            await CustomerService.updateDeal(selectedDealId.value, form.value);
+            await customerService.updateDeal(selectedDealId.value, form.value);
             showToast('success', 'Success', 'Deal updated successfully', 3000);
         } else {
-            await CustomerService.createDeal(form.value);
+            await customerService.createDeal(form.value);
             showToast('success', 'Success', 'Deal created successfully', 3000);
         }
 
@@ -144,7 +133,7 @@ const moveDealStage = async (deal) => {
             return;
         }
 
-        await CustomerService.moveDeal(deal.id, nextStage.id);
+        await customerService.moveDeal(deal.id, nextStage.id);
 
         showToast('success', 'Success', `Deal moved to ${nextStage.name}`, 3000);
 

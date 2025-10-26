@@ -2,12 +2,9 @@
 import PermissionButton from '@/components/common/PermissionButton.vue';
 import PermissionWrapper from '@/components/common/PermissionWrapper.vue';
 import { usePermissions } from '@/composables/usePermissions';
-import Card from 'primevue/card';
-import Column from 'primevue/column';
-import DataTable from 'primevue/datatable';
-import Tag from 'primevue/tag';
 import { onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
+import { formatCurrency, formatDate } from '@/utils/formatters';
 
 const router = useRouter();
 const { canRead, canUpdate, canCreate, canDelete } = usePermissions();
@@ -27,10 +24,6 @@ const formatCurrency = (amount) => {
         style: 'currency',
         currency: 'KES'
     }).format(amount);
-};
-
-const formatDate = (date) => {
-    return new Date(date).toLocaleDateString('en-KE');
 };
 
 const getStatusSeverity = (status) => {

@@ -2,6 +2,7 @@
 import { useToast } from '@/composables/useToast';
 import { financeService } from '@/services/FinanceService';
 import { onMounted, reactive, ref } from 'vue';
+import { formatCurrency, formatDate } from '@/utils/formatters';
 
 const { showToast } = useToast();
 

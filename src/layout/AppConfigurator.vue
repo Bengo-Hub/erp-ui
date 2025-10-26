@@ -1,17 +1,24 @@
 <script setup>
+import { useTheme } from '@/composables/useTheme';
+import { useToast } from '@/composables/useToast';
 import { useLayout } from '@/layout/composables/layout';
+import { UserService } from '@/services/auth/userService';
+import { useBusinessBranding } from '@/utils/businessBranding';
 import { $t, updatePreset, updateSurfacePalette } from '@primevue/themes';
 import Aura from '@primevue/themes/aura';
 import Lara from '@primevue/themes/lara';
-import { ref, computed, onMounted } from 'vue';
-import { useBusinessBranding } from '@/utils/businessBranding';
+import { computed, onMounted, ref, watch } from 'vue';
 import { useStore } from 'vuex';
 
-const { layoutConfig, setPrimary, setSurface, setPreset, isDarkTheme, setMenuMode, setDarkMode } = useLayout();
+const { layoutConfig, setPrimary, setSurface, setPreset, isDarkTheme, setMenuMode } = useLayout();
+const { updateThemePreference, changeThemePreset, changePrimaryColor } = useTheme();
 const store = useStore();
 const { getCurrentThemeSettings, saveThemeSettings } = useBusinessBranding();
+const { showToast } = useToast();
 
-// Get current business details
+// Get current user and business details
+const currentUser = computed(() => store.state.auth.user);
+const userId = computed(() => currentUser.value?.id || null);
 const businessDetails = computed(() => store.state.auth.business);
 const businessId = computed(() => businessDetails.value?.id || null);
 
@@ -29,8 +36,12 @@ onMounted(() => {
 // Theme state
 const preset = ref(layoutConfig.preset);
 const presetOptions = ref(Object.keys(presets));
-const darkMode = ref(layoutConfig.darkTheme);
 const menuMode = ref(layoutConfig.menuMode);
+
+// Watch isDarkTheme from centralized useTheme (syncs with topbar toggle)
+watch(isDarkTheme, (newValue) => {
+    // Sync with layout config if needed
+}, { immediate: true });
 const menuModeOptions = ref([
     { label: 'Static', value: 'static' },
     { label: 'Overlay', value: 'overlay' }
@@ -183,16 +194,27 @@ function getPresetExt() {
     }
 }
 
-function loadThemeSettings() {
+async function loadThemeSettings() {
     try {
-        // First try to load from business settings if available
+        // First priority: Load from user preferences (backend)
+        if (userId.value) {
+            try {
+                const response = await UserService.getUserPreferences(userId.value);
+                if (response.data?.theme_settings) {
+                    applyStoredThemeSettings(response.data.theme_settings);
+                    return;
+                }
+            } catch (error) {
+                console.log('No user preferences found, trying business settings');
+            }
+        }
+
+        // Second priority: Load from business settings if available
         if (businessDetails.value?.branding_settings) {
             const settings = businessDetails.value.branding_settings;
-
-            // Apply theme settings
             applyStoredThemeSettings(settings);
         } else {
-            // Otherwise try to load from localStorage
+            // Last resort: Load from localStorage
             const localSettings = getCurrentThemeSettings();
             if (localSettings) {
                 applyStoredThemeSettings(localSettings);
@@ -225,10 +247,7 @@ function applyStoredThemeSettings(settings) {
         }
     }
 
-    if (settings.dark_mode !== undefined) {
-        darkMode.value = settings.dark_mode;
-        setDarkMode(settings.dark_mode);
-    }
+    // Dark mode is handled by centralized useTheme
 
     if (settings.menu_mode) {
         menuMode.value = settings.menu_mode;
@@ -237,28 +256,43 @@ function applyStoredThemeSettings(settings) {
 }
 
 async function saveSettings() {
-    if (!businessId.value) return;
+    if (!userId.value) {
+        showToast('error', 'Error', 'You must be logged in to save theme preferences');
+        return;
+    }
 
     try {
         isSaving.value = true;
 
-        const settings = {
+        const themeSettings = {
             theme_preset: preset.value,
-            dark_mode: darkMode.value,
+            dark_mode: isDarkTheme.value,
             primary_color_name: layoutConfig.primary,
             surface_name: layoutConfig.surface,
             menu_mode: menuMode.value
         };
 
-        await saveThemeSettings(businessId.value, settings);
+        // Save to user preferences (per-user backend storage)
+        await UserService.updateUserPreferences(userId.value, {
+            theme_settings: themeSettings
+        });
+        
+        // Also update through useTheme for consistency
+        await changeThemePreset(preset.value);
+        await changePrimaryColor(layoutConfig.primary);
+
+        // Save to localStorage as fallback
+        localStorage.setItem('theme_preferences', JSON.stringify(themeSettings));
 
         // Show success message
+        showToast('success', 'Success', 'Theme preferences saved successfully');
         showSaveSuccess.value = true;
         setTimeout(() => {
             showSaveSuccess.value = false;
         }, 3000);
     } catch (error) {
         console.error('Error saving theme settings:', error);
+        showToast('error', 'Error', error?.response?.data?.detail || 'Failed to save theme preferences');
     } finally {
         isSaving.value = false;
     }
@@ -290,10 +324,6 @@ function onPresetChange() {
     $t().preset(presetValue).preset(getPresetExt()).surfacePalette(surfacePalette).use({ useDefaultOptions: true });
 }
 
-function onDarkModeChange() {
-    setDarkMode(darkMode.value);
-}
-
 function onMenuModeChange() {
     setMenuMode(menuMode.value);
 }
@@ -306,7 +336,7 @@ function onMenuModeChange() {
         <div class="flex flex-col gap-4">
             <div class="text-right">
                 <span v-if="showSaveSuccess" class="text-sm text-green-500 mr-2">✓ Saved</span>
-                <Button v-if="businessId" @click="saveSettings" :loading="isSaving" icon="pi pi-save" label="Save Theme" size="small" severity="success" class="p-button-sm mb-2" />
+                <Button v-if="userId" @click="saveSettings" :loading="isSaving" icon="pi pi-save" label="Save Theme" size="small" severity="success" class="p-button-sm mb-2" />
             </div>
 
             <div>
@@ -343,13 +373,6 @@ function onMenuModeChange() {
             <div class="flex flex-col gap-2">
                 <span class="text-sm text-muted-color font-semibold">Presets</span>
                 <SelectButton v-model="preset" @change="onPresetChange" :options="presetOptions" :allowEmpty="false" />
-            </div>
-            <div class="flex flex-col gap-2">
-                <span class="text-sm text-muted-color font-semibold">Dark Mode</span>
-                <div class="pt-2 flex justify-between items-center">
-                    <InputSwitch v-model="darkMode" @update:modelValue="onDarkModeChange" />
-                    <span class="text-sm">{{ darkMode ? 'Dark' : 'Light' }}</span>
-                </div>
             </div>
 
             <div class="flex flex-col gap-2">

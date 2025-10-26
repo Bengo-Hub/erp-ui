@@ -1,9 +1,6 @@
 <script setup>
 import Spinner from '@/components/ui/Spinner.vue';
 import { procurementService } from '@/services/procurementService';
-import Button from 'primevue/button';
-import Dropdown from 'primevue/dropdown';
-import InputText from 'primevue/inputtext';
 import { useToast } from 'primevue/usetoast';
 import { onMounted, ref } from 'vue';
 

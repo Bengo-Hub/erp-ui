@@ -1,10 +1,11 @@
 <script setup>
-import { EcommerceService } from '@/services/EcommerceService';
+import { ecommerceService } from '@/services/ecommerce/ecommerceService';
 import { useBusinessBranding } from '@/utils/businessBranding';
 import { formatCurrency } from '@/utils/formatters';
 import { useToast } from 'primevue/usetoast';
 import { onMounted, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
+import { formatCurrency, formatDate } from '@/utils/formatters';
 
 const router = useRouter();
 const route = useRoute();
@@ -75,12 +76,12 @@ const fetchOrder = async () => {
 
     try {
         loading.value = true;
-        const orderResponse = await EcommerceService.getOrderById(orderId.value);
+        const orderResponse = await ecommerceService.getOrderById(orderId.value);
         order.value = orderResponse.data;
 
         // Fetch tracking information if order is shipped or delivered
         if (['SHIPPED', 'DELIVERED'].includes(order.value.status)) {
-            const trackingResponse = await EcommerceService.getOrderTracking(orderId.value);
+            const trackingResponse = await ecommerceService.getOrderTracking(orderId.value);
             tracking.value = trackingResponse.data;
         } else {
             // Create basic tracking events based on order status
@@ -245,8 +246,6 @@ const getStatusSeverity = (status) => {
     }
 };
 
-const formatDate = (dateString) => {
-    const options = { year: 'numeric', month: 'short', day: 'numeric' };
     return new Date(dateString).toLocaleDateString(undefined, options);
 };
 
@@ -306,7 +305,7 @@ const submitSupportRequest = () => {
 const downloadInvoice = () => {
     if (!order.value) return;
 
-    EcommerceService.downloadInvoice(order.value.id)
+    ecommerceService.downloadInvoice(order.value.id)
         .then((response) => {
             // Create a blob from the response data
             const blob = new Blob([response.data], { type: 'application/pdf' });

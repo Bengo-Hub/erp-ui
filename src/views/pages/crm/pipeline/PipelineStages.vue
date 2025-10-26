@@ -1,18 +1,9 @@
 <script setup>
 import { useToast } from '@/composables/useToast';
-import { CustomerService } from '@/services/CustomerService';
+import { CustomerService } from '@/services/ecommerce/customerService';
 import { onMounted, ref } from 'vue';
 
 // PrimeVue components
-import Button from 'primevue/button';
-import Card from 'primevue/card';
-import Column from 'primevue/column';
-import DataTable from 'primevue/datatable';
-import Dialog from 'primevue/dialog';
-import InputNumber from 'primevue/inputnumber';
-import InputText from 'primevue/inputtext';
-import Tag from 'primevue/tag';
-
 const { showToast } = useToast();
 
 // Reactive data
@@ -28,7 +19,7 @@ const form = ref({ name: '', order: 1, is_won: false, is_lost: false });
 const fetchStages = async () => {
     loading.value = true;
     try {
-        const response = await CustomerService.listStages();
+        const response = await customerService.listStages();
         stages.value = response.results || response || [];
         // Sort stages by order
         stages.value.sort((a, b) => a.order - b.order);
@@ -83,10 +74,10 @@ const saveStage = async () => {
     saving.value = true;
     try {
         if (isEditing.value) {
-            await CustomerService.updateStage(selectedStageId.value, form.value);
+            await customerService.updateStage(selectedStageId.value, form.value);
             showToast('success', 'Success', 'Stage updated successfully');
         } else {
-            await CustomerService.createStage(form.value);
+            await customerService.createStage(form.value);
             showToast('success', 'Success', 'Stage created successfully');
         }
 
@@ -103,7 +94,7 @@ const saveStage = async () => {
 // Delete stage
 const deleteStage = async (stageId) => {
     try {
-        await CustomerService.deleteStage(stageId);
+        await customerService.deleteStage(stageId);
         showToast('success', 'Success', 'Stage deleted successfully');
         await fetchStages();
     } catch (error) {

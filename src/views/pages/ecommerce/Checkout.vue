@@ -1,18 +1,15 @@
 <script setup>
 import { useToast } from '@/composables/useToast';
-import { ref, reactive, computed, onMounted, watch } from 'vue';
-import { useRouter, useRoute } from 'vue-router';
-import { EcommerceService } from '@/services/EcommerceService';
+import { ecommerceService } from '@/services/ecommerce/ecommerceService';
 import { useBusinessBranding } from '@/utils/businessBranding';
 import { useCartManager } from '@/utils/cartManager';
+import { computed, onMounted, reactive, ref } from 'vue';
+import { useRoute, useRouter } from 'vue-router';
 
 // Import checkout components
-import ShippingAddressForm from '@/components/ecommerce/checkout/ShippingAddressForm.vue';
-import PaymentMethodForm from '@/components/ecommerce/checkout/PaymentMethodForm.vue';
 import CheckoutSummary from '@/components/ecommerce/checkout/CheckoutSummary.vue';
-import LocationSelector from '@/components/common/LocationSelector.vue';
-import AutoComplete from 'primevue/autocomplete';
-
+import PaymentMethodForm from '@/components/ecommerce/checkout/PaymentMethodForm.vue';
+import ShippingAddressForm from '@/components/ecommerce/checkout/ShippingAddressForm.vue';
 import defaultImage from '@/assets/images/products/default.png';
 
 const { showToast } = useToast();
@@ -330,7 +327,7 @@ const onPlaceOrder = async (payment) => {
         };
 
         // Call API to create order using the centralized payment orchestration system
-        const response = await EcommerceService.createOrder(orderData);
+        const response = await ecommerceService.createOrder(orderData);
         const order = response.data;
 
         if (!order || !order.id) {
@@ -368,7 +365,7 @@ const onPlaceOrder = async (payment) => {
 
         // Clear cart
         if (cartId) {
-            await EcommerceService.clearCart(cartId);
+            await ecommerceService.clearCart(cartId);
             localStorage.removeItem('cartSession');
         }
 
@@ -412,7 +409,7 @@ const changeDeliveryMethod = (method) => {
 const fetchDeliveryRegions = async () => {
     try {
         loadingRegions.value = true;
-        const response = await EcommerceService.getDeliveryRegionsWithPickupStations();
+        const response = await ecommerceService.getDeliveryRegionsWithPickupStations();
         regions.value = response.data;
         console.log(regions.value);
 
@@ -447,7 +444,7 @@ const onRegionChange = async () => {
         selectedPickupStation.value = null;
 
         // Call API to get pickup stations for the selected region
-        const response = await EcommerceService.getPickupStationsByRegion(selectedRegion.value.id);
+        const response = await ecommerceService.getPickupStationsByRegion(selectedRegion.value.id);
 
         if (response.data && response.data.results) {
             pickupStations.value = response.data.results.map((station) => ({
@@ -542,11 +539,11 @@ const applyCoupon = async (code) => {
         const shippingFee = deliveryMethod.value === 'doorDelivery' ? doorDeliveryFee.value : currentShippingFee.value;
 
         // First validate the coupon
-        const validateResponse = await EcommerceService.validateCoupon(code, cartId, shippingFee);
+        const validateResponse = await ecommerceService.validateCoupon(code, cartId, shippingFee);
 
         if (validateResponse.data && validateResponse.data.valid) {
             // Apply the coupon if valid
-            const applyResponse = await EcommerceService.applyCoupon(code, cartId);
+            const applyResponse = await ecommerceService.applyCoupon(code, cartId);
 
             if (applyResponse.data && applyResponse.data.success) {
                 couponSuccess.value = applyResponse.data.message || 'Coupon applied successfully!';
@@ -589,7 +586,7 @@ const removeCoupon = async () => {
             return;
         }
 
-        const response = await EcommerceService.removeCoupon(cartId);
+        const response = await ecommerceService.removeCoupon(cartId);
 
         if (response.data && response.data.success) {
             couponSuccess.value = response.data.message || 'Coupon removed successfully!';

@@ -285,21 +285,12 @@ import { ref, onMounted, computed } from 'vue';
 import { useToast } from 'primevue/usetoast';
 import { useConfirm } from 'primevue/useconfirm';
 import { FilterMatchMode } from '@primevue/core/api';
-import Button from 'primevue/button';
-import InputText from 'primevue/inputtext';
-import Dropdown from 'primevue/dropdown';
-import DataTable from 'primevue/datatable';
-import Column from 'primevue/column';
-import Tag from 'primevue/tag';
-import ProgressSpinner from 'primevue/progressspinner';
-import Toast from 'primevue/toast';
-import ConfirmDialog from 'primevue/confirmdialog';
 import Tooltip from 'primevue/tooltip';
 
 import AssetDialog from '@/components/inventory/AssetDialog.vue';
 import AssetTransferDialog from '@/components/inventory/AssetTransferDialog.vue';
 import AssetMaintenanceDialog from '@/components/inventory/AssetMaintenanceDialog.vue';
-import assetService from '@/services/assetService';
+import assetService from '@/services/assets/assetService';
 
 // Composables
 const toast = useToast();
@@ -615,6 +606,7 @@ onMounted(() => {
 @media (max-width: 768px) {
     .p-dialog {
         width: 95vw !important;
+import { formatCurrency, formatDate } from '@/utils/formatters';
         margin: 2.5vw;
     }
 

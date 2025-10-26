@@ -1,5 +1,5 @@
-import { ref, computed } from 'vue';
-import { EcommerceService } from '@/services/EcommerceService';
+import { computed, ref } from 'vue';
+
 
 // Create a single cart state instance that will be shared across all imports
 const cartItems = ref([]);
@@ -12,7 +12,7 @@ export function useCartManager() {
 
         loading.value = true;
         try {
-            const response = await EcommerceService.getCart();
+            const response = await ecommerceService.getCart();
             cartItems.value = response.data.results || [];
             initialized.value = true;
         } catch (error) {
@@ -98,7 +98,7 @@ export function useCartManager() {
             itemToUpdate.item_total = itemToUpdate.item_subtotal + (itemToUpdate.tax_amount * newQuantity) / originalQuantity;
 
             // Update on the server
-            await EcommerceService.updateCartItem(itemId, newQuantity);
+            await ecommerceService.updateCartItem(itemId, newQuantity);
         } catch (error) {
             console.error('Error updating cart item:', error);
             // Refresh cart to ensure consistency
@@ -109,7 +109,7 @@ export function useCartManager() {
 
     const removeCartItem = async (itemId) => {
         try {
-            await EcommerceService.removeFromCart(itemId);
+            await ecommerceService.removeFromCart(itemId);  
 
             // Update local state
             if (cartItems.value[0] && cartItems.value[0].items) {
@@ -127,7 +127,7 @@ export function useCartManager() {
 
     const clearCart = async () => {
         try {
-            await EcommerceService.clearCart();
+            await ecommerceService.clearCart();
             cartItems.value = [];
         } catch (error) {
             console.error('Error clearing cart:', error);
@@ -142,7 +142,7 @@ export function useCartManager() {
                 quantity: quantity
             };
 
-            await EcommerceService.addToCart(cartData);
+            await ecommerceService.addToCart(cartData);
 
             // Refresh cart to get updated data
             await fetchCartItems();

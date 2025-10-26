@@ -4,11 +4,6 @@ import PermissionWrapper from '@/components/common/PermissionWrapper.vue';
 import { usePermissions } from '@/composables/usePermissions';
 import { useToast } from '@/composables/useToast';
 import { employeeService } from '@/services/hrm/employeeService';
-import Button from 'primevue/button';
-import Column from 'primevue/column';
-import DataTable from 'primevue/datatable';
-import Dialog from 'primevue/dialog';
-import InputText from 'primevue/inputtext';
 import { h, onMounted, ref } from 'vue';
 
 const { showToast } = useToast();

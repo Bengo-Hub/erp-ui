@@ -1,6 +1,6 @@
 <script setup>
-import { CartService } from '@/services/CartService';
-import { EcommerceService } from '@/services/EcommerceService';
+import { CartService } from '@/services/ecommerce/cartService';
+import { ecommerceService } from '@/services/ecommerce/ecommerceService';
 import { formatCurrency } from '@/utils/formatters';
 import { useToast } from '@/composables/useToast';
 import { computed, onMounted, ref, watch } from 'vue';
@@ -8,16 +8,6 @@ import { useRoute, useRouter } from 'vue-router';
 
 // Components
 import ProductCard from '@/components/ecommerce/ProductCard.vue';
-import Breadcrumb from 'primevue/breadcrumb';
-import Button from 'primevue/button';
-import Checkbox from 'primevue/checkbox';
-import Dropdown from 'primevue/dropdown';
-import InputNumber from 'primevue/inputnumber';
-import InputText from 'primevue/inputtext';
-import ProgressSpinner from 'primevue/progressspinner';
-import Slider from 'primevue/slider';
-import TreeSelect from 'primevue/treeselect';
-
 const route = useRoute();
 const router = useRouter();
 const { showToast } = useToast();
@@ -75,8 +65,6 @@ const cartService = CartService;
 
 // Breadcrumbs
 const breadcrumbHome = { icon: 'pi pi-home', to: '/' };
-const breadcrumbItems = [{ label: 'Shop', to: '/ecommerce/shop' }, { label: 'Products' }];
-
 // Utility function to transform categories into hierarchical structure with main categories at the top level
 const formatCategoryTree = (categories, mainCategories = []) => {
     const tree = [];
@@ -239,7 +227,7 @@ const loadProducts = async (customParams = {}) => {
         }
 
         // Use the enhanced EcommerceService
-        const response = await EcommerceService.getProducts(queryParams);
+        const response = await ecommerceService.getProducts(queryParams);
         products.value = response.data.results || response.data;
 
         // Update pagination information
@@ -317,7 +305,7 @@ const updateRouteWithFilters = (filters) => {
 
 const loadFeaturedProducts = async () => {
     try {
-        const response = await EcommerceService.getFeaturedProducts();
+        const response = await ecommerceService.getFeaturedProducts();
         featuredProducts.value = response.data;
     } catch (error) {
         console.error('Error loading featured products:', error);
@@ -328,11 +316,11 @@ const loadFeaturedProducts = async () => {
 const loadCategories = async () => {
     try {
         // First load main categories
-        const mainCategoriesResponse = await EcommerceService.getMainCategories();
+        const mainCategoriesResponse = await ecommerceService.getMainCategories();
         const mainCats = mainCategoriesResponse.data.results;
 
         // Then load all categories
-        const categoriesResponse = await EcommerceService.getCategories();
+        const categoriesResponse = await ecommerceService.getCategories();
         categories.value = categoriesResponse.data.results;
 
         // Format the categories into a hierarchical tree for the TreeSelect component
@@ -363,7 +351,7 @@ const updateBreadcrumbsForCategory = async (categoryId) => {
 
         // If not found, fetch it from the API
         if (!categoryInfo) {
-            const response = await EcommerceService.getCategoryById(id);
+            const response = await ecommerceService.getCategoryById(id);
             categoryInfo = response.data;
         }
 
@@ -381,7 +369,7 @@ const updateBreadcrumbsForCategory = async (categoryId) => {
 
 const loadBrands = async () => {
     try {
-        const brandsResponse = await EcommerceService.getBrands();
+        const brandsResponse = await ecommerceService.getBrands();
         brands.value = brandsResponse.data;
     } catch (error) {
         console.error('Error loading brands:', error);
@@ -613,9 +601,9 @@ const buyNow = async (product, quantity = 1) => {
 const toggleFavorite = async (product) => {
     try {
         if (product.isFavorite) {
-            await EcommerceService.removeFromFavorites(product.id);
+            await ecommerceService.removeFromFavorites(product.id);
         } else {
-            await EcommerceService.addToFavorites(product.id);
+            await ecommerceService.addToFavorites(product.id);
         }
 
         // Update the product locally
@@ -787,10 +775,6 @@ onMounted(() => {
 <template>
     <div class="product-listing min-h-screen bg-gray-50">
         <!-- Breadcrumb Navigation -->
-        <div class="breadcrumb bg-white p-3 md:p-4 rounded-none md:rounded shadow-sm mb-2 md:mb-4">
-            <Breadcrumb :model="breadcrumbItems" :home="breadcrumbHome" class="max-w-7xl mx-auto" />
-        </div>
-
         <div class="container max-w-7xl mx-auto px-2 md:px-4">
             <div class="grid grid-cols-1 lg:grid-cols-4 gap-4">
                 <!-- Filters Sidebar -->

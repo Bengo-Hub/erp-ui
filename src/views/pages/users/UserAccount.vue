@@ -1,42 +1,489 @@
+<template>
+    <div class="account-page">
+        <!-- Page Header -->
+        <div class="page-header">
+            <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                <div class="flex items-center gap-4">
+                    <Avatar 
+                        :image="userAvatarUrl" 
+                        size="xlarge" 
+                        shape="circle"
+                        class="border-2 border-surface-200 dark:border-surface-700"
+                    />
+                    <div>
+                        <h1 class="text-2xl md:text-3xl font-bold text-surface-900 dark:text-surface-0">
+                            {{ userFullName }}
+                        </h1>
+                        <p class="text-surface-600 dark:text-surface-400 mt-1">
+                            {{ currentUser?.email }}
+                        </p>
+                    </div>
+                </div>
+                <div class="flex items-center gap-2">
+                    <Button 
+                        label="Edit Profile" 
+                        icon="pi pi-pencil" 
+                        class="p-button-outlined"
+                        @click="editingProfile = true"
+                    />
+                </div>
+            </div>
+        </div>
+
+        <!-- Tabs -->
+        <div class="mt-6">
+            <TabView v-model:activeIndex="activeTab" class="modern-tabs">
+                <!-- Profile Tab -->
+                <TabPanel header="Profile">
+                    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                        <!-- Profile Information Card -->
+                        <div class="lg:col-span-2">
+                            <Card class="h-full">
+                                <template #header>
+                                    <div class="flex items-center justify-between p-4">
+                                        <h3 class="text-xl font-semibold text-surface-900 dark:text-surface-0">
+                                            Personal Information
+                                        </h3>
+                                        <Button 
+                                            v-if="!editingProfile"
+                                            icon="pi pi-pencil" 
+                                            class="p-button-text p-button-sm"
+                                            @click="editingProfile = true"
+                                        />
+                                    </div>
+                                </template>
+                                <template #content>
+                                    <div v-if="editingProfile" class="space-y-4">
+                                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                            <div class="field">
+                                                <label class="block text-sm font-medium mb-2">First Name</label>
+                                                <InputText v-model="profileForm.first_name" class="w-full" />
+                                            </div>
+                                            <div class="field">
+                                                <label class="block text-sm font-medium mb-2">Last Name</label>
+                                                <InputText v-model="profileForm.last_name" class="w-full" />
+                                            </div>
+                                        </div>
+                                        <div class="field">
+                                            <label class="block text-sm font-medium mb-2">Email</label>
+                                            <InputText v-model="profileForm.email" type="email" class="w-full" disabled />
+                                        </div>
+                                        <div class="field">
+                                            <label class="block text-sm font-medium mb-2">Phone</label>
+                                            <InputText v-model="profileForm.phone" class="w-full" />
+                                        </div>
+                                        <div class="field">
+                                            <label class="block text-sm font-medium mb-2">Profile Picture URL</label>
+                                            <InputText v-model="profileForm.pic" class="w-full" />
+                                        </div>
+                                        <div class="flex items-center gap-2 pt-4">
+                                            <Button 
+                                                label="Save Changes" 
+                                                icon="pi pi-check" 
+                                                @click="saveProfile"
+                                                :loading="saving"
+                                            />
+                                            <Button 
+                                                label="Cancel" 
+                                                icon="pi pi-times" 
+                                                class="p-button-outlined"
+                                                @click="cancelEdit"
+                                            />
+                                        </div>
+                                    </div>
+                                    <div v-else class="space-y-4">
+                                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                            <div class="info-item">
+                                                <label class="text-sm text-surface-500 dark:text-surface-400">First Name</label>
+                                                <p class="text-base font-medium text-surface-900 dark:text-surface-0 mt-1">
+                                                    {{ currentUser?.first_name || 'Not provided' }}
+                                                </p>
+                                            </div>
+                                            <div class="info-item">
+                                                <label class="text-sm text-surface-500 dark:text-surface-400">Last Name</label>
+                                                <p class="text-base font-medium text-surface-900 dark:text-surface-0 mt-1">
+                                                    {{ currentUser?.last_name || 'Not provided' }}
+                                                </p>
+                                            </div>
+                                            <div class="info-item">
+                                                <label class="text-sm text-surface-500 dark:text-surface-400">Email</label>
+                                                <p class="text-base font-medium text-surface-900 dark:text-surface-0 mt-1">
+                                                    {{ currentUser?.email }}
+                                                </p>
+                                            </div>
+                                            <div class="info-item">
+                                                <label class="text-sm text-surface-500 dark:text-surface-400">Phone</label>
+                                                <p class="text-base font-medium text-surface-900 dark:text-surface-0 mt-1">
+                                                    {{ currentUser?.phone || 'Not provided' }}
+                                                </p>
+                                            </div>
+                                            <div class="info-item">
+                                                <label class="text-sm text-surface-500 dark:text-surface-400">Username</label>
+                                                <p class="text-base font-medium text-surface-900 dark:text-surface-0 mt-1">
+                                                    {{ currentUser?.username || 'Not set' }}
+                                                </p>
+                                            </div>
+                                            <div class="info-item">
+                                                <label class="text-sm text-surface-500 dark:text-surface-400">Status</label>
+                                                <Tag 
+                                                    :value="currentUser?.is_active ? 'Active' : 'Inactive'" 
+                                                    :severity="currentUser?.is_active ? 'success' : 'danger'"
+                                                    class="mt-1"
+                                                />
+                                            </div>
+                                        </div>
+                                    </div>
+                                </template>
+                            </Card>
+                        </div>
+
+                        <!-- Quick Stats Card -->
+                        <div class="lg:col-span-1">
+                            <Card class="h-full">
+                                <template #header>
+                                    <div class="p-4">
+                                        <h3 class="text-xl font-semibold text-surface-900 dark:text-surface-0">
+                                            Account Stats
+                                        </h3>
+                                    </div>
+                                </template>
+                                <template #content>
+                                    <div class="space-y-4">
+                                        <div class="stat-item">
+                                            <div class="flex items-center justify-between">
+                                                <span class="text-sm text-surface-500 dark:text-surface-400">Member Since</span>
+                                                <i class="pi pi-calendar text-primary"></i>
+                                            </div>
+                                            <p class="text-base font-semibold text-surface-900 dark:text-surface-0 mt-2">
+                                                {{ formatDate(currentUser?.date_joined, 'long') }}
+                                            </p>
+                                        </div>
+                                        <Divider />
+                                        <div class="stat-item">
+                                            <div class="flex items-center justify-between">
+                                                <span class="text-sm text-surface-500 dark:text-surface-400">Last Login</span>
+                                                <i class="pi pi-clock text-primary"></i>
+                                            </div>
+                                            <p class="text-base font-semibold text-surface-900 dark:text-surface-0 mt-2">
+                                                {{ formatDate(currentUser?.last_login, 'relative') }}
+                                            </p>
+                                        </div>
+                                        <Divider />
+                                        <div class="stat-item">
+                                            <div class="flex items-center justify-between">
+                                                <span class="text-sm text-surface-500 dark:text-surface-400">Role</span>
+                                                <i class="pi pi-shield text-primary"></i>
+                                            </div>
+                                            <p class="text-base font-semibold text-surface-900 dark:text-surface-0 mt-2">
+                                                {{ currentUser?.groups?.[0]?.name || 'User' }}
+                                            </p>
+                                        </div>
+                                    </div>
+                                </template>
+                            </Card>
+                        </div>
+                    </div>
+                </TabPanel>
+
+                <!-- Security Tab -->
+                <TabPanel header="Security">
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                        <!-- Change Password -->
+                        <Card>
+                            <template #header>
+                                <div class="p-4">
+                                    <h3 class="text-xl font-semibold text-surface-900 dark:text-surface-0">
+                                        Change Password
+                                    </h3>
+                                </div>
+                            </template>
+                            <template #content>
+                                <div class="space-y-4">
+                                    <div class="field">
+                                        <label class="block text-sm font-medium mb-2">Current Password</label>
+                                        <Password v-model="passwordForm.current" toggleMask class="w-full" inputClass="w-full" />
+                                    </div>
+                                    <div class="field">
+                                        <label class="block text-sm font-medium mb-2">New Password</label>
+                                        <Password v-model="passwordForm.new" toggleMask class="w-full" inputClass="w-full" />
+                                    </div>
+                                    <div class="field">
+                                        <label class="block text-sm font-medium mb-2">Confirm Password</label>
+                                        <Password v-model="passwordForm.confirm" toggleMask :feedback="false" class="w-full" inputClass="w-full" />
+                                    </div>
+                                    <Button 
+                                        label="Update Password" 
+                                        icon="pi pi-lock" 
+                                        @click="updatePassword"
+                                        :loading="updatingPassword"
+                                        class="w-full"
+                                    />
+                                </div>
+                            </template>
+                        </Card>
+
+                        <!-- Two-Factor Authentication -->
+                        <Card>
+                            <template #header>
+                                <div class="p-4">
+                                    <h3 class="text-xl font-semibold text-surface-900 dark:text-surface-0">
+                                        Two-Factor Authentication
+                                    </h3>
+                                </div>
+                            </template>
+                            <template #content>
+                                <div class="space-y-4">
+                                    <div class="flex items-start gap-3 p-4 bg-surface-50 dark:bg-surface-800 rounded-lg">
+                                        <i class="pi pi-shield text-2xl text-primary"></i>
+                                        <div class="flex-1">
+                                            <h4 class="font-semibold text-surface-900 dark:text-surface-0 mb-1">
+                                                {{ twoFactorEnabled ? 'Enabled' : 'Not Enabled' }}
+                                            </h4>
+                                            <p class="text-sm text-surface-600 dark:text-surface-400">
+                                                Add an extra layer of security to your account by enabling 2FA.
+                                            </p>
+                                        </div>
+                                    </div>
+                                    <Button 
+                                        v-if="!twoFactorEnabled"
+                                        label="Enable 2FA" 
+                                        icon="pi pi-plus" 
+                                        @click="enable2FA"
+                                        class="w-full"
+                                    />
+                                    <Button 
+                                        v-else
+                                        label="Disable 2FA" 
+                                        icon="pi pi-times" 
+                                        severity="danger"
+                                        class="p-button-outlined w-full"
+                                        @click="disable2FA"
+                                    />
+                                </div>
+                            </template>
+                        </Card>
+                    </div>
+                </TabPanel>
+
+                <!-- Preferences Tab -->
+                <TabPanel header="Preferences">
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                        <!-- Notification Preferences -->
+                        <Card>
+                            <template #header>
+                                <div class="p-4">
+                                    <h3 class="text-xl font-semibold text-surface-900 dark:text-surface-0">
+                                        Notifications
+                                    </h3>
+                                </div>
+                            </template>
+                            <template #content>
+                                <div class="space-y-4">
+                                    <div class="flex items-center justify-between">
+                                        <div>
+                                            <label class="font-medium text-surface-900 dark:text-surface-0">Email Notifications</label>
+                                            <p class="text-sm text-surface-500 dark:text-surface-400 mt-1">
+                                                Receive email updates about your account
+                                            </p>
+                                        </div>
+                                        <InputSwitch v-model="preferences.email_notifications" />
+                                    </div>
+                                    <Divider />
+                                    <div class="flex items-center justify-between">
+                                        <div>
+                                            <label class="font-medium text-surface-900 dark:text-surface-0">Security Alerts</label>
+                                            <p class="text-sm text-surface-500 dark:text-surface-400 mt-1">
+                                                Get notified about security events
+                                            </p>
+                                        </div>
+                                        <InputSwitch v-model="preferences.security_alerts" />
+                                    </div>
+                                    <Divider />
+                                    <div class="flex items-center justify-between">
+                                        <div>
+                                            <label class="font-medium text-surface-900 dark:text-surface-0">Order Updates</label>
+                                            <p class="text-sm text-surface-500 dark:text-surface-400 mt-1">
+                                                Notifications about your orders
+                                            </p>
+                                        </div>
+                                        <InputSwitch v-model="preferences.order_updates" />
+                                    </div>
+                                </div>
+                            </template>
+                        </Card>
+
+                        <!-- Appearance Preferences -->
+                        <Card>
+                            <template #header>
+                                <div class="p-4">
+                                    <h3 class="text-xl font-semibold text-surface-900 dark:text-surface-0">
+                                        Appearance
+                                    </h3>
+                                </div>
+                            </template>
+                            <template #content>
+                                <div class="space-y-4">
+                                    <div class="field">
+                                        <label class="block text-sm font-medium mb-2">Theme</label>
+                                        <Dropdown 
+                                            v-model="preferences.theme" 
+                                            :options="themeOptions" 
+                                            optionLabel="name"
+                                            placeholder="Select Theme"
+                                            class="w-full"
+                                        />
+                                    </div>
+                                    <div class="field">
+                                        <label class="block text-sm font-medium mb-2">Language</label>
+                                        <Dropdown 
+                                            v-model="preferences.language" 
+                                            :options="languageOptions" 
+                                            optionLabel="name"
+                                            placeholder="Select Language"
+                                            class="w-full"
+                                        />
+                                    </div>
+                                    <Divider />
+                                    <div class="flex items-center justify-between">
+                                        <div>
+                                            <label class="font-medium text-surface-900 dark:text-surface-0">Reduced Motion</label>
+                                            <p class="text-sm text-surface-500 dark:text-surface-400 mt-1">
+                                                Minimize animations and transitions
+                                            </p>
+                                        </div>
+                                        <InputSwitch v-model="preferences.reduced_motion" />
+                                    </div>
+                                </div>
+                            </template>
+                        </Card>
+                    </div>
+                    
+                    <div class="mt-6 flex justify-end">
+                        <Button 
+                            label="Save Preferences" 
+                            icon="pi pi-check" 
+                            @click="savePreferences"
+                            :loading="savingPreferences"
+                        />
+                    </div>
+                </TabPanel>
+
+                <!-- Activity Tab -->
+                <TabPanel header="Activity">
+                    <Card>
+                        <template #header>
+                            <div class="p-4">
+                                <h3 class="text-xl font-semibold text-surface-900 dark:text-surface-0">
+                                    Recent Login Activity
+                                </h3>
+                            </div>
+                        </template>
+                        <template #content>
+                            <DataTable :value="loginActivities" class="modern-table">
+                                <Column field="device" header="Device">
+                                    <template #body="slotProps">
+                                        <div class="flex items-center gap-2">
+                                            <i class="pi pi-desktop text-primary"></i>
+                                            <span>{{ slotProps.data.device }}</span>
+                                            <Tag v-if="slotProps.data.current" value="Current" severity="success" />
+                                        </div>
+                                    </template>
+                                </Column>
+                                <Column field="location" header="Location">
+                                    <template #body="slotProps">
+                                        <div class="flex items-center gap-2">
+                                            <i class="pi pi-map-marker text-surface-500"></i>
+                                            <span>{{ slotProps.data.location }}</span>
+                                        </div>
+                                    </template>
+                                </Column>
+                                <Column field="timestamp" header="Time">
+                                    <template #body="slotProps">
+                                        {{ formatDate(slotProps.data.timestamp, 'relative') }}
+                                    </template>
+                                </Column>
+                            </DataTable>
+                        </template>
+                    </Card>
+                </TabPanel>
+            </TabView>
+        </div>
+    </div>
+</template>
+
 <script setup>
 import { useToast } from '@/composables/useToast';
-import UserAddresses from '@/components/user/UserAddresses.vue';
-import UserOrders from '@/components/user/UserOrders.vue';
-import UserProfile from '@/components/user/UserProfile.vue';
-import { UserService } from '@/services/UserService';
-import { useBusinessBranding } from '@/utils/businessBranding';
-import { computed, onMounted, ref, watch } from 'vue';
-import { useRoute, useRouter } from 'vue-router';
+import { UserService } from '@/services/auth/userService';
+import { getUserAvatarUrl } from '@/utils/avatarHelper';
+import { formatDate } from '@/utils/formatters';
+import { computed, onMounted, reactive, ref } from 'vue';
 import { useStore } from 'vuex';
 
 const { showToast } = useToast();
 const store = useStore();
-const router = useRouter();
-const route = useRoute();
-const { applyBusinessBranding } = useBusinessBranding();
 
-// Tab management
+// State
 const activeTab = ref(0);
-
-// 2FA state
+const editingProfile = ref(false);
+const saving = ref(false);
+const updatingPassword = ref(false);
+const savingPreferences = ref(false);
 const twoFactorEnabled = ref(false);
-const twoFactorDialog = ref(false);
-const qrCodeUrl = ref('');
-const secretKey = ref('');
-const verificationCode = ref('');
 
-// User preferences
-const preferences = ref({
+// Current user
+const currentUser = computed(() => store.state.auth.user);
+
+const userFullName = computed(() => {
+    if (!currentUser.value) return 'User';
+    return `${currentUser.value.first_name || ''} ${currentUser.value.last_name || ''}`.trim() || currentUser.value.email || 'User';
+});
+
+const userInitials = computed(() => {
+    if (!currentUser.value) return 'U';
+    const first = currentUser.value.first_name?.charAt(0) || '';
+    const last = currentUser.value.last_name?.charAt(0) || '';
+    return (first + last).toUpperCase() || currentUser.value.email?.charAt(0).toUpperCase() || 'U';
+});
+
+const userAvatarUrl = computed(() => {
+    return getUserAvatarUrl(currentUser.value, 200);
+});
+
+// Forms
+const profileForm = reactive({
+    first_name: '',
+    last_name: '',
+    email: '',
+    phone: '',
+    pic: ''
+});
+
+const passwordForm = reactive({
+    current: '',
+    new: '',
+    confirm: ''
+});
+
+const preferences = reactive({
     email_notifications: true,
     order_updates: true,
-    promotional_emails: false,
     security_alerts: true,
     theme: { name: 'System Default', code: 'system' },
     language: { name: 'English', code: 'en' },
     reduced_motion: false
 });
 
-// Mock login activities
+const themeOptions = [
+    { name: 'Light', code: 'light' },
+    { name: 'Dark', code: 'dark' },
+    { name: 'System Default', code: 'system' }
+];
+
+const languageOptions = [
+    { name: 'English', code: 'en' },
+    { name: 'Swahili', code: 'sw' }
+];
+
 const loginActivities = ref([
     {
         device: 'Windows Chrome Browser',
@@ -47,484 +494,173 @@ const loginActivities = ref([
     {
         device: 'iPhone Safari Browser',
         location: 'Nairobi, Kenya',
-        timestamp: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000),
+        timestamp: new Date(Date.now() - 24 * 60 * 60 * 1000),
         current: false
     }
 ]);
 
-// Mock user permissions
-const userPermissions = ref([
-    {
-        name: 'View Products',
-        description: 'Can view product listings and details',
-        granted: true
-    },
-    {
-        name: 'Manage Orders',
-        description: 'Can view and update order status',
-        granted: true
-    },
-    {
-        name: 'Edit Product Details',
-        description: 'Can edit product information',
-        granted: false
-    }
-]);
-
-// Options for dropdowns
-const themeOptions = [
-    { name: 'System Default', code: 'system' },
-    { name: 'Light', code: 'light' },
-    { name: 'Dark', code: 'dark' }
-];
-
-const languageOptions = [
-    { name: 'English', code: 'en' },
-    { name: 'Swahili', code: 'sw' },
-    { name: 'French', code: 'fr' },
-    { name: 'Arabic', code: 'ar' }
-];
-
-// Computed properties
-const user = computed(() => store.state.auth.user);
-const isStaffUser = computed(() => {
-    return user.value && (user.value.is_staff || user.value.is_superuser);
-});
-
-// Watch for route changes to set active tab
-watch(
-    () => route.query.tab,
-    (newTab) => {
-        if (newTab) {
-            const tabMapping = {
-                profile: 0,
-                orders: 1,
-                addresses: 2,
-                security: 3,
-                preferences: 4
-            };
-
-            if (tabMapping[newTab] !== undefined) {
-                activeTab.value = tabMapping[newTab];
-            }
-        }
-    },
-    { immediate: true }
-);
-
-// Apply business branding on component mount
-onMounted(() => {
-    applyBusinessBranding();
-
-    // Check if there's a tab parameter in the URL
-    const tabParam = route.query.tab;
-    if (tabParam) {
-        const tabMapping = {
-            profile: 0,
-            orders: 1,
-            addresses: 2,
-            security: 3,
-            preferences: 4
-        };
-
-        if (tabMapping[tabParam] !== undefined) {
-            activeTab.value = tabMapping[tabParam];
-        }
-    }
-
-    // Fetch user preferences
-    fetchUserPreferences();
-
-    // Check if 2FA is enabled
-    check2FAStatus();
-});
-
 // Methods
-const onTabChange = (e) => {
-    activeTab.value = e.index;
-
-    // Update URL without reloading page
-    const tabMapping = ['profile', 'orders', 'addresses', 'security', 'preferences'];
-    const newTab = tabMapping[e.index];
-
-    router.push({
-        query: { ...route.query, tab: newTab }
-    });
+const saveProfile = async () => {
+    try {
+        saving.value = true;
+        await UserService.updateUserProfile(currentUser.value.id, profileForm);
+        
+        // Update store
+        await store.dispatch('auth/refreshUser');
+        
+        showToast('success', 'Success', 'Profile updated successfully');
+        editingProfile.value = false;
+    } catch (error) {
+        console.error('Error updating profile:', error);
+        showToast('error', 'Error', 'Failed to update profile');
+    } finally {
+        saving.value = false;
+    }
 };
 
-const fetchUserPreferences = async () => {
-    if (!user.value) return;
+const cancelEdit = () => {
+    loadProfileForm();
+    editingProfile.value = false;
+};
 
-    try {
-        const response = await UserService.getUserPreferences(user.value.id);
-
-        if (response.data) {
-            // Map API response to local preferences format
-            preferences.value = {
-                ...preferences.value,
-                ...response.data,
-                theme: themeOptions.find((t) => t.code === response.data.theme_preference) || preferences.value.theme,
-                language: languageOptions.find((l) => l.code === response.data.language) || preferences.value.language
-            };
-        }
-    } catch (error) {
-        console.error('Error fetching user preferences:', error);
+const updatePassword = async () => {
+    if (passwordForm.new !== passwordForm.confirm) {
+        showToast('error', 'Error', 'Passwords do not match');
+        return;
     }
+    
+    try {
+        updatingPassword.value = true;
+        await UserService.changePassword({
+            old_password: passwordForm.current,
+            new_password: passwordForm.new
+        });
+        
+        showToast('success', 'Success', 'Password updated successfully');
+        
+        // Reset form
+        passwordForm.current = '';
+        passwordForm.new = '';
+        passwordForm.confirm = '';
+    } catch (error) {
+        console.error('Error updating password:', error);
+        showToast('error', 'Error', error.response?.data?.message || 'Failed to update password');
+    } finally {
+        updatingPassword.value = false;
+    }
+};
+
+const enable2FA = () => {
+    showToast('info', 'Coming Soon', 'Two-factor authentication setup will be available soon');
+};
+
+const disable2FA = () => {
+    showToast('info', 'Coming Soon', 'Two-factor authentication management will be available soon');
 };
 
 const savePreferences = async () => {
-    if (!user.value) return;
-
     try {
-        // Convert preferences to API format
-        const preferencesData = {
-            email_notifications: preferences.value.email_notifications,
-            order_updates: preferences.value.order_updates,
-            promotional_emails: preferences.value.promotional_emails,
-            security_alerts: preferences.value.security_alerts,
-            theme_preference: preferences.value.theme.code,
-            language: preferences.value.language.code,
-            reduced_motion: preferences.value.reduced_motion
-        };
-
-        await UserService.updateUserPreferences(user.value.id, preferencesData);
-
-        showToast('success', 'Success', 'Your preferences have been saved');
+        savingPreferences.value = true;
+        
+        // Save to backend
+        await UserService.updateUserPreferences(currentUser.value.id, {
+            theme_settings: preferences.theme,
+            notification_settings: {
+                email_notifications: preferences.email_notifications,
+                order_updates: preferences.order_updates,
+                security_alerts: preferences.security_alerts
+            },
+            language: preferences.language.code,
+            accessibility_settings: {
+                reduced_motion: preferences.reduced_motion
+            }
+        });
+        
+        showToast('success', 'Success', 'Preferences saved successfully');
     } catch (error) {
         console.error('Error saving preferences:', error);
         showToast('error', 'Error', 'Failed to save preferences');
+    } finally {
+        savingPreferences.value = false;
     }
 };
 
-const navigateToRolesPermissions = () => {
-    router.push('/app/pages/users/roles-permissions');
-};
-
-const check2FAStatus = async () => {
-    if (!user.value) return;
-
-    try {
-        const response = await UserService.get2FAStatus(user.value.id);
-        twoFactorEnabled.value = response.data.enabled;
-    } catch (error) {
-        console.error('Error checking 2FA status:', error);
+const loadProfileForm = () => {
+    if (currentUser.value) {
+        profileForm.first_name = currentUser.value.first_name || '';
+        profileForm.last_name = currentUser.value.last_name || '';
+        profileForm.email = currentUser.value.email || '';
+        profileForm.phone = currentUser.value.phone || '';
+        profileForm.pic = currentUser.value.pic || '';
     }
 };
 
-const setup2FA = async () => {
-    if (!user.value) return;
-
-    try {
-        const response = await UserService.generate2FASecret(user.value.id);
-        qrCodeUrl.value = response.data.qr_code_url;
-        secretKey.value = response.data.secret_key;
-        twoFactorDialog.value = true;
-    } catch (error) {
-        console.error('Error setting up 2FA:', error);
-        showToast('error', 'Error', 'Failed to set up two-factor authentication');
-    }
-};
-
-const verifyAndEnable2FA = async () => {
-    if (!verificationCode.value || !user.value) {
-        showToast('warn', 'Warning', 'Please enter the verification code');
-        return;
-    }
-
-    try {
-        await UserService.verify2FACode(user.value.id, {
-            code: verificationCode.value,
-            secret_key: secretKey.value
-        });
-
+onMounted(() => {
+    loadProfileForm();
+    
+    // Check 2FA status
+    if (currentUser.value?.two_factor_enabled) {
         twoFactorEnabled.value = true;
-        twoFactorDialog.value = false;
-        verificationCode.value = '';
-
-        showToast('success', 'Success', 'Two-factor authentication has been enabled');
-    } catch (error) {
-        console.error('Error verifying 2FA code:', error);
-        showToast('error', 'Error', 'Invalid verification code. Please try again.');
     }
-};
-
-const disable2FA = async () => {
-    if (!user.value) return;
-
-    try {
-        await UserService.disable2FA(user.value.id);
-        twoFactorEnabled.value = false;
-
-        showToast('success', 'Success', 'Two-factor authentication has been disabled');
-    } catch (error) {
-        console.error('Error disabling 2FA:', error);
-        showToast('error', 'Error', 'Failed to disable two-factor authentication');
-    }
-};
-
-const formatDate = (date) => {
-    const options = { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' };
-    return new Date(date).toLocaleDateString(undefined, options);
-};
-
-const onAddressUpdated = (data) => {
-    const { action, address } = data;
-
-    let message = '';
-    switch (action) {
-        case 'create':
-            message = 'New address has been added successfully';
-            break;
-        case 'update':
-            message = 'Address has been updated successfully';
-            break;
-        case 'delete':
-            message = 'Address has been deleted';
-            break;
-        case 'setDefault':
-            message = 'Default address has been updated';
-            break;
-    }
-
-    if (message) {
-        showToast('success', 'Success', message);
-    }
-};
-
-const signOut = () => {
-    store.dispatch('auth/logout');
-    router.push('/auth/login');
-};
+});
 </script>
 
-<template>
-    <div class="user-account-page">
-        <Toast />
-        <div class="grid">
-            <div class="col-12">
-                <div class="card mb-0">
-                    <div class="flex justify-content-between flex-column md:flex-row mb-3">
-                        <div class="flex align-items-center">
-                            <div>
-                                <h1 class="m-0 font-bold text-xl mb-1">My Account</h1>
-                                <p class="text-gray-600 m-0">Manage your profile, orders, and addresses</p>
-                            </div>
-                        </div>
-                        <div class="flex align-items-center mt-3 md:mt-0">
-                            <Button label="Back to Shop" icon="pi pi-shopping-cart" class="p-button-outlined mr-2" @click="router.push('/ecommerce/shop')" />
-                            <Button label="Sign Out" icon="pi pi-sign-out" class="p-button-danger p-button-outlined" @click="signOut" />
-                        </div>
-                    </div>
-
-                    <TabView @tab-change="onTabChange" :activeIndex="activeTab">
-                        <TabPanel header="Profile">
-                            <div class="user-profile-container">
-                                <UserProfile />
-                            </div>
-                        </TabPanel>
-
-                        <TabPanel header="Orders">
-                            <div class="user-orders-container">
-                                <UserOrders />
-                            </div>
-                        </TabPanel>
-
-                        <TabPanel header="Addresses">
-                            <div class="user-address-container">
-                                <UserAddresses @address-updated="onAddressUpdated" />
-                            </div>
-                        </TabPanel>
-
-                        <TabPanel v-if="isStaffUser" header="Security">
-                            <div class="user-security-container">
-                                <Card>
-                                    <template #title>
-                                        <div class="flex align-items-center">
-                                            <i class="pi pi-shield mr-2"></i>
-                                            <span>Account Security</span>
-                                        </div>
-                                    </template>
-
-                                    <template #content>
-                                        <div class="grid">
-                                            <div class="col-12 md:col-6">
-                                                <h3>Two-Factor Authentication</h3>
-                                                <div class="p-field-checkbox mb-3">
-                                                    <Checkbox id="2fa" v-model="twoFactorEnabled" binary />
-                                                    <label for="2fa" class="ml-2">Enable Two-Factor Authentication</label>
-                                                </div>
-                                                <p class="text-gray-600">Two-factor authentication adds an extra layer of security to your account by requiring a verification code in addition to your password.</p>
-                                                <Button v-if="!twoFactorEnabled" label="Set Up 2FA" icon="pi pi-lock" @click="setup2FA" />
-                                                <Button v-else label="Disable 2FA" icon="pi pi-lock-open" class="p-button-warning" @click="disable2FA" />
-                                            </div>
-
-                                            <div class="col-12 md:col-6">
-                                                <h3>Login Activity</h3>
-                                                <div v-if="loginActivities.length === 0" class="text-gray-500">No recent login activity to display.</div>
-                                                <ul v-else class="login-activity-list p-0 m-0">
-                                                    <li v-for="(activity, index) in loginActivities" :key="index" class="mb-3 border-bottom-1 border-gray-200 pb-2">
-                                                        <div class="flex align-items-center justify-content-between">
-                                                            <div>
-                                                                <i class="pi pi-desktop mr-2"></i>
-                                                                <span class="font-semibold">{{ activity.device }}</span>
-                                                                <div class="text-gray-600 text-sm mt-1">{{ activity.location }} · {{ formatDate(activity.timestamp) }}</div>
-                                                            </div>
-                                                            <Tag :severity="activity.current ? 'success' : 'info'" :value="activity.current ? 'Current Session' : 'Previous Login'" />
-                                                        </div>
-                                                    </li>
-                                                </ul>
-                                            </div>
-
-                                            <div class="col-12 mt-4">
-                                                <h3>Access Permissions</h3>
-                                                <div class="permissions-container border-1 border-gray-200 border-round p-3">
-                                                    <div v-for="(permission, index) in userPermissions" :key="index" class="permission-item mb-3 pb-2 border-bottom-1 border-gray-200">
-                                                        <div class="flex justify-content-between">
-                                                            <div>
-                                                                <span class="font-semibold">{{ permission.name }}</span>
-                                                                <div class="text-gray-600 text-sm mt-1">{{ permission.description }}</div>
-                                                            </div>
-                                                            <Tag :value="permission.granted ? 'Granted' : 'Restricted'" :severity="permission.granted ? 'success' : 'danger'" />
-                                                        </div>
-                                                    </div>
-
-                                                    <div class="text-right mt-3">
-                                                        <Button label="View All Permissions" icon="pi pi-list" class="p-button-outlined p-button-sm" @click="navigateToRolesPermissions" />
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </template>
-                                </Card>
-                            </div>
-                        </TabPanel>
-
-                        <TabPanel v-if="isStaffUser" header="Preferences">
-                            <div class="user-preferences-container">
-                                <Card>
-                                    <template #title>
-                                        <div class="flex align-items-center">
-                                            <i class="pi pi-cog mr-2"></i>
-                                            <span>Account Preferences</span>
-                                        </div>
-                                    </template>
-
-                                    <template #content>
-                                        <div class="grid">
-                                            <div class="col-12 md:col-6">
-                                                <h3>Notifications</h3>
-                                                <div class="p-field-checkbox mb-2">
-                                                    <Checkbox id="emailNotifs" v-model="preferences.email_notifications" binary />
-                                                    <label for="emailNotifs" class="ml-2">Email Notifications</label>
-                                                </div>
-                                                <div class="p-field-checkbox mb-2">
-                                                    <Checkbox id="orderUpdates" v-model="preferences.order_updates" binary />
-                                                    <label for="orderUpdates" class="ml-2">Order Status Updates</label>
-                                                </div>
-                                                <div class="p-field-checkbox mb-2">
-                                                    <Checkbox id="promoNotifs" v-model="preferences.promotional_emails" binary />
-                                                    <label for="promoNotifs" class="ml-2">Promotional Emails</label>
-                                                </div>
-                                                <div class="p-field-checkbox mb-3">
-                                                    <Checkbox id="securityNotifs" v-model="preferences.security_alerts" binary />
-                                                    <label for="securityNotifs" class="ml-2">Security Alerts</label>
-                                                </div>
-                                            </div>
-
-                                            <div class="col-12 md:col-6">
-                                                <h3>Display Settings</h3>
-                                                <div class="mb-3">
-                                                    <label for="theme" class="block mb-2">Theme Preference</label>
-                                                    <Dropdown id="theme" v-model="preferences.theme" :options="themeOptions" optionLabel="name" placeholder="Select Theme" class="w-full" />
-                                                </div>
-
-                                                <div class="mb-3">
-                                                    <label for="language" class="block mb-2">Language</label>
-                                                    <Dropdown id="language" v-model="preferences.language" :options="languageOptions" optionLabel="name" placeholder="Select Language" class="w-full" />
-                                                </div>
-
-                                                <div class="p-field-checkbox mb-2">
-                                                    <Checkbox id="reducedMotion" v-model="preferences.reduced_motion" binary />
-                                                    <label for="reducedMotion" class="ml-2">Reduced Motion</label>
-                                                </div>
-                                            </div>
-
-                                            <div class="col-12 mt-3 flex justify-content-end">
-                                                <Button label="Save Preferences" icon="pi pi-save" @click="savePreferences" />
-                                            </div>
-                                        </div>
-                                    </template>
-                                </Card>
-                            </div>
-                        </TabPanel>
-                    </TabView>
-                </div>
-            </div>
-        </div>
-
-        <!-- Two-Factor Auth Dialog -->
-        <Dialog v-model:visible="twoFactorDialog" header="Set Up Two-Factor Authentication" :style="{ width: '450px' }" modal>
-            <div class="two-factor-setup p-4 text-center">
-                <i class="pi pi-shield text-5xl text-primary mb-3"></i>
-                <h3 class="mt-0">Scan QR Code</h3>
-                <p>Scan this QR code with your authenticator app (Google Authenticator, Authy, etc.)</p>
-                <div class="qr-container p-4 border-1 border-gray-200 border-round flex justify-content-center">
-                    <img :src="qrCodeUrl" alt="QR Code" width="200" height="200" />
-                </div>
-                <p class="mt-3 font-bold">Or enter this code manually:</p>
-                <div class="secret-key p-3 border-1 border-gray-200 border-round font-mono">
-                    {{ secretKey }}
-                </div>
-
-                <div class="mt-4">
-                    <div class="p-float-label mb-3">
-                        <InputText id="verificationCode" v-model="verificationCode" class="w-full" />
-                        <label for="verificationCode">Enter Verification Code</label>
-                    </div>
-
-                    <Button label="Verify and Enable" icon="pi pi-check" class="w-full" @click="verifyAndEnable2FA" />
-                </div>
-            </div>
-        </Dialog>
-    </div>
-</template>
-
 <style scoped>
-.user-account-page {
-    padding-bottom: 2rem;
+.account-page {
+    padding: 1.5rem;
+    max-width: 1400px;
+    margin: 0 auto;
 }
 
-:deep(.p-tabview-panels) {
+.page-header {
+    margin-bottom: 2rem;
+}
+
+.modern-tabs :deep(.p-tabview-nav) {
+    background: transparent;
+    border: none;
+    border-bottom: 1px solid var(--surface-border);
+}
+
+.modern-tabs :deep(.p-tabview-panels) {
+    background: transparent;
     padding: 1.5rem 0;
 }
 
-:deep(.p-tabview .p-tabview-nav) {
-    border-width: 0 0 1px 0;
+.info-item {
+    padding: 0.75rem;
+    border-radius: 8px;
+    background: var(--surface-50);
+    transition: all 0.2s;
 }
 
-.login-activity-list {
-    list-style-type: none;
+.dark .info-item {
+    background: var(--surface-800);
 }
 
-.two-factor-setup .qr-container {
-    background-color: white;
+.stat-item {
+    padding: 1rem;
+    border-radius: 8px;
+    background: var(--surface-50);
+    transition: all 0.2s;
 }
 
-.two-factor-setup .secret-key {
-    font-family: monospace;
-    letter-spacing: 2px;
-    background-color: #f8f9fa;
-    user-select: all;
+.dark .stat-item {
+    background: var(--surface-800);
 }
 
-.permissions-container {
-    max-height: 300px;
-    overflow-y: auto;
+.modern-table :deep(.p-datatable) {
+    border-radius: 8px;
+    overflow: hidden;
 }
 
-@media screen and (max-width: 768px) {
-    :deep(.p-tabview .p-tabview-nav li .p-tabview-nav-link) {
-        padding: 0.75rem 0.5rem;
+@media (max-width: 768px) {
+    .account-page {
+        padding: 1rem;
+    }
+    
+    .page-header h1 {
+        font-size: 1.5rem;
     }
 }
 </style>

@@ -1,7 +1,7 @@
 <script setup>
-import { coreService } from '@/services/coreService';
+import { coreService } from '@/services/shared/coreService';
 import { inventoryService } from '@/services/inventoryService';
-import { POSService } from '@/services/POSService';
+import { POSService } from '@/services/ecommerce/posService';
 import { formatCurrency } from '@/utils/formatters.js';
 import { useToast } from 'primevue/usetoast';
 import { computed, onMounted, reactive, ref } from 'vue';
@@ -71,7 +71,7 @@ const fetchBranches = async () => {
 const fetchProducts = async () => {
     try {
         loading.value = true;
-        const response = await POSService.getProducts({
+        const response = await posService.getProducts({
             page_size: 100,
             ordering: 'title',
             include: 'unit'

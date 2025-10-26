@@ -412,16 +412,8 @@
 <script setup>
 import { ref, onMounted } from 'vue';
 import { useToast } from 'primevue/usetoast';
-import Button from 'primevue/button';
-import Dropdown from 'primevue/dropdown';
-import Calendar from 'primevue/calendar';
-import Tag from 'primevue/tag';
-import Dialog from 'primevue/dialog';
-import Toast from 'primevue/toast';
-import ConfirmDialog from 'primevue/confirmdialog';
-
 import AssetMaintenanceDialog from '@/components/inventory/AssetMaintenanceDialog.vue';
-import assetService from '@/services/assetService';
+import assetService from '@/services/assets/assetService';
 
 // Composables
 const toast = useToast();
@@ -571,11 +563,6 @@ const completeMaintenance = async (maintenanceData) => {
     }
 };
 
-const formatDate = (dateString) => {
-    if (!dateString) return '';
-    return new Date(dateString).toLocaleDateString();
-};
-
 const formatCurrency = (value) => {
     return new Intl.NumberFormat('en-KE', {
         style: 'currency',
@@ -667,6 +654,7 @@ onMounted(() => {
 @media (max-width: 768px) {
     .modern-maintenance-dialog {
         width: 95vw !important;
+import { formatCurrency, formatDate } from '@/utils/formatters';
         margin: 2.5vw;
     }
 

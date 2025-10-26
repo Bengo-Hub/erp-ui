@@ -111,10 +111,6 @@ const refreshData = () => {
 };
 
 // Format date
-const formatDate = (date) => {
-    return new Date(date).toLocaleDateString();
-};
-
 // Get category severity
 const getCategorySeverity = (name) => {
     switch (name) {
@@ -279,6 +275,7 @@ onMounted(() => {
 
     :deep(.p-datatable) {
         font-size: 10pt !important;
+import { formatCurrency, formatDate } from '@/utils/formatters';
     }
 }
 </style>

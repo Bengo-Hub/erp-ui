@@ -1,12 +1,12 @@
 <script setup>
+import defaultImage from '@/assets/images/products/default.png';
+import CouponManager from '@/components/ecommerce/checkout/CouponManager.vue';
 import { useToast } from '@/composables/useToast';
-import { ref, computed, onMounted } from 'vue';
-import { useRouter } from 'vue-router';
-import { EcommerceService } from '@/services/EcommerceService';
+import { ecommerceService } from '@/services/ecommerce/ecommerceService';
 import { useBusinessBranding } from '@/utils/businessBranding';
 import { useCartManager } from '@/utils/cartManager';
-import CouponManager from '@/components/ecommerce/checkout/CouponManager.vue';
-import defaultImage from '@/assets/images/products/default.png';
+import { computed, onMounted, ref } from 'vue';
+import { useRouter } from 'vue-router';
 
 const { showToast } = useToast();
 const router = useRouter();
@@ -42,7 +42,7 @@ const fetchDeliveryOptions = async () => {
             }
         } else {
             // Use the dedicated delivery options endpoint
-            const response = await EcommerceService.getDeliveryOptions();
+            const response = await ecommerceService.getDeliveryOptions();
 
             if (response.data && Array.isArray(response.data)) {
                 // Format the API response to match our structure
@@ -225,10 +225,6 @@ const proceedToCheckout = () => {
 <template>
     <div class="shopping-cart">
         <!-- Breadcrumb Navigation -->
-        <div class="breadcrumb bg-white p-3 rounded shadow-sm mb-4">
-            <Breadcrumb :model="breadcrumbItems" />
-        </div>
-
         <div v-if="loading" class="flex justify-center my-8">
             <ProgressSpinner />
         </div>

@@ -8,14 +8,12 @@ import ServiceCharge from '@/components/pos/ServiceCharge.vue';
 import Shipping from '@/components/pos/Shipping.vue';
 import StaffAdvanceSale from '@/components/pos/StaffAdvanceSale.vue';
 import SuspendedSales from '@/components/pos/SuspendedSales.vue';
-import { CustomerService } from '@/services/CustomerService';
-import { POSService } from '@/services/POSService';
+import { CustomerService } from '@/services/ecommerce/customerService';
+import { POSService } from '@/services/ecommerce/posService';
 import { PaymentService } from '@/services/PaymentService';
 import { systemConfigService } from '@/services/systemConfigService';
 import { getProductImage } from '@/utils/productUtils';
 import { debounce } from 'lodash-es';
-import Dropdown from 'primevue/dropdown';
-import Paginator from 'primevue/paginator';
 import { useConfirm } from 'primevue/useconfirm';
 import { useToast } from 'primevue/usetoast';
 import { computed, onMounted, ref, watch } from 'vue';
@@ -103,7 +101,7 @@ const fetchCustomers = async () => {
         const customerParams = {
             // Add any filters needed for your business logic
         };
-        const res = await CustomerService.getCustomers(customerParams);
+        const res = await customerService.getCustomers(customerParams);
         const data = res.data.results || res.data;
         if (!data || data.length === 0) {
             toast.add({
@@ -190,7 +188,7 @@ const applyFilter = async () => {
             limit: perPage.value,
             offset: (currentPage.value - 1) * perPage.value
         };
-        const response = await POSService.getProducts(params);
+        const response = await posService.getProducts(params);
         products.value = response.data.results;
         totalProducts.value = response.data.count;
         filteredProducts.value = products.value;
@@ -211,7 +209,7 @@ const updatearrays = async () => {
             limit: perPage.value,
             offset: (currentPage.value - 1) * perPage.value
         };
-        const response = await POSService.getProducts(params);
+        const response = await posService.getProducts(params);
         products.value = response.data.results;
         totalProducts.value = response.data.count;
         filteredProducts.value = products.value;
@@ -222,7 +220,7 @@ const updatearrays = async () => {
             query: ''
         };
 
-        const res = await POSService.getCustomers(customerParams);
+        const res = await posService.getCustomers(customerParams);
         const data = res.data.results;
         if (!data || data.length === 0) {
             toast.add({
@@ -251,7 +249,7 @@ const updatearrays = async () => {
 
 const checkRegisterAndShowModal = async () => {
     try {
-        const response = await POSService.getRegisterStatus(user.value.id, business.value.branch_code);
+        const response = await posService.getRegisterStatus(user.value.id, business.value.branch_code);
         registerOpen.value = response.data.is_open;
         if (!response.data.is_open) {
             modals.value['modal-register-required'] = true;
@@ -444,7 +442,7 @@ const handleMpesaPayment = async (paymentData) => {
         tr_description: `${business.value.business__name} (${business.value.location_name})`
     };
 
-    const response = await POSService.initiateSTKPush(stkData);
+    const response = await posService.initiateSTKPush(stkData);
 
     if (response.data.ResponseCode === '0') {
         mpesaCheckoutID.value = response.data.checkoutID;
@@ -472,7 +470,7 @@ const handleCashPayment = async (paymentData) => {
 const startMpesaStatusCheck = () => {
     const checkInterval = setInterval(async () => {
         try {
-            const response = await POSService.checkSTKPushStatus({
+            const response = await posService.checkSTKPushStatus({
                 checkoutId: mpesaCheckoutID.value
             });
 
@@ -522,7 +520,7 @@ const handleStaffAdvanceSale = async (saleData) => {
             service_charge: serviceCharge.value
         };
 
-        const response = await POSService.createStaffAdvanceSale(data);
+        const response = await posService.createStaffAdvanceSale(data);
 
         toast.add({
             severity: 'success',
@@ -589,7 +587,7 @@ const processSuspendSale = async (note) => {
     try {
         // First check if register is open
         if (!registerOpen.value) {
-            const registerResponse = await POSService.getRegisterStatus(user.value.id, business.value.branch_code);
+            const registerResponse = await posService.getRegisterStatus(user.value.id, business.value.branch_code);
             if (!registerResponse.data.is_open) {
                 toast.add({
                     severity: 'error',
@@ -636,7 +634,7 @@ const processSuspendSale = async (note) => {
             note: note || ''
         };
 
-        const response = await POSService.createSuspendedSale(data);
+        const response = await posService.createSuspendedSale(data);
 
         toast.add({
             severity: 'success',
@@ -674,7 +672,7 @@ const resumeSuspendedSale = async (suspendedSale) => {
 
         // Set the customer if available
         if (suspendedSale.customer) {
-            const customers = await POSService.getCustomers({
+            const customers = await posService.getCustomers({
                 search: suspendedSale.customer.id
             });
             if (customers.data.results.length > 0) {
@@ -689,7 +687,7 @@ const resumeSuspendedSale = async (suspendedSale) => {
         serviceCharge.value = suspendedSale.service_charge || 0;
 
         // Delete the suspended sale
-        await POSService.deleteSuspendedSale(suspendedSale.id);
+        await posService.deleteSuspendedSale(suspendedSale.id);
 
         toast.add({
             severity: 'success',
@@ -727,7 +725,7 @@ watch(
 
 const submitsale = async (paymentData) => {
     try {
-        const response = await POSService.createSale(paymentData);
+        const response = await posService.createSale(paymentData);
         lastSale.value = response.data;
         toast.add({
             severity: 'success',

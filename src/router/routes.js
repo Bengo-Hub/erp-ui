@@ -7,12 +7,13 @@ import { dashboardRoutes } from './dashboardRoutes';
 import { ecommerceRoutes } from './ecommerceRoutes';
 import { employeeRoutes } from './employeeRoutes';
 import { financeRoutes } from './financeRoutes';
+import { inventoryRoutes } from './inventoryRoutes';
 import { leaveRoutes } from './leaveRoutes';
 import { manufacturingRoutes } from './manufacturingRoutes';
 import { payrollRoutes } from './payrollRoutes';
 import { procurementRoutes } from './procurementRoutes';
 import { productManagementRoutes } from './productManagementRoutes';
-import { inventoryRoutes } from './inventoryRoutes';
+import { reportsRoutes } from './reportsRoutes';
 import { securityRoutes } from './securityRoutes';
 import { settingsRoutes } from './settingsRoutes';
 import { userManagementRoutes } from './userManagementRoutes';
@@ -75,6 +76,8 @@ const routes = [
             ...appraisalRoutes,
             //#################### PAYROLL #######################################
             ...payrollRoutes,
+            //#################### REPORTS #######################################
+            ...reportsRoutes,
             //#################### EMPLOYEES #######################################
             ...employeeRoutes,
             //#################### LEAVE #######################################
@@ -97,7 +100,26 @@ const routes = [
             //#################### MANUFACTURING ################################
             ...manufacturingRoutes,
             //#################### SETTINGS #####################################
-            ...settingsRoutes
+            ...settingsRoutes,
+            //#################### UTILITY PAGES ################################
+            {
+                path: '/calendar',
+                name: 'calendar',
+                component: () => import('@/views/pages/Calendar.vue'),
+                meta: {
+                    requiresAuth: true,
+                    title: 'Calendar'
+                }
+            },
+            {
+                path: '/messages',
+                name: 'messages',
+                component: () => import('@/views/pages/Messages.vue'),
+                meta: {
+                    requiresAuth: true,
+                    title: 'Messages'
+                }
+            }
         ]
     },
     //#################### AUTH ROUTES #########################################

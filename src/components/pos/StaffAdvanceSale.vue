@@ -1,7 +1,7 @@
 <script setup>
 import { formatCurrency } from '@/components/hrm/payroll/payslipGenerator';
 import Spinner from '@/components/ui/Spinner.vue';
-import { POSService } from '@/services/POSService';
+import { POSService } from '@/services/ecommerce/posService';
 import { useToast } from 'primevue/usetoast';
 import { computed, defineEmits, defineProps, onMounted, ref, watch } from 'vue';
 
@@ -59,7 +59,7 @@ const isValid = computed(() => {
 const fetchStaffMembers = async () => {
     isProcessing.value = true;
     try {
-        const response = await POSService.getEmployees();
+        const response = await posService.getEmployees();
         staffMembers.value = response.data.results.map((staff) => ({
             ...staff,
             fullName: `${staff.user.first_name} ${staff.user.last_name}`,
@@ -75,7 +75,7 @@ const fetchStaffMembers = async () => {
 
 const fetchStaffAdvance = async (staffId) => {
     try {
-        const response = await POSService.getStaffAdvances(staffId);
+        const response = await posService.getStaffAdvances(staffId);
         staffAdvanceBalance.value = response.data.available_advance || 0;
     } catch (error) {
         staffAdvanceBalance.value = 0;
@@ -107,7 +107,7 @@ const handleSubmit = async () => {
         };
 
         // Call the endpoint to create staff advance sale using POSService
-        const response = await POSService.createStaffAdvanceSale(saleData);
+        const response = await posService.createStaffAdvanceSale(saleData);
 
         toast.add({
             severity: 'success',

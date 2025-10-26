@@ -1,7 +1,6 @@
 <script setup>
-import BrandingSettings from '@/components/BrandingSettings.vue';
 import { useToast } from '@/composables/useToast';
-import { systemConfigService } from '@/services/systemConfigService';
+import { systemConfigService } from '@/services/shared/systemConfigService';
 import { useConfirm } from 'primevue/useconfirm';
 import { onMounted, ref } from 'vue';
 
@@ -15,22 +14,20 @@ const items = ref([
     { label: 'Business', to: '/settings/business' }
 ]);
 
-// Business details
+// Business details (core business info only - currency/timezone/financial year moved to Currency & Time settings)
 const businessDetails = ref({
     name: '',
     start_date: null,
-    finacial_year_start_month: '',
     stock_accounting_method: '',
-    currency: '',
     transaction_edit_days: 30,
     default_profit_margin: 25.0,
-    logo: null,
-    watermarklogo: null,
-    timezone: 'Africa/Nairobi',
-    business__primary_color: '',
-    business__secondary_color: '',
-    business__text_color: '',
-    business__background_color: ''
+    industry: '',
+    tax_id: '',
+    registration_number: '',
+    phone: '',
+    email: '',
+    website: '',
+    address: ''
 });
 const originalBusinessDetails = ref({});
 const savingBusinessDetails = ref(false);
@@ -87,22 +84,12 @@ const accountingMethods = [
     { name: 'Average Cost', code: 'AVG' }
 ];
 
-const currencies = [
-    { name: 'Kenyan Shilling (KES)', code: 'KES' },
-    { name: 'US Dollar (USD)', code: 'USD' },
-    { name: 'Euro (EUR)', code: 'EUR' },
-    { name: 'British Pound (GBP)', code: 'GBP' }
+const industryOptions = [
+    'Retail', 'Manufacturing', 'Services', 'Technology', 'Healthcare', 
+    'Education', 'Construction', 'Agriculture', 'Transportation', 'Other'
 ];
 
-const timezones = [
-    { name: 'Nairobi (UTC+3)', code: 'Africa/Nairobi' },
-    { name: 'London (UTC+0/+1)', code: 'Europe/London' },
-    { name: 'New York (UTC-5/-4)', code: 'America/New_York' }
-];
-
-// Logo previews
-const logoPreview = ref('');
-const watermarkPreview = ref('');
+// Logo handling removed - now in Look & Feel settings
 
 // Load data on component mount
 onMounted(async () => {
@@ -130,14 +117,7 @@ async function loadBusinessDetails() {
                 businessDetails.value.start_date = new Date(businessDetails.value.start_date);
             }
 
-            // Set logo previews
-            if (businessDetails.value.logo) {
-                logoPreview.value = businessDetails.value.logo;
-            }
-
-            if (businessDetails.value.watermarklogo) {
-                watermarkPreview.value = businessDetails.value.watermarklogo;
-            }
+            // Logo loading removed - now in Look & Feel settings
         }
     } catch (error) {
         showToast('error', 'Error', 'Failed to load business details', 3000);
@@ -166,43 +146,7 @@ function resetBusinessDetails() {
     businessDetails.value = JSON.parse(JSON.stringify(originalBusinessDetails.value));
 }
 
-function onLogoUpload(event) {
-    if (!event.files || !event.files.length) return;
-
-    const file = event.files[0];
-    const reader = new FileReader();
-
-    reader.onloadend = function () {
-        businessDetails.value.logo = reader.result;
-        logoPreview.value = reader.result;
-    };
-
-    reader.readAsDataURL(file);
-}
-
-function removeLogo() {
-    businessDetails.value.logo = null;
-    logoPreview.value = '';
-}
-
-function onWatermarkUpload(event) {
-    if (!event.files || !event.files.length) return;
-
-    const file = event.files[0];
-    const reader = new FileReader();
-
-    reader.onloadend = function () {
-        businessDetails.value.watermarklogo = reader.result;
-        watermarkPreview.value = reader.result;
-    };
-
-    reader.readAsDataURL(file);
-}
-
-function removeWatermark() {
-    businessDetails.value.watermarklogo = null;
-    watermarkPreview.value = '';
-}
+// Logo and watermark functions removed - now in Look & Feel settings
 
 // Branch Methods
 function openBranchDialog() {
@@ -422,10 +366,7 @@ function resetPrefixSettings() {
     };
 }
 
-function onBrandingSettingsSaved() {
-    // Handle branding settings saved event
-    showToast('success', 'Success', 'Branding settings updated successfully', 3000);
-}
+// Removed: Branding settings now centralized in Look & Feel page
 
 async function loadBranches() {
     try {
@@ -477,21 +418,7 @@ async function loadBranches() {
                                     </div>
                                 </div>
 
-                                <div class="col-12 md:col-6">
-                                    <div class="field">
-                                        <label for="currency" class="font-medium">Currency <span class="text-red-500">*</span></label>
-                                        <Dropdown id="currency" v-model="businessDetails.currency" :options="currencies" optionLabel="name" optionValue="code" placeholder="Select Currency" class="w-full" required />
-                                        <small class="text-gray-500">Primary currency for transactions</small>
-                                    </div>
-                                </div>
-
-                                <div class="col-12 md:col-6">
-                                    <div class="field">
-                                        <label for="finacial_year_start_month" class="font-medium">Financial Year Start <span class="text-red-500">*</span></label>
-                                        <Dropdown id="finacial_year_start_month" v-model="businessDetails.finacial_year_start_month" :options="months" optionLabel="name" optionValue="code" placeholder="Select Month" class="w-full" required />
-                                        <small class="text-gray-500">When your financial year begins</small>
-                                    </div>
-                                </div>
+                                <!-- Currency, Timezone, Financial Year moved to Currency & Time settings -->
 
                                 <div class="col-12 md:col-6">
                                     <div class="field">
@@ -503,9 +430,53 @@ async function loadBranches() {
 
                                 <div class="col-12 md:col-6">
                                     <div class="field">
-                                        <label for="timezone" class="font-medium">Timezone <span class="text-red-500">*</span></label>
-                                        <Dropdown id="timezone" v-model="businessDetails.timezone" :options="timezones" optionLabel="name" optionValue="code" filter placeholder="Select Timezone" class="w-full" required />
-                                        <small class="text-gray-500">Your business's primary timezone</small>
+                                        <label for="industry" class="font-medium">Industry</label>
+                                        <Dropdown id="industry" v-model="businessDetails.industry" :options="industryOptions" placeholder="Select Industry" class="w-full" editable />
+                                        <small class="text-gray-500">Your business industry/sector</small>
+                                    </div>
+                                </div>
+
+                                <div class="col-12 md:col-6">
+                                    <div class="field">
+                                        <label for="tax_id" class="font-medium">Tax ID / PIN</label>
+                                        <InputText id="tax_id" v-model="businessDetails.tax_id" class="w-full" placeholder="Enter Tax ID" />
+                                        <small class="text-gray-500">Business tax identification number</small>
+                                    </div>
+                                </div>
+
+                                <div class="col-12 md:col-6">
+                                    <div class="field">
+                                        <label for="registration_number" class="font-medium">Registration Number</label>
+                                        <InputText id="registration_number" v-model="businessDetails.registration_number" class="w-full" placeholder="Enter Registration No." />
+                                        <small class="text-gray-500">Business registration number</small>
+                                    </div>
+                                </div>
+
+                                <div class="col-12 md:col-6">
+                                    <div class="field">
+                                        <label for="phone" class="font-medium">Business Phone</label>
+                                        <InputText id="phone" v-model="businessDetails.phone" class="w-full" placeholder="Enter phone number" />
+                                    </div>
+                                </div>
+
+                                <div class="col-12 md:col-6">
+                                    <div class="field">
+                                        <label for="email" class="font-medium">Business Email</label>
+                                        <InputText id="email" v-model="businessDetails.email" type="email" class="w-full" placeholder="Enter email address" />
+                                    </div>
+                                </div>
+
+                                <div class="col-12 md:col-6">
+                                    <div class="field">
+                                        <label for="website" class="font-medium">Website</label>
+                                        <InputText id="website" v-model="businessDetails.website" class="w-full" placeholder="https://example.com" />
+                                    </div>
+                                </div>
+
+                                <div class="col-12 md:col-6">
+                                    <div class="field">
+                                        <label for="address" class="font-medium">Physical Address</label>
+                                        <Textarea id="address" v-model="businessDetails.address" rows="2" class="w-full" placeholder="Enter business address" />
                                     </div>
                                 </div>
 
@@ -525,33 +496,7 @@ async function loadBranches() {
                                     </div>
                                 </div>
 
-                                <div class="col-12 md:col-6">
-                                    <div class="field">
-                                        <label class="font-medium">Business Logo</label>
-                                        <div class="flex flex-column gap-2">
-                                            <div v-if="businessDetails.logo" class="flex align-items-center gap-3">
-                                                <img :src="logoPreview" class="w-10rem border-round" alt="Business Logo" />
-                                                <Button icon="pi pi-trash" severity="danger" text rounded @click="removeLogo" v-tooltip.top="'Remove logo'" />
-                                            </div>
-                                            <FileUpload mode="basic" name="logo" url="/upload" accept="image/*" :maxFileSize="2000000" @upload="onLogoUpload" :auto="true" chooseLabel="Upload Logo" class="w-full" />
-                                        </div>
-                                        <small class="text-gray-500">Recommended size: 300x100px</small>
-                                    </div>
-                                </div>
-
-                                <div class="col-12 md:col-6">
-                                    <div class="field">
-                                        <label class="font-medium">Watermark Logo</label>
-                                        <div class="flex flex-column gap-2">
-                                            <div v-if="businessDetails.watermarklogo" class="flex align-items-center gap-3">
-                                                <img :src="watermarkPreview" class="w-10rem border-round" alt="Watermark Logo" />
-                                                <Button icon="pi pi-trash" severity="danger" text rounded @click="removeWatermark" v-tooltip.top="'Remove watermark'" />
-                                            </div>
-                                            <FileUpload mode="basic" name="watermarklogo" url="/upload" accept="image/*" :maxFileSize="2000000" @upload="onWatermarkUpload" :auto="true" chooseLabel="Upload Watermark" class="w-full" />
-                                        </div>
-                                        <small class="text-gray-500">Will appear on documents and reports</small>
-                                    </div>
-                                </div>
+                                <!-- Logo uploads moved to Look & Feel settings -->
 
                                 <div class="col-12">
                                     <div class="flex justify-content-end gap-3 mt-4">
@@ -732,10 +677,7 @@ async function loadBranches() {
                         </div>
                     </TabPanel>
 
-                    <!-- Branding Settings Tab -->
-                    <TabPanel header="Branding & Theme">
-                        <BrandingSettings @settings-saved="onBrandingSettingsSaved" />
-                    </TabPanel>
+                    <!-- Branding removed - now in Look & Feel settings -->
                 </TabView>
             </div>
         </div>

@@ -6,6 +6,7 @@ import { computed, onMounted, reactive, ref } from 'vue';
 //import AddTransfer from '@/components/inventory/AddTransfer.vue'
 import { inventoryService } from '@/services/inventoryService';
 import { formatCurrency } from '@/utils/formatters.js';
+import { formatCurrency, formatDate } from '@/utils/formatters';
 
 const { showToast } = useToast();
 const confirm = useConfirm();
@@ -45,11 +46,6 @@ const statusOptions = [
 
 // Breadcrumb
 const breadcrumbHome = { icon: 'pi pi-home', to: '/' };
-const breadcrumbItems = ref([
-    { label: 'Inventory', to: '/inventory' },
-    { label: 'Stock Transfers', to: '/inventory/stock-transfers' }
-]);
-
 // Computed
 const filteredTransfers = computed(() => {
     let filtered = transfers.value;
@@ -214,12 +210,6 @@ const getStatusSeverity = (status) => {
     }
 };
 
-const formatDate = (dateString) => {
-    if (!dateString) return '';
-    const date = new Date(dateString);
-    return date.toLocaleDateString();
-};
-
 const formatDateForAPI = (date) => {
     if (!date) return '';
     return new Date(date).toISOString().split('T')[0];
@@ -243,8 +233,6 @@ onMounted(() => {
 <template>
     <div class="stock-transfers">
         <!-- Breadcrumb -->
-        <Breadcrumb :home="breadcrumbHome" :model="breadcrumbItems" />
-
         <!-- Header and Actions -->
         <div class="flex flex-wrap justify-between items-center mb-4 gap-4">
             <div class="flex items-center gap-2">

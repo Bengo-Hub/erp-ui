@@ -8,7 +8,7 @@ import StockMovements from '@/components/inventory/StockMovements.vue';
 import StockReconciliation from '@/components/inventory/StockReconciliation.vue';
 import StockValuation from '@/components/inventory/StockValuation.vue';
 import { coreService } from '@/services/coreService.js';
-import { EcommerceService } from '@/services/EcommerceService.js';
+import { ecommerceService } from '@/services/ecommerce/ecommerceService';
 import { inventoryService } from '@/services/inventoryService.js';
 import { formatCurrency } from '@/utils/formatters.js';
 
@@ -83,7 +83,7 @@ const fetchBranches = async () => {
 
 const fetchCategories = async () => {
     try {
-        const response = await EcommerceService.getMainCategories();
+        const response = await ecommerceService.getMainCategories();
         categories.value = response.data.results;
     } catch (error) {
         console.error('Error fetching categories:', error);

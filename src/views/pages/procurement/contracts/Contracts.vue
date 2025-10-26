@@ -53,7 +53,6 @@
 
 <script setup>
 import { ref, onMounted, h } from 'vue';
-import Button from 'primevue/button';
 import procurementService from '@/services/procurementService';
 
 const contracts = ref([]);

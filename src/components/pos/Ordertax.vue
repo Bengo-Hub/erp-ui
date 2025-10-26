@@ -1,8 +1,5 @@
 <script setup>
 import axios from 'axios';
-import Button from 'primevue/button';
-import Card from 'primevue/card';
-import MultiSelect from 'primevue/multiselect';
 import { useToast } from 'primevue/usetoast';
 import { onMounted, ref } from 'vue';
 

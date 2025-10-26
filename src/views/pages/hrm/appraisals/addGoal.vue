@@ -1,7 +1,6 @@
 <script setup>
 import { useHrmFilters } from '@/composables/useHrmFilters';
 import { useToast } from '@/composables/useToast';
-import Textarea from 'primevue/textarea';
 import { ref } from 'vue';
 
 // Reactive variables

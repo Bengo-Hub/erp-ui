@@ -2,8 +2,6 @@
 import { useAppraisalData } from '@/composables/useAppraisalData';
 import { useToast } from '@/composables/useToast';
 import { appraisalService } from '@/services/hrm/appraisalService';
-import Button from 'primevue/button';
-import Checkbox from 'primevue/checkbox';
 import { onMounted, ref } from 'vue';
 import NewTemplate from './template180.vue';
 

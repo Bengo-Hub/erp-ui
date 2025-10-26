@@ -298,14 +298,6 @@ import { imageOptimizationService } from '@/services/imageOptimizationService';
 import { onMounted, ref } from 'vue';
 
 // PrimeVue components
-import Button from 'primevue/button';
-import Dropdown from 'primevue/dropdown';
-import FileUpload from 'primevue/fileupload';
-import ProgressSpinner from 'primevue/progressspinner';
-import Slider from 'primevue/slider';
-import Tag from 'primevue/tag';
-import Textarea from 'primevue/textarea';
-
 const { showToast } = useToast();
 
 // Reactive data

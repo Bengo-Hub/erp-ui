@@ -1,8 +1,9 @@
 <script setup>
 import VoucherForm from '@/components/finance/vouchers/VoucherForm.vue';
 import { useToast } from '@/composables/useToast';
-import { financeService } from '@/services/FinanceService';
+import { financeService } from '@/services/finance/financeService';
 import { onMounted, reactive, ref } from 'vue';
+import { formatCurrency, formatDate } from '@/utils/formatters';
 
 const { showToast } = useToast();
 
@@ -152,11 +153,6 @@ const getStatusSeverity = (status) => {
         posted: 'info'
     };
     return severityMap[status] || 'info';
-};
-
-const formatDate = (date) => {
-    if (!date) return '';
-    return new Date(date).toLocaleDateString('en-GB');
 };
 
 const formatCurrency = (amount) => {

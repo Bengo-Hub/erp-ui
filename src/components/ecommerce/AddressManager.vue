@@ -2,7 +2,7 @@
 import { ref, onMounted, computed } from 'vue';
 import { useConfirm } from 'primevue/useconfirm';
 import { useToast } from 'primevue/usetoast';
-import { EcommerceService } from '@/services/EcommerceService';
+import { ecommerceService } from '@/services/ecommerce/ecommerceService';
 
 export default {
     name: 'AddressManager',
@@ -67,11 +67,11 @@ export default {
                 let response;
 
                 if (props.addressType === 'shipping') {
-                    response = await EcommerceService.getShippingAddresses();
+                    response = await ecommerceService.getShippingAddresses();
                 } else if (props.addressType === 'billing') {
-                    response = await EcommerceService.getBillingAddresses();
+                    response = await ecommerceService.getBillingAddresses();
                 } else {
-                    response = await EcommerceService.getUserAddresses();
+                    response = await ecommerceService.getUserAddresses();
                 }
 
                 addresses.value = response.data || [];
@@ -89,7 +89,7 @@ export default {
         // Fetches all pickup stations
         const fetchPickupStations = async () => {
             try {
-                const response = await EcommerceService.getPickupStations();
+                const response = await ecommerceService.getPickupStations();
                 pickupStations.value = response.data || [];
             } catch (error) {
                 console.error('Error fetching pickup stations:', error);
@@ -119,7 +119,7 @@ export default {
             try {
                 if (editingAddress.value) {
                     // Update existing address
-                    await EcommerceService.updateAddress(editingAddress.value.id, formData.value);
+                    await ecommerceService.updateAddress(editingAddress.value.id, formData.value);
                     toast.add({
                         severity: 'success',
                         summary: 'Success',
@@ -128,7 +128,7 @@ export default {
                     });
                 } else {
                     // Create new address
-                    await EcommerceService.saveAddress(formData.value);
+                    await ecommerceService.saveAddress(formData.value);
                     toast.add({
                         severity: 'success',
                         summary: 'Success',
@@ -177,7 +177,7 @@ export default {
         // Delete an address
         const deleteAddress = async (address) => {
             try {
-                await EcommerceService.deleteAddress(address.id);
+                await ecommerceService.deleteAddress(address.id);
 
                 // If the deleted address was selected, clear selection
                 if (props.modelValue && props.modelValue.id === address.id) {
@@ -206,7 +206,7 @@ export default {
         // Set an address as the default shipping address
         const setAsDefaultShipping = async (address) => {
             try {
-                await EcommerceService.setDefaultShippingAddress(address.id);
+                await ecommerceService.setDefaultShippingAddress(address.id);
                 toast.add({
                     severity: 'success',
                     summary: 'Success',
@@ -228,7 +228,7 @@ export default {
         // Set an address as the default billing address
         const setAsDefaultBilling = async (address) => {
             try {
-                await EcommerceService.setDefaultBillingAddress(address.id);
+                await ecommerceService.setDefaultBillingAddress(address.id);
                 toast.add({
                     severity: 'success',
                     summary: 'Success',

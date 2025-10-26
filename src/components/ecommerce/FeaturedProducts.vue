@@ -1,7 +1,7 @@
 <script>
 import { ref, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
-import { EcommerceService } from '@/services/EcommerceService';
+import { ecommerceService } from '@/services/ecommerce/ecommerceService';
 import ProductCard from '@/components/ecommerce/ProductCard.vue';
 
 export default {
@@ -62,7 +62,7 @@ export default {
                     params.sort = props.sort;
                 }
 
-                const response = await EcommerceService.getProducts(params);
+                const response = await ecommerceService.getProducts(params);
                 products.value = response.data || [];
 
                 // If API returns no products, generate mock data for demo

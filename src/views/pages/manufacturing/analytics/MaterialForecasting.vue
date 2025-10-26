@@ -11,8 +11,6 @@ const router = useRouter();
 
 // Breadcrumb
 const breadcrumbHome = { icon: 'pi pi-home', to: '/' };
-const breadcrumbItems = ref([{ label: 'Manufacturing', to: '/manufacturing' }, { label: 'Analytics', to: '/manufacturing/analytics' }, { label: 'Material Forecasting' }]);
-
 // Data states
 const loading = ref(true);
 const generating = ref(false);

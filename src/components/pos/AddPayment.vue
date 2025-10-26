@@ -1,6 +1,6 @@
 <script setup>
 import Spinner from '@/components/ui/Spinner.vue';
-import { POSService } from '@/services/POSService';
+import { POSService } from '@/services/ecommerce/posService';
 import { formatCurrency, formatDate } from '@/utils/formatters';
 import { useToast } from 'primevue/usetoast';
 import { computed, onMounted, ref } from 'vue';
@@ -97,7 +97,7 @@ async function processPayment() {
             notes: notes.value
         };
 
-        const response = await POSService.addPayment(sale.value.id, paymentMethod.value, paymentData);
+        const response = await posService.addPayment(sale.value.id, paymentMethod.value, paymentData);
 
         toast.add({
             severity: 'success',
@@ -149,7 +149,7 @@ async function processSplitPayment() {
             }
         }));
 
-        const response = await POSService.processSplitPayment('pos_sale', sale.value.id, { payments });
+        const response = await posService.processSplitPayment('pos_sale', sale.value.id, { payments });
 
         toast.add({
             severity: 'success',
@@ -189,7 +189,7 @@ async function fetchSaleDetails() {
         spinnerTitle.value = 'Loading sale details...';
 
         try {
-            const response = await POSService.getSale(props.saleId);
+            const response = await posService.getSale(props.saleId);
             sale.value = response.data;
         } catch (error) {
             toast.add({
@@ -213,7 +213,7 @@ async function fetchPaymentHistory() {
     spinnerTitle.value = 'Loading payment history...';
 
     try {
-        const response = await POSService.getSalePayments(sale.value.id);
+        const response = await posService.getSalePayments(sale.value.id);
         paymentHistory.value = response.data || [];
     } catch (error) {
         toast.add({

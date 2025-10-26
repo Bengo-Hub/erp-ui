@@ -4,7 +4,7 @@ import mpesaicon from '@/assets/img/shop/mpesa.png';
 import paypalicon from '@/assets/img/shop/paypal.png';
 import visaicon from '@/assets/img/shop/visa.png';
 import MpesaPayment from '@/components/payment/MpesaPayment.vue';
-import { EcommerceService } from '@/services/EcommerceService';
+import { ecommerceService } from '@/services/ecommerce/ecommerceService';
 import { useVuelidate } from '@vuelidate/core';
 import { helpers, minLength, required } from '@vuelidate/validators';
 import { useToast } from 'primevue/usetoast';
@@ -96,7 +96,7 @@ const v$ = useVuelidate(rules, { mpesaDetails, cardDetails, termsAccepted });
 // Load supported payment methods from backend
 const loadPaymentMethods = async () => {
     try {
-        const res = await EcommerceService.getPaymentMethods();
+        const res = await ecommerceService.getPaymentMethods();
         const methods = res.data?.results || res.data || [];
         paymentMethods.value = methods.map((m) => {
             const id = (m.code || m.id || '').toLowerCase();
@@ -135,7 +135,7 @@ const fetchBankDetails = async () => {
     try {
         loadingBankDetails.value = true;
         // Call the API to fetch bank payment details
-        const response = await EcommerceService.getBankPaymentDetails();
+        const response = await ecommerceService.getBankPaymentDetails();
         if (response.data) {
             bankDetails.value = response.data;
         } else {

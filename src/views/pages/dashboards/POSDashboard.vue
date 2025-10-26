@@ -1,332 +1,300 @@
 <script setup>
-import { POSService } from '@/services/POSService';
-import { formatDate } from '@/utils/dateUtils';
-import { formatCurrency } from '@/utils/formatters';
-import { onMounted, ref } from 'vue';
-// Initialize the exporting module
-//exportingInit(Highcharts);
+import { useChartOptions } from '@/composables/useChartOptions';
+import { useDashboardState } from '@/composables/useDashboardState';
+import { useToast } from '@/composables/useToast';
+import { dashboardService } from '@/services/shared/dashboardService';
+import { PERIOD_OPTIONS } from '@/utils/constants';
+import Chart from 'primevue/chart';
+import { onMounted, ref, watch } from 'vue';
+import { useRouter } from 'vue-router';
 
-// Reactive data
-const dateRange = ref(null);
-const stats = ref({});
-const salesLast30DaysChartOptions = ref({});
-const salesCurrentYearChartOptions = ref({});
-const salesPaymentDue = ref([]);
-const productStockAlert = ref([]);
-const salesOrders = ref([]);
-const pendingShipments = ref([]);
-const chart1Data = ref([]);
-const chartOptions = ref({});
-const chart2Data = ref([]);
-const isLoading = ref(true);
-const hasError = ref(false);
+const router = useRouter();
+const { showToast } = useToast();
+const { currencyChartOptions, barChartOptions } = useChartOptions();
+const { state, executeDataFetch } = useDashboardState();
 
-onMounted(() => {
-    fetchDashboardData();
+const loading = ref(false);
+const period = ref('month');
+const periodOptions = [...PERIOD_OPTIONS, { label: 'Custom Date', value: 'custom' }];
+
+// POS dashboard data
+const dashboardData = ref({
+    total_sales: 0,
+    total_transactions: 0,
+    average_transaction_value: 0,
+    product_sold: 0,
+    discount_given: 0,
+    payment_methods: [],
+    sales_by_time: [],
+    top_products: [],
+    top_sales_staff: [],
+    recent_transactions: []
 });
-const formatCamelCase = (str) => {
-    return str
-        .replace(/_/g, ' ') // Replace underscores with spaces
-        .toLowerCase() // Convert to lowercase
-        .replace(/\b\w/g, (char) => char.toUpperCase()); // Capitalize first letter of each word
+
+// Chart data
+const paymentMethodsChartData = ref(null);
+const salesByTimeChartData = ref(null);
+const topProductsChartData = ref(null);
+const topStaffChartData = ref(null);
+
+// Load dashboard data
+const loadDashboardData = async () => {
+    loading.value = true;
+
+    const result = await executeDataFetch(
+        () => dashboardService.getPOSDashboardData(period.value),
+        null,
+        `POS data updated for ${periodOptions.find((p) => p.value === period.value)?.label}`
+    );
+
+    if (result) {
+        dashboardData.value = result.data || result;
+        processChartData();
+    }
+
+    loading.value = false;
 };
-// Fetch dashboard data
-const fetchDashboardData = async () => {
-    isLoading.value = true;
-    hasError.value = false;
-    try {
-        const params = {
-            start_date: dateRange.value ? dateRange.value[0].toISOString().split('T')[0] : null,
-            end_date: dateRange.value ? dateRange.value[1].toISOString().split('T')[0] : null
+
+// Process chart data for visualization
+const processChartData = () => {
+    // Payment methods chart
+    if (dashboardData.value.payment_methods?.length > 0) {
+        paymentMethodsChartData.value = {
+            labels: dashboardData.value.payment_methods.map((item) => item.method),
+            datasets: [
+                {
+                    data: dashboardData.value.payment_methods.map((item) => item.count),
+                    backgroundColor: ['#42A5F5', '#66BB6A', '#FFA726', '#EC407A', '#AB47BC']
+                }
+            ]
         };
+    }
 
-        const response = await POSService.getDashboardStats(params);
-        const data = response.data;
+    // Sales by time chart
+    if (dashboardData.value.sales_by_time?.length > 0) {
+        salesByTimeChartData.value = {
+            labels: dashboardData.value.sales_by_time.map((item) => item.time),
+            datasets: [
+                {
+                    label: 'Sales',
+                    data: dashboardData.value.sales_by_time.map((item) => item.amount),
+                    borderColor: '#42A5F5',
+                    backgroundColor: 'rgba(66, 165, 245, 0.1)',
+                    tension: 0.4
+                }
+            ]
+        };
+    }
 
-        // Update reactive data with safe fallbacks
-        stats.value = data.stats || {};
-        salesPaymentDue.value = data.sales_payment_due || [];
-        productStockAlert.value = data.product_stock_alert || [];
-        salesOrders.value = data.sales_orders || [];
-        pendingShipments.value = data.pending_shipments || [];
+    // Top products chart
+    if (dashboardData.value.top_products?.length > 0) {
+        topProductsChartData.value = {
+            labels: dashboardData.value.top_products.map((item) => item.name),
+            datasets: [
+                {
+                    label: 'Quantity Sold',
+                    data: dashboardData.value.top_products.map((item) => item.quantity_sold),
+                    backgroundColor: '#66BB6A',
+                    borderColor: '#4CAF50',
+                    borderWidth: 1
+                }
+            ]
+        };
+    }
 
-        const last_30_days_dates = Object.keys(data.sales_last_30_days || {});
-        const current_year_dates = Object.keys(data.sales_current_year || {});
-
-        // Update charts with safe fallbacks
-        chart1Data.value = setChartData(Object.values(data.sales_last_30_days || {}), last_30_days_dates, 'Last 30 Days');
-        chart2Data.value = setChartData(Object.values(data.sales_current_year || {}), current_year_dates, 'Current Financial Year');
-        chartOptions.value = setChartOptions();
-        // Chart options
-    } catch (error) {
-        console.error('Error fetching dashboard data:', error);
-        hasError.value = true;
-    } finally {
-        isLoading.value = false;
+    // Top staff chart
+    if (dashboardData.value.top_sales_staff?.length > 0) {
+        topStaffChartData.value = {
+            labels: dashboardData.value.top_sales_staff.map((item) => item.name),
+            datasets: [
+                {
+                    label: 'Sales',
+                    data: dashboardData.value.top_sales_staff.map((item) => item.total_sales),
+                    backgroundColor: '#FFA726',
+                    borderColor: '#FB8C00',
+                    borderWidth: 1
+                }
+            ]
+        };
     }
 };
-//chart 1
-const setChartData = (data, labels, title) => {
-    const documentStyle = getComputedStyle(document.documentElement);
 
-    return {
-        labels: labels,
-        datasets: [
-            {
-                label: title,
-                fill: false,
-                borderColor: documentStyle.getPropertyValue('--p-cyan-500'),
-                yAxisID: 'y',
-                tension: 0.4,
-                data: data
-            }
-        ]
-    };
+// Navigation functions
+const navigateToProducts = () => {
+    router.push('/ecommerce/products');
 };
-const setChartOptions = () => {
-    const documentStyle = getComputedStyle(document.documentElement);
-    const textColor = documentStyle.getPropertyValue('--p-text-color');
-    const textColorSecondary = documentStyle.getPropertyValue('--p-text-muted-color');
-    const surfaceBorder = documentStyle.getPropertyValue('--p-content-border-color');
-    return {
-        stacked: false,
-        maintainAspectRatio: false,
-        aspectRatio: 0.6,
-        plugins: {
-            legend: {
-                labels: {
-                    color: textColor
-                }
-            }
-        },
-        scales: {
-            x: {
-                ticks: {
-                    color: textColorSecondary
-                },
-                grid: {
-                    color: surfaceBorder
-                }
-            },
-            y: {
-                type: 'linear',
-                display: true,
-                position: 'left',
-                ticks: {
-                    color: textColorSecondary
-                },
-                grid: {
-                    color: surfaceBorder
-                }
-            },
-            y1: {
-                type: 'linear',
-                display: true,
-                position: 'right',
-                ticks: {
-                    color: textColorSecondary
-                },
-                grid: {
-                    drawOnChartArea: false,
-                    color: surfaceBorder
-                }
-            }
-        }
-    };
+
+const navigateToTransactions = () => {
+    router.push('/pos/transactions');
 };
-// Function to return a matching icon
-const getIcon = (key) => {
-    const icons = {
-        total_sales: 'pi pi-shopping-cart',
-        net_sales: 'pi pi-chart-line',
-        invoice_due: 'pi pi-credit-card',
-        total_sell_retrn: 'pi pi-refresh',
-        total_purchase: 'pi pi-truck',
-        purchase_due: 'pi pi-money-bill',
-        total_purchase_return: 'pi pi-undo',
-        total_expense: 'pi pi-wallet'
-    };
-    return icons[key] || 'pi pi-info-circle';
+
+const navigateToPaymentMethods = () => {
+    router.push('/pos/payment-methods');
 };
+
+const navigateToReports = () => {
+    router.push('/pos/reports');
+};
+
+// Watch for period changes
+watch(period, () => {
+    loadDashboardData();
+});
+
+onMounted(() => {
+    loadDashboardData();
+});
 </script>
 
 <template>
-    <div class="p-4">
-        <!-- Date Filter -->
-        <div class="flex justify-center font-bold bg-primary text text-white h-10">
-            <h2 class="text-xl primary-text text-white pt-2">POS DASHBOARD</h2>
+    <div class="pos-dashboard">
+        <div class="flex justify-between items-center mb-6">
+            <h1 class="text-3xl font-bold text-gray-900">POS Dashboard</h1>
+            <Dropdown v-model="period" :options="periodOptions" option-label="label" option-value="value" placeholder="Select Period" class="w-48" />
         </div>
 
-        <!-- Toolbar Section -->
-        <Toolbar class="mb-0">
-            <template #end>
-                <div class="mb-0">
-                    <label for="dateRange" class="block text-sm font-medium text-gray-700">Filter By Date Range</label>
-                    <Calendar v-model="dateRange" selectionMode="range" :manualInput="false" class="w-full md:w-48" @date-select="fetchDashboardData" />
-                </div>
-            </template>
-        </Toolbar>
-
-        <!-- Loading/Error States -->
-        <div v-if="isLoading" class="text-center py-8">
-            <div class="flex items-center justify-center">
-                <i class="pi pi-spin pi-spinner text-4xl text-blue-500 mr-3"></i>
-                <p class="text-lg">Loading dashboard data...</p>
-            </div>
+        <div v-if="loading" class="flex justify-center items-center h-64">
+            <ProgressSpinner />
         </div>
 
-        <div v-if="hasError" class="text-center py-8">
-            <div class="bg-red-50 border border-red-200 rounded-lg p-6 max-w-md mx-auto">
-                <i class="pi pi-exclamation-triangle text-4xl text-red-500 mb-4"></i>
-                <p class="text-red-700 mb-4">Failed to load dashboard data. Please try again.</p>
-                <Button label="Retry" icon="pi pi-refresh" @click="fetchDashboardData" severity="danger" />
-            </div>
-        </div>
-
-        <!-- Section 1: Stats -->
-        <div class="p-4">
-            <!-- Section 1: Stats -->
-            <div class="card bg-white p-4 rounded-lg shadow-md justify-center items-center">
-                <p class="text-lg font-bold justify-center items-center">POS STATS</p>
-                <hr class="my-2" />
-                <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
-                    <div v-for="(value, key) in stats" :key="key" class="card p-4 shadow-md flex items-center space-x-4">
-                        <!-- Icon Container -->
-                        <div class="w-14 h-14 flex items-center justify-center rounded-full bg-blue-200 text-blue-600 text-xl">
-                            <!-- Dynamic Icon Based on Key -->
-                            <i :class="getIcon(key)" class="text-2xl" />
+        <div v-else class="space-y-6">
+            <!-- Key Metrics Cards -->
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                <Card class="bg-gradient-to-r from-blue-500 to-blue-600 text-white">
+                    <template #title>
+                        <div class="flex items-center justify-between">
+                            <span>Total Sales</span>
+                            <i class="pi pi-dollar text-2xl opacity-75"></i>
                         </div>
-
-                        <!-- Content -->
-                        <div>
-                            <h3 class="text-lg font-semibold">{{ formatCamelCase(key) }}</h3>
-                            <p class="text-2xl font-bold">{{ formatCurrency(value) }}</p>
+                    </template>
+                    <template #content>
+                        <div class="text-3xl font-bold">
+                            {{ new Intl.NumberFormat('en-KE', { style: 'currency', currency: 'KES' }).format(dashboardData.total_sales) }}
                         </div>
+                    </template>
+                </Card>
+
+                <Card class="bg-gradient-to-r from-green-500 to-green-600 text-white">
+                    <template #title>
+                        <div class="flex items-center justify-between">
+                            <span>Transactions</span>
+                            <i class="pi pi-shopping-cart text-2xl opacity-75"></i>
+                        </div>
+                    </template>
+                    <template #content>
+                        <div class="text-3xl font-bold">
+                            {{ dashboardData.total_transactions.toLocaleString() }}
+                        </div>
+                    </template>
+                </Card>
+
+                <Card class="bg-gradient-to-r from-orange-500 to-orange-600 text-white">
+                    <template #title>
+                        <div class="flex items-center justify-between">
+                            <span>Avg Transaction</span>
+                            <i class="pi pi-chart-bar text-2xl opacity-75"></i>
+                        </div>
+                    </template>
+                    <template #content>
+                        <div class="text-3xl font-bold">
+                            {{ new Intl.NumberFormat('en-KE', { style: 'currency', currency: 'KES' }).format(dashboardData.average_transaction_value) }}
+                        </div>
+                    </template>
+                </Card>
+
+                <Card class="bg-gradient-to-r from-purple-500 to-purple-600 text-white">
+                    <template #title>
+                        <div class="flex items-center justify-between">
+                            <span>Discounts Given</span>
+                            <i class="pi pi-percentage text-2xl opacity-75"></i>
+                        </div>
+                    </template>
+                    <template #content>
+                        <div class="text-3xl font-bold">
+                            {{ new Intl.NumberFormat('en-KE', { style: 'currency', currency: 'KES' }).format(dashboardData.discount_given) }}
+                        </div>
+                    </template>
+                </Card>
+            </div>
+
+            <!-- Charts Row -->
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <!-- Payment Methods -->
+                <Card>
+                    <template #title>Payment Methods</template>
+                    <template #content>
+                        <div class="h-80">
+                            <Chart v-if="paymentMethodsChartData" type="pie" :data="paymentMethodsChartData" :options="barChartOptions" class="h-full" />
+                            <div v-else class="flex items-center justify-center h-full text-gray-500">No payment data available</div>
+                        </div>
+                    </template>
+                </Card>
+
+                <!-- Sales by Time -->
+                <Card>
+                    <template #title>Sales by Time of Day</template>
+                    <template #content>
+                        <div class="h-80">
+                            <Chart v-if="salesByTimeChartData" type="line" :data="salesByTimeChartData" :options="currencyChartOptions" class="h-full" />
+                            <div v-else class="flex items-center justify-center h-full text-gray-500">No time-based sales data available</div>
+                        </div>
+                    </template>
+                </Card>
+            </div>
+
+            <!-- Additional Charts Row -->
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <!-- Top Products -->
+                <Card>
+                    <template #title>Top Selling Products</template>
+                    <template #content>
+                        <div class="h-80">
+                            <Chart v-if="topProductsChartData" type="bar" :data="topProductsChartData" :options="barChartOptions" class="h-full" />
+                            <div v-else class="flex items-center justify-center h-full text-gray-500">No product data available</div>
+                        </div>
+                    </template>
+                </Card>
+
+                <!-- Top Sales Staff -->
+                <Card>
+                    <template #title>Top Sales Staff</template>
+                    <template #content>
+                        <div class="h-80">
+                            <Chart v-if="topStaffChartData" type="bar" :data="topStaffChartData" :options="currencyChartOptions" class="h-full" />
+                            <div v-else class="flex items-center justify-center h-full text-gray-500">No staff sales data available</div>
+                        </div>
+                    </template>
+                </Card>
+            </div>
+
+            <!-- Quick Actions -->
+            <Card>
+                <template #title>Quick Actions</template>
+                <template #content>
+                    <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                        <Button label="Products" icon="pi pi-box" class="p-button-outlined" @click="navigateToProducts" />
+                        <Button label="Transactions" icon="pi pi-list" class="p-button-outlined" @click="navigateToTransactions" />
+                        <Button label="Payment Methods" icon="pi pi-credit-card" class="p-button-outlined" @click="navigateToPaymentMethods" />
+                        <Button label="Reports" icon="pi pi-chart-bar" class="p-button-outlined" @click="navigateToReports" />
                     </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Section 2: Sales Last 30 Days -->
-        <div class="mb-8">
-            <h2 class="text-xl font-bold mb-4">Sales Last 30 Days</h2>
-            <Chart type="line" :data="chart1Data" :options="chartOptions" class="h-[30rem]" />
-        </div>
-
-        <!-- Section 3: Sales Current Financial Year -->
-        <div class="mb-8">
-            <h2 class="text-xl font-bold mb-4">Sales Current Financial Year</h2>
-            <Chart type="line" :data="chart2Data" :options="chartOptions" class="h-[30rem]" />
-        </div>
-
-        <!-- Section 4: Sales Payment Due -->
-        <div class="mb-8">
-            <h2 class="text-xl font-bold mb-4">Sales Payment Due</h2>
-            <DataTable :value="salesPaymentDue" class="p-datatable-sm">
-                <Column field="customer__name" header="Customer"></Column>
-                <Column field="sale_id" header="Invoice No."></Column>
-                <Column field="balance_due" header="Due Amount"></Column>
-            </DataTable>
-        </div>
-
-        <!-- Section 5: Product Stock Alert -->
-        <div class="mb-8">
-            <h2 class="text-xl font-bold mb-4">Product Stock Alert</h2>
-            <DataTable :value="productStockAlert" class="p-datatable-sm">
-                <Column field="product__name" header="Product"></Column>
-                <Column field="location__name" header="Location"></Column>
-                <Column field="stock_level" header="Current Stock"></Column>
-            </DataTable>
-        </div>
-
-        <!-- Section 6: Sales Orders -->
-        <div class="mb-8">
-            <h2 class="text-xl font-bold mb-4">Sales Orders</h2>
-            <DataTable :value="salesOrders" class="p-datatable-sm">
-                <Column field="date_added" header="Date">
-                    <template #body="{ data }">
-                        {{ formatDate(data.date_added) }}
-                    </template>
-                </Column>
-                <Column field="sale_id" header="Order No."></Column>
-                <Column field="customer__name" header="Customer Name"></Column>
-                <Column field="customer__phone" header="Contact Number"></Column>
-                <Column field="register__branch__name" header="Branch"></Column>
-                <Column field="status" header="Status"></Column>
-                <Column field="shippings__status" header="Shipping Status"></Column>
-                <Column field="shippings__quantity_remaining" header="Quantity Remaining"></Column>
-                <Column field="attendant__username" header="Added By"></Column>
-            </DataTable>
-        </div>
-
-        <!-- Section 7: Pending Shipments -->
-        <div class="mb-8">
-            <h2 class="text-xl font-bold mb-4">Pending Shipments</h2>
-            <DataTable :value="pendingShipments" class="p-datatable-sm">
-                <Column field="created_at" header="Date">
-                    <template #body="{ data }">
-                        {{ formatDate(data.created_at) }}
-                    </template>
-                </Column>
-                <Column field="sale__sale_id" header="Invoice No."></Column>
-                <Column field="sale__customer__name" header="Customer Name"></Column>
-                <Column field="sale__customer__phone" header="Contact Number"></Column>
-                <Column field="sale__register__branch__name" header="Branch"></Column>
-                <Column field="status" header="Shipping Status"></Column>
-                <Column field="sale__payment_status" header="Payment Status"></Column>
-            </DataTable>
+                </template>
+            </Card>
         </div>
     </div>
 </template>
 
-<style>
-@import 'tailwindcss/base';
-@import 'tailwindcss/components';
-@import 'tailwindcss/utilities';
-.highcharts-figure,
-.highcharts-data-table table {
-    min-width: 360px;
-    max-width: 800px;
-    margin: 1em auto;
+<style scoped>
+.pos-dashboard {
+    padding: 1.5rem;
 }
 
-.highcharts-data-table table {
-    font-family: Verdana, sans-serif;
-    border-collapse: collapse;
-    border: 1px solid #ebebeb;
-    margin: 10px auto;
-    text-align: center;
-    width: 100%;
-    max-width: 500px;
+:deep(.p-card) {
+    box-shadow:
+        0 4px 6px -1px rgba(0, 0, 0, 0.1),
+        0 2px 4px -1px rgba(0, 0, 0, 0.06);
 }
 
-.highcharts-data-table caption {
-    padding: 1em 0;
-    font-size: 1.2em;
-    color: #555;
-}
-
-.highcharts-data-table th {
-    font-weight: 600;
-    padding: 0.5em;
-}
-
-.highcharts-data-table td,
-.highcharts-data-table th,
-.highcharts-data-table caption {
-    padding: 0.5em;
-}
-
-.highcharts-data-table thead tr,
-.highcharts-data-table tr:nth-child(even) {
-    background: #f8f8f8;
-}
-
-.highcharts-data-table tr:hover {
-    background: #f1f7ff;
-}
-
-.highcharts-description {
-    margin: 0.3rem 10px;
+:deep(.p-card.p-card--gradient) {
+    background: linear-gradient(135deg, var(--primary-color) 0%, var(--primary-600) 100%);
 }
 </style>

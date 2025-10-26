@@ -1,6 +1,6 @@
 <script setup>
 import { useToast } from '@/composables/useToast';
-import { coreService } from '@/services/coreService';
+import { coreService } from '@/services/shared/coreService';
 import { employeeService } from '@/services/hrm/employeeService';
 import { payrollService } from '@/services/hrm/payrollService';
 import { FilterMatchMode } from '@primevue/core/api';

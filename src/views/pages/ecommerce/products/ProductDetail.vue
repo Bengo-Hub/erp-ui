@@ -2,15 +2,14 @@
 import defaultImage from '@/assets/images/products/default.png';
 import LocationSelector from '@/components/common/LocationSelector.vue';
 import { useToast } from '@/composables/useToast';
-import { EcommerceService } from '@/services/EcommerceService';
+import { ecommerceService } from '@/services/ecommerce/ecommerceService';
 import DOMPurify from 'dompurify';
 import { useConfirm } from 'primevue/useconfirm';
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
+import { formatCurrency, formatDate } from '@/utils/formatters';
 
 // PrimeVue components
-import Dropdown from 'primevue/dropdown';
-
 // Component setup
 const route = useRoute();
 const router = useRouter();
@@ -151,7 +150,7 @@ async function fetchProductDetails() {
         const isNewView = !hasUserViewedProduct(route.params.id);
 
         // Get product details
-        const response = await EcommerceService.getProductById(route.params.id, { countView: isNewView });
+        const response = await ecommerceService.getProductById(route.params.id, { countView: isNewView });
         product.value = response.data;
         relatedProducts.value = response.data.related_products || [];
 
@@ -239,7 +238,7 @@ function trackProductView(productId) {
 
 async function checkFavoriteStatus() {
     try {
-        const response = await EcommerceService.getFavorites();
+        const response = await ecommerceService.getFavorites();
         if (response.data && response.data.results) {
             // Check if current product is in favorites
             isFavorite.value = response.data.results.some((fav) => fav.stock && fav.stock.id === product.value.id);
@@ -301,7 +300,7 @@ async function toggleFavorite() {
             isFavorite.value = false;
 
             // Remove from favorites
-            await EcommerceService.removeFromFavorites(product.value.id);
+            await ecommerceService.removeFromFavorites(product.value.id);
 
             showToast('success', 'Removed from Wishlist', `${productData.value.title} has been removed from your wishlist`, 3000);
         } else {
@@ -309,7 +308,7 @@ async function toggleFavorite() {
             isFavorite.value = true;
 
             // Add to favorites with correct stock_item_id
-            await EcommerceService.addToFavorites({ stock_item_id: product.value.id });
+            await ecommerceService.addToFavorites({ stock_item_id: product.value.id });
 
             showToast('success', 'Added to Wishlist', `${productData.value.title} has been added to your wishlist`, 3000);
         }
@@ -335,7 +334,7 @@ async function addToCart() {
         loading.value = true;
 
         // Add item to cart with correct stock_item_id (which is the product.id in this case)
-        await EcommerceService.addToCart({
+        await ecommerceService.addToCart({
             stock_item_id: product.value.id,
             quantity: quantity.value
         });
@@ -381,7 +380,7 @@ async function quickAddToCart(productItem) {
     if (!productItem || productItem.availability !== 'In Stock') return;
 
     try {
-        await EcommerceService.addToCart({
+        await ecommerceService.addToCart({
             stock_item_id: productItem.id,
             quantity: 1
         });

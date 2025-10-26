@@ -1,4 +1,5 @@
 import { usePermissions } from '@/composables/usePermissions';
+import { getDashboardRedirectPath } from '@/services/auth/permissionService';
 
 // Route permission configuration
 export const ROUTE_PERMISSIONS = {
@@ -208,6 +209,16 @@ export default function permissionMiddleware(to, from, next) {
         next();
         return;
     }
+    
+    // Get user from session storage for redirect logic
+    const getUserForRedirect = () => {
+        try {
+            const userStr = sessionStorage.getItem('user');
+            return userStr ? JSON.parse(userStr) : null;
+        } catch (e) {
+            return null;
+        }
+    };
 
     // Check if route requires permission
     if (to.meta && to.meta.permission) {
@@ -217,13 +228,29 @@ export default function permissionMiddleware(to, from, next) {
             if (hasPermission(requiredPermission)) {
                 next();
             } else {
-                next('/unauthorized');
+                // Redirect to user's appropriate dashboard instead of unauthorized page
+                const user = getUserForRedirect();
+                const redirectPath = user ? getDashboardRedirectPath(user) : '/ess';
+                // Prevent infinite redirect loop
+                if (to.path !== redirectPath) {
+                    next(redirectPath);
+                } else {
+                    next('/unauthorized');
+                }
             }
         } else if (Array.isArray(requiredPermission)) {
             if (hasAnyPermission(requiredPermission)) {
                 next();
             } else {
-                next('/unauthorized');
+                // Redirect to user's appropriate dashboard instead of unauthorized page
+                const user = getUserForRedirect();
+                const redirectPath = user ? getDashboardRedirectPath(user) : '/ess';
+                // Prevent infinite redirect loop
+                if (to.path !== redirectPath) {
+                    next(redirectPath);
+                } else {
+                    next('/unauthorized');
+                }
             }
         } else {
             next();
@@ -236,7 +263,15 @@ export default function permissionMiddleware(to, from, next) {
             if (hasAnyPermission(requiredPermissions)) {
                 next();
             } else {
-                next('/unauthorized');
+                // Redirect to user's appropriate dashboard instead of unauthorized page
+                const user = getUserForRedirect();
+                const redirectPath = user ? getDashboardRedirectPath(user) : '/ess';
+                // Prevent infinite redirect loop
+                if (to.path !== redirectPath) {
+                    next(redirectPath);
+                } else {
+                    next('/unauthorized');
+                }
             }
         } else {
             // If no specific permissions required, allow access

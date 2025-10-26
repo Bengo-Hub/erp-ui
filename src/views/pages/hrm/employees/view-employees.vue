@@ -3,16 +3,12 @@ import addEmployee from '@/components/hrm/employees/addEmployee.vue';
 import importEmployees from '@/components/hrm/employees/importEmployees.vue';
 import Spinner from '@/components/ui/Spinner.vue';
 import { useHrmFilters } from '@/composables/useHrmFilters';
+import { usePagination } from '@/composables/usePagination';
 import { useToast } from '@/composables/useToast';
 import { employeeService } from '@/services/hrm/employeeService';
 import { formatDate } from '@/utils/formatters';
 import { FilterMatchMode, FilterOperator } from '@primevue/core/api';
-import Dropdown from 'primevue/dropdown';
-import IconField from 'primevue/iconfield';
-import InputIcon from 'primevue/inputicon';
-import InputText from 'primevue/inputtext';
-import Toolbar from 'primevue/toolbar';
-import { nextTick, onMounted, onUnmounted, reactive, ref } from 'vue';
+import { nextTick, onMounted, onUnmounted, ref } from 'vue';
 import { useRoute } from 'vue-router';
 
 const isLoading = ref(false);
@@ -25,22 +21,36 @@ const route = useRoute();
 // Enhanced HRM Filters
 const { filters, departments, regions, projects, employmentTypes, contractStatuses, loadFilters, resetFilters, getFilterParams, hasActiveFilters, activeFilterCount } = useHrmFilters();
 
+// Enhanced Pagination with data accumulation
+const {
+    currentPage,
+    pageSize,
+    totalRecords,
+    allData: employees,
+    currentPageData,
+    paginationInfo,
+    updateData,
+    goToPage,
+    nextPage,
+    previousPage,
+    reset: resetPagination,
+    getPaginationParams,
+    handleDataTablePagination,
+    setLoading
+} = usePagination({
+    pageSize: 100, // Standard 100 records per page
+    enableAccumulation: true, // Accumulate data across pages
+    resetOnRefresh: true
+});
+
 const dt = ref();
 const editmode = ref(false);
-const employees = ref([]);
 const employeeDialog = ref(false);
 const importEmployeesDialog = ref(false);
 const deleteEmployeeDialog = ref(false);
 const deleteEmployeesDialog = ref(false);
 const employeeData = ref({});
 const selectedEmployees = ref([]);
-const totalRecords = ref(0);
-
-// Pagination and filters
-const pagination = reactive({
-    page: 0,
-    rows: 10
-});
 
 // Enhanced filters with HRM filter integration;
 
@@ -73,7 +83,7 @@ const dataTableFilters = ref({
     }
 });
 
-// Enhanced fetch employees with proper filter integration
+// Enhanced fetch employees with proper pagination and filter integration
 const fetchEmployees = async (force = false) => {
     const currentRequestId = ++requestCounter.value;
 
@@ -88,7 +98,7 @@ const fetchEmployees = async (force = false) => {
         return;
     }
 
-    isLoading.value = true;
+    setLoading(true);
     lastFetchTime.value = Date.now();
 
     try {
@@ -96,8 +106,7 @@ const fetchEmployees = async (force = false) => {
         const filterParams = getFilterParams();
 
         const params = {
-            page: pagination.page + 1, // API expects 1-based page index
-            limit: pagination.rows,
+            ...getPaginationParams(), // Use pagination composable
             search: dataTableFilters.value.global.value || filters.value.global.value || '',
             sortField: sortField.value,
             sortOrder: sortOrder.value,
@@ -107,29 +116,17 @@ const fetchEmployees = async (force = false) => {
         console.log('Fetching employees with params:', params);
         const response = await employeeService.getEmployees(params);
 
-        // Handle different response structures
-        let list = [];
-        if (response && response.data) {
-            if (Array.isArray(response.data)) {
-                list = response.data;
-            } else if (response.data.results) {
-                list = response.data.results;
-            } else {
-                list = [response.data];
-            }
-        }
-
         // Check if this request is still the latest one
         if (currentRequestId !== requestCounter.value) {
             console.log('Request outdated, ignoring response');
             return;
         }
 
-        employees.value = list;
-        totalRecords.value = response?.data?.count ?? list.length ?? 0;
+        // Update pagination data using the composable
+        updateData(response.data);
 
-        if (list.length > 0) {
-            showToast('success', `Loaded ${list.length} employees`);
+        if (employees.value.length > 0) {
+            showToast('success', `Loaded ${employees.value.length} employees (Page ${currentPage.value}/${paginationInfo.value.totalPages})`);
         } else {
             showToast('info', 'No employees found');
         }
@@ -147,15 +144,14 @@ const fetchEmployees = async (force = false) => {
     } finally {
         // Only update loading state if this is the latest request
         if (currentRequestId === requestCounter.value) {
-            isLoading.value = false;
+            setLoading(false);
         }
     }
 };
 
-// Handle pagination change
+// Handle pagination change using the composable
 const onPage = (event) => {
-    pagination.page = event.page;
-    pagination.rows = event.rows;
+    handleDataTablePagination(event);
     // Add delay to prevent rapid successive calls
     setTimeout(() => {
         fetchEmployees();
@@ -170,15 +166,6 @@ const onSort = (event) => {
     setTimeout(() => {
         fetchEmployees();
     }, 100);
-};
-
-// Handle filter change
-const onFilter = () => {
-    pagination.page = 0; // Reset to first page on filter change
-    // Add delay to prevent rapid successive calls
-    setTimeout(() => {
-        fetchEmployees();
-    }, 200);
 };
 
 // Handle global search
@@ -321,20 +308,30 @@ const clearFilter = () => {
         fetchEmployees();
     }, 100);
 };
+
+// Handle employee saved from modal
+function handleEmployeeSaved(savedEmployee) {
+    employeeDialog.value = false;
+    employeeData.value = {};
+    editmode.value = false;
+    
+    // Refresh the employee list
+    fetchEmployees(true);
+}
 </script>
 <template>
     <div>
         <div class="card">
             <Toolbar class="mb-6">
                 <template #start>
-                    <Button label="Add Employee" icon="pi pi-user-plus" severity="success" @click="openAddEmployeeModal" />
-                    <Button label="Delete" icon="pi pi-trash" severity="secondary" @click="confirmDeleteSelected" :disabled="!selectedEmployees || !selectedEmployees.length" />
+                    <Button label="Add" icon="pi pi-user-plus" class="bg-blue-500 text-white hover:bg-blue-600 rounded-md px-4 py-2" @click="openAddEmployeeModal" />
+                    <Button label="Delete" icon="pi pi-trash" class="bg-red-500 text-white hover:bg-red-600 rounded-md px-4 py-2 ml-2" @click="confirmDeleteSelected" :disabled="!selectedEmployees || !selectedEmployees.length" />
                 </template>
 
                 <template #end>
-                    <Button label="Refresh" icon="pi pi-refresh" class="p-button-sm m-1" @click="fetchEmployees" />
-                    <Button label="Import" icon="pi pi-file-import" severity="secondary" class="m-1" @click="importEmployeesDialog = true" />
-                    <Button label="Export" icon="pi pi-upload" severity="secondary" @click="exportCSV($event)" />
+                    <Button label="Refresh" icon="pi pi-refresh" class="p-button-sm m-1 bg-gray-500 text-white hover:bg-gray-600 rounded-md px-4 py-2" @click="fetchEmployees" />
+                    <Button label="Import" icon="pi pi-file-import" severity="secondary" class="m-1 bg-green-500 text-white hover:bg-green-600 rounded-md px-4 py-2" @click="importEmployeesDialog = true" />
+                    <Button label="Export" icon="pi pi-upload" severity="secondary" class="bg-yellow-500 text-white hover:bg-yellow-600 rounded-md px-4 py-2" @click="exportCSV($event)" />
                 </template>
             </Toolbar>
 
@@ -343,7 +340,7 @@ const clearFilter = () => {
                 dataKey="id"
                 v-model:selection="selectedEmployees"
                 :value="employees"
-                :rows="pagination.rows"
+                :rows="pageSize"
                 :totalRecords="totalRecords"
                 paginator
                 :rowsPerPageOptions="[1, 2, 5, 10, 25, 50, 100]"
@@ -354,7 +351,6 @@ const clearFilter = () => {
                 paginatorTemplate="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink CurrentPageReport RowsPerPageDropdown"
                 currentPageReportTemplate="Showing {first} to {last} of {totalRecords} employees"
                 filterDisplay="menu"
-                @filter="onFilter"
                 @page="onPage"
                 @sort="onSort"
             >
@@ -515,8 +511,19 @@ const clearFilter = () => {
             </template>
         </Dialog>
 
-        <Dialog v-model:visible="employeeDialog" :style="{ width: '90vw', maxWidth: '1200px' }" header="Add/Edit Employee" :modal="true">
-            <addEmployee />
+        <Dialog 
+            v-model:visible="employeeDialog" 
+            :style="{ width: '90vw', maxWidth: '1200px' }" 
+            :header="editmode ? 'Edit Employee' : 'Add Employee'" 
+            :modal="true"
+            :closable="true"
+        >
+            <addEmployee 
+                :employee="employeeData" 
+                :edit-mode="editmode"
+                @save="handleEmployeeSaved"
+                @cancel="employeeDialog = false"
+            />
         </Dialog>
 
         <Dialog v-model:visible="importEmployeesDialog" :style="{ width: '1200px' }" header="Import Employees" :modal="true">

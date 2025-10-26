@@ -8,12 +8,14 @@ export const PERMISSION_CATEGORIES = {
     // HRM Permissions
     HRM: {
         EMPLOYEE: ['view_employee', 'add_employee', 'change_employee', 'delete_employee'],
-        PAYROLL: ['view_payrollcomponents', 'view_payslip', 'change_payslip', 'view_advances', 'view_deductions', 'view_earnings', 'view_benefits'],
+        PAYROLL: ['view_payrollcomponents', 'view_payslip', 'change_payslip', 'view_advances', 'view_deductions', 'view_earnings', 'view_benefits', 'view_loans', 'view_employeloans', 'view_scheduledpayslip', 'view_lossesanddamages', 'view_expenseclaims'],
         LEAVE: ['view_leaverequest', 'view_leavebalance', 'view_leaveentitlement', 'view_leavecategory'],
-        ATTENDANCE: ['view_attendancerecord', 'view_attendancerule'],
+        ATTENDANCE: ['view_attendancerecord', 'view_attendancerule', 'view_workshift'],
         TRAINING: ['view_trainingcourse', 'view_trainingenrollment', 'view_trainingevaluation'],
         APPRAISAL: ['view_appraisal', 'view_appraisalquestion', 'view_appraisaltemplate', 'view_appraisalcycle', 'view_goal'],
-        DOCUMENTS: ['view_documents', 'change_documents']
+        DOCUMENTS: ['view_documents', 'change_documents'],
+        CONTRACTS: ['view_contract', 'add_contract', 'change_contract', 'delete_contract'],
+        SETTINGS: ['view_jobtitle', 'view_departments', 'view_regions', 'view_projects', 'view_publicholiday', 'view_generalhr', 'view_defaultpayrollsettings', 'view_bankinstitution']
     },
     
     // Finance Permissions
@@ -50,7 +52,8 @@ export const PERMISSION_CATEGORIES = {
     INVENTORY: {
         STOCK: ['view_stockinventory', 'view_stocktransfer', 'view_stockadjustment'],
         TRANSFERS: ['view_stocktransfer', 'add_stocktransfer', 'change_stocktransfer', 'delete_stocktransfer'],
-        ADJUSTMENTS: ['view_stockadjustment', 'add_stockadjustment', 'change_stockadjustment', 'delete_stockadjustment']
+        ADJUSTMENTS: ['view_stockadjustment', 'add_stockadjustment', 'change_stockadjustment', 'delete_stockadjustment'],
+        ASSETS: ['view_asset', 'add_asset', 'change_asset', 'delete_asset', 'view_assetcategory', 'view_assettransfer', 'view_assetmaintenance', 'view_assetaudit', 'view_assetdepreciation', 'view_assetinsurance']
     },
     
     // Manufacturing Permissions
@@ -74,9 +77,12 @@ export const PERMISSION_CATEGORIES = {
     SYSTEM: {
         USERS: ['view_customuser', 'add_customuser', 'change_customuser', 'delete_customuser'],
         ROLES: ['view_group', 'add_group', 'change_group', 'delete_group'],
-        SETTINGS: ['view_appsettings', 'change_appsettings'],
+        SETTINGS: ['view_appsettings', 'change_appsettings', 'view_brandingsettings', 'change_brandingsettings'],
         BACKUPS: ['view_backup', 'add_backup', 'change_backup', 'delete_backup'],
-        APPROVALS: ['view_approvalworkflow', 'add_approvalworkflow', 'change_approvalworkflow', 'delete_approvalworkflow']
+        APPROVALS: ['view_approvalworkflow', 'add_approvalworkflow', 'change_approvalworkflow', 'delete_approvalworkflow'],
+        BUSINESS: ['view_bussiness', 'add_bussiness', 'change_bussiness', 'delete_bussiness'],
+        INTEGRATIONS: ['view_integrations', 'view_krasettings', 'view_mpesasettings', 'view_smsconfiguration', 'view_emailconfiguration', 'change_integrations'],
+        SECURITY: ['view_securitysettings', 'change_securitysettings', 'view_passwordpolicy']
     }
 };
 
@@ -202,43 +208,74 @@ export const filterMenuItems = (menuItems, userPermissions) => {
  */
 export const getDashboardRedirectPath = (user) => {
     if (!user || !user.permissions) {
-        return '/analytics'; // Default dashboard
+        // Default to ESS dashboard for users without permissions
+        return '/ess';
     }
 
     const permissions = user.permissions;
-
-    // Check for HRM permissions
-    if (hasModuleAccess(permissions, 'HRM')) {
-        return '/hrm';
+    
+    // Check if user has administrative/managerial permissions
+    const hasAdminPermissions = hasAnyPermission(permissions, [
+        'add_employee',
+        'change_employee',
+        'delete_employee',
+        'view_appsettings',
+        'change_appsettings',
+        'add_customuser',
+        'delete_customuser'
+    ]);
+    
+    // Check if user is in staff role only (no administrative roles)
+    const userGroups = user.groups?.map(g => g.name?.toLowerCase()) || [];
+    const isStaffOnly = userGroups.includes('staff') && 
+                       !userGroups.includes('admin') && 
+                       !userGroups.includes('superusers') &&
+                       !userGroups.includes('manager') &&
+                       !userGroups.includes('finance') &&
+                       !userGroups.includes('crm') &&
+                       !userGroups.includes('procurement') &&
+                       !userGroups.includes('inventory') &&
+                       !userGroups.includes('system') &&
+                       !userGroups.includes('director');
+                       
+    
+    // Staff users without admin permissions go to ESS dashboard
+    if (isStaffOnly && !hasAdminPermissions) {
+        return '/ess';
     }
 
-    // Check for Finance permissions
-    if (hasModuleAccess(permissions, 'FINANCE')) {
+    // Check for Finance permissions (managers)
+    if (hasAnyPermission(permissions, ['add_payment', 'change_payment', 'delete_payment'])) {
         return '/finance';
     }
 
-    // Check for CRM permissions
-    if (hasModuleAccess(permissions, 'CRM')) {
+    // Check for CRM permissions (managers)
+    if (hasAnyPermission(permissions, ['add_lead', 'change_lead', 'delete_lead'])) {
         return '/crm';
     }
 
-    // Check for Procurement permissions
-    if (hasModuleAccess(permissions, 'PROCUREMENT')) {
+    // Check for Procurement permissions (managers)
+    if (hasAnyPermission(permissions, ['add_purchaseorder', 'change_purchaseorder', 'delete_purchaseorder'])) {
         return '/procurement';
     }
 
-    // Check for Manufacturing permissions
-    if (hasModuleAccess(permissions, 'MANUFACTURING')) {
+    // Check for Manufacturing permissions (managers)
+    if (hasAnyPermission(permissions, ['add_productionbatch', 'change_productionbatch', 'delete_productionbatch'])) {
         return '/manufacturing';
     }
 
-    // Check for E-commerce permissions
-    if (hasModuleAccess(permissions, 'ECOMMERCE')) {
+    // Check for E-commerce permissions (managers)
+    if (hasAnyPermission(permissions, ['add_sales', 'change_sales', 'delete_sales'])) {
         return '/pos';
     }
+    
+    // Check for HRM permissions (managers/HR)
+    if (hasAnyPermission(permissions, ['add_employee', 'change_employee', 'delete_employee'])) {
+        return '/hrm';
+    }
 
-    // Default to executive dashboard
-    return '/';
+    // Default to ESS dashboard for regular employees
+    return '/ess';
 };
 
 /**

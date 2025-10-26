@@ -3,7 +3,7 @@ import { ref, computed, onMounted, onBeforeUnmount, watch } from 'vue';
 import { useToast } from 'primevue/usetoast';
 
 // Import services
-import { POSService } from '@/services/POSService';
+import { POSService } from '@/services/ecommerce/posService';
 
 const toast = useToast();
 
@@ -154,7 +154,7 @@ const requestPayment = async () => {
             payment_type: props.paymentType
         };
 
-        const response = await POSService.initiateSTKPush(paymentData);
+        const response = await posService.initiateSTKPush(paymentData);
         console.log(response);
         if (response && response.data.checkoutID) {
             checkoutRequestId.value = response.data.checkoutID;
@@ -224,7 +224,7 @@ const checkPaymentStatus = async () => {
             password: transactionPassword.value
         };
 
-        const response = await POSService.checkSTKPushStatus(payload);
+        const response = await posService.checkSTKPushStatus(payload);
 
         if (response) {
             // Handle different response statuses

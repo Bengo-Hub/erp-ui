@@ -1,5 +1,5 @@
 import defaultProductImage from '@/assets/images/products/default.png';
-import { imageOptimizationService } from '@/services/imageOptimizationService';
+import { imageOptimizationService } from '@/services/utils/imageOptimizationService';
 
 /**
  * Gets the most relevant product image with optimization support.

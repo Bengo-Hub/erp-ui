@@ -7,9 +7,41 @@ export function formatCurrency(amount) {
 }
 
 //format date
-export function formatDate(date) {
+export function formatDate(date, format = 'long') {
+    if (!date) return '';
+    
+    const dateObj = new Date(date);
+    
+    // Relative format (e.g., "5 minutes ago", "2 hours ago")
+    if (format === 'relative') {
+        const now = new Date();
+        const diffMs = now - dateObj;
+        const diffSecs = Math.floor(diffMs / 1000);
+        const diffMins = Math.floor(diffSecs / 60);
+        const diffHours = Math.floor(diffMins / 60);
+        const diffDays = Math.floor(diffHours / 24);
+        const diffWeeks = Math.floor(diffDays / 7);
+        const diffMonths = Math.floor(diffDays / 30);
+        const diffYears = Math.floor(diffDays / 365);
+        
+        if (diffSecs < 60) return 'Just now';
+        if (diffMins < 60) return `${diffMins} ${diffMins === 1 ? 'minute' : 'minutes'} ago`;
+        if (diffHours < 24) return `${diffHours} ${diffHours === 1 ? 'hour' : 'hours'} ago`;
+        if (diffDays < 7) return `${diffDays} ${diffDays === 1 ? 'day' : 'days'} ago`;
+        if (diffWeeks < 4) return `${diffWeeks} ${diffWeeks === 1 ? 'week' : 'weeks'} ago`;
+        if (diffMonths < 12) return `${diffMonths} ${diffMonths === 1 ? 'month' : 'months'} ago`;
+        return `${diffYears} ${diffYears === 1 ? 'year' : 'years'} ago`;
+    }
+    
+    // Short format (e.g., "Jan 1, 2025")
+    if (format === 'short') {
+        const options = { year: 'numeric', month: 'short', day: 'numeric' };
+        return dateObj.toLocaleDateString('en-US', options);
+    }
+    
+    // Default long format (e.g., "January 1, 2025")
     const options = { year: 'numeric', month: 'long', day: 'numeric' };
-    return new Date(date).toLocaleDateString('en-US', options);
+    return dateObj.toLocaleDateString('en-US', options);
 }
 
 export function formatDateTime(date) {

@@ -1,7 +1,7 @@
 <script setup>
 import { useToast } from '@/composables/useToast';
-import { ref, computed } from 'vue';
 import { format, parseISO } from 'date-fns';
+import { computed, ref } from 'vue';
 
 const props = defineProps({
     leave: {
@@ -27,10 +27,6 @@ const getStatusSeverity = (status) => {
         default:
             return 'info';
     }
-};
-
-const formatDate = (dateString) => {
-    return format(parseISO(dateString), 'MMM dd, yyyy');
 };
 
 const formatDateTime = (dateString) => {

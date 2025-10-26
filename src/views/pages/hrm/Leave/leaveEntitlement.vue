@@ -1,25 +1,22 @@
 <script setup>
+import { useHrmFilters } from '@/composables/useHrmFilters';
 import { useToast } from '@/composables/useToast';
-import { coreService } from '@/services/coreService';
 import { employeeService } from '@/services/hrm/employeeService';
 import { leaveService } from '@/services/hrm/leaveService';
 import { onMounted, ref } from 'vue';
 
 const { showToast } = useToast();
+const { filters, departments, regions, loadFilters, resetFilters, getFilterParams } = useHrmFilters();
+
 const dt = ref();
 const loading = ref(false);
 const leaveData = ref([]);
 const totalRecords = ref(0);
 
-// Filters
+// Leave-specific filters
 const selectedLeaveType = ref(null);
-const selectedDepartments = ref([]);
-const selectedRegions = ref([]);
-const selectedEmployees = ref([]);
 
 // Data options
-const departments = ref([]);
-const regions = ref([]);
 const employees = ref([]);
 const leaveTypes = ref([]);
 
@@ -27,15 +24,13 @@ const leaveTypes = ref([]);
 const fetchLeaveEntitlements = async (page = 1) => {
     loading.value = true;
     try {
+        const filterParams = getFilterParams();
         const params = {
             page,
             category_id: selectedLeaveType.value?.id,
-            departments: selectedDepartments.value.map((d) => d.id),
-            regions: selectedRegions.value.map((r) => r.value),
-            employees: selectedEmployees.value.map((r) => r.id)
+            ...filterParams
         };
 
-        // Replace with actual API call
         const response = await leaveService.getEntitlements(params);
         leaveData.value = response.data.results;
         totalRecords.value = response.data.count;
@@ -59,28 +54,7 @@ const fetchEmployees = async () => {
     }
 };
 
-const fetchDepartments = async () => {
-    try {
-        const response = await coreService.getDepartmentsV1();
-        departments.value = response.data.results;
-    } catch (error) {
-        console.error('Error fetching departments:', error);
-        showToast('error', 'Error', 'Failed to fetch departments', 3000);
-    }
-};
-
-const fetchRegions = async () => {
-    try {
-        const response = await coreService.getRegionsV1();
-        regions.value = response.data.results.map((region) => ({
-            label: region.name,
-            value: region.id
-        }));
-    } catch (error) {
-        console.error('Error fetching regions:', error);
-        showToast('error', 'Error', 'Failed to fetch regions', 3000);
-    }
-};
+// Removed: fetchDepartments and fetchRegions - now using useHrmFilters composable
 
 const fetchLeaveCategories = async () => {
     try {
@@ -137,10 +111,9 @@ const getLeaveSeverity = (leaveType) => {
 };
 
 // Initialize data
-onMounted(() => {
+onMounted(async () => {
+    await loadFilters();
     fetchLeaveCategories();
-    fetchDepartments();
-    fetchRegions();
     fetchEmployees();
     fetchLeaveEntitlements();
 });
@@ -166,19 +139,19 @@ onMounted(() => {
                             <Dropdown v-model="selectedLeaveType" :options="leaveTypes" optionLabel="name" placeholder="Leave Category" class="w-full" @change="applyFilters" />
                         </div>
 
-                        <!-- Departments - Full width on mobile, then normal -->
+                        <!-- Departments -->
                         <div>
-                            <MultiSelect v-model="selectedDepartments" :options="departments" optionLabel="title" placeholder="Departments" class="w-full" :maxSelectedLabels="2" display="chip" @change="applyFilters" />
+                            <Dropdown v-model="filters.department" :options="departments" optionLabel="title" optionValue="id" placeholder="All Departments" class="w-full" @change="applyFilters" />
                         </div>
 
-                        <!-- Regions - Full width on mobile, then normal -->
+                        <!-- Regions -->
                         <div>
-                            <MultiSelect v-model="selectedRegions" :options="regions" optionLabel="label" placeholder="Regions" class="w-full" :maxSelectedLabels="2" display="chip" @change="applyFilters" />
+                            <Dropdown v-model="filters.region" :options="regions" optionLabel="title" optionValue="id" placeholder="All Regions" class="w-full" @change="applyFilters" />
                         </div>
 
-                        <!-- Employees - Full width on mobile, then normal -->
+                        <!-- Employees -->
                         <div>
-                            <MultiSelect v-model="selectedEmployees" :options="employees" optionLabel="user.first_name" placeholder="Employees" class="w-full" :maxSelectedLabels="2" display="chip" @change="applyFilters" />
+                            <Dropdown v-model="filters.employee" :options="employees" optionLabel="user.first_name" optionValue="id" placeholder="All Employees" class="w-full" @change="applyFilters" />
                         </div>
 
                         <!-- Update Button - Full width on mobile, then auto -->

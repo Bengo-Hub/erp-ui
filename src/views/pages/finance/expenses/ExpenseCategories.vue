@@ -1,7 +1,7 @@
 <script setup>
 import Spinner from '@/components/ui/Spinner.vue';
 import { useToast } from '@/composables/useToast';
-import { ExpenseService } from '@/services/ExpenseService';
+import { expenseService } from '@/services/finance/expenseService';
 import { formatDate } from '@/utils/formatters';
 import { computed, onMounted, ref } from 'vue';
 
@@ -56,7 +56,7 @@ const fetchCategories = async () => {
             fromdate: fromdate.value,
             todate: todate.value
         };
-        const response = await ExpenseService.getExpenseCategories(params);
+        const response = await expenseService.getExpenseCategories(params);
         expense_categories.value = response.data.results || response.data || [];
     } catch (error) {
         console.error('Error fetching expense categories:', error);
@@ -127,10 +127,10 @@ const saveCategory = async () => {
 
     try {
         if (editingCategory.value) {
-            await ExpenseService.updateExpenseCategory(editingCategory.value.id, categoryForm.value);
+            await expenseService.updateExpenseCategory(editingCategory.value.id, categoryForm.value);
             showToast('success', 'Expense category updated successfully!');
         } else {
-            await ExpenseService.createExpenseCategory(categoryForm.value);
+            await expenseService.createExpenseCategory(categoryForm.value);
             showToast('success', 'Expense category created successfully!');
         }
 
@@ -147,7 +147,7 @@ const deleteExpenseCategory = async (category) => {
     if (!confirm(`Are you sure you want to delete category "${category.name}"?`)) return;
 
     try {
-        await ExpenseService.deleteExpenseCategory(category.id);
+        await expenseService.deleteExpenseCategory(category.id);
         showToast('success', 'Expense category deleted successfully!');
         fetchCategories();
     } catch (error) {

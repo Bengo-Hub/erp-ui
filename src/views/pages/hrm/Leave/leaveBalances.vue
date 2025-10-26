@@ -1,6 +1,5 @@
 <script setup>
 import { useToast } from '@/composables/useToast';
-import { coreService } from '@/services/coreService';
 import { leaveService } from '@/services/hrm/leaveService';
 import { FilterMatchMode } from '@primevue/core/api';
 import { computed, onMounted, ref } from 'vue';
@@ -40,8 +39,8 @@ const fetchLeaveBalances = async () => {
     loading.value = true;
     try {
         const params = {
-            department: selectedDepartments.value.map((r) => r.id),
-            regions: selectedRegions.value.map((r) => r.value),
+            department: filters.value.department,
+            region: filters.value.region,
             category_id: selectedLeaveType.value?.id,
             year: selectedYear.value
         };
@@ -57,28 +56,7 @@ const fetchLeaveBalances = async () => {
     }
 };
 
-const fetchDepartments = async () => {
-    try {
-        const response = await coreService.getDepartmentsV1();
-        departments.value = response.data.results;
-    } catch (error) {
-        console.error('Error fetching departments:', error);
-        showToast('error', 'Error', 'Failed to fetch departments', 3000);
-    }
-};
-
-const fetchRegions = async () => {
-    try {
-        const response = await coreService.getRegionsV1();
-        regions.value = response.data.results.map((region) => ({
-            label: region.name,
-            value: region.id
-        }));
-    } catch (error) {
-        console.error('Error fetching regions:', error);
-        showToast('error', 'Error', 'Failed to fetch regions', 3000);
-    }
-};
+// Removed: fetchDepartments and fetchRegions - now using useHrmFilters composable
 
 const fetchLeaveCategories = async () => {
     try {
@@ -95,8 +73,7 @@ const applyFilters = () => {
 };
 
 const refreshData = () => {
-    selectedDepartments.value = [];
-    selectedRegions.value = [];
+    resetFilters();
     selectedLeaveType.value = null;
     selectedYear.value = new Date().getFullYear();
     fetchLeaveBalances();
@@ -168,9 +145,8 @@ const getLeaveTypeSeverity = (type) => {
 };
 
 // Initialize data
-onMounted(() => {
-    fetchDepartments();
-    fetchRegions();
+onMounted(async () => {
+    await loadFilters();
     fetchLeaveCategories();
     fetchLeaveBalances();
 });
@@ -184,13 +160,13 @@ onMounted(() => {
                 <!-- Department Filter -->
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-1">Department</label>
-                    <MultiSelect v-model="selectedDepartments" :options="departments" optionLabel="title" placeholder="All Departments" class="w-full" :filter="true" display="chip" @change="applyFilters" />
+                    <Dropdown v-model="filters.department" :options="departments" optionLabel="title" optionValue="id" placeholder="All Departments" class="w-full" @change="applyFilters" />
                 </div>
 
                 <!-- Region Filter -->
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-1">Region</label>
-                    <MultiSelect v-model="selectedRegions" :options="regions" optionLabel="label" placeholder="All Regions" class="w-full" :filter="true" display="chip" @change="applyFilters" />
+                    <Dropdown v-model="filters.region" :options="regions" optionLabel="title" optionValue="id" placeholder="All Regions" class="w-full" @change="applyFilters" />
                 </div>
 
                 <!-- Leave Type Filter -->

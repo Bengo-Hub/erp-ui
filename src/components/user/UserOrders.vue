@@ -1,6 +1,5 @@
 <script>
-import { OrderService } from '@/services/OrderService';
-import { formatCurrency } from '@/utils/formatters';
+import { formatCurrency, formatDate } from '@/utils/formatters';
 import { useToast } from 'primevue/usetoast';
 import { computed, onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
@@ -119,10 +118,10 @@ export default {
 
                 if (isStaffUser.value) {
                     // Staff users can view all orders or filter by user
-                    response = await OrderService.getAllOrders();
+                    response = await orderService.getAllOrders();
                 } else {
                     // Customer users can only view their own orders
-                    response = await OrderService.getUserOrders(userId.value);
+                    response = await orderService.getUserOrders(userId.value);
                 }
 
                 orders.value = response.data;
@@ -139,10 +138,6 @@ export default {
             }
         };
 
-        const formatDate = (dateString) => {
-            const options = { year: 'numeric', month: 'short', day: 'numeric' };
-            return new Date(dateString).toLocaleDateString(undefined, options);
-        };
         const getStatusSeverity = (status) => {
             switch (status) {
                 case 'DELIVERED':
@@ -190,7 +185,7 @@ export default {
 
         const reorderItems = async (order) => {
             try {
-                await OrderService.reorderItems(order.id);
+                await orderService.reorderItems(order.id);
                 toast.add({
                     severity: 'success',
                     summary: 'Success',
@@ -214,7 +209,7 @@ export default {
 
         const downloadInvoice = async (order) => {
             try {
-                await OrderService.downloadInvoice(order.id);
+                await orderService.downloadInvoice(order.id);
                 toast.add({
                     severity: 'success',
                     summary: 'Success',

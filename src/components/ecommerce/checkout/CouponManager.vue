@@ -1,7 +1,8 @@
 <script setup>
 import { ref, computed, onMounted, watch } from 'vue';
-import { EcommerceService } from '@/services/EcommerceService';
+import { ecommerceService } from '@/services/ecommerce/ecommerceService';
 import { useToast } from 'primevue/usetoast';
+import { formatCurrency, formatDate } from '@/utils/formatters';
 
 const props = defineProps({
     cartId: {
@@ -78,11 +79,6 @@ const formatPrice = (price) => {
 };
 
 // Format a date string
-const formatDate = (dateString) => {
-    const date = new Date(dateString);
-    return date.toLocaleDateString();
-};
-
 // Get a label for the discount (e.g., "10% off" or "KSh 500 off")
 const getDiscountLabel = (coupon) => {
     if (!coupon) return '';
@@ -112,7 +108,7 @@ const getDiscountBadge = (coupon) => {
 // Fetch available coupons
 const fetchAvailableCoupons = async () => {
     try {
-        const response = await EcommerceService.getAvailableCoupons();
+        const response = await ecommerceService.getAvailableCoupons();
         if (response.data) {
             availableCoupons.value = response.data;
         }
@@ -137,7 +133,7 @@ const fetchAppliedCoupon = async () => {
         }
 
         // If not in our available coupons, fetch from API
-        const response = await EcommerceService.getCouponDetails(props.appliedCouponCode);
+        const response = await ecommerceService.getCouponDetails(props.appliedCouponCode);
         if (response.data) {
             appliedCoupon.value = response.data;
         }

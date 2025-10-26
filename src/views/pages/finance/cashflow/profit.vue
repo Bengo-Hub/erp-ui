@@ -1,5 +1,5 @@
 <script setup>
-import { financeService } from '@/services/FinanceService';
+import { financeService } from '@/services/finance/financeService';
 import { formatCurrency } from '@/utils/formatters';
 import { onMounted, ref } from 'vue';
 

@@ -1,7 +1,7 @@
 <script setup>
 import { ref, watch, onMounted, onBeforeUnmount } from 'vue';
 import { useRouter } from 'vue-router';
-import { EcommerceService } from '@/services/EcommerceService';
+import { ecommerceService } from '@/services/ecommerce/ecommerceService';
 import { getProductImage } from '@/utils/productUtils';
 
 const props = defineProps({
@@ -50,7 +50,7 @@ const searchProducts = async (query) => {
     isSearching.value = true;
 
     try {
-        const response = await EcommerceService.searchProducts(query);
+        const response = await ecommerceService.searchProducts(query);
         searchResults.value = response.data?.results || [];
 
         // Limit results to max number

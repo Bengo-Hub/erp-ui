@@ -1,16 +1,9 @@
 <script setup>
 import { useToast } from '@/composables/useToast';
-import { coreService } from '@/services/coreService';
+import { coreService } from '@/services/shared/coreService';
 import { onMounted, onUnmounted, ref } from 'vue';
 
 // Components
-import Button from 'primevue/button';
-import Chip from 'primevue/chip';
-import Column from 'primevue/column';
-import DataTable from 'primevue/datatable';
-import ProgressBar from 'primevue/progressbar';
-import Tag from 'primevue/tag';
-
 const { showToast } = useToast();
 
             // Reactive data

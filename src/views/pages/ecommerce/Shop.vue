@@ -1,7 +1,7 @@
 <script setup>
 import { useToast } from '@/composables/useToast';
-import { EcommerceService } from '@/services/EcommerceService';
-import { coreService } from '@/services/coreService';
+import { ecommerceService } from '@/services/ecommerce/ecommerceService';
+import { coreService } from '@/services/shared/coreService';
 import { applyAllBranding, getBusinessDetails } from '@/utils/businessBranding';
 import { onBeforeUnmount, onMounted, onUnmounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
@@ -9,10 +9,6 @@ import { useRouter } from 'vue-router';
 // Import components
 import defaultImage from '@/assets/images/products/default.png';
 import axios from '@/utils/axiosConfig';
-import Button from 'primevue/button';
-import Carousel from 'primevue/carousel';
-import Rating from 'primevue/rating';
-
 // Setup
 const router = useRouter();
 const { showToast } = useToast();
@@ -212,7 +208,7 @@ const fetchBanners = async () => {
 const fetchCategories = async () => {
     loading.value.categories = true;
     try {
-        const response = await EcommerceService.getMainCategories();
+        const response = await ecommerceService.getMainCategories();
         mainCategories.value = response.data.results;
 
         // Extract popular categories for the grid display
@@ -228,7 +224,7 @@ const fetchCategories = async () => {
 const fetchFlashSaleProducts = async () => {
     loading.value.flashSale = true;
     try {
-        const response = await EcommerceService.getFlashSaleProducts();
+        const response = await ecommerceService.getFlashSaleProducts();
 
         if (response.data.length > 0) {
             startCountdown(response.data[0]);
@@ -259,7 +255,7 @@ const fetchFlashSaleProducts = async () => {
 const fetchFeaturedProducts = async () => {
     loading.value.featured = true;
     try {
-        const response = await EcommerceService.getFeaturedProducts();
+        const response = await ecommerceService.getFeaturedProducts();
 
         // Transform the data for display
         featuredProducts.value = response.data.map((item) => ({
@@ -283,7 +279,7 @@ const fetchFeaturedProducts = async () => {
 const fetchTrendingProducts = async () => {
     loading.value.trending = true;
     try {
-        const response = await EcommerceService.getTrendingProducts();
+        const response = await ecommerceService.getTrendingProducts();
 
         // Transform the data for display
         trendingProducts.value = response.data.map((item) => ({

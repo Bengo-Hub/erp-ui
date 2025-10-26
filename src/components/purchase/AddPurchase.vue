@@ -1,7 +1,7 @@
 <script setup>
 import ImportProducts from '@/components/products/ImportProducts.vue';
 import ProductForm from '@/components/products/ProductForm.vue';
-import { coreService } from '@/services/coreService';
+import { coreService } from '@/services/shared/coreService';
 import { procurementService } from '@/services/procurementService';
 import axios from 'axios';
 import { useToast } from 'primevue/usetoast';

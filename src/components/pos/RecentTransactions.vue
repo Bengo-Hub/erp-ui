@@ -1,5 +1,5 @@
 <script setup>
-import { POSService } from '@/services/POSService';
+import { POSService } from '@/services/ecommerce/posService';
 import Receipt from '@/views/pages/ecommerce/pos/printReceipt.vue';
 import { useToast } from 'primevue/usetoast';
 import { computed, onMounted, ref } from 'vue';
@@ -36,7 +36,7 @@ const formatNumber = (value) => {
 const fetchRecents = async () => {
     isLoading.value = true;
     try {
-        const response = await POSService.getRecentSales();
+        const response = await posService.getRecentSales();
         recents.value = response.data.sales || [];
     } catch (error) {
         toast.add({
@@ -52,7 +52,7 @@ const fetchRecents = async () => {
 
 const fetchReceiptData = async (id) => {
     try {
-        const response = await POSService.getSaleReceiptData({ id });
+        const response = await posService.getSaleReceiptData({ id });
         receiptData.value = response.data;
     } catch (error) {
         toast.add({
@@ -67,7 +67,7 @@ const fetchReceiptData = async (id) => {
 
 const deleteRecord = async (record) => {
     try {
-        await POSService.deleteSale(record.id);
+        await posService.deleteSale(record.id);
         recents.value = recents.value.filter((item) => item.id !== record.id);
         toast.add({ severity: 'success', summary: 'Success', detail: `Sale #${record.sale_id} deleted.`, life: 3000 });
     } catch (error) {

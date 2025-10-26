@@ -2,11 +2,6 @@
 import Spinner from '@/components/ui/Spinner.vue';
 import { procurementService } from '@/services/procurementService';
 import Receipt from '@/views/pages/ecommerce/pos/printReceipt.vue';
-import Card from 'primevue/card';
-import Dropdown from 'primevue/dropdown';
-import FileUpload from 'primevue/fileupload';
-import InputNumber from 'primevue/inputnumber';
-import Textarea from 'primevue/textarea';
 import { useToast } from 'primevue/usetoast';
 import { onMounted, ref } from 'vue';
 

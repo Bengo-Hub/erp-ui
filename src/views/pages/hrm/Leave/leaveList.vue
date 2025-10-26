@@ -5,13 +5,19 @@ import { usePermissions } from '@/composables/usePermissions';
 import { useToast } from '@/composables/useToast';
 import { employeeService } from '@/services/hrm/employeeService';
 import { leaveService } from '@/services/hrm/leaveService';
+import { formatDate } from '@/utils/formatters';
 import { format, parseISO } from 'date-fns';
 import { computed, onMounted, ref, watch } from 'vue';
+import { useStore } from 'vuex';
 import LeaveDetails from './LeaveDetails.vue';
 import NewLeave from './newLeave.vue';
 
 const { showToast } = useToast();
-const { hasPermission, canRead, canCreate, canUpdate, canDelete } = usePermissions();
+const { hasPermission, hasAnyPermission, canRead, canCreate, canUpdate, canDelete } = usePermissions();
+const store = useStore();
+
+// Current user
+const currentUser = computed(() => store.state.auth.user);
 const showNewLeaveModal = ref(false);
 const showDetailsModal = ref(false);
 const loading = ref(false);
@@ -68,6 +74,9 @@ const approvalActions = computed(() => {
 const fetchLeaveData = async () => {
     loading.value = true;
     try {
+        // Check if user has managerial permissions (can view/approve all leave requests)
+        const hasManagerialPerms = hasAnyPermission(['change_leaverequest', 'delete_leaverequest', 'change_leave', 'delete_leave']);
+        
         const params = {
             start_date: fromDate.value,
             end_date: toDate.value,
@@ -75,8 +84,15 @@ const fetchLeaveData = async () => {
             status: selectedStatus.value?.value
         };
 
-        // Add employee IDs if any are selected
-        if (selectedEmployees.value.length) {
+        // If user doesn't have managerial permissions, filter by their employee ID
+        if (!hasManagerialPerms && !selectedEmployees.value.length) {
+            const employeeId = currentUser.value?.employee_id || currentUser.value?.id;
+            params.employee_id = employeeId;
+            console.log('fetchLeaveData: Filtering for current user employee ID:', employeeId);
+        }
+
+        // Add employee IDs if any are selected (managers can filter by specific employees)
+        if (selectedEmployees.value.length && hasManagerialPerms) {
             params.employee_id = selectedEmployees.value.map((e) => e.id).join(',');
         }
 
@@ -146,10 +162,6 @@ const formattedDateRange = computed(() => {
 });
 
 // Methods
-const formatDate = (dateString) => {
-    return format(parseISO(dateString), 'MMM dd, yyyy');
-};
-
 const getStatusSeverity = (status) => {
     switch (status) {
         case 'approved':

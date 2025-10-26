@@ -1,8 +1,5 @@
 <script setup>
 import { formatCurrency } from '@/utils/formatters';
-import Card from 'primevue/card';
-import Divider from 'primevue/divider';
-
 const props = defineProps({
     order: {
         type: Object,

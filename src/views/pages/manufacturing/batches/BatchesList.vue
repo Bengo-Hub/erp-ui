@@ -7,6 +7,7 @@ import { manufacturingService } from '@/services/manufacturingService';
 import { useConfirm } from 'primevue/useconfirm';
 import BreadcrumbNav from '@/components/manufacturing/BreadcrumbNav.vue';
 import ManufacturingToolbar from '@/components/manufacturing/ManufacturingToolbar.vue';
+import { formatCurrency, formatDate } from '@/utils/formatters';
 
 const { showToast } = useToast();
 const router = useRouter();

@@ -1,10 +1,6 @@
 <script setup>
 import { useToast } from '@/composables/useToast';
 import { appraisalService } from '@/services/hrm/appraisalService';
-import Badge from 'primevue/badge';
-import Button from 'primevue/button';
-import Dropdown from 'primevue/dropdown';
-import Toolbar from 'primevue/toolbar';
 import { onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import AddGoal from './addGoal.vue';

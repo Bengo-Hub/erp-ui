@@ -7,6 +7,7 @@ import { FilterMatchMode } from '@primevue/core/api';
 import { useConfirm } from 'primevue/useconfirm';
 import { onMounted, reactive, ref } from 'vue';
 import { useRouter } from 'vue-router';
+import { formatCurrency, formatDate } from '@/utils/formatters';
 
 const router = useRouter();
 const { showToast } = useToast();

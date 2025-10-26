@@ -1,5 +1,5 @@
 <script>
-import { UserService } from '@/services/UserService';
+import { UserService } from '@/services/auth/userService';
 import { useBusinessBranding } from '@/utils/businessBranding';
 import { useConfirm } from 'primevue/useconfirm';
 import { useToast } from 'primevue/usetoast';

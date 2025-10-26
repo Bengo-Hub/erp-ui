@@ -4,6 +4,7 @@ import { appraisalService } from '@/services/hrm/appraisalService';
 import { format } from 'date-fns';
 import { computed, onMounted, reactive, ref } from 'vue';
 import { useRouter } from 'vue-router';
+import { formatCurrency, formatDate } from '@/utils/formatters';
 
 const { showToast } = useToast();
 const router = useRouter();
@@ -116,10 +117,6 @@ const resetFilters = () => {
     filters.cycle = null;
     filters.dateRange = null;
     loadAppraisals();
-};
-
-const formatDate = (date) => {
-    return date ? format(new Date(date), 'MMM dd, yyyy') : '-';
 };
 
 const getStatusSeverity = (status) => {

@@ -1,9 +1,5 @@
 <script setup>
 import Spinner from '@/components/ui/Spinner.vue'; // Adjust the import path as needed
-import Button from 'primevue/button';
-import Card from 'primevue/card';
-import InputText from 'primevue/inputtext';
-import Textarea from 'primevue/textarea';
 import { useToast } from 'primevue/usetoast';
 import { ref } from 'vue';
 

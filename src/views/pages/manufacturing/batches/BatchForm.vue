@@ -1,12 +1,13 @@
 <script setup>
 import { useToast } from '@/composables/useToast';
-import { coreService } from '@/services/coreService';
+import { coreService } from '@/services/shared/coreService';
 import { manufacturingService } from '@/services/manufacturingService';
 import { useVuelidate } from '@vuelidate/core';
 import { minValue, required } from '@vuelidate/validators';
 import { useConfirm } from 'primevue/useconfirm';
 import { computed, onMounted, reactive, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
+import { formatCurrency, formatDate } from '@/utils/formatters';
 
 const { showToast } = useToast();
 const route = useRoute();

@@ -1,11 +1,24 @@
 // Employee related routes
 export const employeeRoutes = [
-    // HRM Dashboard
+    // HRM Dashboard - For HR Managers and Admins only
     {
         path: '/hrm',
         name: 'hrmDashboard',
-        meta: { requiresAuth: true },
+        meta: { 
+            requiresAuth: true,
+            permission: ['add_employee', 'change_employee', 'delete_employee']  // Managers only
+        },
         component: () => import('@/views/pages/dashboards/hrmDashboard.vue')
+    },
+    // ESS Dashboard (Employee Self-Service) - Fallback dashboard for all users
+    {
+        path: '/ess',
+        name: 'ess-dashboard',
+        meta: { 
+            requiresAuth: true
+            // No permission required - this is the fallback dashboard for all authenticated users
+        },
+        component: () => import('@/views/pages/ess/ESSDashboard.vue')
     },
     {
         path: '/hrm/employees/view-employees',
@@ -52,6 +65,30 @@ export const employeeRoutes = [
         component: () => import('@/views/pages/hrm/attendance/WorkShifts.vue')
     },
     {
+        path: '/hrm/attendance/work-shifts/create',
+        name: 'work-shifts-create',
+        meta: { requiresAuth: true },
+        component: () => import('@/views/pages/hrm/attendance/ShiftEditor.vue')
+    },
+    {
+        path: '/hrm/attendance/work-shifts/:id/edit',
+        name: 'work-shifts-edit',
+        meta: { requiresAuth: true },
+        component: () => import('@/views/pages/hrm/attendance/ShiftEditor.vue')
+    },
+    {
+        path: '/hrm/attendance/shift-rotations/create',
+        name: 'shift-rotations-create',
+        meta: { requiresAuth: true },
+        component: () => import('@/views/pages/hrm/attendance/ShiftRotationEditor.vue')
+    },
+    {
+        path: '/hrm/attendance/shift-rotations/:id/edit',
+        name: 'shift-rotations-edit',
+        meta: { requiresAuth: true },
+        component: () => import('@/views/pages/hrm/attendance/ShiftRotationEditor.vue')
+    },
+    {
         path: '/hrm/attendance/off-days',
         name: 'off-days',
         meta: { requiresAuth: true },
@@ -62,6 +99,18 @@ export const employeeRoutes = [
         name: 'attendance-records',
         meta: { requiresAuth: true },
         component: () => import('@/views/pages/hrm/attendance/AttendanceRecords.vue')
+    },
+    {
+        path: '/hrm/attendance/timesheets',
+        name: 'timesheets',
+        meta: { requiresAuth: true },
+        component: () => import('@/views/pages/hrm/attendance/Timesheets.vue')
+    },
+    {
+        path: '/hrm/payroll/overtime',
+        name: 'overtime',
+        meta: { requiresAuth: true },
+        component: () => import('@/views/pages/hrm/payroll/overtime.vue')
     },
     // Recruitment
     {

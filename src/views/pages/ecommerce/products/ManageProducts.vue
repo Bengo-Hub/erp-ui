@@ -3,7 +3,7 @@ import { ref, onMounted } from 'vue';
 import { useToast } from 'primevue/usetoast';
 import ProductForm from '@/components/products/ProductForm.vue';
 import ProductDetail from '@/components/products/ProductDetail.vue';
-import { EcommerceService } from '@/services/EcommerceService';
+import { ecommerceService } from '@/services/ecommerce/ecommerceService';
 
 const toast = useToast();
 
@@ -54,7 +54,7 @@ onMounted(async () => {
 const fetchProducts = async () => {
     try {
         loading.value = true;
-        const response = await EcommerceService.fetchAllProducts();
+        const response = await ecommerceService.fetchAllProducts();
         products.value = response.data.results;
         products.value.forEach((product) => {
             product.maincategory = product.maincategory || {};
@@ -71,11 +71,11 @@ const fetchProducts = async () => {
 const fetchDependencies = async () => {
     try {
         const [mainCatsRes, catsRes, subcatsRes, brandsRes, modelsRes] = await Promise.all([
-            EcommerceService.getMainCategories(),
-            EcommerceService.getCategories(),
-            EcommerceService.getSubcategories(),
-            EcommerceService.getBrands(),
-            EcommerceService.getModels()
+            ecommerceService.getMainCategories(),
+            ecommerceService.getCategories(),
+            ecommerceService.getSubcategories(),
+            ecommerceService.getBrands(),
+            ecommerceService.getModels()
         ]);
 
         mainCategories.value = mainCatsRes.data.results;
@@ -115,7 +115,7 @@ const openAddDialog = () => {
 const editProduct = async (id) => {
     try {
         loading.value = true;
-        const response = await EcommerceService.getAllProductsById(id);
+        const response = await ecommerceService.getAllProductsById(id);
         currentProduct.value = response.data;
         editMode.value = true;
         productDialog.value = true;
@@ -130,7 +130,7 @@ const viewProduct = async (id) => {
     try {
         console.log('viewProduct', id);
         loading.value = true;
-        const response = await EcommerceService.getAllProductsById(id);
+        const response = await ecommerceService.getAllProductsById(id);
         selectedProduct.value = response.data;
         detailDialog.value = true;
     } catch (error) {
@@ -148,7 +148,7 @@ const confirmDeleteProduct = (id) => {
 const deleteProduct = async () => {
     try {
         loading.value = true;
-        await EcommerceService.deleteProduct(productToDelete.value);
+        await ecommerceService.deleteProduct(productToDelete.value);
         toast.add({
             severity: 'success',
             summary: 'Success',
@@ -170,7 +170,7 @@ const handleProductSubmit = async (productData) => {
         loading.value = true;
 
         if (editMode.value) {
-            await EcommerceService.updateProduct(currentProduct.value.id, productData);
+            await ecommerceService.updateProduct(currentProduct.value.id, productData);
             toast.add({
                 severity: 'success',
                 summary: 'Success',
@@ -178,7 +178,7 @@ const handleProductSubmit = async (productData) => {
                 life: 3000
             });
         } else {
-            await EcommerceService.createProduct(productData);
+            await ecommerceService.createProduct(productData);
             toast.add({
                 severity: 'success',
                 summary: 'Success',

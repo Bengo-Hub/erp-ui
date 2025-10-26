@@ -1,75 +1,94 @@
-import axios from '@/utils/axiosConfig';
+import BaseService from '../base/BaseService';
 
-const API_URL = '/hrm/leave';
+class LeaveService extends BaseService {
+    constructor() {
+        super('/hrm/leave');
+    }
 
-export const leaveService = {
     // Leave Categories
-    getCategories() {
-        return axios.get(`${API_URL}/categories/`);
-    },
-    createCategory(data) {
-        return axios.post(`${API_URL}/categories/`, data);
-    },
-    updateCategory(id, data) {
-        return axios.put(`${API_URL}/categories/${id}/`, data);
-    },
-    deleteCategory(id) {
-        return axios.delete(`${API_URL}/categories/${id}/`);
-    },
+    async getCategories(params = {}) {
+        return this.getList('categories', params);
+    }
+
+    async createCategory(data) {
+        return this.create('categories', data);
+    }
+
+    async updateCategory(id, data) {
+        return this.update('categories', id, data);
+    }
+
+    async deleteCategory(id) {
+        return this.delete('categories', id);
+    }
 
     // Leave Entitlements
-    getEntitlements(params = {}) {
-        return axios.get(`${API_URL}/entitlements/`, { params });
-    },
-    createEntitlement(data) {
-        return axios.post(`${API_URL}/entitlements/`, data);
-    },
-    updateEntitlement(id, data) {
-        return axios.put(`${API_URL}/entitlements/${id}/`, data);
-    },
-    deleteEntitlement(id) {
-        return axios.delete(`${API_URL}/entitlements/${id}/`);
-    },
+    async getEntitlements(params = {}) {
+        return this.getList('entitlements', params);
+    }
+
+    async createEntitlement(data) {
+        return this.create('entitlements', data);
+    }
+
+    async updateEntitlement(id, data) {
+        return this.update('entitlements', id, data);
+    }
+
+    async deleteEntitlement(id) {
+        return this.delete('entitlements', id);
+    }
 
     // Leave Requests
-    getRequests(params = {}) {
-        return axios.get(`${API_URL}/requests/`, { params });
-    },
-    validateLeave(data) {
-        return axios.post(`${API_URL}/requests/validate/`, data);
-    },
-    createRequest(data) {
-        return axios.post(`${API_URL}/requests/`, data);
-    },
-    updateRequest(id, data) {
-        return axios.put(`${API_URL}/requests/${id}/`, data);
-    },
-    deleteRequest(id) {
-        return axios.delete(`${API_URL}/requests/${id}/`);
-    },
-    approveRequest(id) {
-        return axios.post(`${API_URL}/requests/${id}/approve/`);
-    },
-    rejectRequest(id, reason) {
-        return axios.post(`${API_URL}/requests/${id}/reject/`, { rejection_reason: reason });
-    },
+    async getRequests(params = {}) {
+        return this.getList('requests', params);
+    }
+
+    async validateLeave(data) {
+        return this.create('requests/validate', data);
+    }
+
+    async createRequest(data) {
+        return this.create('requests', data);
+    }
+
+    async updateRequest(id, data) {
+        return this.update('requests', id, data);
+    }
+
+    async deleteRequest(id) {
+        return this.delete('requests', id);
+    }
+
+    async approveRequest(id) {
+        return this.performAction('requests', id, 'approve');
+    }
+
+    async rejectRequest(id, reason) {
+        return this.performAction('requests', id, 'reject', { rejection_reason: reason });
+    }
 
     // Leave Balances
-    getBalances(params = {}) {
-        return axios.get(`${API_URL}/balances/`, { params });
-    },
-    createBalance(data) {
-        return axios.post(`${API_URL}/balances/`, data);
-    },
-    updateBalance(id, data) {
-        return axios.put(`${API_URL}/balances/${id}/`, data);
-    },
-    deleteBalance(id) {
-        return axios.delete(`${API_URL}/balances/${id}/`);
-    },
+    async getBalances(params = {}) {
+        return this.getList('balances', params);
+    }
+
+    async createBalance(data) {
+        return this.create('balances', data);
+    }
+
+    async updateBalance(id, data) {
+        return this.update('balances', id, data);
+    }
+
+    async deleteBalance(id) {
+        return this.delete('balances', id);
+    }
 
     // Leave Logs
-    getLogs(params = {}) {
-        return axios.get(`${API_URL}/logs/`, { params });
+    async getLogs(params = {}) {
+        return this.getList('logs', params);
     }
-};
+}
+
+export const leaveService = new LeaveService();

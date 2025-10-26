@@ -3,15 +3,6 @@ import { useToast } from '@/composables/useToast';
 import { financeService } from '@/services/FinanceService';
 import { getBusinessDetails } from '@/utils/businessBranding';
 import { formatCurrency } from '@/utils/formatters';
-import Button from 'primevue/button';
-import Calendar from 'primevue/calendar';
-import Dialog from 'primevue/dialog';
-import Dropdown from 'primevue/dropdown';
-import InputNumber from 'primevue/inputnumber';
-import InputText from 'primevue/inputtext';
-import TabPanel from 'primevue/tabpanel';
-import TabView from 'primevue/tabview';
-import Textarea from 'primevue/textarea';
 import { computed, onMounted, reactive, ref, watch } from 'vue';
 
 const props = defineProps({

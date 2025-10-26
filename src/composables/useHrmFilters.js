@@ -1,5 +1,5 @@
 import { useToast } from '@/composables/useToast';
-import { coreService } from '@/services/coreService';
+import { coreService } from '@/services/shared/coreService';
 import { computed, ref } from 'vue';
 
 export function useHrmFilters() {
@@ -48,9 +48,24 @@ export function useHrmFilters() {
         try {
             const [deptRes, regionRes, projectsRes] = await Promise.all([coreService.getDepartmentsV1(), coreService.getRegionsV1(), coreService.getProjectsV1()]);
 
-            departments.value = deptRes.data?.results || deptRes.data || [];
-            regions.value = regionRes.data?.results || regionRes.data || [];
-            projects.value = projectsRes.data?.results || projectsRes.data || [];
+            // Normalize departments (uses 'title' field)
+            departments.value = (deptRes.data?.results || deptRes.data || []).map(dept => ({
+                ...dept,
+                title: dept.title || dept.name // Fallback to name if title missing
+            }));
+            
+            // Normalize regions (uses 'name' field, normalize to 'title' for consistency)
+            regions.value = (regionRes.data?.results || regionRes.data || []).map(region => ({
+                ...region,
+                title: region.name || region.title, // Map name to title for dropdown consistency
+                name: region.name || region.title // Keep original name field
+            }));
+            
+            // Normalize projects (uses 'title' field)
+            projects.value = (projectsRes.data?.results || projectsRes.data || []).map(proj => ({
+                ...proj,
+                title: proj.title || proj.name // Fallback to name if title missing
+            }));
 
             filtersLoaded.value = true;
         } catch (error) {

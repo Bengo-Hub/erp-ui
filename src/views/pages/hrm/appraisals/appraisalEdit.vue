@@ -2,7 +2,6 @@
 import AppraisalForm from '@/components/hrm/appraisals/AppraisalForm.vue';
 import { useToast } from '@/composables/useToast';
 import { appraisalService } from '@/services/hrm/appraisalService';
-import ProgressSpinner from 'primevue/progressspinner';
 import { onMounted, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 

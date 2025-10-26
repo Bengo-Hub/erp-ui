@@ -1,20 +1,7 @@
 <script setup>
 import Spinner from '@/components/ui/Spinner.vue'; // Custom spinner component
-import { CustomerService } from '@/services/CustomerService';
-import { ExpenseService } from '@/services/ExpenseService';
-import { POSService } from '@/services/POSService';
-import { userManagementService } from '@/services/userManagementService';
+import { userManagementService } from '@/services/auth/userManagementService';
 import moment from 'moment';
-import Button from 'primevue/button';
-import Calendar from 'primevue/calendar';
-import Card from 'primevue/card';
-import Checkbox from 'primevue/checkbox';
-import Dropdown from 'primevue/dropdown';
-import FileUpload from 'primevue/fileupload';
-import InputNumber from 'primevue/inputnumber';
-import InputText from 'primevue/inputtext';
-import MultiSelect from 'primevue/multiselect';
-import Textarea from 'primevue/textarea';
 import { useToast } from 'primevue/usetoast';
 import { onMounted, ref } from 'vue';
 

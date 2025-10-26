@@ -1,37 +1,441 @@
+<template>
+    <div class="security-settings-container min-h-screen bg-gray-50 dark:bg-gray-900 p-6">
+        <!-- Header -->
+        <div class="mb-6">
+            <h1 class="text-3xl font-bold text-gray-900 dark:text-gray-100">Security Settings</h1>
+            <p class="text-gray-600 dark:text-gray-400 mt-1">Configure security policies and authentication methods</p>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <!-- Two-Factor Authentication -->
+            <Card class="h-fit">
+                <template #header>
+                    <div class="px-6 pt-6 pb-4 border-b border-gray-200 dark:border-gray-700">
+                        <div class="flex items-center gap-3">
+                            <i class="pi pi-shield text-2xl text-primary-500"></i>
+                            <div>
+                                <h2 class="text-xl font-semibold text-gray-900 dark:text-gray-100">Two-Factor Authentication</h2>
+                                <p class="text-sm text-gray-600 dark:text-gray-400">Add an extra layer of security</p>
+                            </div>
+                        </div>
+                    </div>
+                </template>
+                <template #content>
+                    <div v-if="loading" class="text-center py-8">
+                        <ProgressSpinner style="width:50px;height:50px" />
+                    </div>
+                    <div v-else>
+                        <!-- 2FA Status Banner -->
+                        <div v-if="twoFAStatus.isEnabled" class="p-4 bg-green-50 dark:bg-green-900/30 border border-green-200 dark:border-green-800 rounded-lg mb-4">
+                            <div class="flex items-start gap-3">
+                                <i class="pi pi-check-circle text-green-600 dark:text-green-400 text-xl mt-0.5"></i>
+                                <div class="flex-1">
+                                    <h3 class="font-semibold text-green-800 dark:text-green-200 mb-1">2FA is Active</h3>
+                                    <p class="text-sm text-green-700 dark:text-green-300">Your account is protected with two-factor authentication.</p>
+                                </div>
+                                <Button
+                                    label="Disable"
+                                    icon="pi pi-times"
+                                    severity="danger"
+                                    size="small"
+                                    outlined
+                                    @click="showDisable2FAConfirm"
+                                />
+                            </div>
+                        </div>
+
+                        <div v-else class="p-4 bg-amber-50 dark:bg-amber-900/30 border border-amber-200 dark:border-amber-800 rounded-lg mb-4">
+                            <div class="flex items-start gap-3">
+                                <i class="pi pi-exclamation-triangle text-amber-600 dark:text-amber-400 text-xl mt-0.5"></i>
+                                <div class="flex-1">
+                                    <h3 class="font-semibold text-amber-800 dark:text-amber-200 mb-1">2FA is Not Enabled</h3>
+                                    <p class="text-sm text-amber-700 dark:text-amber-300">Enable two-factor authentication to enhance your account security.</p>
+                                </div>
+                                <Button
+                                    label="Enable 2FA"
+                                    icon="pi pi-shield"
+                                    size="small"
+                                    @click="start2FASetup"
+                                />
+                            </div>
+                        </div>
+
+                        <!-- 2FA Information -->
+                        <div class="space-y-3 text-sm">
+                            <div class="flex items-start gap-2">
+                                <i class="pi pi-info-circle text-blue-500 mt-0.5"></i>
+                                <p class="text-gray-700 dark:text-gray-300">
+                                    Download an authenticator app like Google Authenticator, Authy, or Microsoft Authenticator
+                                </p>
+                            </div>
+                            <div class="flex items-start gap-2">
+                                <i class="pi pi-info-circle text-blue-500 mt-0.5"></i>
+                                <p class="text-gray-700 dark:text-gray-300">
+                                    You'll scan a QR code to link your account
+                                </p>
+                            </div>
+                            <div class="flex items-start gap-2">
+                                <i class="pi pi-info-circle text-blue-500 mt-0.5"></i>
+                                <p class="text-gray-700 dark:text-gray-300">
+                                    Save your backup codes in a secure location
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </template>
+            </Card>
+
+            <!-- Password Policy -->
+            <Card class="h-fit">
+                <template #header>
+                    <div class="px-6 pt-6 pb-4 border-b border-gray-200 dark:border-gray-700">
+                        <div class="flex items-center gap-3">
+                            <i class="pi pi-key text-2xl text-primary-500"></i>
+                            <div>
+                                <h2 class="text-xl font-semibold text-gray-900 dark:text-gray-100">Password Policy</h2>
+                                <p class="text-sm text-gray-600 dark:text-gray-400">Set password complexity requirements</p>
+                            </div>
+                        </div>
+                    </div>
+                </template>
+                <template #content>
+                    <div v-if="loading" class="text-center py-8">
+                        <ProgressSpinner style="width:50px;height:50px" />
+                    </div>
+                    <div v-else class="space-y-4">
+                        <!-- Minimum Length -->
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                Minimum Password Length
+                            </label>
+                            <InputNumber
+                                v-model="passwordPolicy.min_length"
+                                :min="6"
+                                :max="32"
+                                showButtons
+                                class="w-full"
+                            />
+                            <small class="text-gray-600 dark:text-gray-400">Recommended: 8 or more characters</small>
+                        </div>
+
+                        <!-- Complexity Requirements -->
+                        <div class="space-y-3">
+                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                                Complexity Requirements
+                            </label>
+                            
+                            <div class="flex items-center gap-2">
+                                <Checkbox v-model="passwordPolicy.require_uppercase" inputId="uppercase" binary />
+                                <label for="uppercase" class="text-sm text-gray-700 dark:text-gray-300 cursor-pointer">
+                                    Require uppercase letters (A-Z)
+                                </label>
+                            </div>
+
+                            <div class="flex items-center gap-2">
+                                <Checkbox v-model="passwordPolicy.require_lowercase" inputId="lowercase" binary />
+                                <label for="lowercase" class="text-sm text-gray-700 dark:text-gray-300 cursor-pointer">
+                                    Require lowercase letters (a-z)
+                                </label>
+                            </div>
+
+                            <div class="flex items-center gap-2">
+                                <Checkbox v-model="passwordPolicy.require_numbers" inputId="numbers" binary />
+                                <label for="numbers" class="text-sm text-gray-700 dark:text-gray-300 cursor-pointer">
+                                    Require numbers (0-9)
+                                </label>
+                            </div>
+
+                            <div class="flex items-center gap-2">
+                                <Checkbox v-model="passwordPolicy.require_special_chars" inputId="special" binary />
+                                <label for="special" class="text-sm text-gray-700 dark:text-gray-300 cursor-pointer">
+                                    Require special characters (!@#$%...)
+                                </label>
+                            </div>
+                        </div>
+
+                        <!-- Security Settings -->
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4 border-t border-gray-200 dark:border-gray-700">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                    Password Expiry (days)
+                                </label>
+                                <InputNumber
+                                    v-model="passwordPolicy.password_expiry_days"
+                                    :min="0"
+                                    :max="365"
+                                    showButtons
+                                    class="w-full"
+                                />
+                                <small class="text-gray-600 dark:text-gray-400">0 = never expires</small>
+                            </div>
+
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                    Max Login Attempts
+                                </label>
+                                <InputNumber
+                                    v-model="passwordPolicy.max_login_attempts"
+                                    :min="1"
+                                    :max="10"
+                                    showButtons
+                                    class="w-full"
+                                />
+                                <small class="text-gray-600 dark:text-gray-400">Before account lockout</small>
+                            </div>
+
+                            <div class="md:col-span-2">
+                                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                    Lockout Duration (minutes)
+                                </label>
+                                <InputNumber
+                                    v-model="passwordPolicy.lockout_duration_minutes"
+                                    :min="1"
+                                    :max="1440"
+                                    showButtons
+                                    class="w-full"
+                                />
+                                <small class="text-gray-600 dark:text-gray-400">How long accounts remain locked after max attempts</small>
+                            </div>
+                        </div>
+
+                        <!-- Save Button -->
+                        <div class="pt-4">
+                            <Button
+                                label="Save Password Policy"
+                                icon="pi pi-check"
+                                class="w-full"
+                                @click="savePasswordPolicy"
+                                :loading="saving"
+                            />
+                        </div>
+                    </div>
+                </template>
+            </Card>
+        </div>
+
+        <!-- 2FA Setup Dialog -->
+        <Dialog
+            v-model:visible="twoFADialog"
+            header="Two-Factor Authentication Setup"
+            :modal="true"
+            class="w-full md:w-2/3 lg:w-1/2"
+            :closable="twoFAStep === 3"
+        >
+            <Steps :model="twoFASteps" :activeStep="twoFAStep" class="mb-6" />
+
+            <!-- Step 0: Welcome -->
+            <div v-if="twoFAStep === 0" class="space-y-4">
+                <div class="bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
+                    <h3 class="font-semibold text-blue-900 dark:text-blue-100 mb-2">What is 2FA?</h3>
+                    <p class="text-sm text-blue-800 dark:text-blue-200">
+                        Two-factor authentication adds an extra security step to your login. You'll need both your password and a code from your phone to access your account.
+                    </p>
+                </div>
+                
+                <div class="space-y-2 text-sm text-gray-700 dark:text-gray-300">
+                    <p class="font-medium">You'll need:</p>
+                    <ul class="list-disc list-inside space-y-1 ml-4">
+                        <li>An authenticator app (Google Authenticator, Authy, etc.)</li>
+                        <li>Your smartphone with camera</li>
+                        <li>A secure place to store backup codes</li>
+                    </ul>
+                </div>
+            </div>
+
+            <!-- Step 1: QR Code -->
+            <div v-if="twoFAStep === 1" class="space-y-4">
+                <div class="text-center">
+                    <h3 class="font-semibold text-gray-900 dark:text-gray-100 mb-2">Scan QR Code</h3>
+                    <p class="text-sm text-gray-600 dark:text-gray-400 mb-4">
+                        Open your authenticator app and scan this QR code
+                    </p>
+                    
+                    <div class="flex justify-center mb-4">
+                        <img :src="twoFASetup.qrCode" alt="QR Code" class="border-4 border-gray-200 dark:border-gray-700 rounded-lg" />
+                    </div>
+
+                    <div class="bg-gray-100 dark:bg-gray-800 p-4 rounded-lg">
+                        <p class="text-xs text-gray-600 dark:text-gray-400 mb-2">Or enter this code manually:</p>
+                        <div class="flex items-center justify-center gap-2">
+                            <code class="bg-white dark:bg-gray-900 px-3 py-2 rounded font-mono text-sm">
+                                {{ twoFASetup.secretKey }}
+                            </code>
+                            <Button
+                                icon="pi pi-copy"
+                                text
+                                rounded
+                                @click="copySecretKey"
+                                v-tooltip.top="'Copy to clipboard'"
+                            />
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Step 2: Verify Code -->
+            <div v-if="twoFAStep === 2" class="space-y-4">
+                <div class="text-center mb-4">
+                    <h3 class="font-semibold text-gray-900 dark:text-gray-100 mb-2">Verify Code</h3>
+                    <p class="text-sm text-gray-600 dark:text-gray-400">
+                        Enter the 6-digit code from your authenticator app
+                    </p>
+                </div>
+
+                <div class="flex justify-center">
+                    <InputText
+                        v-model="verificationCode"
+                        placeholder="000000"
+                        class="text-center text-2xl tracking-widest font-mono w-48"
+                        maxlength="6"
+                        @keypress="validateNumeric"
+                    />
+                </div>
+
+                <div v-if="verificationError" class="text-center text-red-600 dark:text-red-400 text-sm">
+                    {{ verificationError }}
+                </div>
+            </div>
+
+            <!-- Step 3: Backup Codes -->
+            <div v-if="twoFAStep === 3" class="space-y-4">
+                <div class="bg-amber-50 dark:bg-amber-900/30 border border-amber-200 dark:border-amber-800 rounded-lg p-4 mb-4">
+                    <div class="flex items-start gap-2">
+                        <i class="pi pi-exclamation-triangle text-amber-600 dark:text-amber-400 mt-0.5"></i>
+                        <div>
+                            <h3 class="font-semibold text-amber-900 dark:text-amber-100 mb-1">Save Your Backup Codes</h3>
+                            <p class="text-sm text-amber-800 dark:text-amber-200">
+                                Store these codes in a safe place. You can use them to access your account if you lose your device.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-gray-100 dark:bg-gray-800 p-4 rounded-lg">
+                    <div class="grid grid-cols-2 gap-2 font-mono text-sm">
+                        <div
+                            v-for="(code, index) in twoFASetup.backupCodes"
+                            :key="index"
+                            class="bg-white dark:bg-gray-900 px-3 py-2 rounded border border-gray-300 dark:border-gray-600 text-center"
+                        >
+                            {{ code }}
+                        </div>
+                    </div>
+                </div>
+
+                <div class="flex gap-3">
+                    <Button
+                        label="Download Codes"
+                        icon="pi pi-download"
+                        severity="secondary"
+                        outlined
+                        class="flex-1"
+                        @click="downloadBackupCodes"
+                    />
+                    <Button
+                        label="Print Codes"
+                        icon="pi pi-print"
+                        severity="secondary"
+                        outlined
+                        class="flex-1"
+                        @click="printBackupCodes"
+                    />
+                </div>
+            </div>
+
+            <template #footer>
+                <div class="flex justify-end gap-2">
+                    <Button
+                        v-if="twoFAStep === 0"
+                        label="Cancel"
+                        icon="pi pi-times"
+                        severity="secondary"
+                        outlined
+                        @click="twoFADialog = false"
+                    />
+                    <Button
+                        v-if="twoFAStep === 0"
+                        label="Start Setup"
+                        icon="pi pi-arrow-right"
+                        @click="generateQRCode"
+                        :loading="generatingQR"
+                    />
+                    <Button
+                        v-if="twoFAStep === 1"
+                        label="Back"
+                        icon="pi pi-arrow-left"
+                        severity="secondary"
+                        outlined
+                        @click="twoFAStep = 0"
+                    />
+                    <Button
+                        v-if="twoFAStep === 1"
+                        label="Next"
+                        icon="pi pi-arrow-right"
+                        @click="twoFAStep = 2"
+                    />
+                    <Button
+                        v-if="twoFAStep === 2"
+                        label="Back"
+                        icon="pi pi-arrow-left"
+                        severity="secondary"
+                        outlined
+                        @click="twoFAStep = 1"
+                    />
+                    <Button
+                        v-if="twoFAStep === 2"
+                        label="Verify & Enable"
+                        icon="pi pi-check"
+                        @click="verify2FACode"
+                        :loading="verifying"
+                        :disabled="!verificationCode || verificationCode.length !== 6"
+                    />
+                    <Button
+                        v-if="twoFAStep === 3"
+                        label="Complete Setup"
+                        icon="pi pi-check"
+                        @click="complete2FASetup"
+                    />
+                </div>
+            </template>
+        </Dialog>
+    </div>
+</template>
+
 <script setup>
-import { userManagementService } from '@/services/auth/userManagementService';
-import Button from 'primevue/button';
-import Card from 'primevue/card';
-import Checkbox from 'primevue/checkbox';
-import Column from 'primevue/column';
-import DataTable from 'primevue/datatable';
-import Dialog from 'primevue/dialog';
-import Dropdown from 'primevue/dropdown';
-import FileUpload from 'primevue/fileupload';
-import InputNumber from 'primevue/inputnumber';
-import InputText from 'primevue/inputtext';
-import Steps from 'primevue/steps';
-import Textarea from 'primevue/textarea';
 import { useToast } from '@/composables/useToast';
+import { useConfirm } from 'primevue/useconfirm';
+import { userManagementService } from '@/services/auth/userManagementService';
 import { onMounted, ref } from 'vue';
 
 const { showToast } = useToast();
-const loading = ref(false);
+const confirm = useConfirm();
 
-// 2FA Setup
+// State
+const loading = ref(false);
+const saving = ref(false);
+const generatingQR = ref(false);
+const verifying = ref(false);
+
+// 2FA State
+const twoFADialog = ref(false);
+const twoFAStep = ref(0);
+const twoFAStatus = ref({ isEnabled: false });
 const twoFASetup = ref({
-    isEnabled: false,
     qrCode: '',
     secretKey: '',
-    backupCodes: [],
-    verificationCode: ''
+    backupCodes: []
 });
-const showSecretKey = ref(false);
-const twoFASetupDialog = ref(false);
-const twoFASetupStep = ref(0);
-const twoFASteps = [{ label: 'Generate Setup' }, { label: 'Scan QR Code' }, { label: 'Verify Code' }, { label: 'Save Backup Codes' }];
+const verificationCode = ref('');
+const verificationError = ref('');
 
-// Password Policy
+const twoFASteps = [
+    { label: 'Introduction' },
+    { label: 'Scan QR Code' },
+    { label: 'Verify Code' },
+    { label: 'Backup Codes' }
+];
+
+// Password Policy State
 const passwordPolicy = ref({
     min_length: 8,
     require_uppercase: true,
@@ -43,485 +447,174 @@ const passwordPolicy = ref({
     lockout_duration_minutes: 30
 });
 
-// Organization
-const organization = ref({
-    name: '',
-    email: '',
-    phone: '',
-    address: '',
-    logo: null
-});
-
-// Departments
-const departments = ref([]);
-const users = ref([]);
-const department = ref({});
-const selectedDepartment = ref(null);
-const departmentDialog = ref(false);
-const deleteDepartmentDialog = ref(false);
-const departmentFilter = ref('');
-
+// Methods
 const loadData = async () => {
     loading.value = true;
     try {
-        const [policyRes, orgRes, deptRes, usersRes, twoFARes] = await Promise.all([
+        const [policyRes, twoFARes] = await Promise.all([
             userManagementService.getPasswordPolicy(),
-            userManagementService.getOrganization(),
-            userManagementService.getDepartments(),
-            userManagementService.getUsers(),
             userManagementService.get2FAStatus()
         ]);
 
-        passwordPolicy.value = policyRes.data;
-        organization.value = orgRes.data;
-        departments.value = deptRes.data;
-        users.value = usersRes.data.map((user) => ({
-            ...user,
-            full_name: `${user.first_name} ${user.last_name}`
-        }));
-        twoFASetup.value.isEnabled = twoFARes.data.is_enabled;
+        passwordPolicy.value = policyRes.data || passwordPolicy.value;
+        twoFAStatus.value.isEnabled = twoFARes.data?.is_enabled || false;
     } catch (error) {
-        showToast('error', 'Error', 'Failed to load data', 3000);
+        console.error('Error loading security settings:', error);
+        showToast('error', 'Failed to load security settings', 'Error');
     } finally {
         loading.value = false;
     }
 };
 
 const savePasswordPolicy = async () => {
+    saving.value = true;
     try {
         await userManagementService.updatePasswordPolicy(passwordPolicy.value);
-        showToast('success', 'Success', 'Password policy updated successfully', 3000);
+        showToast('success', 'Password policy updated successfully', 'Success');
     } catch (error) {
-        showToast('error', 'Error', 'Failed to update password policy', 3000);
+        console.error('Error saving password policy:', error);
+        showToast('error', 'Failed to update password policy', 'Error');
+    } finally {
+        saving.value = false;
     }
 };
 
-const saveOrganization = async () => {
-    try {
-        await userManagementService.updateOrganization(organization.value);
-        showToast('success', 'Success', 'Organization settings updated successfully', 3000);
-    } catch (error) {
-        showToast('error', 'Error', 'Failed to update organization settings', 3000);
-    }
+// 2FA Methods
+const start2FASetup = () => {
+    twoFAStep.value = 0;
+    twoFADialog.value = true;
 };
 
-const uploadLogo = async (event) => {
-    const file = event.files[0];
-    const formData = new FormData();
-    formData.append('logo', file);
-
-    try {
-        const response = await userManagementService.uploadLogo(formData);
-        organization.value.logo = response.data.logo_url;
-        showToast('success', 'Success', 'Logo uploaded successfully', 3000);
-    } catch (error) {
-        showToast('error', 'Error', 'Failed to upload logo', 3000);
-    }
-};
-
-const showDepartmentDialog = () => {
-    department.value = {};
-    departmentDialog.value = true;
-};
-
-const hideDepartmentDialog = () => {
-    departmentDialog.value = false;
-};
-
-const editDepartment = (dept) => {
-    department.value = { ...dept };
-    departmentDialog.value = true;
-};
-
-const saveDepartment = async () => {
-    try {
-        if (department.value.id) {
-            await userManagementService.updateDepartment(department.value.id, department.value);
-        } else {
-            await userManagementService.createDepartment(department.value);
-        }
-        hideDepartmentDialog();
-        await loadData();
-        showToast('success', 'Success', 'Department saved successfully', 3000);
-    } catch (error) {
-        showToast('error', 'Error', 'Failed to save department', 3000);
-    }
-};
-
-const confirmDeleteDepartment = (dept) => {
-    department.value = dept;
-    deleteDepartmentDialog.value = true;
-};
-
-const deleteDepartment = async () => {
-    try {
-        await userManagementService.deleteDepartment(department.value.id);
-        deleteDepartmentDialog.value = false;
-        await loadData();
-        showToast('success', 'Success', 'Department deleted successfully', 3000);
-    } catch (error) {
-        showToast('error', 'Error', 'Failed to delete department', 3000);
-    }
-};
-
-// 2FA Functions
-const start2FASetup = async () => {
+const generateQRCode = async () => {
+    generatingQR.value = true;
     try {
         const response = await userManagementService.setup2FA();
-        const data = response.data;
-        twoFASetup.value.qrCode = data.qr_code;
-        twoFASetup.value.secretKey = data.secret_key;
-        twoFASetup.value.backupCodes = data.backup_codes;
-        twoFASetupStep.value = 1;
-        twoFASetupDialog.value = true;
+        twoFASetup.value.qrCode = response.data.qr_code;
+        twoFASetup.value.secretKey = response.data.secret_key;
+        twoFASetup.value.backupCodes = response.data.backup_codes || [];
+        twoFAStep.value = 1;
     } catch (error) {
-        showToast('error', 'Error', 'Failed to generate 2FA setup', 3000);
+        console.error('Error generating 2FA setup:', error);
+        showToast('error', 'Failed to generate 2FA setup', 'Error');
+        twoFADialog.value = false;
+    } finally {
+        generatingQR.value = false;
     }
 };
 
 const verify2FACode = async () => {
-    if (!twoFASetup.value.verificationCode) {
-        showToast('error', 'Error', 'Please enter the verification code', 3000);
+    if (!verificationCode.value || verificationCode.value.length !== 6) {
+        verificationError.value = 'Please enter a valid 6-digit code';
         return;
     }
 
+    verifying.value = true;
+    verificationError.value = '';
+    
     try {
-        await userManagementService.verify2FA(twoFASetup.value.verificationCode);
-        twoFASetup.value.isEnabled = true;
-        twoFASetupStep.value = 3;
-        showToast('success', 'Success', '2FA enabled successfully', 3000);
+        await userManagementService.verify2FA(verificationCode.value);
+        twoFAStatus.value.isEnabled = true;
+        twoFAStep.value = 3;
+        showToast('success', '2FA verified successfully!', 'Success');
     } catch (error) {
-        showToast('error', 'Error', error.response?.data?.error || 'Invalid verification code', 3000);
-        twoFASetup.value.verificationCode = '';
+        console.error('Error verifying 2FA code:', error);
+        verificationError.value = 'Invalid code. Please try again.';
+        verificationCode.value = '';
+    } finally {
+        verifying.value = false;
     }
+};
+
+const complete2FASetup = () => {
+    twoFADialog.value = false;
+    twoFAStep.value = 0;
+    verificationCode.value = '';
+    showToast('success', 'Two-factor authentication enabled successfully', 'Success');
+};
+
+const showDisable2FAConfirm = () => {
+    confirm.require({
+        message: 'Are you sure you want to disable two-factor authentication? This will reduce your account security.',
+        header: 'Disable 2FA',
+        icon: 'pi pi-exclamation-triangle',
+        acceptClass: 'p-button-danger',
+        accept: () => disable2FA()
+    });
 };
 
 const disable2FA = async () => {
-    if (confirm('Are you sure you want to disable two-factor authentication? This will reduce your account security.')) {
-        try {
-            await userManagementService.disable2FA();
-            twoFASetup.value.isEnabled = false;
-            showToast('success', 'Success', '2FA disabled successfully', 3000);
-        } catch (error) {
-            showToast('error', 'Error', 'Failed to disable 2FA', 3000);
-        }
+    try {
+        await userManagementService.disable2FA();
+        twoFAStatus.value.isEnabled = false;
+        showToast('success', 'Two-factor authentication disabled', 'Success');
+    } catch (error) {
+        console.error('Error disabling 2FA:', error);
+        showToast('error', 'Failed to disable 2FA', 'Error');
     }
 };
 
+const copySecretKey = () => {
+    navigator.clipboard.writeText(twoFASetup.value.secretKey);
+    showToast('success', 'Secret key copied to clipboard', 'Success');
+};
+
 const downloadBackupCodes = () => {
-    const codesText = twoFASetup.value.backupCodes.join('\n');
-    const blob = new Blob([codesText], { type: 'text/plain' });
+    const text = `Two-Factor Authentication Backup Codes\n\nGenerated: ${new Date().toLocaleString()}\n\n${twoFASetup.value.backupCodes.join('\n')}\n\nKeep these codes in a safe place!`;
+    const blob = new Blob([text], { type: 'text/plain' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = 'backup-codes.txt';
+    a.download = `2FA-backup-codes-${new Date().getTime()}.txt`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
 };
 
+const printBackupCodes = () => {
+    const printWindow = window.open('', '', 'width=800,height=600');
+    printWindow.document.write(`
+        <html>
+        <head>
+            <title>2FA Backup Codes</title>
+            <style>
+                body { font-family: Arial, sans-serif; padding: 40px; }
+                h1 { color: #333; }
+                .code { background: #f5f5f5; padding: 10px; margin: 5px 0; border-radius: 4px; font-family: monospace; }
+                .warning { background: #fff3cd; padding: 15px; margin: 20px 0; border-left: 4px solid #ffc107; }
+            </style>
+        </head>
+        <body>
+            <h1>Two-Factor Authentication Backup Codes</h1>
+            <p>Generated: ${new Date().toLocaleString()}</p>
+            <div class="warning">
+                <strong>⚠️ Important:</strong> Store these codes in a safe place. Each code can only be used once.
+            </div>
+            ${twoFASetup.value.backupCodes.map(code => `<div class="code">${code}</div>`).join('')}
+        </body>
+        </html>
+    `);
+    printWindow.document.close();
+    printWindow.print();
+};
+
+const validateNumeric = (event) => {
+    const charCode = event.which ? event.which : event.keyCode;
+    if (charCode < 48 || charCode > 57) {
+        event.preventDefault();
+    }
+};
+
+// Lifecycle
 onMounted(() => {
     loadData();
 });
 </script>
 
-<template>
-    <div class="settings">
-        <div class="grid">
-            <!-- Two-Factor Authentication -->
-            <div class="col-12">
-                <Card>
-                    <template #title>Two-Factor Authentication</template>
-                    <template #content>
-                        <div v-if="twoFASetup.isEnabled" class="p-4 bg-green-50 dark:bg-green-900 rounded-lg">
-                            <div class="flex items-center justify-between">
-                                <div>
-                                    <h3 class="text-green-800 dark:text-green-200 font-semibold">2FA is Enabled</h3>
-                                    <p class="text-green-700 dark:text-green-300">Your account is protected with two-factor authentication.</p>
-                                </div>
-                                <Button label="Disable 2FA" severity="danger" @click="disable2FA" />
-                            </div>
-                        </div>
-                        <div v-else class="p-4 bg-blue-50 dark:bg-blue-900 rounded-lg">
-                            <div class="flex items-center justify-between">
-                                <div>
-                                    <h3 class="text-blue-800 dark:text-blue-200 font-semibold">2FA is Not Enabled</h3>
-                                    <p class="text-blue-700 dark:text-blue-300">Enable two-factor authentication to add an extra layer of security to your account.</p>
-                                </div>
-                                <Button label="Enable 2FA" @click="start2FASetup" />
-                            </div>
-                        </div>
-                    </template>
-                </Card>
-            </div>
-
-            <!-- Password Policy -->
-            <div class="col-12 md:col-6">
-                <Card>
-                    <template #title>Password Policy</template>
-                    <template #content>
-                        <form @submit.prevent="savePasswordPolicy" class="p-fluid">
-                            <div class="field">
-                                <label for="minLength">Minimum Length</label>
-                                <InputNumber v-model="passwordPolicy.min_length" id="minLength" :min="6" :max="32" />
-                            </div>
-
-                            <div class="field-checkbox">
-                                <Checkbox v-model="passwordPolicy.require_uppercase" id="requireUppercase" />
-                                <label for="requireUppercase">Require Uppercase Letters</label>
-                            </div>
-
-                            <div class="field-checkbox">
-                                <Checkbox v-model="passwordPolicy.require_lowercase" id="requireLowercase" />
-                                <label for="requireLowercase">Require Lowercase Letters</label>
-                            </div>
-
-                            <div class="field-checkbox">
-                                <Checkbox v-model="passwordPolicy.require_numbers" id="requireNumbers" />
-                                <label for="requireNumbers">Require Numbers</label>
-                            </div>
-
-                            <div class="field-checkbox">
-                                <Checkbox v-model="passwordPolicy.require_special_chars" id="requireSpecialChars" />
-                                <label for="requireSpecialChars">Require Special Characters</label>
-                            </div>
-
-                            <div class="field">
-                                <label for="passwordExpiry">Password Expiry (days)</label>
-                                <InputNumber v-model="passwordPolicy.password_expiry_days" id="passwordExpiry" :min="0" :max="365" />
-                            </div>
-
-                            <div class="field">
-                                <label for="maxLoginAttempts">Maximum Login Attempts</label>
-                                <InputNumber v-model="passwordPolicy.max_login_attempts" id="maxLoginAttempts" :min="1" :max="10" />
-                            </div>
-
-                            <div class="field">
-                                <label for="lockoutDuration">Lockout Duration (minutes)</label>
-                                <InputNumber v-model="passwordPolicy.lockout_duration_minutes" id="lockoutDuration" :min="1" :max="1440" />
-                            </div>
-
-                            <Button type="submit" label="Save Password Policy" class="mt-3" />
-                        </form>
-                    </template>
-                </Card>
-            </div>
-
-            <!-- Organization Settings -->
-            <div class="col-12 md:col-6">
-                <Card>
-                    <template #title>Organization Settings</template>
-                    <template #content>
-                        <form @submit.prevent="saveOrganization" class="p-fluid">
-                            <div class="field">
-                                <label for="orgName">Organization Name</label>
-                                <InputText v-model="organization.name" id="orgName" />
-                            </div>
-
-                            <div class="field">
-                                <label for="orgEmail">Contact Email</label>
-                                <InputText v-model="organization.email" id="orgEmail" type="email" />
-                            </div>
-
-                            <div class="field">
-                                <label for="orgPhone">Contact Phone</label>
-                                <InputText v-model="organization.phone" id="orgPhone" />
-                            </div>
-
-                            <div class="field">
-                                <label for="orgAddress">Address</label>
-                                <Textarea v-model="organization.address" id="orgAddress" rows="3" />
-                            </div>
-
-                            <div class="field">
-                                <label for="orgLogo">Logo</label>
-                                <FileUpload mode="basic" :auto="true" :customUpload="true" @uploader="uploadLogo" accept="image/*" :maxFileSize="1000000" chooseLabel="Upload Logo" />
-                                <img v-if="organization.logo" :src="organization.logo" alt="Organization Logo" class="mt-2" style="max-width: 200px" />
-                            </div>
-
-                            <Button type="submit" label="Save Organization Settings" class="mt-3" />
-                        </form>
-                    </template>
-                </Card>
-            </div>
-
-            <!-- Departments -->
-            <div class="col-12">
-                <Card>
-                    <template #title>Departments</template>
-                    <template #content>
-                        <DataTable :value="departments" :paginator="true" :rows="10" v-model:selection="selectedDepartment" selectionMode="single" dataKey="id">
-                            <template #header>
-                                <div class="flex justify-content-between">
-                                    <Button label="Add Department" icon="pi pi-plus" @click="showDepartmentDialog" />
-                                    <span class="p-input-icon-left">
-                                        <i class="pi pi-search" />
-                                        <InputText v-model="departmentFilter" placeholder="Search departments..." />
-                                    </span>
-                                </div>
-                            </template>
-
-                            <Column field="name" header="Name" sortable />
-                            <Column field="manager" header="Manager" sortable>
-                                <template #body="{ data }">
-                                    {{ data.manager ? `${data.manager.first_name} ${data.manager.last_name}` : '-' }}
-                                </template>
-                            </Column>
-                            <Column :exportable="false" style="min-width: 8rem">
-                                <template #body="{ data }">
-                                    <Button icon="pi pi-pencil" class="p-button-text" @click="editDepartment(data)" />
-                                    <Button icon="pi pi-trash" class="p-button-text p-button-danger" @click="confirmDeleteDepartment(data)" />
-                                </template>
-                            </Column>
-                        </DataTable>
-                    </template>
-                </Card>
-            </div>
-        </div>
-
-        <!-- Department Dialog -->
-        <Dialog v-model:visible="departmentDialog" :style="{ width: '450px' }" header="Department Details" :modal="true">
-            <div class="p-fluid">
-                <div class="field">
-                    <label for="deptName">Name</label>
-                    <InputText v-model="department.name" id="deptName" required />
-                </div>
-                <div class="field">
-                    <label for="deptManager">Manager</label>
-                    <Dropdown v-model="department.manager" :options="users" optionLabel="full_name" optionValue="id" placeholder="Select Manager" />
-                </div>
-            </div>
-            <template #footer>
-                <Button label="Cancel" icon="pi pi-times" class="p-button-text" @click="hideDepartmentDialog" />
-                <Button label="Save" icon="pi pi-check" @click="saveDepartment" />
-            </template>
-        </Dialog>
-
-        <!-- Delete Department Dialog -->
-        <Dialog v-model:visible="deleteDepartmentDialog" :style="{ width: '450px' }" header="Confirm" :modal="true">
-            <div class="confirmation-content">
-                <i class="pi pi-exclamation-triangle mr-3" style="font-size: 2rem" />
-                <span v-if="department"
-                    >Are you sure you want to delete <b>{{ department.name }}</b
-                    >?</span
-                >
-            </div>
-            <template #footer>
-                <Button label="No" icon="pi pi-times" class="p-button-text" @click="deleteDepartmentDialog = false" />
-                <Button label="Yes" icon="pi pi-check" class="p-button-danger" @click="deleteDepartment" />
-            </template>
-        </Dialog>
-
-        <!-- 2FA Setup Dialog -->
-        <Dialog v-model:visible="twoFASetupDialog" :style="{ width: '600px' }" header="Two-Factor Authentication Setup" :modal="true" :closable="false">
-            <Steps :model="twoFASteps" :readonly="false" :activeStep="twoFASetupStep" />
-
-            <!-- Step 1: Generate Setup -->
-            <div v-if="twoFASetupStep === 0" class="mt-4">
-                <p>Two-factor authentication adds an extra layer of security to your account. You'll need to enter a code from your authenticator app in addition to your password.</p>
-                <p class="mt-2 text-sm text-muted-color">You'll need an authenticator app like Google Authenticator, Authy, or Microsoft Authenticator.</p>
-                <div class="mt-4">
-                    <Button label="Start Setup" @click="start2FASetup" />
-                </div>
-            </div>
-
-            <!-- Step 2: Scan QR Code -->
-            <div v-if="twoFASetupStep === 1" class="mt-4">
-                <p>Open your authenticator app and scan the QR code below, or enter the secret key manually.</p>
-
-                <div class="grid">
-                    <div class="col-12 md:col-6">
-                        <div class="text-center p-4 border rounded">
-                            <div v-if="twoFASetup.qrCode">
-                                <img :src="twoFASetup.qrCode" alt="QR Code" class="mx-auto" />
-                            </div>
-                            <div v-else class="text-6xl text-muted-color">📱</div>
-                        </div>
-                    </div>
-
-                    <div class="col-12 md:col-6">
-                        <h4>Manual Entry</h4>
-                        <p class="text-sm text-muted-color">If you can't scan the QR code, enter this secret key manually:</p>
-
-                        <div class="flex items-center mt-2">
-                            <InputText :value="showSecretKey ? twoFASetup.secretKey : '••••••••••••••••'" readonly class="flex-1" />
-                            <Button :icon="showSecretKey ? 'pi pi-eye-slash' : 'pi pi-eye'" @click="showSecretKey = !showSecretKey" class="ml-2" />
-                        </div>
-
-                        <p class="text-sm text-muted-color mt-2">
-                            Account: {{ organization.email || 'your-email@example.com' }}<br />
-                            Issuer: Bengo ERP
-                        </p>
-                    </div>
-                </div>
-
-                <div class="mt-4 flex gap-2">
-                    <Button label="Back" severity="secondary" @click="twoFASetupStep = 0" />
-                    <Button label="Next" @click="twoFASetupStep = 2" />
-                </div>
-            </div>
-
-            <!-- Step 3: Verify Code -->
-            <div v-if="twoFASetupStep === 2" class="mt-4">
-                <p>Enter the 6-digit code from your authenticator app to verify the setup.</p>
-
-                <div class="mt-4">
-                    <label for="verificationCode" class="block font-medium mb-2">Verification Code</label>
-                    <InputText id="verificationCode" v-model="twoFASetup.verificationCode" placeholder="000000" maxlength="6" class="w-full text-center text-2xl tracking-widest" />
-                </div>
-
-                <div class="mt-4 flex gap-2">
-                    <Button label="Back" severity="secondary" @click="twoFASetupStep = 1" />
-                    <Button label="Verify & Enable" @click="verify2FACode" />
-                </div>
-            </div>
-
-            <!-- Step 4: Backup Codes -->
-            <div v-if="twoFASetupStep === 3" class="mt-4">
-                <p>Save these backup codes in a secure location. You can use them to access your account if you lose your authenticator device.</p>
-
-                <div class="mt-4 p-4 bg-warning-50 dark:bg-warning-900 rounded">
-                    <p class="text-sm"><strong>Warning:</strong> Each backup code can only be used once. Generate new codes if you run out.</p>
-                </div>
-
-                <div class="mt-4">
-                    <div class="flex justify-between items-center mb-2">
-                        <h4>Backup Codes</h4>
-                        <Button icon="pi pi-download" label="Download" @click="downloadBackupCodes" size="small" />
-                    </div>
-
-                    <div class="grid grid-cols-2 md:grid-cols-4 gap-2">
-                        <div v-for="(code, index) in twoFASetup.backupCodes" :key="index" class="p-2 bg-gray-100 dark:bg-gray-800 text-center font-mono text-sm rounded">
-                            {{ code }}
-                        </div>
-                    </div>
-                </div>
-
-                <div class="mt-4">
-                    <Button label="Setup Complete" severity="success" @click="twoFASetupDialog = false" />
-                </div>
-            </div>
-        </Dialog>
-    </div>
-</template>
-
 <style scoped>
-.settings {
-    padding: 1rem;
-}
-
-.field {
-    margin-bottom: 1rem;
-}
-
-.field-checkbox {
-    margin-bottom: 1rem;
-    display: flex;
-    align-items: center;
-}
-
-.field-checkbox label {
-    margin-left: 0.5rem;
+.security-settings-container {
+    max-width: 1400px;
+    margin: 0 auto;
 }
 </style>
+

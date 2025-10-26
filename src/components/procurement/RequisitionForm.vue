@@ -1,6 +1,6 @@
 <script setup>
-import { coreService } from '@/services/coreService';
-import { POSService } from '@/services/POSService';
+import { coreService } from '@/services/shared/coreService';
+import { POSService } from '@/services/ecommerce/posService';
 import { procurementService } from '@/services/procurementService';
 import { useVuelidate } from '@vuelidate/core';
 import { required, requiredIf } from '@vuelidate/validators';
@@ -94,7 +94,7 @@ watch(
 // Form methods
 const loadInventoryItems = async () => {
     try {
-        const response = await POSService.getProducts();
+        const response = await posService.getProducts();
         stockItems.value = response.data.results;
     } catch (error) {
         toast.add({

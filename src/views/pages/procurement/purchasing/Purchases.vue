@@ -1,7 +1,7 @@
 <script setup>
-import ApprovalWorkflow from '@/components/procurement/ApprovalWorkflow.vue';
 import AddPurchase from '@/components/purchase/AddPurchase.vue';
 import reportdet from '@/components/report/header.vue';
+import ApprovalWorkflow from '@/components/shared/ApprovalWorkflow.vue';
 import Spinner from '@/components/ui/Spinner.vue';
 import { useToast } from '@/composables/useToast';
 import { procurementService } from '@/services/procurementService';

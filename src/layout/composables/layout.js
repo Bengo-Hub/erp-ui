@@ -1,10 +1,10 @@
+import { useTheme } from '@/composables/useTheme';
 import { computed, reactive, readonly } from 'vue';
 
 const layoutConfig = reactive({
     preset: 'Aura',
     primary: 'emerald',
     surface: null,
-    darkTheme: false,
     menuMode: 'static'
 });
 
@@ -39,26 +39,8 @@ export function useLayout() {
         layoutConfig.menuMode = mode;
     };
 
-    const setDarkMode = (value) => {
-        if (layoutConfig.darkTheme === value) return;
-        layoutConfig.darkTheme = value;
-        document.documentElement.classList.toggle('app-dark', value);
-    };
-
-    const toggleDarkMode = () => {
-        if (!document.startViewTransition) {
-            executeDarkModeToggle();
-
-            return;
-        }
-
-        document.startViewTransition(() => executeDarkModeToggle(event));
-    };
-
-    const executeDarkModeToggle = () => {
-        layoutConfig.darkTheme = !layoutConfig.darkTheme;
-        document.documentElement.classList.toggle('app-dark');
-    };
+    // Use centralized theme management
+    const { isDarkMode, toggleDarkMode, setDarkMode: setThemeDarkMode } = useTheme();
 
     const onMenuToggle = () => {
         if (layoutConfig.menuMode === 'overlay') {
@@ -80,8 +62,6 @@ export function useLayout() {
 
     const isSidebarActive = computed(() => layoutState.overlayMenuActive || layoutState.staticMenuMobileActive);
 
-    const isDarkTheme = computed(() => layoutConfig.darkTheme);
-
     const getPrimary = computed(() => layoutConfig.primary);
 
     const getSurface = computed(() => layoutConfig.surface);
@@ -91,12 +71,12 @@ export function useLayout() {
         layoutState: readonly(layoutState),
         onMenuToggle,
         isSidebarActive,
-        isDarkTheme,
+        isDarkTheme: isDarkMode, // Use centralized dark mode from useTheme
         getPrimary,
         getSurface,
         setActiveMenuItem,
-        toggleDarkMode,
-        setDarkMode,
+        toggleDarkMode, // Use centralized toggle from useTheme
+        setDarkMode: setThemeDarkMode, // Use centralized setter from useTheme
         setPrimary,
         setSurface,
         setPreset,

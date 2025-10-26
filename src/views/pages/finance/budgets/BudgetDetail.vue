@@ -188,10 +188,11 @@
 
 <script setup>
 import { useToast } from '@/composables/useToast';
-import { financeService } from '@/services/FinanceService';
+import { financeService } from '@/services/finance/financeService';
 import { onMounted, reactive, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import PageBreadcrumb from '@/components/common/PageBreadcrumb.vue';
+import { formatCurrency, formatDate } from '@/utils/formatters';
 
 const { showToast } = useToast();
 const route = useRoute();
@@ -339,11 +340,6 @@ const goBack = () => {
 };
 
 // Utility functions
-const formatDate = (date) => {
-    if (!date) return 'N/A';
-    return new Date(date).toLocaleDateString('en-GB');
-};
-
 const formatCurrency = (amount) => {
     return new Intl.NumberFormat('en-KE', {
         style: 'currency',

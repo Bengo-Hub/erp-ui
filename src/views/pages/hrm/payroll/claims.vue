@@ -1,12 +1,15 @@
 <script setup>
 import Claim from '@/components/hrm/payroll/claim.vue';
 import { useHrmFilters } from '@/composables/useHrmFilters';
+import { usePermissions } from '@/composables/usePermissions';
+import { useSensitiveModules } from '@/composables/useSensitiveModules';
 import { useToast } from '@/composables/useToast';
 import { employeeService } from '@/services/hrm/employeeService';
 import { payrollService } from '@/services/hrm/payrollService';
 import { FilterMatchMode } from '@primevue/core/api';
 import moment from 'moment';
 import { computed, onMounted, ref } from 'vue';
+import { useStore } from 'vuex';
 
 const { showToast } = useToast();
 
@@ -33,6 +36,15 @@ const filters = ref({
 
 // Composables
 const { departments, regions, projects, loadFilters } = useHrmFilters();
+const { hasPermission, hasAnyPermission } = usePermissions();
+const { canAccessExpenseClaims, canViewAllRecords } = useSensitiveModules();
+const store = useStore();
+
+// Current user
+const currentUser = computed(() => store.state.auth.user);
+
+// Check if user can view all claims or only their own
+const canViewAllClaims = computed(() => canViewAllRecords('payroll', 'expenseclaims'));
 
 // Process Actions for bulk operations
 const ProcessActions = ref([
@@ -133,6 +145,15 @@ const fetchClaims = async () => {
         todate: toDate.value ? toDate.value : null,
         employee_ids: selectedEmployee.value ? selectedEmployee.value : null
     };
+    
+    // If user doesn't have elevated permissions, filter by their employee ID
+    // Backend will also filter, but this ensures UI consistency
+    if (!canViewAllClaims.value && !params.employee_ids) {
+        const employeeId = currentUser.value?.employee_id || currentUser.value?.id;
+        params.employee_ids = employeeId;
+        console.log('fetchClaims: Filtering for current user employee ID:', employeeId);
+    }
+    
     await payrollService.listClaims(params).then((response) => {
         let data = response.data.results;
         claimsData.value = data;
@@ -313,10 +334,18 @@ const cancelDates = () => {
                         <InputText v-model="filters['global'].value" placeholder="Search..." />
                     </IconField>
                     <Button label="" icon="pi pi-file-pdf" severity="danger" @click="printClaims" class="m-1" />
-                    <Button label="Add" icon="pi pi-plus" severity="warning" @click="showClaimDialog = true" class="m-1" />
+                    <!-- Add button - only if user has add permission -->
+                    <Button 
+                        v-if="hasPermission('payroll.add_expenseclaims')"
+                        label="Add" 
+                        icon="pi pi-plus" 
+                        severity="warning" 
+                        @click="showClaimDialog = true" 
+                        class="m-1" 
+                    />
                 </div>
-                <!-- Bulk Action Buttons -->
-                <div class="bulk-actions">
+                <!-- Bulk Action Buttons - only for users with change/delete permissions -->
+                <div class="bulk-actions" v-if="canViewAllClaims">
                     <SplitButton label="With Selected.." :disabled="filteredClaims.length === 0" icon="pi pi-cog" class="p-button-text bg-gray-10" :model="ProcessActions"></SplitButton>
                 </div>
             </template>
@@ -364,9 +393,17 @@ const cancelDates = () => {
             >
             <Column field="category" header="Expense Category" />
             <Column field="amount" header="Amount" />
-            <Column field="" class="text-blue-600 font-medium hover:underline" header="">
+            <Column field="" class="text-blue-600 font-medium hover:underline" header="Actions">
                 <template #body="{ data }">
-                    <Button label="" icon="pi pi-trash" severity="danger" @click="deletClaim(data.id)" class="m-1 p-0" />
+                    <!-- Delete button - only for users with delete permission -->
+                    <Button 
+                        v-if="hasPermission('payroll.delete_expenseclaims')"
+                        label="" 
+                        icon="pi pi-trash" 
+                        severity="danger" 
+                        @click="deletClaim(data.id)" 
+                        class="m-1 p-0" 
+                    />
                     <Button label="" icon="pi pi-file-pdf" severity="danger" @click="printClaims" class="p-0" /> </template
             ></Column>
         </DataTable>

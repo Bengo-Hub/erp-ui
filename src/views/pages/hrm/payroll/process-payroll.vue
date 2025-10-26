@@ -1,6 +1,6 @@
 <script setup>
 import PayrollData from '@/components/hrm/payroll/payrollData.vue';
-import ApprovalWorkflow from '@/components/procurement/ApprovalWorkflow.vue';
+import ApprovalWorkflow from '@/components/shared/ApprovalWorkflow.vue';
 import Spinner from '@/components/ui/Spinner.vue';
 import { useFormulaManagement } from '@/composables/useFormulaManagement';
 import { useHrmFilters } from '@/composables/useHrmFilters';

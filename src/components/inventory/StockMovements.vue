@@ -3,6 +3,7 @@ import { ref, onMounted } from 'vue';
 import { useToast } from 'primevue/usetoast';
 import { inventoryService } from '@/services/inventoryService';
 import { formatCurrency } from '@/utils/formatters.js';
+import { formatCurrency, formatDate } from '@/utils/formatters';
 
 const toast = useToast();
 const props = defineProps({
@@ -74,10 +75,6 @@ const fetchMovements = async () => {
 const exportData = () => {
     // Implementation for exporting data
     console.log('Export functionality to be implemented');
-};
-
-const formatDate = (dateString) => {
-    return new Date(dateString).toLocaleDateString();
 };
 
 const getTypeSeverity = (type) => {

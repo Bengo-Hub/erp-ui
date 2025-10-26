@@ -1,5 +1,5 @@
 <script>
-import { EcommerceService } from '@/services/EcommerceService';
+import { ecommerceService } from '@/services/ecommerce/ecommerceService';
 import { useVuelidate } from '@vuelidate/core';
 import { helpers, required } from '@vuelidate/validators';
 import { useToast } from 'primevue/usetoast';
@@ -52,7 +52,7 @@ export default {
         const fetchSavedAddresses = async () => {
             loading.value = true;
             try {
-                const response = await EcommerceService.getShippingAddresses();
+                const response = await ecommerceService.getShippingAddresses();
                 if (response.data && Array.isArray(response.data)) {
                     // Map the API response to our component's address format
                     savedAddresses.value = response.data.map((addr) => ({

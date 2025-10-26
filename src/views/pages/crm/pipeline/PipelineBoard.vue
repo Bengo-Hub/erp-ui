@@ -1,15 +1,10 @@
 <script setup>
 import { useToast } from '@/composables/useToast';
-import { CustomerService } from '@/services/CustomerService';
+import { CustomerService } from '@/services/ecommerce/customerService';
 import { formatCurrency, formatDate } from '@/utils/formatters';
 import { computed, onMounted, ref } from 'vue';
 
 // PrimeVue components
-import Button from 'primevue/button';
-import Card from 'primevue/card';
-import ProgressSpinner from 'primevue/progressspinner';
-import Tag from 'primevue/tag';
-
 const { showToast } = useToast();
 
 // Reactive data
@@ -22,7 +17,7 @@ const columns = 4;
 const fetchData = async () => {
     loading.value = true;
     try {
-        const [stagesResponse, dealsResponse] = await Promise.all([CustomerService.listStages(), CustomerService.listDeals()]);
+        const [stagesResponse, dealsResponse] = await Promise.all([customerService.listStages(), customerService.listDeals()]);
 
         stages.value = stagesResponse.results || stagesResponse || [];
         deals.value = dealsResponse.results || dealsResponse || [];
@@ -68,7 +63,7 @@ const moveDeal = async (deal) => {
             return;
         }
 
-        await CustomerService.moveDeal(deal.id, nextStage.id);
+        await customerService.moveDeal(deal.id, nextStage.id);
 
         showToast('success', `Deal moved to ${nextStage.name}`);
 

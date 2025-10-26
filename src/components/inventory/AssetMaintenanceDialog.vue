@@ -190,15 +190,7 @@
 <script setup>
 import { ref, watch } from 'vue';
 import { useToast } from 'primevue/usetoast';
-import Button from 'primevue/button';
-import InputText from 'primevue/inputtext';
-import InputNumber from 'primevue/inputnumber';
-import Textarea from 'primevue/textarea';
-import Dropdown from 'primevue/dropdown';
-import Calendar from 'primevue/calendar';
-import Dialog from 'primevue/dialog';
-
-import assetService from '@/services/assetService';
+import assetService from '@/services/assets/assetService';
 
 // Props
 const props = defineProps({
@@ -305,11 +297,6 @@ const hide = () => {
     emit('hide');
 };
 
-const formatDate = (dateString) => {
-    if (!dateString) return '';
-    return new Date(dateString).toLocaleDateString();
-};
-
 // Watch for prop changes
 watch(() => props.asset, (newAsset) => {
     if (newAsset && props.visible) {
@@ -413,6 +400,7 @@ h4 {
 @media (max-width: 768px) {
     .modern-maintenance-dialog {
         width: 95vw !important;
+import { formatCurrency, formatDate } from '@/utils/formatters';
         margin: 2.5vw;
     }
 

@@ -216,13 +216,9 @@
 import { ref, onMounted, computed } from 'vue';
 import { useToast } from 'primevue/usetoast';
 import { useConfirm } from 'primevue/useconfirm';
-import Button from 'primevue/button';
-import Tag from 'primevue/tag';
-import Toast from 'primevue/toast';
-import ConfirmDialog from 'primevue/confirmdialog';
-
 import AssetCategoryDialog from '@/components/inventory/AssetCategoryDialog.vue';
-import assetService from '@/services/assetService';
+import assetService from '@/services/assets/assetService';
+import { formatCurrency, formatDate } from '@/utils/formatters';
 
 // Composables
 const toast = useToast();
@@ -371,11 +367,6 @@ const deleteCategory = async (categoryData) => {
             life: 3000
         });
     }
-};
-
-const formatDate = (dateString) => {
-    if (!dateString) return '';
-    return new Date(dateString).toLocaleDateString();
 };
 
 const hasPermission = (permission) => {

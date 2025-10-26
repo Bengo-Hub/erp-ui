@@ -1,7 +1,7 @@
 <script setup>
-import { ref, onMounted } from 'vue';
+import { ecommerceService } from '@/services/ecommerce/ecommerceService';
+import { onMounted, reactive, ref } from 'vue';
 import { useRouter } from 'vue-router';
-import { EcommerceService } from '@/services/EcommerceService';
 const router = useRouter();
 const categories = ref([]);
 const hoverStates = reactive({});
@@ -61,7 +61,7 @@ const getSubcategoryLink = (sub) => `/ecommerce/shop/subcategory/${sub.id}`;
 
 const fetchSubcategories = async (categoryId) => {
     try {
-        const response = await EcommerceService.getCategoryById(categoryId);
+        const response = await ecommerceService.getCategoryById(categoryId);
         subcategories.value[categoryId] = response.data.Subcategories || [];
     } catch (error) {
         console.error(`Error fetching subcategories for category ${categoryId}:`, error);
@@ -188,37 +188,57 @@ const navigateToCategory = (categoryId) => {
 }
 
 .panel-header {
-    @apply text-lg font-bold mb-4 pb-2 border-b;
+    font-size: 1.125rem;
+    font-weight: bold;
+    margin-bottom: 1rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid #e5e7eb;
 }
 
 .subcategory-scroller {
-    @apply flex overflow-x-auto gap-4 pb-3;
+    display: flex;
+    overflow-x: auto;
+    gap: 1rem;
+    padding-bottom: 0.75rem;
     scrollbar-width: thin;
 }
 
 .subcategory-item {
-    @apply px-4 py-2 bg-gray-100 rounded-full whitespace-nowrap flex-shrink-0;
+    padding: 0.5rem 1rem;
+    background-color: #f3f4f6;
+    border-radius: 9999px;
+    white-space: nowrap;
+    flex-shrink: 0;
     transition: all 0.2s;
 }
 
 .subcategory-item:hover {
-    @apply bg-primary text-white;
+    background-color: var(--primary-color);
+    color: white;
 }
 
 .vertical-categories {
-    @apply grid gap-2;
+    display: grid;
+    gap: 0.5rem;
 }
 
 .category-link {
-    @apply py-2 px-4 hover:bg-gray-100 rounded;
+    padding: 0.5rem 1rem;
+    border-radius: 0.25rem;
+}
+
+.category-link:hover {
+    background-color: #f3f4f6;
 }
 
 .subcategory-header {
-    @apply font-semibold mb-2 text-gray-600;
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+    color: #4b5563;
 }
 
 .category-section {
-    @apply mb-6;
+    margin-bottom: 1.5rem;
 }
 
 .subcategories {

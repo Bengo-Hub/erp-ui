@@ -1,26 +1,21 @@
 <script setup>
-import Button from 'primevue/button';
-import Card from 'primevue/card';
+import { useChartOptions } from '@/composables/useChartOptions';
+import { useDashboardState } from '@/composables/useDashboardState';
+import { useToast } from '@/composables/useToast';
+import { dashboardService } from '@/services/shared/dashboardService';
+import { PERIOD_OPTIONS } from '@/utils/constants';
 import Chart from 'primevue/chart';
-import Column from 'primevue/column';
-import DataTable from 'primevue/datatable';
-import Dropdown from 'primevue/dropdown';
-import ProgressSpinner from 'primevue/progressspinner';
-import { useToast } from 'primevue/usetoast';
 import { onMounted, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
 
 const router = useRouter();
-const toast = useToast();
+const { showToast } = useToast();
+const { currencyChartOptions } = useChartOptions();
+const { state, executeDataFetch } = useDashboardState();
+
 const loading = ref(false);
 const period = ref('month');
-
-const periodOptions = [
-    { label: 'This Week', value: 'week' },
-    { label: 'This Month', value: 'month' },
-    { label: 'This Quarter', value: 'quarter' },
-    { label: 'This Year', value: 'year' }
-];
+const periodOptions = PERIOD_OPTIONS;
 
 // Dashboard data
 const dashboardData = ref({
@@ -45,24 +40,18 @@ const spendAnalysisChartData = ref(null);
 const loadDashboardData = async () => {
     loading.value = true;
     try {
-        // Import dashboard service
-        const { dashboardService } = await import('@/services/dashboardService');
+        const result = await executeDataFetch(
+            () => dashboardService.getProcurementDashboardData(period.value),
+            null,
+            `Procurement data updated for ${periodOptions.find((p) => p.value === period.value)?.label}`
+        );
 
-        const result = await dashboardService.getProcurementDashboardData(period.value);
-        dashboardData.value = result.data;
-
-        // Process chart data
-        processChartData();
-
-        toast.add({
-            severity: 'success',
-            summary: 'Dashboard Updated',
-            detail: `Procurement data updated for ${periodOptions.find((p) => p.value === period.value)?.label}`,
-            life: 3000
-        });
+        if (result) {
+            dashboardData.value = result.data || result;
+            processChartData();
+        }
     } catch (error) {
         console.error('Error loading procurement dashboard:', error);
-        throw error;
     } finally {
         loading.value = false;
     }
@@ -113,30 +102,6 @@ const processChartData = () => {
                 }
             ]
         };
-    }
-};
-
-// Chart options
-const chartOptions = {
-    responsive: true,
-    maintainAspectRatio: false,
-    plugins: {
-        legend: {
-            position: 'bottom'
-        }
-    },
-    scales: {
-        y: {
-            beginAtZero: true,
-            ticks: {
-                callback: function (value) {
-                    return new Intl.NumberFormat('en-KE', {
-                        style: 'currency',
-                        currency: 'KES'
-                    }).format(value);
-                }
-            }
-        }
     }
 };
 
@@ -245,7 +210,7 @@ onMounted(() => {
                     <template #title>Order Trends</template>
                     <template #content>
                         <div class="h-80">
-                            <Chart v-if="orderTrendsChartData" type="line" :data="orderTrendsChartData" :options="chartOptions" class="h-full" />
+                            <Chart v-if="orderTrendsChartData" type="line" :data="orderTrendsChartData" :options="currencyChartOptions" class="h-full" />
                             <div v-else class="flex items-center justify-center h-full text-gray-500">No order data available</div>
                         </div>
                     </template>
@@ -256,7 +221,7 @@ onMounted(() => {
                     <template #title>Spend by Category</template>
                     <template #content>
                         <div class="h-80">
-                            <Chart v-if="categoryBreakdownChartData" type="doughnut" :data="categoryBreakdownChartData" :options="chartOptions" class="h-full" />
+                            <Chart v-if="categoryBreakdownChartData" type="doughnut" :data="categoryBreakdownChartData" :options="currencyChartOptions" class="h-full" />
                             <div v-else class="flex items-center justify-center h-full text-gray-500">No category data available</div>
                         </div>
                     </template>
@@ -268,7 +233,7 @@ onMounted(() => {
                 <template #title>Spend Analysis</template>
                 <template #content>
                     <div class="h-80">
-                        <Chart v-if="spendAnalysisChartData" type="line" :data="spendAnalysisChartData" :options="chartOptions" class="h-full" />
+                        <Chart v-if="spendAnalysisChartData" type="line" :data="spendAnalysisChartData" :options="currencyChartOptions" class="h-full" />
                         <div v-else class="flex items-center justify-center h-full text-gray-500">No spend data available</div>
                     </div>
                 </template>

@@ -8,51 +8,33 @@ const originalModel = ref([
         label: 'Home',
         items: [
             {
-                label: 'Dashboards',
+                label: 'Home',
                 icon: 'pi pi-fw pi-palette',
-                items: [
-                    {
-                        label: 'Dashboard',
-                        permission: 'view_analyticssnapshot',
-                        icon: 'pi pi-fw pi-chart-line',
-                        to: '/'
-                    },
-                    {
-                        label: 'Analytics Dashboard',
-                        permission: 'view_sales',
-                        icon: 'pi pi-fw pi-chart-bar',
-                        to: '/analytics'
-                    }
-                ]
+                permission: 'view_analyticssnapshot',
+                to: '/'
+            },
+            {
+                label: 'My Dashboard',
+                icon: 'pi pi-fw pi-user',
+                to: '/ess'
+                // No permission required - available to all authenticated users
             }
         ]
-    },
+    },  
     {
         label: 'AUTH',
         items: [
             {
                 label: 'User Management',
                 icon: 'pi pi-fw pi-users',
-                permission: 'view_customuser',
+                permission: 'delete_customuser',
                 items: [
                     {
-                        label: 'Users',
-                        permission: 'view_customuser',
-                        icon: 'pi pi-fw pi-user',
-                        to: '/users/UserManagement'
+                        label: 'User Management',
+                        permission: 'delete_customuser',
+                        icon: 'pi pi-fw pi-users',
+                        to: '/users'
                     },
-                    {
-                        label: 'Roles & Permissions',
-                        permission: 'view_group',
-                        icon: 'pi pi-fw pi-lock',
-                        to: '/users/rolesPermissions'
-                    },
-                    {
-                        label: 'Sales Commission Agents',
-                        permission: 'view_employee',
-                        icon: 'pi pi-fw pi-id-card',
-                        to: '/auth/agents'
-                    }
                 ]
             }
         ]
@@ -63,29 +45,35 @@ const originalModel = ref([
             {
                 label: 'Dashboard',
                 icon: 'pi pi-fw pi-chart-line',
-                permission: 'view_payrollcomponents',
+                permission: 'add_employee',  // Only managers/HR can access HRM dashboard
                 to: '/hrm'
+            },
+            {
+                        label: 'Payroll Analytics',
+                        permission: 'change_payslip',
+                        icon: 'pi pi-fw pi-chart-bar',
+                        to: '/hrm/analytics'
             },
             {
                 label: 'Payroll',
                 icon: 'pi pi-fw pi-money-bill',
-                permission: 'view_payrollcomponents',
+                permission: 'change_payrollcomponents',
                 items: [
                     {
                         label: 'Advance Pay',
-                        permission: 'view_advances',
+                        permission: 'change_advances',
                         icon: 'pi pi-fw pi-wallet',
                         to: '/hrm/payroll/advance-pay'
                     },
                     {
                         label: 'Losses/Damage',
-                        permission: 'view_lossesanddamages',
+                        permission: 'change_lossesanddamages',
                         icon: 'pi pi-fw pi-exclamation-triangle',
                         to: '/hrm/payroll/loss-damages'
                     },
                     {
                         label: 'Expense Claims',
-                        permission: 'view_expenseclaims',
+                        permission: 'change_expenseclaims',
                         icon: 'pi pi-fw pi-file',
                         to: '/hrm/payroll/claims'
                     },
@@ -95,7 +83,7 @@ const originalModel = ref([
                         items: [
                             {
                                 label: 'View Payslips',
-                                permission: 'view_payslip',
+                                permission: 'change_payslip',
                                 icon: 'pi pi-fw pi-file-export',
                                 to: '/hrm/payroll/regular/view-payslips'
                             },
@@ -109,13 +97,13 @@ const originalModel = ref([
                     },
                     {
                         label: 'Casual Employees',
-                        permission: 'view_employee',
+                        permission: 'change_employee',
                         icon: 'pi pi-fw pi-users',
                         to: '/hrm/payroll/casualEmployees'
                     },
                     {
                         label: 'Consultants',
-                        permission: 'view_employee',
+                        permission: 'change_employee',
                         icon: 'pi pi-fw pi-users',
                         to: '/hrm/payroll/consultants'
                     },
@@ -136,28 +124,28 @@ const originalModel = ref([
             {
                 label: 'Employees',
                 icon: 'pi pi-fw pi-user-plus',
-                permission: 'view_employee',
+                permission: 'change_employee',
                 items: [
                     {
                         label: 'Manage Employees',
-                        permission: 'view_employee',
+                        permission: 'change_employee',
                         icon: 'pi pi-fw pi-wrench',
                         to: '/hrm/employees/view-employees'
                     },
                     {
                         label: 'Manage Contracts',
-                        permission: 'view_contract',
+                        permission: 'change_contract',
                         icon: 'pi pi-fw pi-file',
                         to: '/hrm/employees/manageContracts'
                     },
                     {
                         label: 'Payroll Data',
                         icon: 'pi pi-fw pi-server',
-                        permission: 'view_payrollcomponents',
+                        permission: 'change_payrollcomponents',
                         items: [
                             {
                                 label: 'Basic Pay',
-                                permission: 'view_payrollcomponents',
+                                permission: 'change_payrollcomponents',
                                 icon: 'pi pi-fw pi-dollar',
                                 to: {
                                     name: 'employee_spreadsheet',
@@ -170,7 +158,7 @@ const originalModel = ref([
                             },
                             {
                                 label: 'Benefits',
-                                permission: 'view_benefits',
+                                permission: 'change_benefits',
                                 icon: 'pi pi-fw pi-plus-circle',
                                 to: {
                                     name: 'employee_spreadsheet',
@@ -183,7 +171,7 @@ const originalModel = ref([
                             },
                             {
                                 label: 'Deductions',
-                                permission: 'view_deductions',
+                                permission: 'change_deductions',
                                 icon: 'pi pi-fw pi-minus-circle',
                                 to: {
                                     name: 'employee_spreadsheet',
@@ -196,7 +184,7 @@ const originalModel = ref([
                             },
                             {
                                 label: 'Earnings',
-                                permission: 'view_earnings',
+                                permission: 'change_earnings',
                                 icon: 'pi pi-fw pi-plus',
                                 to: {
                                     name: 'employee_spreadsheet',
@@ -209,7 +197,7 @@ const originalModel = ref([
                             },
                             {
                                 label: 'Loans',
-                                permission: 'view_employeloans',
+                                permission: 'change_employeloans',
                                 icon: 'pi pi-fw pi-money-bill',
                                 to: {
                                     name: 'employee_spreadsheet',
@@ -225,11 +213,11 @@ const originalModel = ref([
                     {
                         label: 'Employee Documents',
                         icon: 'pi pi-fw pi-folder-open',
-                        permission: 'view_documents',
+                        permission: 'change_documents',
                         items: [
                             {
                                 label: 'Document Library',
-                                permission: 'view_documents',
+                                permission: 'change_documents',
                                 icon: 'pi pi-fw pi-folder'
                             },
                             {
@@ -244,7 +232,7 @@ const originalModel = ref([
             {
                 label: 'Training',
                 icon: 'pi pi-fw pi-book',
-                permission: 'view_trainingcourse',
+                permission: 'change_trainingcourse',
                 items: [
                     {
                         label: 'Courses',
@@ -273,7 +261,7 @@ const originalModel = ref([
                 items: [
                     {
                         label: 'Leave List',
-                        permission: 'view_leaverequest',
+                        permission: 'change_leaverequest',
                         icon: 'pi pi-fw pi-wallet',
                         to: '/hrm/Leave/leaveList'
                     },
@@ -285,13 +273,13 @@ const originalModel = ref([
                     },
                     {
                         label: 'Leave Entitlement',
-                        permission: 'view_leaveentitlement',
+                        permission: 'change_leaveentitlement',
                         icon: 'pi pi-fw pi-file',
                         to: '/hrm/Leave/leaveEntitlement'
                     },
                     {
                         label: 'Leave Types',
-                        permission: 'view_leavecategory',
+                        permission: 'change_leavecategory',
                         icon: 'pi pi-fw pi-file',
                         to: '/hrm/Leave/leaveCategories'
                     }
@@ -305,12 +293,26 @@ const originalModel = ref([
                     {
                         label: 'Attendance Records',
                         permission: 'view_attendancerecord',
-                        icon: 'pi pi-fw pi-calendar'
+                        icon: 'pi pi-fw pi-calendar',
+                        to: '/hrm/attendance/attendanceRecords'
                     },
                     {
                         label: 'Attendance Rules',
                         permission: 'view_attendancerule',
-                        icon: 'pi pi-fw pi-cog'
+                        icon: 'pi pi-fw pi-cog',
+                        to: '/hrm/attendance/attendanceRules'
+                    }, // timesheet
+                    {
+                        label: 'Timesheet',
+                        permission: 'change_timesheet',
+                        icon: 'pi pi-fw pi-clock',
+                        to: '/hrm/attendance/timesheets'
+                    },
+                    {
+                        label: 'Timesheet Approvals',
+                        permission: 'change_timesheetapproval',
+                        icon: 'pi pi-fw pi-check-circle',
+                        to: '/hrm/attendance/timesheetApprovals'
                     }
                 ]
             },
@@ -379,17 +381,95 @@ const originalModel = ref([
             {
                 label: 'Reports',
                 icon: 'pi pi-fw pi-file-import',
-                permission: 'view_payslip',
+                permission: 'change_payslip',
                 items: [
                     {
-                        label: 'Payroll Reports',
-                        permission: 'view_payslip',
-                        icon: 'pi pi-fw pi-chart-bar'
+                        label: 'All Reports',
+                        permission: 'change_payslip',
+                        icon: 'pi pi-fw pi-th-large',
+                        to: '/hrm/reports'
                     },
                     {
-                        label: 'Employee Reports',
-                        permission: 'view_employee',
-                        icon: 'pi pi-fw pi-users'
+                        label: 'KRA Reports',
+                        permission: 'change_payslip',
+                        icon: 'pi pi-fw pi-file-pdf',
+                        items: [
+                            {
+                                label: 'P9 Tax Card',
+                                permission: 'change_payslip',
+                                to: '/hrm/reports/p9'
+                            },
+                            {
+                                label: 'P10A Annual Return',
+                                permission: 'change_payslip',
+                                to: '/hrm/reports/p10a'
+                            },
+                            {
+                                label: 'Withholding Tax',
+                                permission: 'change_payslip',
+                                to: '/hrm/reports/withholding-tax'
+                            },
+                            {
+                                label: 'CBS Report',
+                                permission: 'change_payslip',
+                                to: '/hrm/reports/cbs'
+                            }
+                        ]
+                    },
+                    {
+                        label: 'Statutory Deductions',
+                        permission: 'change_payslip',
+                        icon: 'pi pi-fw pi-shield',
+                        items: [
+                            {
+                                label: 'NSSF Report',
+                                permission: 'change_payslip',
+                                to: '/hrm/reports/nssf'
+                            },
+                            {
+                                label: 'NHIF (SHA) Report',
+                                permission: 'change_payslip',
+                                to: '/hrm/reports/nhif'
+                            },
+                            {
+                                label: 'NITA Levy',
+                                permission: 'change_payslip',
+                                to: '/hrm/reports/nita'
+                            }
+                        ]
+                    },
+                    {
+                        label: 'Payroll Reports',
+                        permission: 'change_payslip',
+                        icon: 'pi pi-fw pi-chart-bar',
+                        items: [
+                            {
+                                label: 'Bank Net Pay',
+                                permission: 'change_payslip',
+                                to: '/hrm/reports/bank-net-pay'
+                            },
+                            {
+                                label: 'Muster Roll',
+                                permission: 'change_payslip',
+                                to: '/hrm/reports/muster-roll'
+                            },
+                            {
+                                label: 'Variance Report',
+                                permission: 'change_payslip',
+                                to: '/hrm/reports/variance'
+                            },
+                            {
+                                label: 'Approvers Report',
+                                permission: 'change_payslip',
+                                to: '/hrm/reports/approvers'
+                            }
+                        ]
+                    },
+                    {
+                        label: 'Custom Reports',
+                        permission: 'change_payslip',
+                        icon: 'pi pi-fw pi-cog',
+                        to: '/hrm/reports/custom'
                     }
                 ]
             }
@@ -398,12 +478,13 @@ const originalModel = ref([
     {
         label: 'Finance',
         icon: 'pi pi-dollar',
+        permission: 'change_transaction',
         items: [
             {
                 label: 'Dashboard',
                 icon: 'pi pi-chart-line',
                 to: '/finance',
-                permission: 'view_transaction'
+                permission: 'change_transaction'
             },
             {
                 label: 'Core Operations',
@@ -413,19 +494,19 @@ const originalModel = ref([
                         label: 'Accounts',
                         icon: 'pi pi-wallet',
                         to: '/finance/accounts',
-                        permission: 'view_paymentaccounts'
+                        permission: 'change_paymentaccounts'
                     },
                     {
                         label: 'Vouchers',
                         icon: 'pi pi-file-edit',
                         to: '/finance/vouchers',
-                        permission: 'view_voucher'
+                        permission: 'change_voucher'
                     },
                     {
                         label: 'Billing Documents',
                         icon: 'pi pi-file-text',
                         to: '/finance/billing',
-                        permission: 'view_billingdocument'
+                        permission: 'change_billingdocument'
                     }
                 ]
             },
@@ -437,25 +518,25 @@ const originalModel = ref([
                         label: 'Taxes',
                         icon: 'pi pi-percentage',
                         to: '/finance/taxes',
-                        permission: 'view_tax'
-                    },
+                        permission: 'change_tax'
+                    },  
                     {
                         label: 'Payments',
                         icon: 'pi pi-credit-card',
                         to: '/finance/payments',
-                        permission: 'view_payment'
+                        permission: 'change_payment'
                     },
                     {
                         label: 'Expenses',
                         icon: 'pi pi-shopping-cart',
                         to: '/finance/expenses',
-                        permission: 'view_expense'
+                        permission: 'change_expense'
                     },
                     {
                         label: 'Budgets',
                         icon: 'pi pi-chart-pie',
                         to: '/finance/budgets',
-                        permission: 'view_budget'
+                        permission: 'change_budget'
                     }
                 ]
             },
@@ -470,22 +551,22 @@ const originalModel = ref([
                             {
                                 label: 'Summary',
                                 to: '/finance/cashflow',
-                                permission: 'view_transaction'
+                                permission: 'change_transaction'
                             },
                             {
                                 label: 'Trial Balance',
                                 to: '/finance/cashflow/trial-balance',
-                                permission: 'view_transaction'
+                                permission: 'change_transaction'
                             },
                             {
                                 label: 'Balance Sheet',
                                 to: '/finance/cashflow/balance-sheet',
-                                permission: 'view_transaction'
+                                permission: 'change_transaction'
                             },
                             {
                                 label: 'Profit & Loss',
                                 to: '/finance/cashflow/profit',
-                                permission: 'view_transaction'
+                                permission: 'change_transaction'
                             }
                         ]
                     },
@@ -493,13 +574,13 @@ const originalModel = ref([
                         label: 'Reconciliation',
                         icon: 'pi pi-refresh',
                         to: '/finance/reconciliation',
-                        permission: 'view_transaction'
+                        permission: 'change_transaction'
                     },
                     {
                         label: 'Analytics',
                         icon: 'pi pi-chart-line',
                         to: '/finance/analytics',
-                        permission: 'view_transaction'
+                        permission: 'change_transaction'
                     }
                 ]
             }
@@ -511,23 +592,23 @@ const originalModel = ref([
             {
                 label: 'Dashboard',
                 icon: 'pi pi-fw pi-chart-line',
-                permission: 'view_stockinventory',
+                permission: 'change_stockinventory',
                 to: '/inventory'
             },
             {
                 label: 'Manage Inventory',
                 icon: 'pi pi-fw pi-wrench',
-                permission: 'view_stockinventory',
+                permission: 'change_stockinventory',
                 items: [
                     {
                         label: 'Stock Inventory',
-                        permission: 'view_stockinventory',
+                        permission: 'change_stockinventory',
                         icon: 'pi pi-fw pi-box',
                         to: '/inventory/ManageStock'
                     },
                     {
                         label: 'Stock Transfers',
-                        permission: 'view_stocktransfer',
+                        permission: 'change_stocktransfer',
                         icon: 'pi pi-fw pi-truck',
                         to: '/inventory/StockTransfers'
                     },
@@ -536,35 +617,35 @@ const originalModel = ref([
             {
                         label: 'Asset Management',
                         icon: 'pi pi-fw pi-desktop',
-                        permission: 'view_asset',
+                        permission: 'change_asset',
                         items: [
                             {
                                 label: 'Dashboard',
-                                permission: 'view_asset',
+                                permission: 'change_asset',
                                 icon: 'pi pi-fw pi-chart-line',
                                 to: '/inventory/assets/AssetDashboard'
                             },
                             {
                                 label: 'Assets',
-                                permission: 'view_asset',
+                                permission: 'change_asset',
                                 icon: 'pi pi-fw pi-desktop',
                                 to: '/inventory/assets'
                             },
                             {
                                 label: 'Asset Categories',
-                                permission: 'view_assetcategory',
+                                permission: 'change_assetcategory',
                                 icon: 'pi pi-fw pi-tags',
                                 to: '/inventory/assets/categories'
                             },
                             {
                                 label: 'Asset Transfers',
-                                permission: 'view_assettransfer',
+                                permission: 'change_assettransfer',
                                 icon: 'pi pi-fw pi-eject',
                                 to: '/inventory/assets/transfers'
                             },
                             {
                                 label: 'Maintenance',
-                                permission: 'view_assetmaintenance',
+                                permission: 'change_assetmaintenance',
                                 icon: 'pi pi-fw pi-cog',
                                 to: '/inventory/assets/maintenance'
                             }
@@ -578,23 +659,23 @@ const originalModel = ref([
             {
                 label: 'Dashboard',
                 icon: 'pi pi-fw pi-chart-line',
-                permission: 'view_purchase',
+                permission: 'change_purchase',
                 to: '/procurement'
             },
             {
                 label: 'Requisitions',
                 icon: 'pi pi-fw pi-file-edit',
-                permission: 'view_procurementrequest',
+                permission: 'change_procurementrequest',
                 items: [
                     {
                         label: 'Requisitions',
-                        permission: 'view_procurementrequest',
+                        permission: 'change_procurementrequest',
                         icon: 'pi pi-fw pi-file-edit',
                         to: '/procurement/requisitions/ProcurementRequisitions'
                     },
                     {
                         label: 'Reports',
-                        permission: 'view_procurementrequest',
+                        permission: 'change_procurementrequest',
                         icon: 'pi pi-fw pi-chart-bar',
                         to: '/procurement/reports'
                     }
@@ -603,17 +684,17 @@ const originalModel = ref([
             {
                 label: 'Purchase Orders',
                 icon: 'pi pi-fw pi-shopping-bag',
-                permission: 'view_purchaseorder',
+                permission: 'change_purchaseorder',
                 items: [
                     {
                         label: 'Orders',
-                        permission: 'view_purchaseorder',
+                        permission: 'change_purchaseorder',
                         icon: 'pi pi-fw pi-file-edit',
                         to: '/procurement/orders/PurchaseOrders'
                     },
                     {
                         label: 'Reports',
-                        permission: 'view_purchaseorder',
+                        permission: 'change_purchaseorder',
                         icon: 'pi pi-fw pi-chart-bar',
                         to: '/procurement/reports'
                     }
@@ -622,29 +703,29 @@ const originalModel = ref([
             {
                 label: 'Purchasing',
                 icon: 'pi pi-fw pi-shopping-bag',
-                permission: 'view_purchase',
+                permission: 'change_purchase',
                 items: [
                     {
                         label: 'Purchases',
-                        permission: 'view_purchase',
+                        permission: 'change_purchase',
                         icon: 'pi pi-fw pi-file-edit',
                         to: '/procurement/purchasing/Purchases'
                     },
                     {
                         label: 'Purchase Returns',
-                        permission: 'view_purchasereturn',
+                        permission: 'change_purchasereturn',
                         icon: 'pi pi-fw pi-sync',
                         to: '/procurement/purchasing/PurchaseReturns'
                     },
                     {
                         label: 'Suppliers',
-                        permission: 'view_vendor',
+                        permission: 'change_vendor',
                         icon: 'pi pi-fw pi-truck',
                         to: '/procurement/suppliers/suppliers'
                     },
                     {
                         label: 'Reports',
-                        permission: 'view_supplierperformance',
+                        permission: 'change_supplierperformance',
                         icon: 'pi pi-fw pi-chart-bar',
                         to: '/procurement/reports'
                     }
@@ -658,7 +739,7 @@ const originalModel = ref([
             {
                 label: 'Manufacturing',
                 icon: 'pi pi-fw pi-cog',
-                permission: 'view_productionbatch',
+                permission: 'change_productionbatch',
                 items: [
                     {
                         label: 'Dashboard',
@@ -674,13 +755,13 @@ const originalModel = ref([
                     },
                     {
                         label: 'Material Forecasting',
-                        permission: 'view_rawmaterialusage',
+                        permission: 'change_rawmaterialusage',
                         icon: 'pi pi-fw pi-calculator',
                         to: '/manufacturing/material-forecasting'
                     },
                     {
                         label: 'Product Formulas',
-                        permission: 'view_formulas',
+                        permission: 'change_formulas',
                         icon: 'pi pi-fw pi-file',
                         to: '/manufacturing/formulas'
                     },
@@ -706,29 +787,29 @@ const originalModel = ref([
             {
                 label: 'Lead Management',
                 icon: 'pi pi-fw pi-users',
-                permission: 'view_lead',
+                permission: 'change_lead',
                 items: [
                     {
                         label: 'Leads',
-                        permission: 'view_lead',
+                        permission: 'change_lead',
                         icon: 'pi pi-fw pi-wallet',
                         to: '/crm/leads'
                     },
                     {
                         label: 'Follow ups',
-                        permission: 'view_lead',
+                        permission: 'change_lead',
                         icon: 'pi pi-fw pi-wallet',
                         to: '/crm/leads'
                     },
                     {
                         label: 'Campaigns',
-                        permission: 'view_campaign',
+                        permission: 'change_campaign',
                         icon: 'pi pi-fw pi-wallet',
                         to: '/crm/campaigns'
                     },
                     {
                         label: 'Reports',
-                        permission: 'view_campaignperformance',
+                        permission: 'change_campaignperformance',
                         icon: 'pi pi-fw pi-wallet',
                         to: '/crm/reports'
                     }
@@ -737,17 +818,17 @@ const originalModel = ref([
             {
                 label: 'Contacts',
                 icon: 'pi pi-fw pi-users',
-                permission: 'view_contact',
+                permission: 'change_contact',
                 items: [
                     {
                         label: 'Customers',
-                        permission: 'view_contact',
+                        permission: 'change_contact',
                         icon: 'pi pi-fw pi-user',
                         to: '/crm/customers'
                     },
                     {
                         label: 'Customer Groups',
-                        permission: 'view_customergroup',
+                        permission: 'change_customergroup',
                         icon: 'pi pi-fw pi-wallet',
                         to: '/crm/customers'
                     }
@@ -756,17 +837,17 @@ const originalModel = ref([
             {
                 label: 'Pipeline',
                 icon: 'pi pi-fw pi-sitemap',
-                permission: 'view_deal',
+                permission: 'change_deal',
                 items: [
                     {
                         label: 'Deals',
-                        permission: 'view_deal',
+                        permission: 'change_deal',
                         icon: 'pi pi-fw pi-briefcase',
                         to: '/crm/pipeline'
                     },
                     {
                         label: 'Pipeline Stages',
-                        permission: 'view_pipelinestage',
+                        permission: 'change_pipelinestage',
                         icon: 'pi pi-fw pi-sitemap',
                         to: '/crm/pipeline/stages'
                     }
@@ -780,29 +861,29 @@ const originalModel = ref([
             {
                 label: 'Dashboard',
                 icon: 'pi pi-fw pi-chart-line',
-                permission: 'view_sales',
+                permission: 'change_sales',
                 to: '/pos'
             },
             {
                 label: 'POS & Sales',
                 icon: 'pi pi-fw pi-shopping-cart',
-                permission: 'view_sales',
+                permission: 'delete_sales',
                 items: [
                     {
                         label: 'Point Of Sale',
-                        permission: 'view_sales',
+                        permission: 'delete_sales',
                         icon: 'pi pi-fw pi-dollar',
                         to: '/ecommerce/pos/pointOfSale'
                     },
                     {
                         label: 'Sales Orders',
-                        permission: 'view_sales',
+                        permission: 'delete_sales',
                         icon: 'pi pi-fw pi-list',
                         to: '/ecommerce/pos/Sales'
                     },
                     {
                         label: 'Returns',
-                        permission: 'view_salesreturn',
+                        permission: 'delete_salesreturn',
                         icon: 'pi pi-fw pi-sync',
                         to: '/ecommerce/pos/saleReturns'
                     }
@@ -811,29 +892,23 @@ const originalModel = ref([
             {
                 label: 'Online Shop',
                 icon: 'pi pi-fw pi-shopping-bag',
-                permission: 'view_products',
+                permission: 'delete_products',
                 items: [
                     {
                         label: 'Shop',
-                        permission: 'view_products',
+                        permission: 'delete_products',
                         icon: 'pi pi-fw pi-shopping-cart',
                         to: '/ecommerce/shop'
                     },
                     {
-                        label: 'My Account',
-                        permission: 'view_customuser',
-                        icon: 'pi pi-fw pi-user',
-                        to: '/ecommerce/shop/account'
-                    },
-                    {
                         label: 'Wishlist',
-                        permission: 'view_products',
+                        permission: 'delete_products',
                         icon: 'pi pi-fw pi-heart',
                         to: '/ecommerce/shop/wishlist'
                     },
                     {
                         label: 'Orders',
-                        permission: 'view_sales',
+                        permission: 'delete_sales',
                         icon: 'pi pi-fw pi-list',
                         to: '/ecommerce/shop/account?tab=orders'
                     }
@@ -842,17 +917,17 @@ const originalModel = ref([
             {
                 label: 'Products & Brands',
                 icon: 'pi pi-fw pi-box',
-                permission: 'view_products',
+                permission: 'delete_products',
                 items: [
                     {
                         label: 'Manage Products',
-                        permission: 'view_products',
+                        permission: 'delete_products',
                         icon: 'pi pi-fw pi-box',
                         to: '/ecommerce/products/ManageProducts'
                     },
                     {
                         label: 'Manage Categories & Brands',
-                        permission: 'view_category',
+                        permission: 'delete_category',
                         icon: 'pi pi-fw pi-list',
                         to: '/ecommerce/products/ManageProductDependencies'
                     }
@@ -864,70 +939,210 @@ const originalModel = ref([
         label: 'Settings',
         items: [
             {
-                label: 'System Configuration',
-                icon: 'pi pi-fw pi-cog',
-                permission: 'view_appsettings',
+                label: 'HRM Settings',
+                icon: 'pi pi-fw pi-users',
+                permission: 'delete_employee',
                 items: [
                     {
-                        label: 'Approval Settings',
-                        permission: 'view_approvalworkflow',
-                        icon: 'pi pi-fw pi-check-circle',
-                        to: '/settings/approvals'
+                        label: 'Job Titles',
+                        permission: 'delete_jobtitle',
+                        icon: 'pi pi-fw pi-briefcase',
+                        to: '/settings/hrm/job-titles'
                     },
                     {
-                        label: 'Organization Settings',
-                        permission: 'change_bussiness',
+                        label: 'Departments & Regions',
+                        permission: 'delete_departments',
                         icon: 'pi pi-fw pi-building',
-                        to: '/settings/business'
+                        to: '/settings/hrm/departments'
                     },
                     {
-                        label: 'Tax Configuration',
-                        permission: 'view_taxrates',
-                        icon: 'pi pi-fw pi-percentage',
-                        to: '/settings/taxes'
+                        label: 'Job Groups',
+                        permission: 'delete_jobtitle',
+                        icon: 'pi pi-fw pi-sitemap',
+                        to: '/settings/hrm/job-groups'
                     },
                     {
-                        label: 'Payroll Formulas',
-                        permission: 'view_formulas',
-                        icon: 'pi pi-fw pi-sliders-h',
-                        to: '/settings/payroll/formulas'
+                        label: 'Projects',
+                        permission: 'delete_projects',
+                        icon: 'pi pi-fw pi-folder',
+                        to: '/settings/hrm/projects'
                     },
                     {
-                        label: 'Payroll Components',
-                        permission: 'view_payrollcomponents',
-                        icon: 'pi pi-fw pi-list',
-                        to: '/settings/payroll/components'
+                        label: 'Workers Unions',
+                        permission: 'delete_employee',
+                        icon: 'pi pi-fw pi-users',
+                        to: '/settings/hrm/unions'
                     },
                     {
-                        label: 'Scheduled Payslips',
-                        permission: 'view_scheduledpayslip',
+                        label: 'Work Shift Settings',
+                        permission: 'delete_workshift',
+                        icon: 'pi pi-fw pi-clock',
+                        to: '/hrm/attendance/work-shifts'
+                    },
+                    {
+                        label: 'Holidays',
+                        permission: 'delete_publicholiday',
                         icon: 'pi pi-fw pi-calendar',
-                        to: '/settings/payroll/scheduled'
+                        to: '/settings/hrm/holidays'
                     },
                     {
-                        label: 'Payment Integrations',
-                        permission: 'view_mpesasettings',
-                        icon: 'pi pi-fw pi-credit-card',
-                        to: '/settings/payments'
+                        label: 'ESS Settings',
+                        permission: 'delete_employee',
+                        icon: 'pi pi-fw pi-cog',
+                        to: '/settings/hrm/ess'
                     }
                 ]
             },
             {
-                label: 'Security',
-                icon: 'pi pi-fw pi-shield',
-                permission: 'view_customuser',
+                label: 'Payroll Settings',
+                icon: 'pi pi-fw pi-money-bill',
+                permission: 'delete_payrollcomponents',
                 items: [
                     {
-                        label: 'Settings',
-                        permission: 'view_customuser',
+                        label: 'Approvals',
+                        permission: 'delete_approvalworkflow',
+                        icon: 'pi pi-fw pi-check-circle',
+                        to: '/settings/payroll/approvals'
+                    },
+                    {
+                        label: 'Deductions',
+                        permission: 'delete_deductions',
+                        icon: 'pi pi-fw pi-minus-circle',
+                        to: '/settings/payroll/deductions'
+                    },
+                    {
+                        label: 'Loans',
+                        permission: 'delete_loans',
+                        icon: 'pi pi-fw pi-wallet',
+                        to: '/settings/payroll/loans'
+                    },
+                    {
+                        label: 'Earnings',
+                        permission: 'delete_earnings',
+                        icon: 'pi pi-fw pi-plus-circle',
+                        to: '/settings/payroll/earnings'
+                    },
+                    {
+                        label: 'Benefits',
+                        permission: 'delete_benefits',
+                        icon: 'pi pi-fw pi-gift',
+                        to: '/settings/payroll/benefits'
+                    },
+                    {
+                        label: 'Default Payroll Settings',
+                        permission: 'delete_defaultpayrollsettings',
                         icon: 'pi pi-fw pi-cog',
+                        to: '/settings/payroll/defaults'
+                    },
+                    {
+                        label: 'Formulas',
+                        permission: 'delete_formulas',
+                        icon: 'pi pi-fw pi-calculator',
+                        to: '/settings/payroll/formulas'
+                    },
+                    {
+                        label: 'Banks',
+                        permission: 'change_bankinstitution',
+                        icon: 'pi pi-fw pi-building',
+                        to: '/settings/payroll/banks'
+                    },
+                    {
+                        label: 'Customize Payslip',
+                        permission: 'change_payslip',
+                        icon: 'pi pi-fw pi-file-edit',
+                        to: '/settings/payroll/customize-payslip'
+                    }
+                ]
+            },
+            {
+                label: 'Expense Claims Settings',
+                icon: 'pi pi-fw pi-file',
+                permission: 'delete_expenseclaims',
+                to: '/settings/expense-claims'
+            },
+            {
+                label: 'General HR',
+                permission: 'delete_payslip',
+                icon: 'pi pi-fw pi-id-card',
+                to: '/settings/general-hr'
+            },
+            {
+                label: 'Business Settings',
+                icon: 'pi pi-fw pi-building',
+                permission: 'change_bussiness',
+                to: '/settings/business'
+            },
+            {
+                label: 'Currency & Time',
+                permission: 'delete_appsettings',
+                icon: 'pi pi-fw pi-globe',
+                to: '/settings/currency-time'
+            },
+            {
+                label: 'Look & Feel',
+                permission: 'delete_brandingsettings',
+                icon: 'pi pi-fw pi-palette',
+                to: '/settings/branding'
+            },
+            {
+                label: 'Taxes',
+                icon: 'pi pi-fw pi-percentage',
+                permission: 'delete_taxrates',
+                to: '/settings/finance/taxes'
+            },
+            {
+                label: 'System Settings',
+                icon: 'pi pi-fw pi-cog',
+                permission: 'change_approvalworkflow',
+                items: [
+                    {
+                        label: 'Approval Workflows',
+                        permission: 'delete_approvalworkflow',
+                        icon: 'pi pi-fw pi-check-circle',
+                        to: '/settings/approvals'
+                    },
+                    {
+                        label: 'Security Settings',
+                        permission: 'change_securitysettings',
+                        icon: 'pi pi-fw pi-shield',
                         to: '/security/settings'
                     },
                     {
-                        label: 'Backups',
-                        permission: 'view_backup',
+                        label: 'Backup Management',
+                        permission: 'change_backup',
                         icon: 'pi pi-fw pi-database',
                         to: '/security/backups'
+                    }
+                ]
+            },
+            {
+                label: 'API Settings',
+                icon: 'pi pi-fw pi-link',
+                permission: 'delete_integrations',
+                items: [
+                    {
+                        label: 'KRA iTax',
+                        permission: 'delete_krasettings',
+                        icon: 'pi pi-fw pi-building',
+                        to: '/settings/integrations/kra'
+                    },
+                    {
+                        label: 'Payment Gateways',
+                        permission: 'delete_mpesasettings',
+                        icon: 'pi pi-fw pi-credit-card',
+                        to: '/settings/integrations/payment'
+                    },
+                    {
+                        label: 'SMS Gateway',
+                        permission: 'delete_smsconfiguration',
+                        icon: 'pi pi-fw pi-mobile',
+                        to: '/settings/integrations/sms'
+                    },
+                    {
+                        label: 'Email Service',
+                        permission: 'delete_emailconfiguration',
+                        icon: 'pi pi-fw pi-envelope',
+                        to: '/settings/integrations/email'
                     }
                 ]
             }

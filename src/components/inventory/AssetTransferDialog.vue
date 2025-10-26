@@ -142,13 +142,7 @@
 <script setup>
 import { ref, watch, onMounted } from 'vue';
 import { useToast } from 'primevue/usetoast';
-import Button from 'primevue/button';
-import InputText from 'primevue/inputtext';
-import Textarea from 'primevue/textarea';
-import Dropdown from 'primevue/dropdown';
-import Dialog from 'primevue/dialog';
-
-import assetService from '@/services/assetService';
+import assetService from '@/services/assets/assetService';
 
 // Props
 const props = defineProps({

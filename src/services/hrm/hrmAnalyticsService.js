@@ -5,8 +5,8 @@
  * Provides comprehensive analytics for all HRM modules with fallback data.
  */
 
+import { handleError } from '@/services/utils/errorHandler.js';
 import axios from '@/utils/axiosConfig';
-import { handleError } from '../errorHandler';
 
 // Align with versioned API and backend URL structure
 const V1_HRM_BASE = '/hrm';

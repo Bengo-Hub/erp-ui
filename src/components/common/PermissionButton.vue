@@ -1,6 +1,5 @@
 <script setup>
 import { usePermissions } from '@/composables/usePermissions';
-import Button from 'primevue/button';
 import { computed } from 'vue';
 
 const props = defineProps({

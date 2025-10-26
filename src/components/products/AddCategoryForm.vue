@@ -1,7 +1,7 @@
 <script setup>
 import { ref, computed } from 'vue';
 import { useToast } from 'primevue/usetoast';
-import { EcommerceService } from '@/services/EcommerceService';
+import { ecommerceService } from '@/services/ecommerce/ecommerceService';
 
 const props = defineProps({
     type: {
@@ -77,13 +77,13 @@ const saveItem = async () => {
         let response;
         switch (props.type) {
             case 'main':
-                response = await EcommerceService.createMainCategory(formDataToSend);
+                response = await ecommerceService.createMainCategory(formDataToSend);
                 break;
             case 'category':
-                response = await EcommerceService.createCategory(formDataToSend);
+                response = await ecommerceService.createCategory(formDataToSend);
                 break;
             case 'subcategory':
-                response = await EcommerceService.createSubcategory(formDataToSend);
+                response = await ecommerceService.createSubcategory(formDataToSend);
                 break;
         }
 

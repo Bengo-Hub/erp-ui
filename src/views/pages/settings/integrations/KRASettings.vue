@@ -1,6 +1,6 @@
 <script setup>
 import { useToast } from '@/composables/useToast';
-import { systemConfigService } from '@/services/systemConfigService';
+import { systemConfigService } from '@/services/shared/systemConfigService';
 import { onMounted, ref } from 'vue';
 
 const { showToast } = useToast();

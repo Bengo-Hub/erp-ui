@@ -217,12 +217,6 @@
 import PermissionButton from '@/components/common/PermissionButton.vue';
 import PermissionWrapper from '@/components/common/PermissionWrapper.vue';
 import { usePermissions } from '@/composables/usePermissions';
-import Avatar from 'primevue/avatar';
-import Card from 'primevue/card';
-import Column from 'primevue/column';
-import DataTable from 'primevue/datatable';
-import InputText from 'primevue/inputtext';
-import Tag from 'primevue/tag';
 import { onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
 
@@ -286,6 +280,7 @@ const exportEmployees = () => {
 
 const importEmployees = () => {
     // Implement import logic
+import { formatCurrency, formatDate } from '@/utils/formatters';
     console.log('Import employees');
 };
 

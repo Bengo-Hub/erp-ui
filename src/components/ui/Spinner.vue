@@ -1,6 +1,4 @@
 <script setup>
-import Dialog from 'primevue/dialog';
-import ProgressSpinner from 'primevue/progressspinner';
 import { defineProps } from 'vue';
 
 const spiner = defineProps({

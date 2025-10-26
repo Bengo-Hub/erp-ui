@@ -2,7 +2,6 @@
 import { useAppraisalData } from '@/composables/useAppraisalData';
 import { useToast } from '@/composables/useToast';
 import { appraisalService } from '@/services/hrm/appraisalService';
-import ProgressSpinner from 'primevue/progressspinner';
 import { useConfirm } from 'primevue/useconfirm';
 import { computed, onMounted, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';

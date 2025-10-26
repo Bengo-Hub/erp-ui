@@ -1,26 +1,20 @@
 <script setup>
-import Button from 'primevue/button';
-import Card from 'primevue/card';
+import { useChartOptions } from '@/composables/useChartOptions';
+import { useDashboardState } from '@/composables/useDashboardState';
+import { useToast } from '@/composables/useToast';
+import { PERIOD_OPTIONS } from '@/utils/constants';
 import Chart from 'primevue/chart';
-import Column from 'primevue/column';
-import DataTable from 'primevue/datatable';
-import Dropdown from 'primevue/dropdown';
-import ProgressSpinner from 'primevue/progressspinner';
-import { useToast } from 'primevue/usetoast';
 import { onMounted, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
 
 const router = useRouter();
-const toast = useToast();
+const { showToast } = useToast();
+const { barChartOptions } = useChartOptions();
+const { state, executeDataFetch } = useDashboardState();
+
 const loading = ref(false);
 const period = ref('month');
-
-const periodOptions = [
-    { label: 'This Week', value: 'week' },
-    { label: 'This Month', value: 'month' },
-    { label: 'This Quarter', value: 'quarter' },
-    { label: 'This Year', value: 'year' }
-];
+const periodOptions = PERIOD_OPTIONS;
 
 // Dashboard data
 const dashboardData = ref({
@@ -45,20 +39,16 @@ const stockLevelsChartData = ref(null);
 const loadDashboardData = async () => {
     loading.value = true;
     try {
-        // Import dashboard service
         const { dashboardService } = await import('@/services/dashboardService');
 
-        const result = await dashboardService.getInventoryDashboardData(period.value);
+        const result = await executeDataFetch(
+            () => dashboardService.getInventoryDashboardData(period.value),
+            null,
+            `Inventory data updated for ${periodOptions.find((p) => p.value === period.value)?.label}`
+        );
 
-        // Safely access the data, with fallback to empty object if result.data is undefined
-        if (result && result.data) {
-            dashboardData.value = result.data;
-        } else if (result) {
-            // If result exists but no data property, use result directly
-            dashboardData.value = result;
-        } else {
-            // Fallback to default values
-            dashboardData.value = {
+        if (result && (result.data || result)) {
+            dashboardData.value = result.data || result || {
                 total_products: 0,
                 total_stock_value: 0,
                 low_stock_items: 0,
@@ -70,29 +60,15 @@ const loadDashboardData = async () => {
                 stock_movements: [],
                 reorder_alerts: []
             };
+            processChartData();
         }
-
-        // Process chart data
-        processChartData();
-
-        toast.add({
-            severity: 'success',
-            summary: 'Dashboard Updated',
-            detail: `Inventory data updated for ${periodOptions.find((p) => p.value === period.value)?.label}`,
-            life: 3000
-        });
-    } catch (error) {
-        console.error('Error loading inventory dashboard:', error);
-        toast.add({
-            severity: 'error',
-            summary: 'Error',
-            detail: 'Failed to load inventory dashboard data',
-            life: 3000
-        });
-    } finally {
-        loading.value = false;
-    }
-};
+        } catch (error) {
+            console.error('Error loading inventory dashboard:', error);
+            showToast('error', 'Failed to load inventory data', 'Error');
+        } finally {
+            loading.value = false;
+        }
+    };
 
 // Process chart data for visualization
 const processChartData = () => {
@@ -146,22 +122,6 @@ const processChartData = () => {
                 }
             ]
         };
-    }
-};
-
-// Chart options
-const chartOptions = {
-    responsive: true,
-    maintainAspectRatio: false,
-    plugins: {
-        legend: {
-            position: 'bottom'
-        }
-    },
-    scales: {
-        y: {
-            beginAtZero: true
-        }
     }
 };
 
@@ -303,7 +263,7 @@ onMounted(() => {
                     <template #title>Stock Movements</template>
                     <template #content>
                         <div class="h-80">
-                            <Chart v-if="stockMovementsChartData" type="line" :data="stockMovementsChartData" :options="chartOptions" class="h-full" />
+                            <Chart v-if="stockMovementsChartData" type="line" :data="stockMovementsChartData" :options="barChartOptions" class="h-full" />
                             <div v-else class="flex items-center justify-center h-full text-gray-500">No movement data available</div>
                         </div>
                     </template>
@@ -314,7 +274,7 @@ onMounted(() => {
                     <template #title>Stock Value by Category</template>
                     <template #content>
                         <div class="h-80">
-                            <Chart v-if="categoryBreakdownChartData" type="doughnut" :data="categoryBreakdownChartData" :options="chartOptions" class="h-full" />
+                            <Chart v-if="categoryBreakdownChartData" type="doughnut" :data="categoryBreakdownChartData" :options="barChartOptions" class="h-full" />
                             <div v-else class="flex items-center justify-center h-full text-gray-500">No category data available</div>
                         </div>
                     </template>
@@ -326,7 +286,7 @@ onMounted(() => {
                 <template #title>Top Products Stock Levels</template>
                 <template #content>
                     <div class="h-80">
-                        <Chart v-if="stockLevelsChartData" type="bar" :data="stockLevelsChartData" :options="chartOptions" class="h-full" />
+                        <Chart v-if="stockLevelsChartData" type="bar" :data="stockLevelsChartData" :options="barChartOptions" class="h-full" />
                         <div v-else class="flex items-center justify-center h-full text-gray-500">No product data available</div>
                     </div>
                 </template>

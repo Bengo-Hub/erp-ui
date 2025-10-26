@@ -2,22 +2,18 @@
 import logoImage from '@/assets/images/logos/logo.png';
 import FloatingConfigurator from '@/components/ui/FloatingConfigurator.vue';
 import Spinner from '@/components/ui/Spinner.vue';
-import { authService } from '@/services/authService';
+import { useTheme } from '@/composables/useTheme';
+import { authService } from '@/services/auth/authService';
 import { getDashboardRedirectPath as getDashboardPath } from '@/services/auth/permissionService';
-import Button from 'primevue/button';
-import Checkbox from 'primevue/checkbox';
-import InputText from 'primevue/inputtext';
-import Password from 'primevue/password';
 import { computed, onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { useStore } from 'vuex';
 
+const { loadPublicBranding, businessBranding, isDarkMode } = useTheme();
+
 const logo = ref(logoImage);
 const businessName = ref('BengoBox ERP');
 const businessLogo = ref(null);
-
-// Business details
-const businessDetails = ref(null);
 
 const form = ref({
     email: '',
@@ -37,21 +33,25 @@ const activeStep = ref(0);
 const store = useStore();
 const router = useRouter();
 
-// Load business details if available
-onMounted(() => {
+// Load public branding on mount (no auth required)
+onMounted(async () => {
+    // Load public branding first
+    const publicBranding = await loadPublicBranding();
+    
+    if (publicBranding) {
+        businessName.value = publicBranding.business__name || publicBranding.name || 'BengoBox ERP';
+        businessLogo.value = publicBranding.business__logo || publicBranding.logo;
+        document.title = businessName.value;
+    }
+
+    // Also check session storage for existing business data
     const storedBusinessData = sessionStorage.getItem('business');
     if (storedBusinessData) {
         try {
             const business = JSON.parse(storedBusinessData);
-            businessDetails.value = business;
-
-            // Set business name if available
             if (business.business__name) {
                 businessName.value = business.business__name;
-                document.title = business.business__name;
             }
-
-            // Set business logo if available
             if (business.business__logo) {
                 businessLogo.value = business.business__logo;
             }
@@ -163,6 +163,7 @@ const getDashboardRedirectPathForUser = (user) => {
 
 <template>
     <FloatingConfigurator />
+
     <div class="bg-surface-50 dark:bg-surface-950 flex items-center justify-center min-h-screen min-w-[100vw] overflow-hidden">
         <div class="flex flex-col items-center justify-center">
             <div style="border-radius: 56px; padding: 0.3rem; background: linear-gradient(180deg, var(--primary-color) 10%, rgba(33, 150, 243, 0) 30%)">
@@ -175,10 +176,10 @@ const getDashboardRedirectPathForUser = (user) => {
                             <h3>Welcome to {{ businessName }}!</h3>
                         </div>
                         <span class="text-muted-color font-medium">Sign in to continue</span>
-                        <div v-if="businessDetails && businessDetails.business__address" class="mt-2 text-sm text-muted-color">
-                            {{ businessDetails.business__address }}
-                            <div v-if="businessDetails.website" class="mt-1">
-                                <a :href="businessDetails.website ? `https://${businessDetails.website}` : '#'" target="_blank" class="text-primary hover:underline">{{ businessDetails.website }}</a>
+                        <div v-if="businessBranding && (businessBranding.business__address || businessBranding.address)" class="mt-2 text-sm text-muted-color">
+                            {{ businessBranding.business__address || businessBranding.address }}
+                            <div v-if="businessBranding.website" class="mt-1">
+                                <a :href="businessBranding.website ? `https://${businessBranding.website}` : '#'" target="_blank" class="text-primary hover:underline">{{ businessBranding.website }}</a>
                             </div>
                         </div>
                     </div>

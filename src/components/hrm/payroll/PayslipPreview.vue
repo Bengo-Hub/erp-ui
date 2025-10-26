@@ -1,8 +1,5 @@
 <script setup>
 import { jsPDF } from 'jspdf';
-import Button from 'primevue/button';
-import Dialog from 'primevue/dialog';
-import ProgressSpinner from 'primevue/progressspinner';
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
 import { createPayslipDocument } from './payslipGenerator.js';
 

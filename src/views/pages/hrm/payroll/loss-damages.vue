@@ -1,12 +1,19 @@
 <script setup>
 import { useHrmFilters } from '@/composables/useHrmFilters';
+import { usePermissions } from '@/composables/usePermissions';
 import { useToast } from '@/composables/useToast';
 import { employeeService } from '@/services/hrm/employeeService';
 import { formatCurrency } from '@/utils/formatters';
 import moment from 'moment';
 import { computed, onMounted, ref } from 'vue';
+import { useStore } from 'vuex';
 
 const { showToast } = useToast();
+const { hasAnyPermission } = usePermissions();
+const store = useStore();
+
+// Current user
+const currentUser = computed(() => store.state.auth.user);
 
 // State Management
 const dt = ref();
@@ -112,6 +119,9 @@ const fetchEmployees = () => {
 const fetchLossesAndDamages = async () => {
     isLoading.value = true;
     try {
+        // Check if user has managerial permissions (can view/approve all losses & damages)
+        const hasManagerialPerms = hasAnyPermission(['change_lossesdamages', 'delete_lossesdamages', 'change_lossesanddamages', 'delete_lossesanddamages']);
+        
         const params = {
             from_date: fromDate.value,
             to_date: toDate.value,
@@ -120,6 +130,13 @@ const fetchLossesAndDamages = async () => {
             region: selectedRegion.value ? selectedRegion.value : null,
             project: selectedProject.value ? selectedProject.value : null
         };
+
+        // If user doesn't have managerial permissions, filter by their employee ID
+        if (!hasManagerialPerms && (!params.employee || params.employee.length === 0)) {
+            const employeeId = currentUser.value?.employee_id || currentUser.value?.id;
+            params.employee = [employeeId];
+            console.log('fetchLossesAndDamages: Filtering for current user employee ID:', employeeId);
+        }
 
         const res = await employeeService.getLossesAndDamages(params);
         let data = res.data?.results || res.data || [];

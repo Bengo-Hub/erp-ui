@@ -2,19 +2,9 @@
 import { useToast } from '@/composables/useToast';
 import { communicationService } from '@/services/communicationService';
 import { onMounted, ref } from 'vue';
+import { formatCurrency, formatDate } from '@/utils/formatters';
 
 // PrimeVue components
-import Button from 'primevue/button';
-import Column from 'primevue/column';
-import DataTable from 'primevue/datatable';
-import Dialog from 'primevue/dialog';
-import Dropdown from 'primevue/dropdown';
-import InputNumber from 'primevue/inputnumber';
-import InputText from 'primevue/inputtext';
-import Menu from 'primevue/menu';
-import Tag from 'primevue/tag';
-import Textarea from 'primevue/textarea';
-
 const { showToast } = useToast();
 
 // Reactive data
@@ -188,11 +178,6 @@ const loadSpamRules = async () => {
 const setPeriod = (days) => {
     selectedPeriod.value = `Last ${days} Days`;
     loadDashboardData();
-};
-
-const formatDate = (date) => {
-    if (!date) return '';
-    return new Date(date).toLocaleDateString();
 };
 
 const getSeverity = (type) => {

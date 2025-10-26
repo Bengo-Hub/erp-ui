@@ -5,8 +5,9 @@ import { useRoute, useRouter } from 'vue-router';
 import { useVuelidate } from '@vuelidate/core';
 import { required, minValue } from '@vuelidate/validators';
 import { manufacturingService } from '@/services/manufacturingService';
-import { EcommerceService } from '@/services/EcommerceService';
+import { ecommerceService } from '@/services/ecommerce/ecommerceService';
 import ProductForm from '@/components/products/ProductForm.vue';
+import { formatCurrency, formatDate } from '@/utils/formatters';
 
 const { showToast } = useToast();
 const route = useRoute();
@@ -85,7 +86,7 @@ const fetchData = async () => {
     try {
         const productsResponse = await manufacturingService.getFinishedProducts();
         const rawMaterialsResponse = await manufacturingService.getRawMaterials();
-        const unitsResponse = await EcommerceService.getUnits();
+        const unitsResponse = await ecommerceService.getUnits();
 
         products.value = productsResponse.data.results;
         rawMaterials.value = rawMaterialsResponse.data.results;

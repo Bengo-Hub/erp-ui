@@ -1,7 +1,7 @@
 <script setup>
 import { ref } from 'vue';
 import { useToast } from 'primevue/usetoast';
-import { EcommerceService } from '@/services/EcommerceService';
+import { ecommerceService } from '@/services/ecommerce/ecommerceService';
 
 const props = defineProps({
     type: {
@@ -35,10 +35,10 @@ const saveItem = async () => {
         let response;
         switch (props.type) {
             case 'brand':
-                response = await EcommerceService.createBrand(formData.value);
+                response = await ecommerceService.createBrand(formData.value);
                 break;
             case 'model':
-                response = await EcommerceService.createModel(formData.value);
+                response = await ecommerceService.createModel(formData.value);
                 break;
         }
 

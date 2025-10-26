@@ -2,7 +2,7 @@
 import { ref, computed, onMounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useBusinessBranding } from '@/utils/businessBranding';
-import { EcommerceService } from '@/services/EcommerceService';
+import { ecommerceService } from '@/services/ecommerce/ecommerceService';
 import ProductCard from '@/components/ecommerce/ProductCard.vue';
 
 export default {
@@ -46,7 +46,7 @@ export default {
 
         const fetchRecommendedProducts = async () => {
             try {
-                const response = await EcommerceService.getProducts({ limit: 4 });
+                const response = await ecommerceService.getProducts({ limit: 4 });
                 recommendedProducts.value = response.data || [];
 
                 // If API returns no products, use mock data
@@ -104,10 +104,6 @@ export default {
 <template>
     <div class="order-success">
         <!-- Breadcrumb Navigation -->
-        <div class="breadcrumb bg-white p-3 rounded shadow-sm mb-4">
-            <Breadcrumb :model="breadcrumbItems" />
-        </div>
-
         <div class="bg-white p-6 rounded shadow-sm">
             <div class="flex flex-col items-center text-center">
                 <i class="pi pi-check-circle text-7xl text-green-500 mb-4"></i>

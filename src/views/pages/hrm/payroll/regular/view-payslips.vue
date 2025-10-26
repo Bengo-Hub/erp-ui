@@ -2,31 +2,33 @@
 import Payslip from '@/components/hrm/payroll/payslip.vue';
 import { generatePayslip } from '@/components/hrm/payroll/payslipGenerator';
 import Spinner from '@/components/ui/Spinner.vue';
-import { coreService } from '@/services/coreService';
+import { useHrmFilters } from '@/composables/useHrmFilters';
+import { usePermissions } from '@/composables/usePermissions';
+import { useToast } from '@/composables/useToast';
 import { payrollService } from '@/services/hrm/payrollService';
 import { formatCurrency } from '@/utils/formatters';
 import { FilterMatchMode } from '@primevue/core/api';
-// Enforced by Cursor Rules: use services, not axios
 import moment from 'moment';
-// import { useConfirm } from 'primevue/useconfirm'; // PrimeVue confirm dialog
-import { useToast } from '@/composables/useToast';
 import { computed, onMounted, ref } from 'vue';
-import { useRouter } from 'vue-router'; // Import Vue Router
+import { useRouter } from 'vue-router';
+import { useStore } from 'vuex';
 import { processPayrollRequest } from './processPayrollRequest';
 
 const { showToast } = useToast();
-const router = useRouter(); // Get the router instance
+const { departments, regions, loadFilters } = useHrmFilters();
+const { hasAnyPermission } = usePermissions();
+const store = useStore();
+const router = useRouter();
+
+// Current user
+const currentUser = computed(() => store.state.auth.user);
 const isLoading = ref(false);
 const selectedPayslipId = ref();
 const showpayslipDialog = ref(false);
 const spinner_title = ref('Please wait...! Fetching data...!');
 const dt = ref();
-// Check if the node is expanded (for rendering child columns)
 const isNodeExpanded = ref(false);
 const employees = ref([]);
-// Department filter options
-const departments = ref([]);
-const regions = ref([]);
 const payslipAudits = ref([]);
 // const selectedDateFilter = ref(null);
 const selectedEmployee = ref(null);
@@ -186,14 +188,13 @@ const filterByStatus = (status) => {
     payslips.value = filteredData;
 };
 
-onMounted(() => {
+onMounted(async () => {
     console.log('onMounted: Component mounted');
     fromDate.value = new Date(new Date().getFullYear(), new Date().getMonth() - 3, 1).toISOString().split('T')[0];
     toDate.value = new Date(new Date().getFullYear(), new Date().getMonth(), 2).toISOString().split('T')[0];
     console.log('onMounted: Date range set', { fromDate: fromDate.value, toDate: toDate.value });
+    await loadFilters();
     fetchEmployees();
-    fetchDepartments();
-    fetchRegions();
     fetchPayslips();
 });
 const fetchEmployees = () => {
@@ -216,34 +217,7 @@ const fetchEmployees = () => {
             isLoading.value = false; // Always hide the loading spinner
         });
 };
-const fetchDepartments = () => {
-    coreService
-        .getDepartmentsV1()
-        .then((response) => {
-            departments.value = response.data.results;
-        })
-        .catch((error) => {
-            showToast('error', 'Error', error.toString(), 3000);
-            console.error('Error fetching departments:', error);
-        })
-        .finally(() => {
-            isLoading.value = false; // Always hide the loading spinner
-        });
-};
-const fetchRegions = () => {
-    coreService
-        .getRegionsV1()
-        .then((response) => {
-            regions.value = response.data.results;
-        })
-        .catch((error) => {
-            showToast('error', 'Error', error.toString(), 3000);
-            console.error('Error fetching regions:', error);
-        })
-        .finally(() => {
-            isLoading.value = false; // Always hide the loading spinner
-        });
-};
+// Removed: fetchDepartments and fetchRegions - now using useHrmFilters composable
 function showPayslip(id) {
     selectedPayslipId.value = id;
     showpayslipDialog.value = true;
@@ -273,8 +247,20 @@ const findPayslipById = (id) => {
     }
     return null;
 };
-const fetchPayslips = async (params) => {
+const fetchPayslips = async (params = {}) => {
     try {
+        // Check if user has managerial permissions (can view all payslips)
+        const hasManagerialPerms = hasAnyPermission(['change_payslip', 'delete_payslip', 'add_payslip']);
+        
+        // If user doesn't have managerial permissions, filter by their employee ID
+        if (!hasManagerialPerms) {
+            const employeeId = currentUser.value?.employee_id || currentUser.value?.id;
+            params = { ...params, employee: employeeId };
+            console.log('fetchPayslips: Filtering for current user employee ID:', employeeId);
+        } else {
+            console.log('fetchPayslips: User has managerial permissions, showing all payslips');
+        }
+        
         const response = await payrollService.listPayroll(params);
         console.log('fetchPayslips: API response', response);
         console.log('fetchPayslips: response.data', response.data);

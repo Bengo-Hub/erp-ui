@@ -1,6 +1,6 @@
 <script setup>
 import AcceptReturn from '@/components/pos/AcceptSaleReturn.vue';
-import { POSService } from '@/services/POSService';
+import { POSService } from '@/services/ecommerce/posService';
 import Receipt from '@/views/pages/ecommerce/pos/printReceipt.vue';
 import moment from 'moment';
 import { useConfirm } from 'primevue/useconfirm';
@@ -139,7 +139,7 @@ const confirmDeleteReturn = (index, id, code) => {
 // Delete return record
 const deleteReturnRecord = async (index, id, code) => {
     try {
-        await POSService.deleteSaleReturn(id);
+        await posService.deleteSaleReturn(id);
         returnslist.value = returnslist.value.filter((_, i) => i !== index);
         toast.add({ severity: 'success', summary: 'Deleted', detail: `Return ${code} deleted successfully`, life: 3000 });
     } catch (error) {
@@ -152,7 +152,7 @@ const updatearrays = async () => {
     try {
         toast.add({ severity: 'info', summary: 'Loading', detail: 'Fetching data...', life: 3000 });
 
-        const response = await POSService.getSalesReturnsList({
+        const response = await posService.getSalesReturnsList({
             limit: pagination.perPage,
             offset: (pagination.currentPage - 1) * pagination.perPage,
             ...filters

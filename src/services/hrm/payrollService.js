@@ -32,6 +32,15 @@ export const payrollService = {
     getFormula(id) {
         return axios.get(`${V1_HRM_BASE}/payroll-settings/formulas/${id}/`);
     },
+    createFormula(data) {
+        return axios.post(`${V1_HRM_BASE}/payroll-settings/formulas/`, data);
+    },
+    updateFormula(id, data) {
+        return axios.put(`${V1_HRM_BASE}/payroll-settings/formulas/${id}/`, data);
+    },
+    deleteFormula(id) {
+        return axios.delete(`${V1_HRM_BASE}/payroll-settings/formulas/${id}/`);
+    },
     getFormulaItems(id) {
         return axios.get(`${V1_HRM_BASE}/payroll-settings/formulas/${id}/items/`);
     },
@@ -227,11 +236,22 @@ export const payrollService = {
     updateScheduledPayslip(id, data) {
         return axios.put(`${V1_HRM_BASE}/payroll-settings/scheduled-payslips/${id}/`, data);
     },
-    deleteScheduledPayslip(id) {
+    deleteScheduledPayslip(id, reason) {
         return axios.delete(`${V1_HRM_BASE}/payroll-settings/scheduled-payslips/${id}/`);
     },
     cancelScheduledPayslip(id, reason) {
         return axios.post(`${V1_HRM_BASE}/payroll-settings/scheduled-payslips/${id}/cancel/`, { reason });
+    },
+
+    // Default Payroll Settings (TODO: Backend needs to create endpoint)
+    getDefaultPayrollSettings() {
+        // Temporary: Returns empty defaults
+        return Promise.resolve({ data: { default_deductions: [], default_earnings: [], default_benefits: [] } });
+        // return axios.get(`${V1_HRM_BASE}/payroll-settings/defaults/`);
+    },
+    updateDefaultPayrollSettings(data) {
+        return Promise.reject(new Error('Default Payroll Settings endpoint not yet implemented in backend'));
+        // return axios.put(`${V1_HRM_BASE}/payroll-settings/defaults/`, data);
     },
 
     // Payroll components (from payroll settings)
@@ -242,6 +262,98 @@ export const payrollService = {
         return axios.get(`${V1_HRM_BASE}/payroll-settings/payroll-components/payrolldata/`, {
             params: params
         });
+    },
+
+    // Deductions (Using PayrollComponents with category filter)
+    listDeductions(params = {}) {
+        return axios.get(`${V1_HRM_BASE}/payroll-settings/payroll-components/`, { 
+            params: { ...params, category: 'Deductions' } 
+        });
+    },
+    getDeduction(id) {
+        return axios.get(`${V1_HRM_BASE}/payroll-settings/payroll-components/${id}/`);
+    },
+    createDeduction(data) {
+        return axios.post(`${V1_HRM_BASE}/payroll-settings/payroll-components/`, { 
+            ...data, 
+            category: 'Deductions' 
+        });
+    },
+    updateDeduction(id, data) {
+        return axios.put(`${V1_HRM_BASE}/payroll-settings/payroll-components/${id}/`, { 
+            ...data, 
+            category: 'Deductions' 
+        });
+    },
+    deleteDeduction(id) {
+        return axios.delete(`${V1_HRM_BASE}/payroll-settings/payroll-components/${id}/`);
+    },
+
+    // Earnings (Using PayrollComponents with category filter)
+    listEarnings(params = {}) {
+        return axios.get(`${V1_HRM_BASE}/payroll-settings/payroll-components/`, { 
+            params: { ...params, category: 'Earnings' } 
+        });
+    },
+    getEarning(id) {
+        return axios.get(`${V1_HRM_BASE}/payroll-settings/payroll-components/${id}/`);
+    },
+    createEarning(data) {
+        return axios.post(`${V1_HRM_BASE}/payroll-settings/payroll-components/`, { 
+            ...data, 
+            category: 'Earnings' 
+        });
+    },
+    updateEarning(id, data) {
+        return axios.put(`${V1_HRM_BASE}/payroll-settings/payroll-components/${id}/`, { 
+            ...data, 
+            category: 'Earnings' 
+        });
+    },
+    deleteEarning(id) {
+        return axios.delete(`${V1_HRM_BASE}/payroll-settings/payroll-components/${id}/`);
+    },
+
+    // Benefits (Using PayrollComponents with category filter)
+    listBenefits(params = {}) {
+        return axios.get(`${V1_HRM_BASE}/payroll-settings/payroll-components/`, { 
+            params: { ...params, category: 'Benefits' } 
+        });
+    },
+    getBenefit(id) {
+        return axios.get(`${V1_HRM_BASE}/payroll-settings/payroll-components/${id}/`);
+    },
+    createBenefit(data) {
+        return axios.post(`${V1_HRM_BASE}/payroll-settings/payroll-components/`, { 
+            ...data, 
+            category: 'Benefits' 
+        });
+    },
+    updateBenefit(id, data) {
+        return axios.put(`${V1_HRM_BASE}/payroll-settings/payroll-components/${id}/`, { 
+            ...data, 
+            category: 'Benefits' 
+        });
+    },
+    deleteBenefit(id) {
+        return axios.delete(`${V1_HRM_BASE}/payroll-settings/payroll-components/${id}/`);
+    },
+
+    // Loans
+    listLoans(params = {}) {
+        return axios.get(`${V1_HRM_BASE}/payroll-settings/loans/`, { params });
+    },
+    getLoan(id) {
+        return axios.get(`${V1_HRM_BASE}/payroll-settings/loans/${id}/`);
+    },
+    createLoan(data) {
+        return axios.post(`${V1_HRM_BASE}/payroll-settings/loans/`, data);
+    },
+    updateLoan(id, data) {
+        return axios.put(`${V1_HRM_BASE}/payroll-settings/loans/${id}/`, data);
+    },
+    deleteLoan(id) {
+        return axios.delete(`${V1_HRM_BASE}/payroll-settings/loans/${id}/`);
     },
 
     // Email Payslips

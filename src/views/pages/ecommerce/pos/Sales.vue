@@ -3,7 +3,7 @@ import AddSaleReturn from '@/components/pos/AddSaleReturn.vue';
 import Spinner from '@/components/ui/Spinner.vue';
 import { usePermissions } from '@/composables/usePermissions';
 import { useToast } from '@/composables/useToast';
-import { POSService } from '@/services/POSService';
+import { posService } from '@/services/ecommerce/posService';
 import moment from 'moment';
 import { useConfirm } from 'primevue/useconfirm';
 import { computed, onMounted, ref } from 'vue';
@@ -69,7 +69,7 @@ const rows = computed(() => saleslist.value.length);
 const updatearrays = async () => {
     isLoading.value = true;
     try {
-        const response = await POSService.getSalesList({
+        const response = await posService.getSalesList({
             limit: limit.value,
             offset: offset.value,
             status: status.value,
@@ -128,7 +128,7 @@ const getrpt = () => {
 // Delete record
 const deleterec = async (index, id, code) => {
     try {
-        await POSService.deleteSale(id);
+        await posService.deleteSale(id);
         saleslist.value.splice(index, 1);
         showToast('success', 'Deleted', `${code} has been deleted.`, 3000);
     } catch (error) {
@@ -229,7 +229,7 @@ const getActionItems = (saleData) => {
 // Fetch receipt data
 const fetchReceiptData = async (id) => {
     try {
-        const response = await POSService.getSaleReceiptData({ id });
+        const response = await posService.getSaleReceiptData({ id });
         receiptData.value = response.data;
         showReceiptDialog();
     } catch (error) {

@@ -5,19 +5,8 @@ import Spinner from '@/components/ui/Spinner.vue';
 import { employeeService } from '@/services/hrm/employeeService';
 import { formatCurrency, formatDate } from '@/utils/formatters';
 import { FilterMatchMode, FilterOperator } from '@primevue/core/api';
-import Button from 'primevue/button';
-import Calendar from 'primevue/calendar';
-import Column from 'primevue/column';
-import DataTable from 'primevue/datatable';
-import Dialog from 'primevue/dialog';
-import Dropdown from 'primevue/dropdown';
 import IconField from 'primevue/iconfield';
 import InputIcon from 'primevue/inputicon';
-import InputNumber from 'primevue/inputnumber';
-import InputText from 'primevue/inputtext';
-
-import Tag from 'primevue/tag';
-import Toolbar from 'primevue/toolbar';
 import { useToast } from 'primevue/usetoast';
 import { onMounted, reactive, ref } from 'vue';
 

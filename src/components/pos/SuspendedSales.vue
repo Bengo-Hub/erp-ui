@@ -1,11 +1,12 @@
 <script setup>
 import { formatCurrency } from '@/components/hrm/payroll/payslipGenerator';
 import Spinner from '@/components/ui/Spinner.vue';
-import { POSService } from '@/services/POSService';
+import { POSService } from '@/services/ecommerce/posService';
 import moment from 'moment';
 import { useConfirm } from 'primevue/useconfirm';
 import { useToast } from 'primevue/usetoast';
 import { defineEmits, onMounted, ref } from 'vue';
+import { formatCurrency, formatDate } from '@/utils/formatters';
 
 const emit = defineEmits(['resumeSale', 'cancel']);
 const toast = useToast();
@@ -22,7 +23,7 @@ const filters = ref({
 const fetchSuspendedSales = async () => {
     loading.value = true;
     try {
-        const response = await POSService.getSuspendedSales();
+        const response = await posService.getSuspendedSales();
         suspendedSales.value = response.data.suspended_sales.map((sale) => ({
             ...sale,
             customerName: sale.customer ? `${sale.customer.first_name} ${sale.customer.last_name}` : 'Walk-in Customer',
@@ -59,7 +60,7 @@ const confirmDelete = (sale) => {
 const deleteSuspendedSale = async (id) => {
     loading.value = true;
     try {
-        await POSService.deleteSuspendedSale(id);
+        await posService.deleteSuspendedSale(id);
         toast.add({
             severity: 'success',
             summary: 'Success',
@@ -77,10 +78,6 @@ const deleteSuspendedSale = async (id) => {
     } finally {
         loading.value = false;
     }
-};
-
-const formatDate = (dateString) => {
-    return moment(dateString).format('DD/MM/YYYY HH:mm');
 };
 
 const truncateText = (text, maxLength) => {

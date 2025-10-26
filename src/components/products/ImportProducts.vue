@@ -1,7 +1,6 @@
 <script setup>
 import Spinner from '@/components/ui/Spinner.vue';
 import axios from 'axios';
-import FileUpload from 'primevue/fileupload';
 import { useToast } from 'primevue/usetoast';
 import { computed, ref } from 'vue';
 import * as XLSX from 'xlsx';

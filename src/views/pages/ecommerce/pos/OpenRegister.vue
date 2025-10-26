@@ -1,6 +1,6 @@
 <script setup>
 import Spinner from '@/components/ui/Spinner.vue';
-import { POSService } from '@/services/POSService';
+import { POSService } from '@/services/ecommerce/posService';
 import { systemConfigService } from '@/services/systemConfigService';
 import { useToast } from 'primevue/usetoast';
 import { onMounted, ref } from 'vue';
@@ -64,13 +64,13 @@ const openRegister = async () => {
     isProcessing.value = true;
     try {
         // First, check if a register exists for this user and branch
-        const checkResponse = await POSService.getRegisterStatus(user.value.id, branch.value.branch_code);
+        const checkResponse = await posService.getRegisterStatus(user.value.id, branch.value.branch_code);
 
         let registerId = null;
 
         if (!checkResponse.data.register_exists) {
             // Create a new register
-            const createResponse = await POSService.createOrGetRegister({
+            const createResponse = await posService.createOrGetRegister({
                 user_id: user.value.id,
                 branch_code: branch.value.branch_code
             });
@@ -85,7 +85,7 @@ const openRegister = async () => {
             notes: notes.value || `Register opened by ${user.value.fullname || user.value.username}`
         };
 
-        const response = await POSService.openRegister(registerId, openData);
+        const response = await posService.openRegister(registerId, openData);
 
         toast.add({
             severity: 'success',

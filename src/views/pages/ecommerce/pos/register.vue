@@ -1,5 +1,5 @@
 <script setup>
-import { POSService } from '@/services/POSService';
+import { POSService } from '@/services/ecommerce/posService';
 import { formatCurrency, formatDate } from '@/utils/formatters';
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
@@ -42,7 +42,7 @@ const updatearrays = async () => {
             user_id: user.value.id,
             branch_id: business.value.branch_code // Using branch_code as branch_id for now
         };
-        const response = await POSService.getRegisterSummary(params);
+        const response = await posService.getRegisterSummary(params);
         const data = response.data;
 
         register.value = data.registerDetails;
@@ -81,7 +81,7 @@ const closeRegister = async () => {
             notes: closingNotes.value || `Register closed by ${user.value.fullname || user.value.username}`
         };
 
-        const response = await POSService.closeRegister(register.value.id, closeData);
+        const response = await posService.closeRegister(register.value.id, closeData);
 
         toast.add({
             severity: 'success',

@@ -2,7 +2,7 @@
 import AddExpense from '@/components/finance/expenses/AddExpense.vue';
 import Spinner from '@/components/ui/Spinner.vue';
 import { useToast } from '@/composables/useToast';
-import { ExpenseService } from '@/services/ExpenseService';
+import { expenseService } from '@/services/finance/expenseService';
 import { formatCurrency, formatDate } from '@/utils/formatters';
 import { computed, onMounted, ref } from 'vue';
 
@@ -52,7 +52,7 @@ const fetchExpenses = async () => {
             fromdate: fromdate.value,
             todate: todate.value
         };
-        const response = await ExpenseService.getExpenses(params);
+        const response = await expenseService.getExpenses(params);
         expenses.value = response.data.results || response.data || [];
         totalRows.value = response.data.count || expenses.value.length;
     } catch (error) {
@@ -93,7 +93,7 @@ const deleteExpense = async (expense) => {
     if (!confirm(`Are you sure you want to delete expense "${expense.reference_no}"?`)) return;
 
     try {
-        await ExpenseService.deleteExpense(expense.id);
+        await expenseService.deleteExpense(expense.id);
         showToast('success', 'Expense deleted successfully!');
         fetchExpenses();
     } catch (error) {

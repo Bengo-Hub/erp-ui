@@ -2,7 +2,7 @@
 import { ref, computed, onMounted } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
 import { useToast } from 'primevue/usetoast';
-import { EcommerceService } from '@/services/EcommerceService';
+import { ecommerceService } from '@/services/ecommerce/ecommerceService';
 
 const router = useRouter();
 const route = useRoute();
@@ -129,11 +129,11 @@ onMounted(async () => {
 // Methods
 const fetchDependencies = async () => {
     try {
-        let mainCatsRes = await EcommerceService.getMainCategories();
-        let catsRes = await EcommerceService.getCategories();
-        let subcatsRes = await EcommerceService.getSubcategories();
-        let brandsRes = await EcommerceService.getBrands();
-        let modelsRes = await EcommerceService.getModels();
+        let mainCatsRes = await ecommerceService.getMainCategories();
+        let catsRes = await ecommerceService.getCategories();
+        let subcatsRes = await ecommerceService.getSubcategories();
+        let brandsRes = await ecommerceService.getBrands();
+        let modelsRes = await ecommerceService.getModels();
 
         mainCategories.value = mainCatsRes.data.results;
         console.log(mainCategories.value);
@@ -150,7 +150,7 @@ const fetchDependencies = async () => {
 const fetchProduct = async (id) => {
     try {
         loading.value = true;
-        const response = await EcommerceService.getProduct(id);
+        const response = await ecommerceService.getProduct(id);
         product.value = response.data;
 
         // Set images if they exist
@@ -209,10 +209,10 @@ const submitForm = async () => {
 
         // Determine if we're creating or updating
         if (editMode.value) {
-            await EcommerceService.updateProduct(product.value.id, formData);
+            await ecommerceService.updateProduct(product.value.id, formData);
         } else {
             console.log(formData);
-            await EcommerceService.createProduct(formData);
+            await ecommerceService.createProduct(formData);
         }
 
         toast.add({

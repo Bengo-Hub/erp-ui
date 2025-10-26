@@ -1,20 +1,12 @@
 <script setup>
 import { usePermissions } from '@/composables/usePermissions';
 import { useToast } from '@/composables/useToast';
-import { CustomerService } from '@/services/CustomerService';
+import { CustomerService } from '@/services/ecommerce/customerService';
 import { formatCurrency } from '@/utils/formatters';
 import { computed, onMounted, ref } from 'vue';
+import { formatCurrency, formatDate } from '@/utils/formatters';
 
 // PrimeVue components
-import Button from 'primevue/button';
-import Card from 'primevue/card';
-import Column from 'primevue/column';
-import DataTable from 'primevue/datatable';
-import Dialog from 'primevue/dialog';
-import Dropdown from 'primevue/dropdown';
-import InputText from 'primevue/inputtext';
-import Tag from 'primevue/tag';
-
 const { showToast } = useToast();
 const { hasPermission, hasAnyPermission } = usePermissions();
 
@@ -77,7 +69,7 @@ const customersDisplayName = computed(() => {
 const fetchCustomers = async () => {
     loading.value = true;
     try {
-        const response = await CustomerService.getCustomers({ limit: 1000 });
+        const response = await customerService.getCustomers({ limit: 1000 });
         customers.value = response.results || response || [];
     } catch (error) {
         console.error('Error fetching customers:', error);
@@ -146,10 +138,10 @@ const saveCustomer = async () => {
     saving.value = true;
     try {
         if (isEditing.value) {
-            await CustomerService.updateCustomer(selectedCustomerId.value, form.value);
+            await customerService.updateCustomer(selectedCustomerId.value, form.value);
             showToast('success', 'Customer updated successfully');
         } else {
-            await CustomerService.createCustomer(form.value);
+            await customerService.createCustomer(form.value);
             showToast('success', 'Customer created successfully');
         }
 
@@ -165,7 +157,7 @@ const saveCustomer = async () => {
 
 const deleteCustomer = async (customerId) => {
     try {
-        await CustomerService.deleteCustomer(customerId);
+        await customerService.deleteCustomer(customerId);
         showToast('success', 'Customer deleted successfully');
         await fetchCustomers();
     } catch (error) {

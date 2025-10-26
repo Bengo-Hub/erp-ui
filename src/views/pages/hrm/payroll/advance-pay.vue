@@ -1,11 +1,13 @@
 <script setup>
 import AdvancePay from '@/components/hrm/payroll/AdvancePay.vue';
 import { useHrmFilters } from '@/composables/useHrmFilters';
+import { usePermissions } from '@/composables/usePermissions';
 import { useToast } from '@/composables/useToast';
 import { employeeService } from '@/services/hrm/employeeService';
 import { formatCurrency } from '@/utils/formatters';
 import moment from 'moment';
 import { computed, onMounted, ref } from 'vue';
+import { useStore } from 'vuex';
 
 // State Management
 const dt = ref();
@@ -29,6 +31,11 @@ const employees = ref([]);
 // Composables
 const { departments, regions, projects, loadFilters } = useHrmFilters();
 const { showToast } = useToast();
+const { hasAnyPermission } = usePermissions();
+const store = useStore();
+
+// Current user
+const currentUser = computed(() => store.state.auth.user);
 
 // Lifecycle
 onMounted(() => {
@@ -49,12 +56,24 @@ const formattedDateRange = computed(() => {
 const fetchAdvances = async () => {
     isLoading.value = true;
     try {
+        // Check if user has managerial permissions
+        const hasManagerialPerms = hasAnyPermission(['change_advance', 'delete_advance', 'change_advancepay', 'delete_advancepay']);
+        
         let params = {};
         if (fromDate.value && toDate.value) {
             params.from_date = moment(fromDate.value).format('YYYY-MM-DD');
             params.to_date = moment(toDate.value).format('YYYY-MM-DD');
         }
-        if (selectedEmployee.value?.length) params.employee = selectedEmployee.value;
+        
+        // If user doesn't have managerial permissions, filter by their employee ID
+        if (!hasManagerialPerms && !selectedEmployee.value?.length) {
+            const employeeId = currentUser.value?.employee_id || currentUser.value?.id;
+            params.employee = employeeId;
+            console.log('fetchAdvances: Filtering for current user employee ID:', employeeId);
+        } else if (selectedEmployee.value?.length) {
+            params.employee = selectedEmployee.value;
+        }
+        
         if (selectedDepartment.value?.length) params.department = selectedDepartment.value;
         if (selectedRegion.value) params.region = [selectedRegion.value];
         if (selectedProject.value) params.project = [selectedProject.value];

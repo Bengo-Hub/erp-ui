@@ -3,7 +3,7 @@ import '@/assets/styles/mobile-responsive.css';
 import OfflineIndicator from '@/components/common/OfflineIndicator.vue';
 import PageBreadcrumb from '@/components/common/PageBreadcrumb.vue';
 import { useLayout } from '@/layout/composables/layout';
-import mobileService from '@/services/mobileService';
+import mobileService from '@/services/utils/mobileService';
 import { computed, onMounted, ref, watch } from 'vue';
 import AppFooter from './AppFooter.vue';
 import AppSidebar from './AppSidebar.vue';

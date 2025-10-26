@@ -2,7 +2,10 @@
 import logoImage from '@/assets/images/logos/logo.png';
 import PayslipItem from '@/components/hrm/payroll/payslip.vue';
 import { generatePayslip } from '@/components/hrm/payroll/payslipGenerator';
-import { coreService } from '@/services/coreService';
+import { coreService } from '@/services/shared/coreService';
+import { useHrmFilters } from '@/composables/useHrmFilters';
+
+const { filters, departments, regions, projects, loadFilters, resetFilters, getFilterParams } = useHrmFilters();
 import { payrollService } from '@/services/hrm/payrollService';
 import { FilterMatchMode } from '@primevue/core/api';
 import moment from 'moment';
@@ -19,8 +22,6 @@ const dt = ref();
 // Check if the node is expanded (for rendering child columns)
 const employees = ref([]);
 // Department filter options
-const departments = ref([]);
-const regions = ref([]);
 const selectedDateFilter = ref(null);
 const selectedEmployee = ref(null);
 const selectedRegion = ref(null);
@@ -35,15 +36,14 @@ const filters = ref({
     global: { value: null, matchMode: FilterMatchMode.CONTAINS }
 });
 // Process Payroll actions
-onMounted(() => {
+onMounted(async () => {
     if (route.params) {
         fromDate.value = route.params.fromDate;
         toDate.value = route.params.toDate;
         console.log(route.params);
     }
     fetchEmployees();
-    fetchDepartments();
-    fetchRegions();
+    await loadFilters();
     fetchPayslips();
 });
 const fetchEmployees = () => {
@@ -71,45 +71,6 @@ const fetchEmployees = () => {
             isLoading.value = false; // Always hide the loading spinner
         });
 };
-const fetchDepartments = () => {
-    coreService
-        .getDepartmentsV1()
-        .then((response) => {
-            departments.value = response.data.results;
-        })
-        .catch((error) => {
-            toast.add({
-                severity: 'error',
-                summary: 'Error',
-                detail: error.toString(),
-                life: 3000
-            });
-            console.error('Error fetching departments:', error);
-        })
-        .finally(() => {
-            isLoading.value = false; // Always hide the loading spinner
-        });
-};
-const fetchRegions = () => {
-    coreService
-        .getRegionsV1()
-        .then((response) => {
-            regions.value = response.data.results;
-        })
-        .catch((error) => {
-            toast.add({
-                severity: 'error',
-                summary: 'Error',
-                detail: error.toString(),
-                life: 3000
-            });
-            console.error('Error fetching regions:', error);
-        })
-        .finally(() => {
-            isLoading.value = false; // Always hide the loading spinner
-        });
-};
-
 const fetchPayslips = async () => {
     const params = {
         department: selectedDepartment.value ? selectedDepartment.value : null,

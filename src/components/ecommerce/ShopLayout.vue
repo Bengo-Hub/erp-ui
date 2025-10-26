@@ -3,7 +3,7 @@ import { ref, onMounted, computed } from 'vue';
 import { useRouter } from 'vue-router';
 import { useStore } from 'vuex';
 import { useToast } from 'primevue/usetoast';
-import { EcommerceService } from '@/services/EcommerceService';
+import { ecommerceService } from '@/services/ecommerce/ecommerceService';
 import { useBusinessBranding } from '@/utils/businessBranding';
 import { useCartManager } from '@/utils/cartManager';
 import ShopHeader from '@/components/ecommerce/ShopHeader.vue';
@@ -66,7 +66,7 @@ onMounted(async () => {
 
     // Fetch categories for sidebar navigation
     try {
-        const categoriesRes = await EcommerceService.getMainCategories();
+        const categoriesRes = await ecommerceService.getMainCategories();
         const categories = categoriesRes.data;
 
         // Set categories based on API response structure
@@ -85,7 +85,7 @@ onMounted(async () => {
 
     // Fetch favorites
     try {
-        const favoritesRes = await EcommerceService.getFavorites();
+        const favoritesRes = await ecommerceService.getFavorites();
         favorites.value = favoritesRes.data.results || [];
     } catch (error) {
         console.error('Error fetching favorites:', error);
@@ -110,7 +110,7 @@ const getMockFavorites = () => {
 // Add to cart
 const addToCart = async (stock) => {
     try {
-        await EcommerceService.addToCart(stock.id, 1);
+        await ecommerceService.addToCart(stock.id, 1);
         await fetchCart(); // Refresh cart data
         toast.add({
             severity: 'success',
@@ -132,7 +132,7 @@ const addToCart = async (stock) => {
 // Remove from favorites
 const removeFromFavorites = async (stock) => {
     try {
-        await EcommerceService.removeFromFavorites(stock.id);
+        await ecommerceService.removeFromFavorites(stock.id);
         favorites.value = favorites.value.filter((item) => item.id !== stock.id);
         toast.add({
             severity: 'success',
@@ -192,7 +192,7 @@ const toggleFavorite = async (stock) => {
             const favoriteItem = favorites.value.find((fav) => (fav.stock && fav.stock.product && fav.stock.product.id === stock.id) || (fav.product && fav.product.id === stock.id) || fav.id === stock.id);
 
             if (favoriteItem) {
-                await EcommerceService.removeFromFavorites(favoriteItem.id);
+                await ecommerceService.removeFromFavorites(favoriteItem.id);
                 // Remove from local state
                 favorites.value = favorites.value.filter((fav) => fav.id !== favoriteItem.id);
 
@@ -205,7 +205,7 @@ const toggleFavorite = async (stock) => {
             }
         } else {
             // Add to favorites - expecting the productId to be in the format expected by the API
-            const response = await EcommerceService.addToFavorites({ product_id: stock.id });
+            const response = await ecommerceService.addToFavorites({ product_id: stock.id });
 
             // Add to local state if response is valid
             if (response.data) {

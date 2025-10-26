@@ -1,11 +1,16 @@
 <script setup>
-import { ref, onMounted } from 'vue';
+import { ecommerceService } from '@/services/ecommerce/ecommerceService';
+import { getBusinessDetails } from '@/utils/businessBranding';
+import { computed, onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
-import { EcommerceService } from '@/services/EcommerceService';
-import BusinessBranding from '@/components/BusinessBranding.vue';
 
 // Initialize router
 const router = useRouter();
+
+// Business branding
+const businessDetails = ref(null);
+const businessLogo = computed(() => businessDetails.value?.business__logo || '/logo.png');
+const businessName = computed(() => businessDetails.value?.name || 'BengoBox');
 
 const props = defineProps({
     cartItemsCount: {
@@ -31,13 +36,14 @@ const hoverTimer = ref(null);
 const hoverDelay = 150; // milliseconds
 
 onMounted(async () => {
+    businessDetails.value = getBusinessDetails();
     await fetchMainCategories();
 });
 
 const fetchMainCategories = async () => {
     try {
         loadingCategories.value = true;
-        const response = await EcommerceService.getMainCategories();
+        const response = await ecommerceService.getMainCategories();
 
         // Handle the paginated response structure correctly
         if (response.data && response.data.results) {
@@ -249,8 +255,9 @@ const getCategoryIcon = (categoryName) => {
                 <div class="flex items-center justify-between gap-4">
                     <!-- Logo/Brand and Shop Name -->
                     <div class="flex items-center">
-                        <router-link to="/ecommerce/shop" class="flex items-center">
-                            <BusinessBranding :showName="false" size="small" class="header-logo" />
+                        <router-link to="/ecommerce/shop" class="flex items-center gap-2 header-logo">
+                            <img v-if="businessLogo" :src="businessLogo" :alt="businessName" class="h-10 w-auto object-contain" />
+                            <span class="font-semibold text-lg">{{ businessName }}</span>
                         </router-link>
                     </div>
 
