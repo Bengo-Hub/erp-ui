@@ -294,9 +294,14 @@ if [[ "$DEPLOY" == "true" ]]; then
             # Create namespace if needed
             kubectl get ns "$NAMESPACE" >/dev/null 2>&1 || kubectl create ns "$NAMESPACE"
 
-            # Apply dev environment secrets if available
-            if [[ -f "kubeSecrets/devENV.yaml" ]]; then
+            # CRITICAL: Do NOT apply kubeSecrets/devENV.yaml in CI/CD
+            # It may contain outdated configuration values
+            # In CI/CD, environment secrets are managed by deployment workflows
+            if [[ -z "${CI:-}${GITHUB_ACTIONS:-}" && -f "kubeSecrets/devENV.yaml" ]]; then
+                log_info "Local deployment detected - applying kubeSecrets/devENV.yaml"
                 kubectl apply -f kubeSecrets/devENV.yaml || log_warning "Failed to apply dev secrets"
+            elif [[ -f "kubeSecrets/devENV.yaml" ]]; then
+                log_info "CI/CD deployment - skipping kubeSecrets/devENV.yaml (managed by deployment workflow)"
             fi
 
             # Ensure JWT secret exists
