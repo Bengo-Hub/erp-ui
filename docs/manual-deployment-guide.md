@@ -87,6 +87,7 @@ DOCKER_BUILDKIT=1 docker build \
 ```
 
 **Notes:**
+- The Dockerfile uses **pnpm** instead of npm for faster, more efficient dependency management.
 - `VITE_API_URL` and `VITE_WEBSOCKET_URL` are baked into the build. To change them, rebuild with different `--build-arg` values.
 - `build.sh` will attempt to add SSH key with `ssh-add` if `DOCKER_SSH_KEY` is provided (for private git submodules).
 - `build.sh` also uses `trivy fs` and `trivy image` to scan filesystem and image — run those after build if desired.

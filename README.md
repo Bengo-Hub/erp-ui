@@ -4,6 +4,31 @@ Visit the [documentation](https://sakai.primevue.org/documentation) to get start
 
 ---
 
+## Quick Start
+
+This project uses **pnpm** for dependency management (faster and more efficient than npm).
+
+```bash
+# Install pnpm globally (if not already installed)
+npm install -g pnpm
+
+# Install dependencies
+pnpm install
+
+# Run development server
+pnpm run serve
+
+# Build for production
+pnpm run build
+
+# Start production server
+pnpm run start
+```
+
+See [PNPM Migration Guide](docs/PNPM_MIGRATION.md) for more details on why we use pnpm and how to work with it.
+
+---
+
 Project Docs
 ------------
 
@@ -13,3 +38,4 @@ Project Docs
   - [License](docs/LICENSE.md)
   - [RBAC Integration](docs/RBAC_INTEGRATION_GUIDE.md)
   - [UI Components Notes](docs/components-ui.md)
+  - **[PNPM Migration Guide](docs/PNPM_MIGRATION.md)** ⭐ (New - Package manager update)

@@ -1,0 +1,41 @@
+# pnpm configuration for BengoERP UI
+# See: https://pnpm.io/npmrc
+
+# Strict peer dependencies - ensures all peer deps are installed
+# Set to false if you encounter peer dependency issues during migration
+strict-peer-dependencies=false
+
+# Auto install peer dependencies
+auto-install-peers=true
+
+# Symlink node_modules for better compatibility
+node-linker=hoisted
+
+# Save exact versions in package.json (no ^ or ~)
+# Comment this out if you prefer version ranges
+save-exact=false
+
+# Public registry (default, but explicit for clarity)
+registry=https://registry.npmjs.org/
+
+# Store directory (default is ~/.pnpm-store)
+# Uncomment to use project-local store
+# store-dir=.pnpm-store
+
+# Lockfile settings
+lockfile=true
+prefer-frozen-lockfile=true
+
+# Progress settings
+# Show download progress
+loglevel=info
+
+# Performance: Use side-effects cache
+side-effects-cache=true
+
+# Enable Corepack (if available)
+# use-node-version=22.13.0
+
+# Workspace settings (for future monorepo support)
+# link-workspace-packages=true
+
