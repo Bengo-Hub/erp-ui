@@ -18,7 +18,8 @@ app.get('/health', (req, res) => {
 app.use(express.static(path.join(__dirname, 'dist')));
 
 // Serve index.html for all other routes (SPA routing)
-app.get('*', (req, res) => {
+// Use middleware instead of route to avoid path-to-regexp v8 wildcard issues
+app.use((req, res) => {
   res.sendFile(path.join(__dirname, 'dist', 'index.html'));
 });
 
