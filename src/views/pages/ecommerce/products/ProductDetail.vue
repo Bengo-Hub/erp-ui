@@ -3,11 +3,11 @@ import defaultImage from '@/assets/images/products/default.png';
 import LocationSelector from '@/components/common/LocationSelector.vue';
 import { useToast } from '@/composables/useToast';
 import { ecommerceService } from '@/services/ecommerce/ecommerceService';
+import { formatDate } from '@/utils/formatters';
 import DOMPurify from 'dompurify';
 import { useConfirm } from 'primevue/useconfirm';
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
-import { formatCurrency, formatDate } from '@/utils/formatters';
 
 // PrimeVue components
 // Component setup
@@ -729,90 +729,13 @@ function updateDeliveryEstimatesForPickup(station) {
             dayAfter.setDate(dayAfter.getDate() + 2);
 
             // Format dates
-            const formatDate = (date) => {
-                return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-            };
-
-            updatedInfo.estimated_delivery.min_date = formatDate(tomorrow);
-            updatedInfo.estimated_delivery.max_date = formatDate(dayAfter);
+            updatedInfo.estimated_delivery.date_range = `${formatDate(tomorrow)} - ${formatDate(dayAfter)}`;
         }
 
         // Update the product's delivery info
         product.value.delivery_info = updatedInfo;
     }
 }
-
-function updateDeliveryEstimates() {
-    // This would typically call an API to get updated delivery times based on location
-    // For now, we'll just simulate this by adjusting the existing times slightly
-
-    if (!product.value?.delivery_info?.estimated_delivery) return;
-
-    // Get the current location to determine adjustment
-    const location = deliveryLocation.value.toLowerCase();
-    let adjustment = 0;
-
-    // Simulate different delivery times for different locations
-    if (location.includes('nairobi')) {
-        adjustment = -1; // faster delivery in Nairobi
-    } else if (location.includes('mombasa') || location.includes('kisumu')) {
-        adjustment = 0; // standard delivery
-    } else if (location.includes('nakuru') || location.includes('eldoret')) {
-        adjustment = 1; // slightly longer
-    } else {
-        adjustment = 2; // longer for other areas
-    }
-
-    // Update min/max days within reasonable bounds
-    const originalMin = product.value.delivery_info.estimated_delivery.min_days;
-    const originalMax = product.value.delivery_info.estimated_delivery.max_days;
-
-    const newMin = Math.max(1, originalMin + adjustment);
-    const newMax = Math.max(newMin + 1, originalMax + adjustment);
-
-    // Calculate new dates based on the adjusted days
-    const today = new Date();
-
-    const minDate = new Date(today);
-    minDate.setDate(today.getDate() + newMin);
-
-    const maxDate = new Date(today);
-    maxDate.setDate(today.getDate() + newMax);
-
-    // Format dates
-    const options = { day: 'numeric', month: 'short', year: 'numeric' };
-    const minDateStr = minDate.toLocaleDateString('en-GB', options);
-    const maxDateStr = maxDate.toLocaleDateString('en-GB', options);
-
-    // Update the delivery info object
-    product.value.delivery_info.estimated_delivery = {
-        min_days: newMin,
-        max_days: newMax,
-        min_date: minDateStr,
-        max_date: maxDateStr
-    };
-
-    // Also update delivery options' fees based on location
-    if (product.value.delivery_info.delivery_options && product.value.delivery_info.delivery_options.length > 0) {
-        product.value.delivery_info.delivery_options.forEach((option) => {
-            // Apply location-based fee adjustments
-            if (location.includes('nairobi')) {
-                // Standard fees for Nairobi (unchanged)
-            } else if (location.includes('mombasa') || location.includes('kisumu')) {
-                option.fee = Math.round(option.fee * 1.1); // 10% higher
-            } else {
-                option.fee = Math.round(option.fee * 1.25); // 25% higher for other locations
-            }
-        });
-    }
-}
-
-const showLocationSelector = ref(false);
-
-const changeLocation = () => {
-    // Show the location selector component
-    showLocationSelector.value = true;
-};
 
 const handleLocationChanged = (newLocation, locationData) => {
     deliveryLocation.value = newLocation;

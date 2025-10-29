@@ -1,5 +1,5 @@
 <script setup>
-import { inventoryService } from '@/services/inventoryService';
+import { inventoryService } from '@/services/ecommerce/inventoryService';
 import { formatCurrency } from '@/utils/formatters.js';
 import { useToast } from 'primevue/usetoast';
 import { computed, onMounted, ref } from 'vue';

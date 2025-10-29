@@ -1,8 +1,8 @@
 <script setup>
 import { useToast } from '@/composables/useToast';
-import { financeService } from '@/services/FinanceService';
+import { financeService } from '@/services/finance/financeService';
+import { formatCurrency } from '@/utils/formatters';
 import { onMounted, reactive, ref } from 'vue';
-import { formatCurrency, formatDate } from '@/utils/formatters';
 
 const { showToast } = useToast();
 
@@ -237,14 +237,7 @@ const updateCharts = () => {
 };
 
 // Utility functions
-const formatCurrency = (amount) => {
-    return new Intl.NumberFormat('en-KE', {
-        style: 'currency',
-        currency: 'KES',
-        minimumFractionDigits: 0,
-        maximumFractionDigits: 0
-    }).format(amount || 0);
-};
+
 
 // Load data on mount
 onMounted(() => {

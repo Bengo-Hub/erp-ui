@@ -294,7 +294,7 @@
 
 <script setup>
 import { useToast } from '@/composables/useToast';
-import { imageOptimizationService } from '@/services/imageOptimizationService';
+import { imageOptimizationService } from '@/services/utils/imageOptimizationService';
 import { onMounted, ref } from 'vue';
 
 // PrimeVue components

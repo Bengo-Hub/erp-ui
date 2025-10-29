@@ -1,7 +1,7 @@
 <script setup>
 import { useToast } from '@/composables/useToast';
-import { ref, onMounted } from 'vue';
 import { leaveService } from '@/services/hrm/leaveService';
+import { onMounted, ref } from 'vue';
 
 const { showToast } = useToast();
 const dt = ref();
@@ -275,7 +275,6 @@ onMounted(() => {
 
     :deep(.p-datatable) {
         font-size: 10pt !important;
-import { formatCurrency, formatDate } from '@/utils/formatters';
     }
 }
 </style>

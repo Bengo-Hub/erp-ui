@@ -1,6 +1,6 @@
 <script setup>
 import { useToast } from '@/composables/useToast';
-import { financeService } from '@/services/FinanceService';
+import { financeService } from '@/services/finance/financeService';
 import { getBusinessDetails } from '@/utils/businessBranding';
 import { formatCurrency } from '@/utils/formatters';
 import { computed, onMounted, reactive, ref, watch } from 'vue';

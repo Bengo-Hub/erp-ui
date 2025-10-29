@@ -1,6 +1,6 @@
 <script setup>
 import Spinner from '@/components/ui/Spinner.vue';
-import { procurementService } from '@/services/procurementService';
+import { procurementService } from '@/services/procurement/procurementService';
 import Receipt from '@/views/pages/ecommerce/pos/printReceipt.vue';
 import { useToast } from 'primevue/usetoast';
 import { onMounted, ref } from 'vue';

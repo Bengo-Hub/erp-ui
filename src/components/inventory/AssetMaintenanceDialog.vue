@@ -400,7 +400,6 @@ h4 {
 @media (max-width: 768px) {
     .modern-maintenance-dialog {
         width: 95vw !important;
-import { formatCurrency, formatDate } from '@/utils/formatters';
         margin: 2.5vw;
     }
 

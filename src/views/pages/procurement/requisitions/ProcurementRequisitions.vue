@@ -3,7 +3,7 @@ import RequisitionDetail from '@/components/procurement/RequisitionDetail.vue';
 import RequisitionForm from '@/components/procurement/RequisitionForm.vue';
 import ApprovalWorkflow from '@/components/shared/ApprovalWorkflow.vue';
 import { useToast } from '@/composables/useToast';
-import { procurementService } from '@/services/procurementService';
+import { procurementService } from '@/services/procurement/procurementService';
 import { computed, onMounted, ref, watch } from 'vue';
 
 const { showToast } = useToast();

@@ -4,8 +4,7 @@ import { FilterMatchMode } from '@primevue/core/api';
 import { useConfirm } from 'primevue/useconfirm';
 import { computed, onMounted, reactive, ref } from 'vue';
 //import AddTransfer from '@/components/inventory/AddTransfer.vue'
-import { inventoryService } from '@/services/inventoryService';
-import { formatCurrency } from '@/utils/formatters.js';
+import { inventoryService } from '@/services/ecommerce/inventoryService';
 import { formatCurrency, formatDate } from '@/utils/formatters';
 
 const { showToast } = useToast();

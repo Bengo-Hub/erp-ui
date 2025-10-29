@@ -1,6 +1,6 @@
 <script setup>
 import { onMounted, ref } from 'vue';
-import { manufacturingService } from '@/services/manufacturingService';
+import { manufacturingService } from '@/services/manufacturing/manufacturingService';
 
 const insights = ref([]);
 const insightsData = ref(null);

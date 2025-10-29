@@ -1,7 +1,7 @@
 <script setup>
 import { useToast } from '@/composables/useToast';
 import { coreService } from '@/services/shared/coreService';
-import { manufacturingService } from '@/services/manufacturingService';
+import { manufacturingService } from '@/services/manufacturing/manufacturingService';
 import { useVuelidate } from '@vuelidate/core';
 import { minValue, required } from '@vuelidate/validators';
 import { useConfirm } from 'primevue/useconfirm';
@@ -124,15 +124,6 @@ watch([() => batch.formula, () => batch.planned_quantity], () => {
 const formatNumber = (num) => {
     if (num === null || num === undefined) return '-';
     return new Intl.NumberFormat().format(num);
-};
-
-const formatCurrency = (value) => {
-    if (value === null || value === undefined) return '-';
-    return new Intl.NumberFormat('en-US', {
-        style: 'currency',
-        currency: 'KES',
-        minimumFractionDigits: 2
-    }).format(value);
 };
 
 // Data loading

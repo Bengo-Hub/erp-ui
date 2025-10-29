@@ -1,9 +1,8 @@
 <script setup>
 import { ref, onMounted } from 'vue';
 import { useToast } from 'primevue/usetoast';
-import { inventoryService } from '@/services/inventoryService';
+import { inventoryService } from '@/services/ecommerce/inventoryService';
 import { formatCurrency } from '@/utils/formatters.js';
-import { formatCurrency, formatDate } from '@/utils/formatters';
 
 const toast = useToast();
 const props = defineProps({

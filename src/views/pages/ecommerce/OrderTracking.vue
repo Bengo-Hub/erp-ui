@@ -1,11 +1,10 @@
 <script setup>
 import { ecommerceService } from '@/services/ecommerce/ecommerceService';
 import { useBusinessBranding } from '@/utils/businessBranding';
-import { formatCurrency } from '@/utils/formatters';
+import { formatCurrency, formatDate } from '@/utils/formatters';
 import { useToast } from 'primevue/usetoast';
 import { onMounted, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
-import { formatCurrency, formatDate } from '@/utils/formatters';
 
 const router = useRouter();
 const route = useRoute();
@@ -244,9 +243,6 @@ const getStatusSeverity = (status) => {
         default:
             return 'secondary';
     }
-};
-
-    return new Date(dateString).toLocaleDateString(undefined, options);
 };
 
 const formatDateTime = (dateString) => {

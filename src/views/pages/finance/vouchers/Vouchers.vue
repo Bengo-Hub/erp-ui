@@ -2,8 +2,8 @@
 import VoucherForm from '@/components/finance/vouchers/VoucherForm.vue';
 import { useToast } from '@/composables/useToast';
 import { financeService } from '@/services/finance/financeService';
-import { onMounted, reactive, ref } from 'vue';
 import { formatCurrency, formatDate } from '@/utils/formatters';
+import { onMounted, reactive, ref } from 'vue';
 
 const { showToast } = useToast();
 
@@ -153,13 +153,6 @@ const getStatusSeverity = (status) => {
         posted: 'info'
     };
     return severityMap[status] || 'info';
-};
-
-const formatCurrency = (amount) => {
-    return new Intl.NumberFormat('en-KE', {
-        style: 'currency',
-        currency: 'KES'
-    }).format(amount || 0);
 };
 
 const getAccountName = (accountId) => {

@@ -19,12 +19,7 @@ const stats = ref({
 
 const recentActivity = ref([]);
 
-const formatCurrency = (amount) => {
-    return new Intl.NumberFormat('en-KE', {
-        style: 'currency',
-        currency: 'KES'
-    }).format(amount);
-};
+
 
 const getStatusSeverity = (status) => {
     const statusMap = {

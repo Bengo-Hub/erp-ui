@@ -2,7 +2,7 @@
 import BreadcrumbNav from '@/components/manufacturing/BreadcrumbNav.vue';
 import ManufacturingToolbar from '@/components/manufacturing/ManufacturingToolbar.vue';
 import { useToast } from '@/composables/useToast';
-import { manufacturingService } from '@/services/manufacturingService';
+import { manufacturingService } from '@/services/manufacturing/manufacturingService';
 import { FilterMatchMode } from '@primevue/core/api';
 import { useConfirm } from 'primevue/useconfirm';
 import { onMounted, reactive, ref } from 'vue';
@@ -135,20 +135,6 @@ const createBatchFromDialog = () => {
 };
 
 // Helper functions
-const formatDate = (dateString) => {
-    if (!dateString) return '';
-    const date = new Date(dateString);
-    return date.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
-};
-
-const formatCurrency = (value) => {
-    if (value === null || value === undefined) return '-';
-    return new Intl.NumberFormat('en-US', {
-        style: 'currency',
-        currency: 'KES',
-        minimumFractionDigits: 2
-    }).format(value);
-};
 
 onMounted(() => {
     // Fetch real data from the API

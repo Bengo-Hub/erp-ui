@@ -1,8 +1,8 @@
 <script setup>
-import { CartService } from '@/services/ecommerce/cartService';
+import { useToast } from '@/composables/useToast';
+import { cartService } from '@/services/ecommerce/cartService';
 import { ecommerceService } from '@/services/ecommerce/ecommerceService';
 import { formatCurrency } from '@/utils/formatters';
-import { useToast } from '@/composables/useToast';
 import { computed, onMounted, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 
@@ -60,8 +60,7 @@ const selectedProduct = ref(null);
 const quickViewQuantity = ref(1);
 
 // Cart functionality
-// Using CartService directly as it's exported as a singleton, not a constructor class
-const cartService = CartService;
+// Using cartService directly as it's exported as a singleton, not a constructor class
 
 // Breadcrumbs
 const breadcrumbHome = { icon: 'pi pi-home', to: '/' };

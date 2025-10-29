@@ -39,7 +39,7 @@ const stockLevelsChartData = ref(null);
 const loadDashboardData = async () => {
     loading.value = true;
     try {
-        const { dashboardService } = await import('@/services/dashboardService');
+        const { dashboardService } = await import('@/services/shared/dashboardService');
 
         const result = await executeDataFetch(
             () => dashboardService.getInventoryDashboardData(period.value),

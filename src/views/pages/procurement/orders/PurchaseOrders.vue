@@ -2,13 +2,12 @@
 import PurchaseOrderDetail from '@/components/procurement/PurchaseOrderDetail.vue';
 import PurchaseOrderForm from '@/components/procurement/PurchaseOrderForm.vue';
 import ApprovalWorkflow from '@/components/shared/ApprovalWorkflow.vue';
-import { procurementService } from '@/services/procurementService';
-import { formatCurrency } from '@/utils/formatters';
+import { procurementService } from '@/services/procurement/procurementService';
+import { formatCurrency, formatDate } from '@/utils/formatters';
 import { useConfirm } from 'primevue/useconfirm';
 import { useToast } from 'primevue/usetoast';
 import { computed, onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
-import { formatCurrency, formatDate } from '@/utils/formatters';
 
 const router = useRouter();
 const confirm = useConfirm();

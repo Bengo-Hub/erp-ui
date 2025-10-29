@@ -4,7 +4,7 @@ import { ref, reactive, computed, onMounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useVuelidate } from '@vuelidate/core';
 import { required, minValue } from '@vuelidate/validators';
-import { manufacturingService } from '@/services/manufacturingService';
+import { manufacturingService } from '@/services/manufacturing/manufacturingService';
 import { ecommerceService } from '@/services/ecommerce/ecommerceService';
 import ProductForm from '@/components/products/ProductForm.vue';
 import { formatCurrency, formatDate } from '@/utils/formatters';
@@ -72,14 +72,6 @@ const calculateTotalCost = () => {
 };
 
 // Format currency values
-const formatCurrency = (value) => {
-    if (value === null || value === undefined) return 'N/A';
-    return new Intl.NumberFormat('en-US', {
-        style: 'currency',
-        currency: 'KES',
-        minimumFractionDigits: 2
-    }).format(value);
-};
 
 // Fetch required data
 const fetchData = async () => {

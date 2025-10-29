@@ -1,7 +1,7 @@
 <script setup>
 import BreadcrumbNav from '@/components/manufacturing/BreadcrumbNav.vue';
 import ManufacturingToolbar from '@/components/manufacturing/ManufacturingToolbar.vue';
-import { manufacturingService } from '@/services/manufacturingService';
+import { manufacturingService } from '@/services/manufacturing/manufacturingService';
 import { useConfirm } from 'primevue/useconfirm';
 import { useToast } from 'primevue/usetoast';
 import { onMounted, reactive, ref } from 'vue';
@@ -87,24 +87,10 @@ const getStatusSeverity = (status) => {
 };
 
 // Helper functions for formatting display values
-const formatDate = (dateString) => {
-    if (!dateString) return '';
-    const date = new Date(dateString);
-    return date.toLocaleDateString() + ' ' + date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-};
 
 const formatNumber = (num) => {
     if (num === null || num === undefined) return '-';
     return new Intl.NumberFormat().format(num);
-};
-
-const formatCurrency = (value) => {
-    if (value === null || value === undefined) return '-';
-    return new Intl.NumberFormat('en-US', {
-        style: 'currency',
-        currency: 'KES',
-        minimumFractionDigits: 2
-    }).format(value);
 };
 
 onMounted(() => {

@@ -2,7 +2,7 @@
 import BreadcrumbNav from '@/components/manufacturing/BreadcrumbNav.vue';
 import ManufacturingToolbar from '@/components/manufacturing/ManufacturingToolbar.vue';
 import { useToast } from '@/composables/useToast';
-import { manufacturingService } from '@/services/manufacturingService';
+import { manufacturingService } from '@/services/manufacturing/manufacturingService';
 import { FilterMatchMode } from '@primevue/core/api';
 import { useConfirm } from 'primevue/useconfirm';
 import { computed, onMounted, reactive, ref } from 'vue';
@@ -289,12 +289,6 @@ const getStatusSeverity = (status) => {
         default:
             return 'info';
     }
-};
-
-const formatDate = (dateString) => {
-    if (!dateString) return '';
-    const date = new Date(dateString);
-    return date.toLocaleDateString() + ' ' + date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 };
 
 onMounted(() => {

@@ -563,15 +563,6 @@ const completeMaintenance = async (maintenanceData) => {
     }
 };
 
-const formatCurrency = (value) => {
-    return new Intl.NumberFormat('en-KE', {
-        style: 'currency',
-        currency: 'KES',
-        minimumFractionDigits: 0,
-        maximumFractionDigits: 0
-    }).format(value || 0);
-};
-
 const getMaintenanceTypeLabel = (type) => {
     const typeMap = {
         'preventive': 'Preventive',
@@ -654,7 +645,6 @@ onMounted(() => {
 @media (max-width: 768px) {
     .modern-maintenance-dialog {
         width: 95vw !important;
-import { formatCurrency, formatDate } from '@/utils/formatters';
         margin: 2.5vw;
     }
 

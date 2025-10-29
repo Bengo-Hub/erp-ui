@@ -4,7 +4,7 @@ import { ref, reactive, computed, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { FilterMatchMode, FilterOperator } from '@primevue/core/api';
 import { formatCurrency } from '@/utils/formatters';
-import { manufacturingService } from '@/services/manufacturingService';
+import { manufacturingService } from '@/services/manufacturing/manufacturingService';
 
 const { showToast } = useToast();
 const router = useRouter();

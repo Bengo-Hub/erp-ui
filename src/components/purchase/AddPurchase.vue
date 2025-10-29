@@ -2,7 +2,7 @@
 import ImportProducts from '@/components/products/ImportProducts.vue';
 import ProductForm from '@/components/products/ProductForm.vue';
 import { coreService } from '@/services/shared/coreService';
-import { procurementService } from '@/services/procurementService';
+import { procurementService } from '@/services/procurement/procurementService';
 import axios from 'axios';
 import { useToast } from 'primevue/usetoast';
 import { computed, onMounted, ref } from 'vue';

@@ -1,7 +1,7 @@
 <script setup>
 import ProcessPurchaseReturn from '@/components/purchase/ProcessPurchaseReturn.vue';
 import Spinner from '@/components/ui/Spinner.vue';
-import { procurementService } from '@/services/procurementService';
+import { procurementService } from '@/services/procurement/procurementService';
 import Receipt from '@/views/pages/ecommerce/pos/printReceipt.vue';
 import moment from 'moment';
 import { useToast } from 'primevue/usetoast';

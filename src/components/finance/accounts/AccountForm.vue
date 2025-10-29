@@ -1,6 +1,6 @@
 <script setup>
 import { useToast } from '@/composables/useToast';
-import { financeService } from '@/services/FinanceService';
+import { financeService } from '@/services/finance/financeService';
 import { computed, reactive, ref, watch } from 'vue';
 
 const props = defineProps({

@@ -3,8 +3,7 @@ import { ref, computed, onMounted, defineProps } from 'vue';
 import { useRoute } from 'vue-router';
 import { useStore } from 'vuex';
 import { useToast } from 'primevue/usetoast';
-import { procurementService } from '@/services/procurementService';
-import { formatCurrency } from '@/utils/formatters';
+import { procurementService } from '@/services/procurement/procurementService';
 
 const route = useRoute();
 const store = useStore();
@@ -546,7 +545,6 @@ onMounted(() => {
 
 .approve-btn:hover {
     background: var(--green-600) !important;
-import { formatCurrency, formatDate } from '@/utils/formatters';
 }
 
 .reject-btn {

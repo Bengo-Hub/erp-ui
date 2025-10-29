@@ -4,7 +4,7 @@ import reportdet from '@/components/report/header.vue';
 import ApprovalWorkflow from '@/components/shared/ApprovalWorkflow.vue';
 import Spinner from '@/components/ui/Spinner.vue';
 import { useToast } from '@/composables/useToast';
-import { procurementService } from '@/services/procurementService';
+import { procurementService } from '@/services/procurement/procurementService';
 import Receipt from '@/views/pages/ecommerce/pos/printReceipt.vue';
 import moment from 'moment';
 import { computed, onMounted, ref } from 'vue';

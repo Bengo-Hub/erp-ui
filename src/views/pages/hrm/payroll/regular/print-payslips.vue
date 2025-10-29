@@ -2,15 +2,13 @@
 import logoImage from '@/assets/images/logos/logo.png';
 import PayslipItem from '@/components/hrm/payroll/payslip.vue';
 import { generatePayslip } from '@/components/hrm/payroll/payslipGenerator';
-import { coreService } from '@/services/shared/coreService';
 import { useHrmFilters } from '@/composables/useHrmFilters';
-
-const { filters, departments, regions, projects, loadFilters, resetFilters, getFilterParams } = useHrmFilters();
 import { payrollService } from '@/services/hrm/payrollService';
-import { FilterMatchMode } from '@primevue/core/api';
 import moment from 'moment';
 import { computed, onMounted, ref } from 'vue';
 import { useRoute } from 'vue-router';
+
+const { filters, departments, regions, projects, loadFilters, resetFilters, getFilterParams } = useHrmFilters();
 
 const route = useRoute();
 const payslip = ref(null);
@@ -32,9 +30,6 @@ const fromDate = ref(null);
 const toDate = ref(null);
 const date = ref('');
 const payslips = ref([]);
-const filters = ref({
-    global: { value: null, matchMode: FilterMatchMode.CONTAINS }
-});
 // Process Payroll actions
 onMounted(async () => {
     if (route.params) {

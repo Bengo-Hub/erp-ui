@@ -53,7 +53,7 @@
 
 <script setup>
 import { ref, onMounted, h } from 'vue';
-import procurementService from '@/services/procurementService';
+import procurementService from '@/services/procurement/procurementService';
 
 const contracts = ref([]);
 const loading = ref(false);

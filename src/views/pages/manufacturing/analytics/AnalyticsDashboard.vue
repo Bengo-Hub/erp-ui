@@ -1,7 +1,7 @@
 <script setup>
 import { ref, onMounted } from 'vue';
 import { useToast } from '@/composables/useToast';
-import { manufacturingService } from '@/services/manufacturingService';
+import { manufacturingService } from '@/services/manufacturing/manufacturingService';
 import BreadcrumbNav from '@/components/manufacturing/BreadcrumbNav.vue';
 import ManufacturingToolbar from '@/components/manufacturing/ManufacturingToolbar.vue';
 import InsightsPanel from '@/components/manufacturing/InsightsPanel.vue';
@@ -219,14 +219,6 @@ const exportData = () => {
 };
 
 // Helper functions
-const formatCurrency = (value) => {
-    if (value === null || value === undefined) return '-';
-    return new Intl.NumberFormat('en-US', {
-        style: 'currency',
-        currency: 'KES',
-        minimumFractionDigits: 2
-    }).format(value);
-};
 
 const formatNumber = (num) => {
     if (num === null || num === undefined) return '-';

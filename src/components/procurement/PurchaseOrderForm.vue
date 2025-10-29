@@ -3,7 +3,7 @@ import { reactive, ref, computed, onMounted } from 'vue';
 import { useVuelidate } from '@vuelidate/core';
 import { required } from '@vuelidate/validators';
 import { useToast } from 'primevue/usetoast';
-import { procurementService } from '@/services/procurementService';
+import { procurementService } from '@/services/procurement/procurementService';
 import { formatCurrency } from '@/utils/formatters';
 
 const props = defineProps({

@@ -303,11 +303,11 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted } from 'vue';
-import { financeService } from '@/services/finance/financeService';
-import { useToast } from '@/composables/useToast';
 import BillingDocumentForm from '@/components/finance/billing/BillingDocumentForm.vue';
+import { useToast } from '@/composables/useToast';
+import { financeService } from '@/services/finance/financeService';
 import { formatCurrency, formatDate } from '@/utils/formatters';
+import { onMounted, reactive, ref } from 'vue';
 
 const { showToast } = useToast();
 
@@ -472,12 +472,6 @@ const getStatusSeverity = (status) => {
   return severityMap[status] || 'info';
 };
 
-const formatCurrency = (amount) => {
-  return new Intl.NumberFormat('en-KE', {
-    style: 'currency',
-    currency: 'KES'
-  }).format(amount || 0);
-};
 
 const isOverdue = (dueDate) => {
   if (!dueDate) return false;

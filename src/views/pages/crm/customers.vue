@@ -1,14 +1,12 @@
 <script setup>
 import { usePermissions } from '@/composables/usePermissions';
 import { useToast } from '@/composables/useToast';
-import { CustomerService } from '@/services/ecommerce/customerService';
-import { formatCurrency } from '@/utils/formatters';
-import { computed, onMounted, ref } from 'vue';
 import { formatCurrency, formatDate } from '@/utils/formatters';
+import { computed, onMounted, ref } from 'vue';
 
 // PrimeVue components
 const { showToast } = useToast();
-const { hasPermission, hasAnyPermission } = usePermissions();
+const { hasPermission } = usePermissions();
 
 // Reactive data
 const customers = ref([]);
@@ -181,15 +179,6 @@ const getContactTypeSeverity = (contactType) => {
 
 const getAccountTypeSeverity = (accountType) => {
     return accountType === 'Business' ? 'primary' : 'secondary';
-};
-
-const formatDate = (dateString) => {
-    if (!dateString) return 'N/A';
-    return new Date(dateString).toLocaleDateString('en-US', {
-        year: 'numeric',
-        month: 'short',
-        day: 'numeric'
-    });
 };
 
 // Lifecycle

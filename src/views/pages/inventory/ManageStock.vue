@@ -7,9 +7,9 @@ import StockDetails from '@/components/inventory/StockDetails.vue';
 import StockMovements from '@/components/inventory/StockMovements.vue';
 import StockReconciliation from '@/components/inventory/StockReconciliation.vue';
 import StockValuation from '@/components/inventory/StockValuation.vue';
-import { coreService } from '@/services/coreService.js';
 import { ecommerceService } from '@/services/ecommerce/ecommerceService';
-import { inventoryService } from '@/services/inventoryService.js';
+import { inventoryService } from '@/services/ecommerce/inventoryService';
+import { coreService } from '@/services/shared/coreService';
 import { formatCurrency } from '@/utils/formatters.js';
 
 const { showToast } = useToast();

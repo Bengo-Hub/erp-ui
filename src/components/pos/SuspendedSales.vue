@@ -6,7 +6,6 @@ import moment from 'moment';
 import { useConfirm } from 'primevue/useconfirm';
 import { useToast } from 'primevue/usetoast';
 import { defineEmits, onMounted, ref } from 'vue';
-import { formatCurrency, formatDate } from '@/utils/formatters';
 
 const emit = defineEmits(['resumeSale', 'cancel']);
 const toast = useToast();

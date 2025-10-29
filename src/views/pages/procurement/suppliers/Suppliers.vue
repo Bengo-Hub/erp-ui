@@ -3,7 +3,7 @@ import ReportHeader from '@/components/report/header.vue';
 import AddSupplier from '@/components/supplier/AddSupplier.vue';
 import Spinner from '@/components/ui/Spinner.vue';
 import { useToast } from '@/composables/useToast';
-import { procurementService } from '@/services/procurementService';
+import { procurementService } from '@/services/procurement/procurementService';
 import { computed, onMounted, ref } from 'vue';
 
 const { showToast } = useToast();

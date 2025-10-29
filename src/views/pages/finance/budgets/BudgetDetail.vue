@@ -340,12 +340,7 @@ const goBack = () => {
 };
 
 // Utility functions
-const formatCurrency = (amount) => {
-    return new Intl.NumberFormat('en-KE', {
-        style: 'currency',
-        currency: 'KES'
-    }).format(amount || 0);
-};
+
 
 const getStatusSeverity = (status) => {
     const severityMap = {

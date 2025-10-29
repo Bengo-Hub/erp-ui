@@ -1,6 +1,6 @@
 <script setup>
 import { useToast } from '@/composables/useToast';
-import { communicationService } from '@/services/communicationService';
+import { communicationService } from '@/services/shared/communicationService';
 import { onMounted, ref } from 'vue';
 import { formatCurrency, formatDate } from '@/utils/formatters';
 

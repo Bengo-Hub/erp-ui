@@ -2,8 +2,8 @@
 import AccountForm from '@/components/finance/accounts/AccountForm.vue';
 import { useToast } from '@/composables/useToast';
 import { financeService } from '@/services/finance/financeService';
-import { onMounted, reactive, ref } from 'vue';
 import { formatCurrency, formatDate } from '@/utils/formatters';
+import { onMounted, reactive, ref } from 'vue';
 
 const { showToast } = useToast();
 
@@ -183,13 +183,6 @@ const getBalanceColor = (balance) => {
     if (balance > 0) return 'text-green-600';
     if (balance < 0) return 'text-red-600';
     return 'text-gray-600';
-};
-
-const formatCurrency = (amount) => {
-    return new Intl.NumberFormat('en-KE', {
-        style: 'currency',
-        currency: 'KES'
-    }).format(amount || 0);
 };
 
 // Load accounts on mount

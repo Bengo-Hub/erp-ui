@@ -1,5 +1,5 @@
 <script setup>
-import procurementService from '@/services/procurementService';
+import procurementService from '@/services/procurement/procurementService';
 import { onMounted, ref } from 'vue';
 
 const filters = ref({ supplier: '', start_date: '', end_date: '' });

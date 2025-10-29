@@ -1,6 +1,6 @@
 <script setup>
 import { useToast } from '@/composables/useToast';
-import { manufacturingService } from '@/services/manufacturingService';
+import { manufacturingService } from '@/services/manufacturing/manufacturingService';
 import { onMounted, reactive, ref, watch } from 'vue';
 
 // Props
