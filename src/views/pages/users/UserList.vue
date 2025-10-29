@@ -496,7 +496,7 @@
 </template>
 
 <script setup>
-import RoleChip from '@/components/auth/RoleChip.vue';
+import RoleChip from '@/components/Auth/RoleChip.vue';
 import PermissionButton from '@/components/common/PermissionButton.vue';
 import { usePermissions } from '@/composables/usePermissions';
 import { useToast } from '@/composables/useToast';
