@@ -16,7 +16,7 @@ export const processPayrollRequest = async ({ project, department = [], region, 
         };
 
         // Make API call using the configured axios instance
-        const response = await axios.post('/hrm/payroll/payroll/', data);
+        const response = await axios.post('/hrm/payroll/', data);
 
         // Handle success or failure response
         if (response.data.success) {

@@ -1,6 +1,7 @@
 <script setup>
 import { useChartOptions } from '@/composables/useChartOptions';
 import { useDashboardState } from '@/composables/useDashboardState';
+import { usePermissions } from '@/composables/usePermissions';
 import { useToast } from '@/composables/useToast';
 import { dashboardService } from '@/services/shared/dashboardService';
 import { PERIOD_OPTIONS } from '@/utils/constants';
@@ -12,6 +13,7 @@ const router = useRouter();
 const { showToast } = useToast();
 const { currencyChartOptions } = useChartOptions();
 const { state, executeDataFetch } = useDashboardState();
+const { hasPermission, hasAnyPermission } = usePermissions();
 
 const loading = ref(false);
 const period = ref('month');
@@ -110,8 +112,8 @@ const navigateToExpenses = () => {
     router.push('/finance/expenses');
 };
 
-const navigateToInvoices = () => {
-    router.push('/finance/invoices');
+const navigateToBilling = () => {
+    router.push('/finance/billing');
 };
 
 const navigateToReports = () => {
@@ -121,6 +123,14 @@ const navigateToReports = () => {
 const navigateToTaxes = () => {
     router.push('/finance/taxes');
 };
+
+// Visibility flags by permission
+const canViewFinance = hasAnyPermission(['view_payment', 'view_expense', 'view_budget', 'view_tax', 'view_transaction', 'view_billingdocument']);
+const canSeeRevenue = hasAnyPermission(['view_payment', 'view_transaction']);
+const canSeeExpenses = hasPermission('view_expense');
+const canSeeCashFlow = hasAnyPermission(['view_payment', 'view_transaction']);
+const canSeeTaxes = hasAnyPermission(['view_tax', 'view_taxrates']);
+const canSeeBilling = hasAnyPermission(['view_billingdocument', 'view_payment']);
 
 // Watch for period changes
 watch(period, () => {
@@ -146,7 +156,7 @@ onMounted(() => {
         <div v-else class="space-y-6">
             <!-- Key Metrics Cards -->
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                <Card class="bg-gradient-to-r from-blue-500 to-blue-600 text-white">
+                <Card v-if="canSeeRevenue" class="bg-gradient-to-r from-blue-500 to-blue-600 text-white">
                     <template #title>
                         <div class="flex items-center justify-between">
                             <span>Total Revenue</span>
@@ -160,7 +170,7 @@ onMounted(() => {
                     </template>
                 </Card>
 
-                <Card class="bg-gradient-to-r from-red-500 to-red-600 text-white">
+                <Card v-if="canSeeExpenses" class="bg-gradient-to-r from-red-500 to-red-600 text-white">
                     <template #title>
                         <div class="flex items-center justify-between">
                             <span>Total Expenses</span>
@@ -174,7 +184,7 @@ onMounted(() => {
                     </template>
                 </Card>
 
-                <Card class="bg-gradient-to-r from-green-500 to-green-600 text-white">
+                <Card v-if="canSeeRevenue" class="bg-gradient-to-r from-green-500 to-green-600 text-white">
                     <template #title>
                         <div class="flex items-center justify-between">
                             <span>Net Profit</span>
@@ -188,7 +198,7 @@ onMounted(() => {
                     </template>
                 </Card>
 
-                <Card class="bg-gradient-to-r from-purple-500 to-purple-600 text-white">
+                <Card v-if="canSeeCashFlow" class="bg-gradient-to-r from-purple-500 to-purple-600 text-white">
                     <template #title>
                         <div class="flex items-center justify-between">
                             <span>Cash Flow</span>
@@ -206,7 +216,7 @@ onMounted(() => {
             <!-- Charts Row -->
             <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 <!-- Revenue Trends -->
-                <Card>
+                <Card v-if="canSeeRevenue">
                     <template #title>Revenue Trends</template>
                     <template #content>
                         <div class="h-80">
@@ -217,7 +227,7 @@ onMounted(() => {
                 </Card>
 
                 <!-- Expense Breakdown -->
-                <Card>
+                <Card v-if="canSeeExpenses">
                     <template #title>Expense Breakdown</template>
                     <template #content>
                         <div class="h-80">
@@ -229,7 +239,7 @@ onMounted(() => {
             </div>
 
             <!-- Cash Flow Chart -->
-            <Card>
+            <Card v-if="canSeeCashFlow">
                 <template #title>Cash Flow Overview</template>
                 <template #content>
                     <div class="h-80">
@@ -244,10 +254,10 @@ onMounted(() => {
                 <template #title>Quick Actions</template>
                 <template #content>
                     <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
-                        <Button label="Manage Expenses" icon="pi pi-credit-card" class="p-button-outlined" @click="navigateToExpenses" />
-                        <Button label="View Invoices" icon="pi pi-file" class="p-button-outlined" @click="navigateToInvoices" />
-                        <Button label="Generate Reports" icon="pi pi-chart-bar" class="p-button-outlined" @click="navigateToReports" />
-                        <Button label="Tax Management" icon="pi pi-calculator" class="p-button-outlined" @click="navigateToTaxes" />
+                        <Button v-if="hasPermission('view_expense')" label="Manage Expenses" icon="pi pi-credit-card" class="p-button-outlined" @click="navigateToExpenses" />
+                        <Button v-if="canSeeBilling" label="Billing Documents" icon="pi pi-file" class="p-button-outlined" @click="navigateToBilling" />
+                        <Button v-if="canViewFinance" label="Generate Reports" icon="pi pi-chart-bar" class="p-button-outlined" @click="navigateToReports" />
+                        <Button v-if="canSeeTaxes" label="Tax Management" icon="pi pi-calculator" class="p-button-outlined" @click="navigateToTaxes" />
                     </div>
                 </template>
             </Card>

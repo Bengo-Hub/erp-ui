@@ -18,6 +18,15 @@ const store = useStore();
 
 // Current user
 const currentUser = computed(() => store.state.auth.user);
+const roles = computed(() => Array.isArray(currentUser.value?.roles) ? currentUser.value.roles.map((r) => String(r).toLowerCase()) : []);
+const isManagerial = computed(() => hasAnyPermission(['change_leaverequest', 'delete_leaverequest', 'change_leave', 'delete_leave']));
+const isStaffOnly = computed(() => {
+    const r = roles.value;
+    if (!r || r.length === 0) return false;
+    const elevated = ['admin', 'superusers', 'hr', 'finance', 'procurement', 'inventory', 'cto', 'ceo', 'manager', 'system'];
+    const hasElevated = elevated.some((er) => r.includes(er));
+    return r.includes('staff') && !hasElevated && !isManagerial.value;
+});
 const showNewLeaveModal = ref(false);
 const showDetailsModal = ref(false);
 const loading = ref(false);
@@ -36,6 +45,7 @@ const selectedLeaveType = ref(null);
 const selectedStatus = ref(null);
 const leaveTypes = ref([]);
 const selectedEmployees = ref([]);
+const filtersLocked = computed(() => isStaffOnly.value);
 
 // Status options
 const statusOptions = ref([
@@ -84,9 +94,9 @@ const fetchLeaveData = async () => {
             status: selectedStatus.value?.value
         };
 
-        // If user doesn't have managerial permissions, filter by their employee ID
-        if (!hasManagerialPerms && !selectedEmployees.value.length) {
-            const employeeId = currentUser.value?.employee_id || currentUser.value?.id;
+        // If user doesn't have managerial permissions, and is mapped, filter by their employee ID
+        if (!hasManagerialPerms && !selectedEmployees.value.length && currentUser.value?.employee_id) {
+            const employeeId = currentUser.value?.employee_id;
             params.employee_id = employeeId;
             console.log('fetchLeaveData: Filtering for current user employee ID:', employeeId);
         }
@@ -119,7 +129,13 @@ const fetchLeaveCategories = async () => {
 // Fetch employees for filter
 const fetchEmployees = async () => {
     try {
-        // Replace with actual employee service call
+        if (isStaffOnly.value) {
+            // Limit options to self for staff
+            const employeeId = currentUser.value?.employee_id || currentUser.value?.id;
+            employeeOptions.value = [{ id: employeeId, name: currentUser.value?.fullname || currentUser.value?.email || 'Me' }];
+            selectedEmployees.value = [{ id: employeeId }];
+            return;
+        }
         const response = await employeeService.getEmployees();
         employeeOptions.value = response.data.results || response.data || [];
     } catch (error) {
@@ -322,6 +338,10 @@ const rejectLeaves = async (all) => {
 onMounted(() => {
     fetchLeaveCategories();
     fetchLeaveData();
+    if (isStaffOnly.value && currentUser.value?.employee_id) {
+        const employeeId = currentUser.value?.employee_id;
+        selectedEmployees.value = [{ id: employeeId }];
+    }
 });
 
 // Watch for leave data changes to update employee filter options
@@ -371,7 +391,16 @@ watch(
                         <!-- Responsive Filters -->
                         <Dropdown v-model="selectedLeaveType" :options="leaveTypes" optionLabel="name" placeholder="Leave Category" class="w-full md:w-48" @change="applyFilters" />
                         <Dropdown v-model="selectedStatus" :options="statusOptions" optionLabel="label" placeholder="Status" class="w-full md:w-32" @change="applyFilters" />
-                        <MultiSelect v-model="selectedEmployees" :options="employeeOptions" optionLabel="name" placeholder="Employees" class="w-full md:w-48" :filter="true" :showToggleAll="false" />
+                        <MultiSelect
+                            v-model="selectedEmployees"
+                            :options="employeeOptions"
+                            optionLabel="name"
+                            placeholder="Employees"
+                            class="w-full md:w-48"
+                            :filter="true"
+                            :showToggleAll="false"
+                            :disabled="filtersLocked"
+                        />
                         <Button icon="pi pi-refresh" class="p-button-sm p-button-text" @click="refreshData" v-tooltip="'Refresh data'" />
                     </div>
                 </template>
@@ -454,9 +483,33 @@ watch(
         <Toolbar class="mb-2 p-2">
             <template #start>
                 <div class="flex flex-wrap gap-2 items-center">
-                    <Button label="Delete" icon="pi pi-trash" severity="danger" @click="deleteSelected" class="p-button-sm" :disabled="!selectedLeaves.length" />
-                    <SplitButton label="Publish" icon="pi pi-send" severity="info" class="p-button-sm" :model="publishActions" :disabled="!selectedLeaves.length" />
-                    <SplitButton label="Approval" icon="pi pi-check" severity="success" class="p-button-sm" :model="approvalActions" :disabled="!selectedLeaves.length" />
+                    <PermissionButton
+                        permission="delete_leaverequest"
+                        label="Delete"
+                        icon="pi pi-trash"
+                        severity="danger"
+                        class="p-button-sm"
+                        :disabled="!selectedLeaves.length"
+                        @click="deleteSelected"
+                    />
+                    <SplitButton
+                        v-if="publishActions.length"
+                        label="Publish"
+                        icon="pi pi-send"
+                        severity="info"
+                        class="p-button-sm"
+                        :model="publishActions"
+                        :disabled="!selectedLeaves.length"
+                    />
+                    <SplitButton
+                        v-if="approvalActions.length"
+                        label="Approval"
+                        icon="pi pi-check"
+                        severity="success"
+                        class="p-button-sm"
+                        :model="approvalActions"
+                        :disabled="!selectedLeaves.length"
+                    />
                 </div>
             </template>
             <template #end>

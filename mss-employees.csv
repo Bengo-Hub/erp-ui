@@ -1,0 +1,10 @@
+Staff No,Name,Job Title,Type,Emp. Date,Emp. Duration,Contract Exp.(Days),Basic Pay,Gender,Date of Birth,Age,Email,Email(Personal),Phone,PIN,ID,NSSF,NHIF,Dept.,Region,Bank,Bank Branch,Bank Code,Bank Acc
+MSS/01/2025,PHILIP OTIENO ADAR,CEO,regular-fixed,01/11/2021,10y0m,,"60,000.00",Male,,,philip.adar@masterspace.co.ke,,,A003145599B,,,,,Nairobi,STANCHART,ENTERPRISE ROAD,,1.00E+11
+MSS/02/2025,JAMES MWITA OKECH,CTO,regular-fixed,01/01/2021,10y0m,,"40,000.00",Male,,,james.mwita@masterspace.co.ke,,,A003004352D,,,,,Nairobi,STANCHART,MOI AVENUE,,1.00E+11
+MSS/03/2025,TITUS OOKO OWUOR,ICT Officer,regular-fixed,01/01/2021,10y0m,,"25,000.00",Male,,,titus.owuor@masterspace.co.ke,,,A012073422Z,,,,,Nairobi,I&M ,KENYATTA AVENUE,,1.05E+11
+MSS/04/2025,JOSEPH OKINYI ONDIWA,ICT Officer,regular-fixed,01/02/2023,10y0m,,"22,500.00",Male,,,joseph.ondiwa@masterspace.co.ke,,,A011946197P,,,,,Nairobi,KCB,SORI,,1234882515
+MSS/05/2025,EVANS OMONDI OCHIENG,BID Manager,regular-fixed,01/01/2021,10y0m,,"25,000.00",Male,,,evans.ochieng@masterspace.co.ke,,,A009216522O,,,,,Nairobi,SIDIAN ,KENYATTA MARKET,,1.01E+12
+MSS/06/2025,CORNELIUS ODHIAMBO OTIENO,ICT Officer,regular-fixed,20/07/2025,10y0m,,"25,000.00",Male,,,cornelius.odhiambo@masterspace.co.ke,,,A010329190X,,,,,Nairobi,ABSA,BUSIA,,2052988252
+MSS/07/2025,ELIZABETH ATIENO OJALA,Receptionist,regular-fixed,01/11/2025,10y0m,,"15,000.00",Female,,,elizabeth.atieno@masterspace.co.ke,,,A890002,,,,,Nairobi,ABSA,BUSIA,,1000001
+MSS/08/2025,UYOGA GEORGE RABAR,Project Consultant,consultant,01/07/2025,10y0m,,0,Male,,,george.rabar@masterspace.co.ke,,,A890003,,,,,Nairobi,ABSA,BUSIA,,1000002
+MSS/09/2025,MARTIN SURE ONDIWA,GIS TECHNICIAN,consultant,01/07/2025,10y0m,,0,Male,,,martin.ondiwa@masterspace.co.ke,,,A890004,,,,,Nairobi,ABSA,BUSIA,,1000002

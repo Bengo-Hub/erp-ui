@@ -10,6 +10,16 @@ export const dashboardRoutes = [
         component: () => import('@/views/pages/dashboards/executiveDashboard.vue')
     },
     {
+        path: '/dashboard/ict',
+        name: 'ictDashboard',
+        meta: {
+            requiresAuth: true,
+            // Technical roles; permission gate will be handled by middleware/directives
+            permission: ['view_securitysettings', 'view_integrations', 'view_appsettings']
+        },
+        component: () => import('@/views/pages/dashboards/ictDashboard.vue')
+    },
+    {
         path: '/hrm/analytics',
         name: 'hrmAnalytics',
         meta: { 

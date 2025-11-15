@@ -64,6 +64,12 @@ axiosInstance.interceptors.request.use(
             config.headers['X-CSRFToken'] = csrfToken;
         }
 
+        // If sending FormData, let the browser set proper multipart boundaries
+        if (typeof FormData !== 'undefined' && config.data instanceof FormData) {
+            delete config.headers['Content-Type'];
+            delete config.headers['content-type'];
+        }
+
         // Add business and branch context headers
         const businessContext = getBusinessContext();
         if (businessContext) {

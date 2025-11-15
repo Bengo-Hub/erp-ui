@@ -204,6 +204,36 @@ export const ROUTE_PERMISSIONS = {
 export default function permissionMiddleware(to, from, next) {
     const { hasPermission, hasAnyPermission } = usePermissions();
 
+    // Helper: convert route pattern with :params into a regex
+    const patternToRegex = (pattern) => {
+        // escape regex special chars except ':' and '/'
+        const escaped = pattern.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        // replace :param with a segment matcher
+        const withParams = escaped.replace(/\\:([A-Za-z0-9_]+)/g, '[^/]+');
+        // allow optional trailing slash
+        return new RegExp(`^${withParams}/?$`);
+    };
+
+    // Resolve required permissions for a given path by exact or pattern match
+    const resolveRequiredPermissions = (path) => {
+        // 1) exact match
+        if (ROUTE_PERMISSIONS[path]) return ROUTE_PERMISSIONS[path];
+        // 2) pattern match (supports :id style params)
+        for (const [pattern, perms] of Object.entries(ROUTE_PERMISSIONS)) {
+            if (pattern.includes(':')) {
+                const regex = patternToRegex(pattern);
+                if (regex.test(path)) return perms;
+            }
+        }
+        // 3) longest-prefix fallback (e.g., match '/hrm/attendance' when path is '/hrm/attendance/timesheets')
+        const segments = path.split('/').filter(Boolean);
+        for (let i = segments.length; i > 0; i--) {
+            const prefix = '/' + segments.slice(0, i).join('/');
+            if (ROUTE_PERMISSIONS[prefix]) return ROUTE_PERMISSIONS[prefix];
+        }
+        return null;
+    };
+
     // Skip permission check for public routes
     if (to.meta && to.meta.requiresAuth === false) {
         next();
@@ -256,8 +286,8 @@ export default function permissionMiddleware(to, from, next) {
             next();
         }
     } else {
-        // Check route permissions from ROUTE_PERMISSIONS
-        const requiredPermissions = ROUTE_PERMISSIONS[to.path];
+        // Check route permissions from ROUTE_PERMISSIONS (supports dynamic and prefix matching)
+        const requiredPermissions = resolveRequiredPermissions(to.path);
 
         if (requiredPermissions) {
             if (hasAnyPermission(requiredPermissions)) {
@@ -282,15 +312,33 @@ export default function permissionMiddleware(to, from, next) {
 
 // Helper function to get required permissions for a route
 export function getRoutePermissions(routePath) {
-    return ROUTE_PERMISSIONS[routePath] || [];
+    // mirror the middleware resolution logic
+    const patternToRegex = (pattern) => {
+        const escaped = pattern.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        const withParams = escaped.replace(/\\:([A-Za-z0-9_]+)/g, '[^/]+');
+        return new RegExp(`^${withParams}/?$`);
+    };
+    if (ROUTE_PERMISSIONS[routePath]) return ROUTE_PERMISSIONS[routePath];
+    for (const [pattern, perms] of Object.entries(ROUTE_PERMISSIONS)) {
+        if (pattern.includes(':')) {
+            const regex = patternToRegex(pattern);
+            if (regex.test(routePath)) return perms;
+        }
+    }
+    const segments = routePath.split('/').filter(Boolean);
+    for (let i = segments.length; i > 0; i--) {
+        const prefix = '/' + segments.slice(0, i).join('/');
+        if (ROUTE_PERMISSIONS[prefix]) return ROUTE_PERMISSIONS[prefix];
+    }
+    return [];
 }
 
 // Helper function to check if user can access a route
 export function canAccessRoute(routePath) {
     const { hasAnyPermission } = usePermissions();
-    const requiredPermissions = ROUTE_PERMISSIONS[routePath];
+    const requiredPermissions = getRoutePermissions(routePath);
 
-    if (!requiredPermissions) {
+    if (!requiredPermissions || requiredPermissions.length === 0) {
         return true; // No permissions required
     }
 

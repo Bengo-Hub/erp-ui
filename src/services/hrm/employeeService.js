@@ -5,8 +5,10 @@ import { handleError } from '../utils/errorHandler';
 // Align with versioned API and backend URL structure
 const V1_HRM_BASE = '/hrm';
 const EMPLOYEES_BASE = `${V1_HRM_BASE}/employees`;
+const ESS_SETTINGS_BASE = `${V1_HRM_BASE}/ess-settings`;
 const PAYROLL_ROOT = `${V1_HRM_BASE}/payroll`;
 const ATTENDANCE_ROOT = `${V1_HRM_BASE}/attendance`;
+const PAYROLL_SETTINGS_ROOT = `${V1_HRM_BASE}/payroll-settings`;
 const RECRUITMENT_ROOT = `${V1_HRM_BASE}/recruitment`;
 
 export const employeeService = {
@@ -149,10 +151,10 @@ export const employeeService = {
         }
     },
 
-    // ESS Settings
+    // ESS Settings (singleton at /hrm/ess-settings/)
     async getESSSettings() {
         try {
-            const response = await axios.get(`${EMPLOYEES_BASE}/ess-settings/`);
+            const response = await axios.get(`${ESS_SETTINGS_BASE}/`);
             return response.data;
         } catch (error) {
             return handleError(error);
@@ -161,7 +163,7 @@ export const employeeService = {
 
     async updateESSSettings(settingsData) {
         try {
-            const response = await axios.put(`${EMPLOYEES_BASE}/ess-settings/1/`, settingsData);
+            const response = await axios.put(`${ESS_SETTINGS_BASE}/`, settingsData);
             return response.data;
         } catch (error) {
             return handleError(error);
@@ -895,9 +897,9 @@ export const employeeService = {
     },
 
     // Approval Settings
-    async getApprovalSettings() {
+    async getApprovalSettings(params = {}) {
         try {
-            const response = await axios.get(`approvals/`);
+            const response = await axios.get(`${PAYROLL_SETTINGS_ROOT}/approvals/`, { params });
             return response.data;
         } catch (error) {
             return handleError(error);
@@ -905,7 +907,7 @@ export const employeeService = {
     },
     async getApprovalById(id) {
         try {
-            const response = await axios.get(`approvals/${id}/`);
+            const response = await axios.get(`${PAYROLL_SETTINGS_ROOT}/approvals/${id}/`);
             return response.data;
         } catch (error) {
             return handleError(error);
@@ -913,7 +915,7 @@ export const employeeService = {
     },
     async updateApproval(id, data) {
         try {
-            const response = await axios.patch(`approvals/${id}/`, data);
+            const response = await axios.patch(`${PAYROLL_SETTINGS_ROOT}/approvals/${id}/`, data);
             return response.data;
         } catch (error) {
             return handleError(error);
@@ -921,7 +923,7 @@ export const employeeService = {
     },
     async createApproval(data) {
         try {
-            const response = await axios.post(`approvals/`, data);
+            const response = await axios.post(`${PAYROLL_SETTINGS_ROOT}/approvals/`, data);
             return response.data;
         } catch (error) {
             return handleError(error);
@@ -929,7 +931,7 @@ export const employeeService = {
     },
     async getContentTypes() {
         try {
-            const response = await axios.get(`content-types/`);
+            const response = await axios.get(`${PAYROLL_SETTINGS_ROOT}/approvals/content-types/`);
             return response.data;
         } catch (error) {
             return handleError(error);

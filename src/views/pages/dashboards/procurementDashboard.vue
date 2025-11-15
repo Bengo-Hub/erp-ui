@@ -1,6 +1,7 @@
 <script setup>
 import { useChartOptions } from '@/composables/useChartOptions';
 import { useDashboardState } from '@/composables/useDashboardState';
+import { usePermissions } from '@/composables/usePermissions';
 import { useToast } from '@/composables/useToast';
 import { dashboardService } from '@/services/shared/dashboardService';
 import { PERIOD_OPTIONS } from '@/utils/constants';
@@ -12,6 +13,7 @@ const router = useRouter();
 const { showToast } = useToast();
 const { currencyChartOptions } = useChartOptions();
 const { state, executeDataFetch } = useDashboardState();
+const { hasPermission } = usePermissions();
 
 const loading = ref(false);
 const period = ref('month');
@@ -122,6 +124,12 @@ const navigateToContracts = () => {
     router.push('/procurement/contracts');
 };
 
+// Visibility flags
+const canViewOrders = hasPermission('view_purchaseorder');
+const canViewSpend = hasPermission('view_purchase') || hasPermission('view_payment');
+const canViewPendingOrders = hasPermission('view_purchaseorder');
+const canViewSuppliers = hasPermission('view_vendor');
+
 // Watch for period changes
 watch(period, () => {
     loadDashboardData();
@@ -146,7 +154,7 @@ onMounted(() => {
         <div v-else class="space-y-6">
             <!-- Key Metrics Cards -->
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                <Card class="bg-gradient-to-r from-blue-500 to-blue-600 text-white">
+                <Card v-if="canViewOrders" class="bg-gradient-to-r from-blue-500 to-blue-600 text-white">
                     <template #title>
                         <div class="flex items-center justify-between">
                             <span>Total Orders</span>
@@ -160,7 +168,7 @@ onMounted(() => {
                     </template>
                 </Card>
 
-                <Card class="bg-gradient-to-r from-green-500 to-green-600 text-white">
+                <Card v-if="canViewSpend" class="bg-gradient-to-r from-green-500 to-green-600 text-white">
                     <template #title>
                         <div class="flex items-center justify-between">
                             <span>Total Spend</span>
@@ -174,7 +182,7 @@ onMounted(() => {
                     </template>
                 </Card>
 
-                <Card class="bg-gradient-to-r from-orange-500 to-orange-600 text-white">
+                <Card v-if="canViewPendingOrders" class="bg-gradient-to-r from-orange-500 to-orange-600 text-white">
                     <template #title>
                         <div class="flex items-center justify-between">
                             <span>Pending Orders</span>
@@ -188,7 +196,7 @@ onMounted(() => {
                     </template>
                 </Card>
 
-                <Card class="bg-gradient-to-r from-purple-500 to-purple-600 text-white">
+                <Card v-if="canViewSuppliers" class="bg-gradient-to-r from-purple-500 to-purple-600 text-white">
                     <template #title>
                         <div class="flex items-center justify-between">
                             <span>Suppliers</span>
@@ -270,10 +278,10 @@ onMounted(() => {
                 <template #title>Quick Actions</template>
                 <template #content>
                     <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
-                        <Button label="Purchase Orders" icon="pi pi-shopping-cart" class="p-button-outlined" @click="navigateToPurchaseOrders" />
-                        <Button label="Manage Suppliers" icon="pi pi-users" class="p-button-outlined" @click="navigateToSuppliers" />
-                        <Button label="Requisitions" icon="pi pi-file" class="p-button-outlined" @click="navigateToRequisitions" />
-                        <Button label="Contracts" icon="pi pi-file-edit" class="p-button-outlined" @click="navigateToContracts" />
+                        <Button v-if="canViewOrders" label="Purchase Orders" icon="pi pi-shopping-cart" class="p-button-outlined" @click="navigateToPurchaseOrders" />
+                        <Button v-if="canViewSuppliers" label="Manage Suppliers" icon="pi pi-users" class="p-button-outlined" @click="navigateToSuppliers" />
+                        <Button v-if="hasPermission('view_procurementrequest')" label="Requisitions" icon="pi pi-file" class="p-button-outlined" @click="navigateToRequisitions" />
+                        <Button v-if="hasPermission('view_contract')" label="Contracts" icon="pi pi-file-edit" class="p-button-outlined" @click="navigateToContracts" />
                     </div>
                 </template>
             </Card>

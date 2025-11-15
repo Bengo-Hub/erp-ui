@@ -80,7 +80,25 @@ export const generateThemedAvatarUrl = (name, businessColors = {}, size = 128) =
 export const getUserAvatarUrl = (user, size = 128) => {
     // Return profile pic if set
     if (user?.pic) {
-        return user.pic;
+        const pic = user.pic;
+        // If absolute URL, return as-is
+        if (/^https?:\/\//i.test(pic)) return pic;
+        // If relative (e.g., /media/...), prefix backend origin
+        try {
+            // Prefer window.$http set by axios config; fallback to current origin
+            const base = (typeof window !== 'undefined' && window.$http) ? window.$http : '';
+            // Extract origin from base (e.g., http://127.0.0.1:8000/api/v1 -> http://127.0.0.1:8000)
+            const url = new URL(base, window.location.origin);
+            const origin = `${url.protocol}//${url.host}`;
+            // Ensure single slash when joining
+            if (pic.startsWith('/')) {
+                return `${origin}${pic}`;
+            }
+            return `${origin}/${pic}`;
+        } catch (_) {
+            // Fallback: return as-is
+            return pic;
+        }
     }
 
     // Generate name from first/last name or email

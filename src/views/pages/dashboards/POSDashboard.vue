@@ -1,6 +1,7 @@
 <script setup>
 import { useChartOptions } from '@/composables/useChartOptions';
 import { useDashboardState } from '@/composables/useDashboardState';
+import { usePermissions } from '@/composables/usePermissions';
 import { useToast } from '@/composables/useToast';
 import { dashboardService } from '@/services/shared/dashboardService';
 import { PERIOD_OPTIONS } from '@/utils/constants';
@@ -12,6 +13,7 @@ const router = useRouter();
 const { showToast } = useToast();
 const { currencyChartOptions, barChartOptions } = useChartOptions();
 const { state, executeDataFetch } = useDashboardState();
+const { hasPermission } = usePermissions();
 
 const loading = ref(false);
 const period = ref('month');
@@ -136,6 +138,11 @@ const navigateToReports = () => {
     router.push('/pos/reports');
 };
 
+// Visibility flags
+const canViewSales = hasPermission('view_sales');
+const canViewProducts = hasPermission('view_products');
+const canViewPaymentMethods = hasPermission('view_paymentmethod');
+
 // Watch for period changes
 watch(period, () => {
     loadDashboardData();
@@ -160,7 +167,7 @@ onMounted(() => {
         <div v-else class="space-y-6">
             <!-- Key Metrics Cards -->
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                <Card class="bg-gradient-to-r from-blue-500 to-blue-600 text-white">
+                <Card v-if="canViewSales" class="bg-gradient-to-r from-blue-500 to-blue-600 text-white">
                     <template #title>
                         <div class="flex items-center justify-between">
                             <span>Total Sales</span>
@@ -174,7 +181,7 @@ onMounted(() => {
                     </template>
                 </Card>
 
-                <Card class="bg-gradient-to-r from-green-500 to-green-600 text-white">
+                <Card v-if="canViewSales" class="bg-gradient-to-r from-green-500 to-green-600 text-white">
                     <template #title>
                         <div class="flex items-center justify-between">
                             <span>Transactions</span>
@@ -188,7 +195,7 @@ onMounted(() => {
                     </template>
                 </Card>
 
-                <Card class="bg-gradient-to-r from-orange-500 to-orange-600 text-white">
+                <Card v-if="canViewSales" class="bg-gradient-to-r from-orange-500 to-orange-600 text-white">
                     <template #title>
                         <div class="flex items-center justify-between">
                             <span>Avg Transaction</span>
@@ -202,7 +209,7 @@ onMounted(() => {
                     </template>
                 </Card>
 
-                <Card class="bg-gradient-to-r from-purple-500 to-purple-600 text-white">
+                <Card v-if="canViewSales" class="bg-gradient-to-r from-purple-500 to-purple-600 text-white">
                     <template #title>
                         <div class="flex items-center justify-between">
                             <span>Discounts Given</span>
@@ -220,7 +227,7 @@ onMounted(() => {
             <!-- Charts Row -->
             <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 <!-- Payment Methods -->
-                <Card>
+                <Card v-if="canViewPaymentMethods">
                     <template #title>Payment Methods</template>
                     <template #content>
                         <div class="h-80">
@@ -231,7 +238,7 @@ onMounted(() => {
                 </Card>
 
                 <!-- Sales by Time -->
-                <Card>
+                <Card v-if="canViewSales">
                     <template #title>Sales by Time of Day</template>
                     <template #content>
                         <div class="h-80">
@@ -245,7 +252,7 @@ onMounted(() => {
             <!-- Additional Charts Row -->
             <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 <!-- Top Products -->
-                <Card>
+                <Card v-if="canViewProducts">
                     <template #title>Top Selling Products</template>
                     <template #content>
                         <div class="h-80">
@@ -256,7 +263,7 @@ onMounted(() => {
                 </Card>
 
                 <!-- Top Sales Staff -->
-                <Card>
+                <Card v-if="canViewSales">
                     <template #title>Top Sales Staff</template>
                     <template #content>
                         <div class="h-80">
@@ -272,10 +279,10 @@ onMounted(() => {
                 <template #title>Quick Actions</template>
                 <template #content>
                     <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
-                        <Button label="Products" icon="pi pi-box" class="p-button-outlined" @click="navigateToProducts" />
-                        <Button label="Transactions" icon="pi pi-list" class="p-button-outlined" @click="navigateToTransactions" />
-                        <Button label="Payment Methods" icon="pi pi-credit-card" class="p-button-outlined" @click="navigateToPaymentMethods" />
-                        <Button label="Reports" icon="pi pi-chart-bar" class="p-button-outlined" @click="navigateToReports" />
+                        <Button v-if="canViewProducts" label="Products" icon="pi pi-box" class="p-button-outlined" @click="navigateToProducts" />
+                        <Button v-if="canViewSales" label="Transactions" icon="pi pi-list" class="p-button-outlined" @click="navigateToTransactions" />
+                        <Button v-if="canViewPaymentMethods" label="Payment Methods" icon="pi pi-credit-card" class="p-button-outlined" @click="navigateToPaymentMethods" />
+                        <Button v-if="canViewSales" label="Reports" icon="pi pi-chart-bar" class="p-button-outlined" @click="navigateToReports" />
                     </div>
                 </template>
             </Card>

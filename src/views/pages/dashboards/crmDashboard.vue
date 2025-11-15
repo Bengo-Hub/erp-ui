@@ -1,6 +1,7 @@
 <script setup>
 import { useChartOptions } from '@/composables/useChartOptions';
 import { useDashboardState } from '@/composables/useDashboardState';
+import { usePermissions } from '@/composables/usePermissions';
 import { useToast } from '@/composables/useToast';
 import { dashboardService } from '@/services/shared/dashboardService';
 import { PERIOD_OPTIONS } from '@/utils/constants';
@@ -12,6 +13,7 @@ const router = useRouter();
 const { showToast } = useToast();
 const { barChartOptions, pieChartOptions } = useChartOptions();
 const { state, executeDataFetch } = useDashboardState();
+const { hasPermission, hasAnyPermission } = usePermissions();
 
 const loading = ref(false);
 const period = ref('month');
@@ -139,6 +141,13 @@ const navigateToCampaigns = () => {
     router.push('/crm/campaigns');
 };
 
+// Permission-gated visibility
+const canViewContacts = hasPermission('view_contact');
+const canViewLeads = hasPermission('view_lead');
+const canViewDeals = hasPermission('view_deal');
+const canViewCampaigns = hasPermission('view_campaign');
+const canViewPipeline = hasAnyPermission(['view_deal', 'view_pipelinestage']);
+
 // Watch for period changes
 watch(period, () => {
     loadDashboardData();
@@ -163,7 +172,7 @@ onMounted(() => {
         <div v-else class="space-y-6">
             <!-- Key Metrics Cards -->
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                <Card class="bg-gradient-to-r from-blue-500 to-blue-600 text-white">
+                <Card v-if="canViewContacts" class="bg-gradient-to-r from-blue-500 to-blue-600 text-white">
                     <template #title>
                         <div class="flex items-center justify-between">
                             <span>Total Contacts</span>
@@ -177,7 +186,7 @@ onMounted(() => {
                     </template>
                 </Card>
 
-                <Card class="bg-gradient-to-r from-green-500 to-green-600 text-white">
+                <Card v-if="canViewLeads" class="bg-gradient-to-r from-green-500 to-green-600 text-white">
                     <template #title>
                         <div class="flex items-center justify-between">
                             <span>Active Leads</span>
@@ -191,7 +200,7 @@ onMounted(() => {
                     </template>
                 </Card>
 
-                <Card class="bg-gradient-to-r from-orange-500 to-orange-600 text-white">
+                <Card v-if="canViewDeals" class="bg-gradient-to-r from-orange-500 to-orange-600 text-white">
                     <template #title>
                         <div class="flex items-center justify-between">
                             <span>Open Deals</span>
@@ -205,7 +214,7 @@ onMounted(() => {
                     </template>
                 </Card>
 
-                <Card class="bg-gradient-to-r from-purple-500 to-purple-600 text-white">
+                <Card v-if="canViewDeals" class="bg-gradient-to-r from-purple-500 to-purple-600 text-white">
                     <template #title>
                         <div class="flex items-center justify-between">
                             <span>Pipeline Value</span>
@@ -268,7 +277,7 @@ onMounted(() => {
             <!-- Charts Row -->
             <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 <!-- Lead Sources -->
-                <Card>
+                <Card v-if="canViewLeads">
                     <template #title>Lead Sources</template>
                     <template #content>
                         <div class="h-80">
@@ -279,7 +288,7 @@ onMounted(() => {
                 </Card>
 
                 <!-- Deal Stages -->
-                <Card>
+                <Card v-if="canViewDeals">
                     <template #title>Deal Stages</template>
                     <template #content>
                         <div class="h-80">
@@ -291,7 +300,7 @@ onMounted(() => {
             </div>
 
             <!-- Sales Pipeline Chart -->
-            <Card>
+            <Card v-if="canViewPipeline">
                 <template #title>Sales Pipeline by Representative</template>
                 <template #content>
                     <div class="h-80">
@@ -302,7 +311,7 @@ onMounted(() => {
             </Card>
 
             <!-- Top Representatives Table -->
-            <Card>
+            <Card v-if="canViewDeals || canViewLeads">
                 <template #title>Top Sales Representatives</template>
                 <template #content>
                     <DataTable :value="dashboardData.top_sales_representatives" :rows="5" striped-rows class="p-datatable-sm">
@@ -327,10 +336,10 @@ onMounted(() => {
                 <template #title>Quick Actions</template>
                 <template #content>
                     <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
-                        <Button label="Manage Leads" icon="pi pi-inbox" class="p-button-outlined" @click="navigateToLeads" />
-                        <Button label="View Deals" icon="pi pi-briefcase" class="p-button-outlined" @click="navigateToDealss" />
-                        <Button label="Contacts" icon="pi pi-users" class="p-button-outlined" @click="navigateToContacts" />
-                        <Button label="Campaigns" icon="pi pi-send" class="p-button-outlined" @click="navigateToCampaigns" />
+                        <Button v-if="canViewLeads" label="Manage Leads" icon="pi pi-inbox" class="p-button-outlined" @click="navigateToLeads" />
+                        <Button v-if="canViewDeals" label="View Deals" icon="pi pi-briefcase" class="p-button-outlined" @click="navigateToDealss" />
+                        <Button v-if="canViewContacts" label="Contacts" icon="pi pi-users" class="p-button-outlined" @click="navigateToContacts" />
+                        <Button v-if="canViewCampaigns" label="Campaigns" icon="pi pi-send" class="p-button-outlined" @click="navigateToCampaigns" />
                     </div>
                 </template>
             </Card>

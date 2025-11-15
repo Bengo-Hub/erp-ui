@@ -149,25 +149,20 @@ export const payrollService = {
 
     // Voucher Operations
     generateCasualVoucher(employeeId, paymentPeriod, data = {}) {
-        return axios.post(`${V1_HRM_BASE}/payroll/generate-casual-voucher/`, {
+        return axios.post(`${V1_HRM_BASE}/payroll/generate_casual_voucher/`, {
             employee_id: employeeId,
             payment_period: paymentPeriod,
             ...data
         });
     },
     generateConsultantVoucher(employeeId, paymentPeriod, data = {}) {
-        return axios.post(`${V1_HRM_BASE}/payroll/generate-consultant-voucher/`, {
+        return axios.post(`${V1_HRM_BASE}/payroll/generate_consultant_voucher/`, {
             employee_id: employeeId,
             payment_period: paymentPeriod,
             ...data
         });
     },
-    getVoucherStatus(voucherId) {
-        return axios.get(`${V1_HRM_BASE}/payroll/voucher-status/${voucherId}/`);
-    },
-    approveVoucher(voucherId, data = {}) {
-        return axios.post(`${V1_HRM_BASE}/payroll/approve-voucher/${voucherId}/`, data);
-    },
+    // Note: voucher-status/approve-voucher endpoints are not defined in backend; use approvals endpoints instead where applicable.
 
     // Enhanced Payroll Processing
     processPayrollWithFormulas(data) {
@@ -358,22 +353,21 @@ export const payrollService = {
 
     // Email Payslips
     sendPayslips(data) {
-        return axios.post(`${V1_HRM_BASE}/payroll/send-payslips/`, data);
+        // Backend path is defined without trailing slash
+        return axios.post(`${V1_HRM_BASE}/payroll/email-payslips`, data);
     },
-    schedulePayslips(data) {
-        return axios.post(`${V1_HRM_BASE}/payroll/schedule-payslips/`, data);
-    },
+    // schedulePayslips endpoint not implemented on backend
 
     // Task Management
     getTaskStatus(taskId) {
-        return axios.get(`${V1_HRM_BASE}/payroll/task-status/`, {
+        return axios.get(`${V1_HRM_BASE}/payroll/task_status/`, {
             params: { task_id: taskId }
         });
     },
 
     // Rerun Payslip
     rerunPayslip(payslipId) {
-        return axios.post(`${V1_HRM_BASE}/payroll/rerun-payslip/`, {
+        return axios.post(`${V1_HRM_BASE}/payroll/rerun_payslip/`, {
             payslip_id: payslipId
         });
     }

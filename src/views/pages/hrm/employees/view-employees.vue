@@ -2,6 +2,7 @@
 import addEmployee from '@/components/hrm/employees/addEmployee.vue';
 import importEmployees from '@/components/hrm/employees/importEmployees.vue';
 import Spinner from '@/components/ui/Spinner.vue';
+import PermissionButton from '@/components/common/PermissionButton.vue';
 import { useHrmFilters } from '@/composables/useHrmFilters';
 import { usePagination } from '@/composables/usePagination';
 import { useToast } from '@/composables/useToast';
@@ -324,14 +325,14 @@ function handleEmployeeSaved(savedEmployee) {
         <div class="card">
             <Toolbar class="mb-6">
                 <template #start>
-                    <Button label="Add" icon="pi pi-user-plus" class="bg-blue-500 text-white hover:bg-blue-600 rounded-md px-4 py-2" @click="openAddEmployeeModal" />
-                    <Button label="Delete" icon="pi pi-trash" class="bg-red-500 text-white hover:bg-red-600 rounded-md px-4 py-2 ml-2" @click="confirmDeleteSelected" :disabled="!selectedEmployees || !selectedEmployees.length" />
+                    <PermissionButton permission="add_employee" label="Add" icon="pi pi-user-plus" class="bg-blue-500 text-white hover:bg-blue-600 rounded-md px-4 py-2" @click="openAddEmployeeModal" />
+                    <PermissionButton permission="delete_employee" label="Delete" icon="pi pi-trash" class="bg-red-500 text-white hover:bg-red-600 rounded-md px-4 py-2 ml-2" @click="confirmDeleteSelected" :disabled="!selectedEmployees || !selectedEmployees.length" />
                 </template>
 
                 <template #end>
                     <Button label="Refresh" icon="pi pi-refresh" class="p-button-sm m-1 bg-gray-500 text-white hover:bg-gray-600 rounded-md px-4 py-2" @click="fetchEmployees" />
-                    <Button label="Import" icon="pi pi-file-import" severity="secondary" class="m-1 bg-green-500 text-white hover:bg-green-600 rounded-md px-4 py-2" @click="importEmployeesDialog = true" />
-                    <Button label="Export" icon="pi pi-upload" severity="secondary" class="bg-yellow-500 text-white hover:bg-yellow-600 rounded-md px-4 py-2" @click="exportCSV($event)" />
+                    <PermissionButton permission="add_employee" label="Import" icon="pi pi-file-import" severity="secondary" class="m-1 bg-green-500 text-white hover:bg-green-600 rounded-md px-4 py-2" @click="importEmployeesDialog = true" />
+                    <PermissionButton permission="view_employee" label="Export" icon="pi pi-upload" severity="secondary" class="bg-yellow-500 text-white hover:bg-yellow-600 rounded-md px-4 py-2" @click="exportCSV($event)" />
                 </template>
             </Toolbar>
 
@@ -479,8 +480,8 @@ function handleEmployeeSaved(savedEmployee) {
 
                 <Column :exportable="false" style="min-width: 12rem">
                     <template #body="slotProps">
-                        <Button icon="pi pi-pencil" outlined rounded class="mr-2" @click="editEmployee(slotProps.data)" />
-                        <Button icon="pi pi-trash" outlined rounded severity="danger" @click="confirmDeleteEmployee(slotProps.data)" />
+                        <PermissionButton permission="change_employee" icon="pi pi-pencil" outlined rounded class="mr-2" @click="editEmployee(slotProps.data)" />
+                        <PermissionButton permission="delete_employee" icon="pi pi-trash" outlined rounded severity="danger" @click="confirmDeleteEmployee(slotProps.data)" />
                     </template>
                 </Column>
             </DataTable>

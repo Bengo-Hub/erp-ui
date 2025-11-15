@@ -1,8 +1,9 @@
 <script>
-import { ref, onMounted, computed } from 'vue';
+import { ecommerceService } from '@/services/ecommerce/ecommerceService';
 import { useConfirm } from 'primevue/useconfirm';
 import { useToast } from 'primevue/usetoast';
-import { ecommerceService } from '@/services/ecommerce/ecommerceService';
+import { computed, onMounted, ref } from 'vue';
+import { useStore } from 'vuex';
 
 export default {
     name: 'AddressManager',
@@ -31,26 +32,24 @@ export default {
         const saving = ref(false);
         const confirm = useConfirm();
         const toast = useToast();
+        const store = useStore();
+        const userId = computed(() => store.state.auth.user?.id || null);
 
         // Default form data
         const defaultFormData = {
-            address_label: '',
-            address_type: 'BOTH',
-            first_name: '',
-            last_name: '',
+            full_name: '',
+            phone_number: '',
             email: '',
-            phone: '',
-            other_phone: '',
-            address_line1: '',
-            address_line2: '',
+            county: '',
+            constituency: '',
+            ward: '',
+            street_address: '',
             city: '',
-            state: '',
             postal_code: '',
-            country: 'Kenya',
-            is_pickup_address: false,
-            pickup_station: null,
-            is_default_shipping: false,
-            is_default_billing: false
+            landmark: '',
+            address_type: 'shipping',
+            delivery_type: 'door',
+            is_default: false
         };
 
         const formData = ref({ ...defaultFormData });
@@ -71,7 +70,8 @@ export default {
                 } else if (props.addressType === 'billing') {
                     response = await ecommerceService.getBillingAddresses();
                 } else {
-                    response = await ecommerceService.getUserAddresses();
+                    // Filter by current user to avoid backend filtering pitfalls
+                    response = await ecommerceService.getUserAddresses({ user: userId.value });
                 }
 
                 addresses.value = response.data || [];
@@ -109,7 +109,21 @@ export default {
         // Edit an existing address
         const editAddress = (address) => {
             editingAddress.value = address;
-            formData.value = { ...address };
+            formData.value = {
+                full_name: address.full_name || '',
+                phone_number: address.phone_number || '',
+                email: address.email || '',
+                county: address.county || '',
+                constituency: address.constituency || '',
+                ward: address.ward || '',
+                street_address: address.street_address || '',
+                city: address.city || '',
+                postal_code: address.postal_code || '',
+                landmark: address.landmark || '',
+                address_type: address.address_type || 'shipping',
+                delivery_type: address.delivery_type || 'door',
+                is_default: !!address.is_default
+            };
             showAddressDialog.value = true;
         };
 
@@ -117,9 +131,12 @@ export default {
         const saveAddress = async () => {
             saving.value = true;
             try {
+                const payload = {
+                    ...formData.value,
+                    user: userId.value
+                };
                 if (editingAddress.value) {
-                    // Update existing address
-                    await ecommerceService.updateAddress(editingAddress.value.id, formData.value);
+                    await ecommerceService.updateAddress(editingAddress.value.id, payload);
                     toast.add({
                         severity: 'success',
                         summary: 'Success',
@@ -127,8 +144,7 @@ export default {
                         life: 3000
                     });
                 } else {
-                    // Create new address
-                    await ecommerceService.saveAddress(formData.value);
+                    await ecommerceService.saveAddress(payload);
                     toast.add({
                         severity: 'success',
                         summary: 'Success',
@@ -210,7 +226,7 @@ export default {
                 toast.add({
                     severity: 'success',
                     summary: 'Success',
-                    detail: 'Default shipping address updated',
+                    detail: 'Default address updated',
                     life: 3000
                 });
                 fetchAddresses();
@@ -219,7 +235,7 @@ export default {
                 toast.add({
                     severity: 'error',
                     summary: 'Error',
-                    detail: 'Failed to update default shipping address',
+                    detail: 'Failed to update default address',
                     life: 3000
                 });
             }
@@ -232,7 +248,7 @@ export default {
                 toast.add({
                     severity: 'success',
                     summary: 'Success',
-                    detail: 'Default billing address updated',
+                    detail: 'Default address updated',
                     life: 3000
                 });
                 fetchAddresses();
@@ -241,7 +257,7 @@ export default {
                 toast.add({
                     severity: 'error',
                     summary: 'Error',
-                    detail: 'Failed to update default billing address',
+                    detail: 'Failed to update default address',
                     life: 3000
                 });
             }
@@ -282,19 +298,14 @@ export default {
             <div v-for="address in addresses" :key="address.id" class="address-card p-3 mb-3 border rounded relative" :class="{ 'border-primary': isSelectedAddress(address) }">
                 <div class="flex justify-between items-start">
                     <div>
-                        <div class="font-bold">{{ address.address_label }}</div>
-                        <div v-if="!address.is_pickup_address" class="address-details text-sm">
-                            <div>{{ address.first_name }} {{ address.last_name }}</div>
-                            <div>{{ address.address_line1 }}</div>
-                            <div v-if="address.address_line2">{{ address.address_line2 }}</div>
-                            <div>{{ address.city }}, {{ address.state }} {{ address.postal_code }}</div>
-                            <div>{{ address.country }}</div>
-                            <div>{{ address.phone }}</div>
-                        </div>
-                        <div v-else class="address-details text-sm">
-                            <div><strong>Pickup Station:</strong> {{ address.pickup_station ? address.pickup_station.pickup_location : 'N/A' }}</div>
-                            <div v-if="address.pickup_station && address.pickup_station.description">{{ address.pickup_station.description }}</div>
-                            <div v-if="address.pickup_station && address.pickup_station.open_hours"><strong>Hours:</strong> {{ address.pickup_station.open_hours }}</div>
+                        <div class="font-bold">{{ address.full_name || 'Address' }}</div>
+                        <div class="address-details text-sm">
+                            <div>{{ address.full_address || [address.street_address, address.city, address.county, address.postal_code].filter(Boolean).join(', ') }}</div>
+                            <div v-if="address.phone_number">{{ address.phone_number }}</div>
+                            <div class="mt-1 flex gap-2">
+                                <Tag v-if="address.is_default" value="Default" severity="success" />
+                                <Tag v-if="address.delivery_type" :value="address.delivery_type" severity="info" />
+                            </div>
                         </div>
 
                         <!-- Default badges -->
@@ -314,9 +325,7 @@ export default {
 
                 <!-- Default buttons -->
                 <div class="mt-3 flex flex-wrap gap-2">
-                    <Button v-if="!address.is_default_shipping && addressType !== 'billing'" @click="setAsDefaultShipping(address)" label="Set as Default Shipping" class="p-button-sm p-button-outlined" />
-
-                    <Button v-if="!address.is_default_billing && addressType !== 'shipping'" @click="setAsDefaultBilling(address)" label="Set as Default Billing" class="p-button-sm p-button-outlined" />
+                    <Button v-if="!address.is_default" @click="setAsDefaultShipping(address)" label="Set as Default" class="p-button-sm p-button-outlined" />
                 </div>
             </div>
         </div>
@@ -324,6 +333,7 @@ export default {
         <div v-else class="empty-state text-center py-6 bg-gray-50 rounded mb-4">
             <i class="pi pi-home text-4xl text-gray-300 mb-2"></i>
             <p class="text-gray-500">You don't have any addresses yet</p>
+            <Button label="Start Shopping" icon="pi pi-shopping-cart" @click="$router.push('/ecommerce/shop')" />
         </div>
 
         <!-- Add new address button -->
@@ -332,97 +342,60 @@ export default {
         <!-- Address dialog -->
         <Dialog v-model:visible="showAddressDialog" :header="editingAddress ? 'Edit Address' : 'Add New Address'" :style="{ width: '500px' }" modal>
             <form @submit.prevent="saveAddress" class="p-fluid">
-                <!-- Address type -->
-                <div class="field mb-4">
-                    <label for="addressType">Address Type</label>
-                    <Dropdown id="addressType" v-model="formData.address_type" :options="addressTypeOptions" optionLabel="label" optionValue="value" placeholder="Select Address Type" class="w-full" />
+                <!-- Contact details -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                    <div class="field">
+                        <label for="fullName">Full Name</label>
+                        <InputText id="fullName" v-model="formData.full_name" required />
+                    </div>
+                    <div class="field">
+                        <label for="phoneNumber">Phone</label>
+                        <InputText id="phoneNumber" v-model="formData.phone_number" required />
+                    </div>
                 </div>
 
-                <!-- Address label -->
                 <div class="field mb-4">
-                    <label for="addressLabel">Address Label</label>
-                    <InputText id="addressLabel" v-model="formData.address_label" placeholder="Home, Work, etc." required />
+                    <label for="email">Email</label>
+                    <InputText id="email" v-model="formData.email" type="email" />
                 </div>
 
-                <!-- Pickup station toggle -->
+                <!-- Address details -->
+                <div class="field mb-4">
+                    <label for="street">Street Address</label>
+                    <InputText id="street" v-model="formData.street_address" required />
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                    <div class="field">
+                        <label for="city">City</label>
+                        <InputText id="city" v-model="formData.city" required />
+                    </div>
+                    <div class="field">
+                        <label for="county">County</label>
+                        <InputText id="county" v-model="formData.county" />
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                    <div class="field">
+                        <label for="ward">Ward</label>
+                        <InputText id="ward" v-model="formData.ward" />
+                    </div>
+                    <div class="field">
+                        <label for="postalCode">Postal Code</label>
+                        <InputText id="postalCode" v-model="formData.postal_code" />
+                    </div>
+                </div>
+
+                <div class="field mb-4">
+                    <label for="landmark">Landmark (Optional)</label>
+                    <InputText id="landmark" v-model="formData.landmark" />
+                </div>
+
+                <!-- Default option -->
                 <div class="field-checkbox mb-4">
-                    <Checkbox id="isPickupAddress" v-model="formData.is_pickup_address" binary />
-                    <label for="isPickupAddress">This is a pickup location</label>
-                </div>
-
-                <!-- Pickup station selection (if is_pickup_address is true) -->
-                <div v-if="formData.is_pickup_address" class="field mb-4">
-                    <label for="pickupStation">Select Pickup Station</label>
-                    <Dropdown id="pickupStation" v-model="formData.pickup_station" :options="pickupStations" optionLabel="pickup_location" optionValue="id" placeholder="Select Pickup Station" class="w-full" />
-                </div>
-
-                <!-- Regular address fields (if is_pickup_address is false) -->
-                <template v-if="!formData.is_pickup_address">
-                    <!-- Contact details -->
-                    <div class="grid grid-cols-2 gap-4 mb-4">
-                        <div class="field">
-                            <label for="firstName">First Name</label>
-                            <InputText id="firstName" v-model="formData.first_name" required />
-                        </div>
-                        <div class="field">
-                            <label for="lastName">Last Name</label>
-                            <InputText id="lastName" v-model="formData.last_name" required />
-                        </div>
-                    </div>
-
-                    <div class="field mb-4">
-                        <label for="email">Email</label>
-                        <InputText id="email" v-model="formData.email" type="email" />
-                    </div>
-
-                    <div class="field mb-4">
-                        <label for="phone">Phone</label>
-                        <InputText id="phone" v-model="formData.phone" required />
-                    </div>
-
-                    <!-- Address details -->
-                    <div class="field mb-4">
-                        <label for="addressLine1">Address Line 1</label>
-                        <InputText id="addressLine1" v-model="formData.address_line1" required />
-                    </div>
-
-                    <div class="field mb-4">
-                        <label for="addressLine2">Address Line 2</label>
-                        <InputText id="addressLine2" v-model="formData.address_line2" />
-                    </div>
-
-                    <div class="grid grid-cols-2 gap-4 mb-4">
-                        <div class="field">
-                            <label for="city">City</label>
-                            <InputText id="city" v-model="formData.city" required />
-                        </div>
-                        <div class="field">
-                            <label for="state">State/Province</label>
-                            <InputText id="state" v-model="formData.state" required />
-                        </div>
-                    </div>
-
-                    <div class="grid grid-cols-2 gap-4 mb-4">
-                        <div class="field">
-                            <label for="postalCode">Postal Code</label>
-                            <InputText id="postalCode" v-model="formData.postal_code" required />
-                        </div>
-                        <div class="field">
-                            <label for="country">Country</label>
-                            <InputText id="country" v-model="formData.country" required />
-                        </div>
-                    </div>
-                </template>
-
-                <!-- Default options -->
-                <div class="field-checkbox mb-4" v-if="addressType !== 'billing'">
-                    <Checkbox id="isDefaultShipping" v-model="formData.is_default_shipping" binary />
-                    <label for="isDefaultShipping">Set as default shipping address</label>
-                </div>
-
-                <div class="field-checkbox mb-4" v-if="addressType !== 'shipping'">
-                    <Checkbox id="isDefaultBilling" v-model="formData.is_default_billing" binary />
-                    <label for="isDefaultBilling">Set as default billing address</label>
+                    <Checkbox id="isDefault" v-model="formData.is_default" binary />
+                    <label for="isDefault">Set as default address</label>
                 </div>
 
                 <!-- Form buttons -->

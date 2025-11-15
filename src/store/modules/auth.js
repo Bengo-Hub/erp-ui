@@ -30,6 +30,18 @@ const mutations = {
     }
 };
 
+const getters = {
+    hasEmployeeMapping: (state) => !!(state.user?.employee_id),
+    roles: (state) => Array.isArray(state.user?.roles) ? state.user.roles.map((r) => String(r).toLowerCase()) : [],
+    isStaffOnly: (state, getters) => {
+        const r = getters.roles;
+        if (!r || r.length === 0) return false;
+        const elevated = ['admin', 'superusers', 'hr', 'finance', 'procurement', 'inventory', 'cto', 'ceo', 'manager', 'system'];
+        const hasElevated = elevated.some((er) => r.includes(er));
+        return r.includes('staff') && !hasElevated;
+    }
+};
+
 const getCookie = (name) => {
     const value = `; ${document.cookie}`;
     const parts = value.split(`; ${name}=`);
@@ -52,6 +64,18 @@ const actions = {
             // Check if login was successful
             if (data && data.message === 'Login successful') {
                 const user = data.user || {};
+                // Attach roles/groups when provided for downstream RBAC logic
+                try {
+                    const incomingRoles = Array.isArray(data.roles) ? data.roles : [];
+                    const mapped = incomingRoles.map((r) => (typeof r === 'string' ? r.toLowerCase() : r)).filter(Boolean);
+                    user.roles = Array.from(new Set(mapped));
+                    user.isSuperuser = user.roles.includes('superusers') || 
+                    user.roles.includes('admin') || user.roles.includes('cto') 
+                    || user.roles.includes('ceo') || user.roles.includes('manager') 
+                    || user.roles.includes('hr');
+                } catch (_) {
+                    // roles optional
+                }
                 const imgBaseUrl = (axios.defaults.baseURL || '').replace('/api/v1/', '/media/');
 
                 // Build safe business fallback
@@ -100,6 +124,13 @@ const actions = {
 
                 // Apply all branding (logo, colors, etc.)
                 applyAllBranding(business || {}, DEFAULT_BRANDING);
+
+                // Best-effort: resolve employee mapping if missing
+                try {
+                    if (!user.employee_id) {
+                        await this.dispatch('auth/resolveEmployeeMapping');
+                    }
+                } catch (_) {}
                 return { success: true };
             } else {
                 // Handle error response from backend
@@ -196,6 +227,13 @@ const actions = {
             } else {
                 resetBranding(DEFAULT_BRANDING);
             }
+
+            // Ensure employee mapping is resolved after hydration
+            try {
+                if (!state.user?.employee_id) {
+                    this.dispatch('auth/resolveEmployeeMapping');
+                }
+            } catch (_) {}
         } else {
             resetBranding(DEFAULT_BRANDING);
         }
@@ -241,6 +279,44 @@ const actions = {
         }
     },
 
+    async refreshUser({ commit, state }) {
+        try {
+            const userId = state.user?.id;
+            if (!userId) return;
+            const { data } = await axios.get(`/auth/listusers/${userId}/`);
+            // Preserve existing token and any extra client-only fields
+            const merged = { ...(state.user || {}), ...(data || {}) };
+            commit('SET_USER', merged);
+            sessionStorage.setItem('user', JSON.stringify(merged));
+            // Also attempt to resolve employee mapping if still missing
+            if (!merged.employee_id) {
+                await this.dispatch('auth/resolveEmployeeMapping');
+            }
+        } catch (error) {
+            console.error('Error refreshing user profile:', error);
+            // Non-fatal: keep existing store user
+        }
+    },
+
+    // Resolve employee mapping for current user (sets user.employee_id if found)
+    async resolveEmployeeMapping({ state, commit }) {
+        try {
+            const current = state.user;
+            if (!current?.id || current.employee_id) return;
+            // Fetch a small page and try to find the employee with this user
+            const res = await axios.get('/hrm/employees/', { params: { page_size: 200 } });
+            const list = res?.data?.results || res?.data || [];
+            const mine = Array.isArray(list) ? list.find((e) => e?.user?.id === current.id) : null;
+            if (mine?.id) {
+                const updated = { ...current, employee_id: mine.id };
+                commit('SET_USER', updated);
+                sessionStorage.setItem('user', JSON.stringify(updated));
+            }
+        } catch (e) {
+            // Non-fatal
+        }
+    },
+
     updateBusinessDetails({ commit }, business) {
         commit('SET_BUSINESS', business);
         sessionStorage.setItem('business', JSON.stringify(business));
@@ -252,5 +328,6 @@ export default {
     namespaced: true, // Make sure the module is namespaced
     state,
     mutations,
-    actions
+    actions,
+    getters
 };

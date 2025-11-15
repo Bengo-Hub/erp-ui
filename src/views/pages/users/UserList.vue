@@ -665,7 +665,7 @@ const saveUser = async () => {
             if (!userData.password) {
                 delete userData.password;
             }
-            await userManagementService.updateUser(userForm.value.id, userData);
+            await userManagementService.patchUser(userForm.value.id, userData);
             showToast('success', 'User updated successfully', 'Success');
         } else {
             await userManagementService.createUser(userData);
@@ -710,13 +710,8 @@ const deleteUser = async () => {
 const toggleUserStatus = async (user) => {
     try {
         const newStatus = !user.is_active;
-        if (newStatus) {
-            await userManagementService.activateUser(user.id);
-            showToast('success', 'User activated successfully', 'Success');
-        } else {
-            await userManagementService.deactivateUser(user.id);
-            showToast('success', 'User deactivated successfully', 'Success');
-        }
+        await userManagementService.patchUser(user.id, { is_active: newStatus });
+        showToast('success', `User ${newStatus ? 'activated' : 'deactivated'} successfully`, 'Success');
         await loadUsers();
     } catch (error) {
         console.error('Error toggling user status:', error);

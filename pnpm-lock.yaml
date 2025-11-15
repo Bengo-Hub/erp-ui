@@ -120,6 +120,9 @@ importers:
       prettier:
         specifier: ^3.6.2
         version: 3.6.2
+      rollup:
+        specifier: ^4.52.5
+        version: 4.52.5
       sass:
         specifier: ^1.93.2
         version: 1.93.2

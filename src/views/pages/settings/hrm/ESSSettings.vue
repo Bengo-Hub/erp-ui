@@ -1,6 +1,7 @@
 <script setup>
 import { useToast } from '@/composables/useToast';
-import axios from '@/utils/axiosConfig';
+import { userManagementService } from '@/services/auth/userManagementService';
+import { employeeService } from '@/services/hrm/employeeService';
 import { onMounted, ref } from 'vue';
 
 const { showToast } = useToast();
@@ -32,8 +33,8 @@ const availableRoles = ref([]);
 const fetchRoles = async () => {
     loadingRoles.value = true;
     try {
-        const { data } = await axios.get('/auth/groups/');
-        availableRoles.value = data.results || data || [];
+        const res = await userManagementService.getRoles();
+        availableRoles.value = res.data?.results || res.data || [];
     } catch (error) {
         console.error('Error fetching roles:', error);
         showToast('error', 'Failed to load roles', error?.response?.data?.detail || error.message);
@@ -45,8 +46,8 @@ const fetchRoles = async () => {
 const fetchSettings = async () => {
     loading.value = true;
     try {
-        const { data } = await axios.get('/hrm/employees/ess-settings/');
-        if (data.success && data.data) {
+        const data = await employeeService.getESSSettings();
+        if (data?.success && data.data) {
             Object.assign(settings.value, data.data);
         } else if (data && data.id) {
             // Direct data format
@@ -80,8 +81,8 @@ const saveSettings = async () => {
             account_lockout_duration_minutes: settings.value.account_lockout_duration_minutes
         };
         
-        const { data } = await axios.put('/hrm/employees/ess-settings/1/', payload);
-        if (data.success) {
+        const saved = await employeeService.updateESSSettings(payload);
+        if (saved?.success || saved?.id) {
             showToast('success', 'ESS settings saved successfully', 'Success');
             await fetchSettings(); // Refresh to get updated data
         }

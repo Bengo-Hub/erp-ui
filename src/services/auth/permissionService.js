@@ -180,7 +180,18 @@ export const filterMenuItems = (menuItems, userPermissions) => {
     if (!userPermissions || !Array.isArray(userPermissions)) {
         return [];
     }
-    
+
+    // Helper: require view+change+delete for the same module codename
+    const hasAdminCombination = (permission) => {
+        if (typeof permission !== 'string') return false;
+        // permission like 'view_payslip' or 'change_employee' etc.
+        const match = permission.match(/^(view|change|add|delete)_(.+)$/);
+        if (!match) return false;
+        const module = match[2];
+        const required = [`view_${module}`, `change_${module}`];
+        return required.every((p) => hasPermission(userPermissions, p));
+    };
+
     return menuItems
         .map((item) => {
             if (item.items) {
@@ -193,8 +204,8 @@ export const filterMenuItems = (menuItems, userPermissions) => {
                 } : null;
             }
             if (item.permission) {
-                // Only show item if the user has the required permission
-                return hasPermission(userPermissions, item.permission) ? item : null;
+                // Strict menu rule: show only if user has view+change+delete for the module
+                return hasAdminCombination(item.permission) ? item : null;
             }
             return item; // Items without a permission attribute are always shown
         })
@@ -208,74 +219,60 @@ export const filterMenuItems = (menuItems, userPermissions) => {
  */
 export const getDashboardRedirectPath = (user) => {
     if (!user || !user.permissions) {
-        // Default to ESS dashboard for users without permissions
-        return '/ess';
+        // Default based on employee mapping
+        return user?.employee_id ? '/ess' : '/users/account';
     }
 
     const permissions = user.permissions;
-    
-    // Check if user has administrative/managerial permissions
-    const hasAdminPermissions = hasAnyPermission(permissions, [
-        'add_employee',
-        'change_employee',
-        'delete_employee',
-        'view_appsettings',
-        'change_appsettings',
-        'add_customuser',
-        'delete_customuser'
-    ]);
-    
-    // Check if user is in staff role only (no administrative roles)
-    const userGroups = user.groups?.map(g => g.name?.toLowerCase()) || [];
-    const isStaffOnly = userGroups.includes('staff') && 
-                       !userGroups.includes('admin') && 
-                       !userGroups.includes('superusers') &&
-                       !userGroups.includes('manager') &&
-                       !userGroups.includes('finance') &&
-                       !userGroups.includes('crm') &&
-                       !userGroups.includes('procurement') &&
-                       !userGroups.includes('inventory') &&
-                       !userGroups.includes('system') &&
-                       !userGroups.includes('director');
-                       
-    
-    // Staff users without admin permissions go to ESS dashboard
-    if (isStaffOnly && !hasAdminPermissions) {
-        return '/ess';
+    const roles = Array.isArray(user.roles) ? user.roles.map((r) => String(r).toLowerCase()) : [];
+
+    // 1) Executives / Admins → Executive dashboard
+    if (
+        roles.includes('superusers') ||
+        roles.includes('cto') ||
+        roles.includes('ceo') ||
+        roles.includes('manager')
+    ) {
+        return '/';
     }
 
-    // Check for Finance permissions (managers)
-    if (hasAnyPermission(permissions, ['add_payment', 'change_payment', 'delete_payment'])) {
+    // ICT dashboards (technical roles)
+    if (roles.includes('ict_manager') || roles.includes('ict_officer')) {
+        return '/dashboard/ict';
+    }
+
+    // 2) Do not hard-redirect staff to ESS; use permissions instead
+
+    // Helper: check any view or manage permission for a module
+    const canAccessModule = (viewPerms = [], managePerms = []) => {
+        return (
+            hasAnyPermission(permissions, viewPerms) ||
+            hasAnyPermission(permissions, managePerms)
+        );
+    };
+
+    // 3) Route by module access (view or manage). Priority by common org flows.
+    if (canAccessModule(['view_payment', 'view_expense', 'view_budget'], ['add_payment', 'change_payment', 'delete_payment'])) {
         return '/finance';
     }
-
-    // Check for CRM permissions (managers)
-    if (hasAnyPermission(permissions, ['add_lead', 'change_lead', 'delete_lead'])) {
+    if (canAccessModule(['view_lead', 'view_contact', 'view_deal'], ['add_lead', 'change_lead', 'delete_lead'])) {
         return '/crm';
     }
-
-    // Check for Procurement permissions (managers)
-    if (hasAnyPermission(permissions, ['add_purchaseorder', 'change_purchaseorder', 'delete_purchaseorder'])) {
+    if (canAccessModule(['view_purchaseorder', 'view_procurementrequest'], ['add_purchaseorder', 'change_purchaseorder', 'delete_purchaseorder'])) {
         return '/procurement';
     }
-
-    // Check for Manufacturing permissions (managers)
-    if (hasAnyPermission(permissions, ['add_productionbatch', 'change_productionbatch', 'delete_productionbatch'])) {
+    if (canAccessModule(['view_productionbatch', 'view_formulas', 'view_qualitycheck'], ['add_productionbatch', 'change_productionbatch', 'delete_productionbatch'])) {
         return '/manufacturing';
     }
-
-    // Check for E-commerce permissions (managers)
-    if (hasAnyPermission(permissions, ['add_sales', 'change_sales', 'delete_sales'])) {
+    if (canAccessModule(['view_sales', 'view_products'], ['add_sales', 'change_sales', 'delete_sales'])) {
         return '/pos';
     }
-    
-    // Check for HRM permissions (managers/HR)
-    if (hasAnyPermission(permissions, ['add_employee', 'change_employee', 'delete_employee'])) {
+    if (canAccessModule(['view_employee', 'view_payslip'], ['add_employee', 'change_employee', 'delete_employee'])) {
         return '/hrm';
     }
 
-    // Default to ESS dashboard for regular employees
-    return '/ess';
+    // 4) Fallback → ESS if mapped to employee, else profile
+    return user.employee_id ? '/ess' : '/users/account';
 };
 
 /**

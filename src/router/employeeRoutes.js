@@ -23,32 +23,32 @@ export const employeeRoutes = [
     {
         path: '/hrm/employees/view-employees',
         name: 'employees',
-        meta: { requiresAuth: true },
+        meta: { requiresAuth: true, permission: 'view_employee' },
         component: () => import('@/views/pages/hrm/employees/view-employees.vue')
     },
     // Training
     {
         path: '/hrm/training/courses',
         name: 'training-courses',
-        meta: { requiresAuth: true },
+        meta: { requiresAuth: true, permission: 'view_trainingcourse' },
         component: () => import('@/views/pages/hrm/training/Courses.vue')
     },
     {
         path: '/hrm/training/enrollments',
         name: 'training-enrollments',
-        meta: { requiresAuth: true },
+        meta: { requiresAuth: true, permission: 'view_trainingenrollment' },
         component: () => import('@/views/pages/hrm/training/Enrollments.vue')
     },
     {
         path: '/hrm/training/evaluations',
         name: 'training-evaluations',
-        meta: { requiresAuth: true },
+        meta: { requiresAuth: true, permission: 'view_trainingevaluation' },
         component: () => import('@/views/pages/hrm/training/Evaluations.vue')
     },
     {
         path: '/hrm/employees/manageContracts',
         name: 'contracts',
-        meta: { requiresAuth: true },
+        meta: { requiresAuth: true, permission: 'view_contract' },
         component: () => import('@/views/pages/hrm/employees/manageContracts.vue')
     },
     {
@@ -61,93 +61,93 @@ export const employeeRoutes = [
     {
         path: '/hrm/attendance/work-shifts',
         name: 'work-shifts',
-        meta: { requiresAuth: true },
+        meta: { requiresAuth: true, permission: 'view_workshift' },
         component: () => import('@/views/pages/hrm/attendance/WorkShifts.vue')
     },
     {
         path: '/hrm/attendance/work-shifts/create',
         name: 'work-shifts-create',
-        meta: { requiresAuth: true },
+        meta: { requiresAuth: true, permission: 'add_workshift' },
         component: () => import('@/views/pages/hrm/attendance/ShiftEditor.vue')
     },
     {
         path: '/hrm/attendance/work-shifts/:id/edit',
         name: 'work-shifts-edit',
-        meta: { requiresAuth: true },
+        meta: { requiresAuth: true, permission: 'change_workshift' },
         component: () => import('@/views/pages/hrm/attendance/ShiftEditor.vue')
     },
     {
         path: '/hrm/attendance/shift-rotations/create',
         name: 'shift-rotations-create',
-        meta: { requiresAuth: true },
+        meta: { requiresAuth: true, permission: 'add_workshift' },
         component: () => import('@/views/pages/hrm/attendance/ShiftRotationEditor.vue')
     },
     {
         path: '/hrm/attendance/shift-rotations/:id/edit',
         name: 'shift-rotations-edit',
-        meta: { requiresAuth: true },
+        meta: { requiresAuth: true, permission: 'change_workshift' },
         component: () => import('@/views/pages/hrm/attendance/ShiftRotationEditor.vue')
     },
     {
         path: '/hrm/attendance/off-days',
         name: 'off-days',
-        meta: { requiresAuth: true },
+        meta: { requiresAuth: true, permission: 'view_offday' },
         component: () => import('@/views/pages/hrm/attendance/OffDays.vue')
     },
     {
         path: '/hrm/attendance/records',
         name: 'attendance-records',
-        meta: { requiresAuth: true },
+        meta: { requiresAuth: true, permission: 'view_attendancerecord' },
         component: () => import('@/views/pages/hrm/attendance/AttendanceRecords.vue')
     },
     {
         path: '/hrm/attendance/timesheets',
         name: 'timesheets',
-        meta: { requiresAuth: true },
+        meta: { requiresAuth: true, permission: 'view_timesheet' },
         component: () => import('@/views/pages/hrm/attendance/Timesheets.vue')
     },
     {
         path: '/hrm/payroll/overtime',
         name: 'overtime',
-        meta: { requiresAuth: true },
+        meta: { requiresAuth: true, permission: 'view_overtimerate' },
         component: () => import('@/views/pages/hrm/payroll/overtime.vue')
     },
     // Recruitment
     {
         path: '/hrm/recruitment/jobs',
         name: 'recruitment-jobs',
-        meta: { requiresAuth: true },
+        meta: { requiresAuth: true, permission: 'view_jobposting' },
         component: () => import('@/views/pages/hrm/recruitment/Jobs.vue')
     },
     {
         path: '/hrm/recruitment/candidates',
         name: 'recruitment-candidates',
-        meta: { requiresAuth: true },
+        meta: { requiresAuth: true, permission: 'view_candidate' },
         component: () => import('@/views/pages/hrm/recruitment/Candidates.vue')
     },
     {
         path: '/hrm/recruitment/applications',
         name: 'recruitment-applications',
-        meta: { requiresAuth: true },
+        meta: { requiresAuth: true, permission: 'view_application' },
         component: () => import('@/views/pages/hrm/recruitment/Applications.vue')
     },
     // Performance (reusing appraisals)
     {
         path: '/hrm/performance/appraisals',
         name: 'performance-appraisals',
-        meta: { requiresAuth: true },
+        meta: { requiresAuth: true, permission: 'view_appraisal' },
         component: () => import('@/views/pages/hrm/appraisals/appraisalList.vue')
     },
     {
         path: '/hrm/performance/goals',
         name: 'performance-goals',
-        meta: { requiresAuth: true },
+        meta: { requiresAuth: true, permission: 'view_goal' },
         component: () => import('@/views/pages/hrm/appraisals/goalsList.vue')
     },
     {
         path: '/hrm/performance/templates',
         name: 'performance-templates',
-        meta: { requiresAuth: true },
+        meta: { requiresAuth: true, permission: 'view_appraisaltemplate' },
         component: () => import('@/views/pages/hrm/appraisals/appraisalTemplates.vue')
     }
 ];

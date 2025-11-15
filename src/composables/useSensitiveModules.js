@@ -19,13 +19,14 @@ export function useSensitiveModules() {
    */
   const canAccessSensitiveModule = (app, model) => {
     // Superusers have access to everything
-    if (store.state.auth.user?.is_superuser) {
+    const u = store.state.auth.user || {}
+    if (u.isSuperuser || u.is_superuser) {
       return true
     }
 
-    // Check for elevated permissions (change or delete)
-    const hasChangePermission = hasPermission(`${app}.change_${model}`)
-    const hasDeletePermission = hasPermission(`${app}.delete_${model}`)
+    // Check for elevated permissions (change or delete) using codename only
+    const hasChangePermission = hasPermission(`change_${model}`)
+    const hasDeletePermission = hasPermission(`delete_${model}`)
     
     return hasChangePermission || hasDeletePermission
   }
@@ -37,12 +38,13 @@ export function useSensitiveModules() {
    * @returns {Boolean} - true if user has elevated permissions, false if only own records
    */
   const canViewAllRecords = (app, model) => {
-    if (store.state.auth.user?.is_superuser) {
+    const u = store.state.auth.user || {}
+    if (u.isSuperuser || u.is_superuser) {
       return true
     }
 
-    const hasChangePermission = hasPermission(`${app}.change_${model}`)
-    const hasDeletePermission = hasPermission(`${app}.delete_${model}`)
+    const hasChangePermission = hasPermission(`change_${model}`)
+    const hasDeletePermission = hasPermission(`delete_${model}`)
     
     return hasChangePermission || hasDeletePermission
   }
@@ -54,14 +56,15 @@ export function useSensitiveModules() {
    * @returns {Boolean}
    */
   const isStaffOnlyAccess = (app, model) => {
-    if (store.state.auth.user?.is_superuser) {
+    const u = store.state.auth.user || {}
+    if (u.isSuperuser || u.is_superuser) {
       return false
     }
 
-    const hasChangePermission = hasPermission(`${app}.change_${model}`)
-    const hasDeletePermission = hasPermission(`${app}.delete_${model}`)
-    const hasAddPermission = hasPermission(`${app}.add_${model}`)
-    const hasViewPermission = hasPermission(`${app}.view_${model}`)
+    const hasChangePermission = hasPermission(`change_${model}`)
+    const hasDeletePermission = hasPermission(`delete_${model}`)
+    const hasAddPermission = hasPermission(`add_${model}`)
+    const hasViewPermission = hasPermission(`view_${model}`)
 
     // Staff-only if they have add/view but not change/delete
     return (hasAddPermission || hasViewPermission) && !hasChangePermission && !hasDeletePermission

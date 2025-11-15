@@ -26,6 +26,14 @@
                         class="p-button-outlined"
                         @click="editingProfile = true"
                     />
+                    <SplitButton
+                        v-if="hasEmployeeMapping"
+                        label="Employee ESS"
+                        icon="pi pi-external-link"
+                        class="p-button-primary"
+                        :model="essActions"
+                        @click="goESS"
+                    />
                 </div>
             </div>
         </div>
@@ -73,8 +81,17 @@
                                             <InputText v-model="profileForm.phone" class="w-full" />
                                         </div>
                                         <div class="field">
-                                            <label class="block text-sm font-medium mb-2">Profile Picture URL</label>
-                                            <InputText v-model="profileForm.pic" class="w-full" />
+                                            <label class="block text-sm font-medium mb-2">Profile Picture</label>
+                                            <FileUpload
+                                                mode="basic"
+                                                accept="image/*"
+                                                :maxFileSize="5242880"
+                                                auto
+                                                customUpload
+                                                chooseLabel="Upload Photo"
+                                                class="w-full"
+                                                @uploader="onPicUploader"
+                                            />
                                         </div>
                                         <div class="flex items-center gap-2 pt-4">
                                             <Button 
@@ -118,6 +135,12 @@
                                                 </p>
                                             </div>
                                             <div class="info-item">
+                                                <label class="text-sm text-surface-500 dark:text-surface-400">Timezone</label>
+                                                <p class="text-base font-medium text-surface-900 dark:text-surface-0 mt-1">
+                                                    {{ currentUser?.timezone || 'Africa/Nairobi' }}
+                                                </p>
+                                            </div>
+                                            <div class="info-item">
                                                 <label class="text-sm text-surface-500 dark:text-surface-400">Username</label>
                                                 <p class="text-base font-medium text-surface-900 dark:text-surface-0 mt-1">
                                                     {{ currentUser?.username || 'Not set' }}
@@ -130,6 +153,26 @@
                                                     :severity="currentUser?.is_active ? 'success' : 'danger'"
                                                     class="mt-1"
                                                 />
+                                            </div>
+                                            <div class="info-item">
+                                                <label class="text-sm text-surface-500 dark:text-surface-400">Timezone</label>
+                                                <p class="text-base font-medium text-surface-900 dark:text-surface-0 mt-1">
+                                                    {{ currentUser?.timezone || 'Africa/Nairobi' }}
+                                                </p>
+                                            </div>
+                                        </div>
+                                        <div class="info-item">
+                                            <label class="text-sm text-surface-500 dark:text-surface-400">Roles</label>
+                                            <div class="flex flex-wrap gap-2 mt-2">
+                                                <RoleChip
+                                                    v-for="role in (currentUser?.groups || [])"
+                                                    :key="role.id || role.name"
+                                                    :role="role"
+                                                    :severity="getRoleSeverity(role)"
+                                                />
+                                                <span v-if="!currentUser?.groups || currentUser.groups.length === 0" class="text-gray-500">
+                                                    No roles assigned
+                                                </span>
                                             </div>
                                         </div>
                                     </div>
@@ -368,6 +411,16 @@
                     </div>
                 </TabPanel>
 
+                <!-- Addresses Tab -->
+                <TabPanel header="Addresses">
+                    <AddressManager />
+                </TabPanel>
+
+                <!-- Orders Tab -->
+                <TabPanel header="Orders">
+                    <UserOrders :userType="currentUser?.is_staff ? 'staff' : 'customer'" />
+                </TabPanel>
+
                 <!-- Activity Tab -->
                 <TabPanel header="Activity">
                     <Card>
@@ -412,15 +465,23 @@
 </template>
 
 <script setup>
+import RoleChip from '@/components/auth/RoleChip.vue';
+import AddressManager from '@/components/ecommerce/AddressManager.vue';
+import UserOrders from '@/components/user/UserOrders.vue';
+import { useEmployeeMapping } from '@/composables/useEmployeeMapping';
 import { useToast } from '@/composables/useToast';
+import { userManagementService } from '@/services/auth/userManagementService';
 import { UserService } from '@/services/auth/userService';
 import { getUserAvatarUrl } from '@/utils/avatarHelper';
 import { formatDate } from '@/utils/formatters';
 import { computed, onMounted, reactive, ref } from 'vue';
+import { useRouter } from 'vue-router';
 import { useStore } from 'vuex';
 
 const { showToast } = useToast();
 const store = useStore();
+const router = useRouter();
+const { hasEmployeeMapping } = useEmployeeMapping();
 
 // State
 const activeTab = ref(0);
@@ -449,13 +510,19 @@ const userAvatarUrl = computed(() => {
     return getUserAvatarUrl(currentUser.value, 200);
 });
 
+const getRoleSeverity = (role) => {
+    const name = (role?.name || '').toLowerCase();
+    if (name.includes('admin')) return 'danger';
+    if (name.includes('manager')) return 'warning';
+    if (name.includes('hr')) return 'info';
+    return 'primary';
+};
 // Forms
 const profileForm = reactive({
     first_name: '',
     last_name: '',
     email: '',
-    phone: '',
-    pic: ''
+    phone: ''
 });
 
 const passwordForm = reactive({
@@ -500,10 +567,29 @@ const loginActivities = ref([
 ]);
 
 // Methods
+const goESS = () => router.push('/ess');
+const essActions = [
+    {
+        label: 'Open ESS Dashboard',
+        icon: 'pi pi-home',
+        command: () => router.push('/ess')
+    },
+    {
+        label: 'ESS Settings',
+        icon: 'pi pi-cog',
+        command: () => router.push('/settings/hrm/ess')
+    }
+];
 const saveProfile = async () => {
     try {
         saving.value = true;
-        await UserService.updateUserProfile(currentUser.value.id, profileForm);
+        // Patch user basic fields via admin users endpoint (works for self too)
+        const payload = {
+            first_name: profileForm.first_name,
+            last_name: profileForm.last_name,
+            phone: profileForm.phone
+        };
+        await userManagementService.patchUser(currentUser.value.id, payload);
         
         // Update store
         await store.dispatch('auth/refreshUser');
@@ -531,7 +617,7 @@ const updatePassword = async () => {
     
     try {
         updatingPassword.value = true;
-        await UserService.changePassword({
+        await userManagementService.changePassword({
             old_password: passwordForm.current,
             new_password: passwordForm.new
         });
@@ -563,17 +649,19 @@ const savePreferences = async () => {
         savingPreferences.value = true;
         
         // Save to backend
+        const themeSettings = {
+            ...(preferences.theme || {}),
+            reduced_motion: preferences.reduced_motion
+        };
+        const notificationSettings = {
+            email_notifications: preferences.email_notifications,
+            order_updates: preferences.order_updates,
+            security_alerts: preferences.security_alerts
+        };
         await UserService.updateUserPreferences(currentUser.value.id, {
-            theme_settings: preferences.theme,
-            notification_settings: {
-                email_notifications: preferences.email_notifications,
-                order_updates: preferences.order_updates,
-                security_alerts: preferences.security_alerts
-            },
-            language: preferences.language.code,
-            accessibility_settings: {
-                reduced_motion: preferences.reduced_motion
-            }
+            theme_settings: themeSettings,
+            notification_settings: notificationSettings,
+            language: preferences.language?.code || preferences.language
         });
         
         showToast('success', 'Success', 'Preferences saved successfully');
@@ -585,19 +673,64 @@ const savePreferences = async () => {
     }
 };
 
+const onPicUploader = async (event) => {
+    const file = (event?.files && event.files[0]) || null;
+    if (!file) return;
+    if (!file.type || !file.type.startsWith('image/')) {
+        showToast('error', 'Invalid file', 'Please select a valid image file');
+        return;
+    }
+    try {
+        await userManagementService.uploadUserPic(currentUser.value.id, file);
+        // Refresh store user
+        await store.dispatch('auth/refreshUser');
+        showToast('success', 'Success', 'Profile photo updated');
+    } catch (error) {
+        console.error('Error uploading profile image:', error);
+        showToast('error', 'Error', 'Failed to upload profile image');
+    }
+};
 const loadProfileForm = () => {
     if (currentUser.value) {
         profileForm.first_name = currentUser.value.first_name || '';
         profileForm.last_name = currentUser.value.last_name || '';
         profileForm.email = currentUser.value.email || '';
         profileForm.phone = currentUser.value.phone || '';
-        profileForm.pic = currentUser.value.pic || '';
     }
 };
 
-onMounted(() => {
+async function loadPreferences() {
+    try {
+        if (!currentUser.value?.id) return;
+        const res = await UserService.getUserPreferences(currentUser.value.id);
+        const data = res.data || {};
+        // Theme
+        if (data.theme_settings) {
+            preferences.theme = data.theme_settings;
+            preferences.reduced_motion = !!data.theme_settings.reduced_motion;
+        }
+        // Notifications
+        if (data.notification_settings) {
+            preferences.email_notifications = !!data.notification_settings.email_notifications;
+            preferences.order_updates = !!data.notification_settings.order_updates;
+            preferences.security_alerts = !!data.notification_settings.security_alerts;
+        }
+        // Language
+        if (data.language) {
+            const found = languageOptions.find(l => l.code === data.language);
+            preferences.language = found || preferences.language;
+        }
+    } catch (e) {
+        // Non-fatal: keep defaults
+        console.log('No existing preferences, using defaults');
+    }
+}
+
+onMounted(async () => {
+    // Ensure we have fresh user data from backend
+    await store.dispatch('auth/refreshUser');
     loadProfileForm();
-    
+    await loadPreferences();
     // Check 2FA status
     if (currentUser.value?.two_factor_enabled) {
         twoFactorEnabled.value = true;

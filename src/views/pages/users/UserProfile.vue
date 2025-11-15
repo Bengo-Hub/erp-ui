@@ -60,6 +60,19 @@
                                     shape="circle"
                                     class="mb-4"
                                 />
+
+                                <!-- Upload Photo -->
+                                <FileUpload
+                                    mode="basic"
+                                    accept="image/*"
+                                    :maxFileSize="5242880"
+                                    auto
+                                    customUpload
+                                    chooseLabel="Upload Photo"
+                                    class="w-full mb-2"
+                                    :disabled="!hasPermission('change_customuser')"
+                                    @uploader="onPicUploader"
+                                />
                                 
                                 <!-- Name -->
                                 <h2 class="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-1">
@@ -111,11 +124,11 @@
                         </template>
                         <template #content>
                             <div v-if="!editMode" class="space-y-2">
-                                <Chip
+                                <RoleChip
                                     v-for="role in user.groups"
                                     :key="role.id"
-                                    :label="role.name"
-                                    class="w-full"
+                                    :role="role"
+                                    :showPermissionCount="false"
                                 />
                                 <p v-if="!user.groups || user.groups.length === 0" class="text-gray-500 text-center py-4">
                                     No roles assigned
@@ -312,8 +325,9 @@
 </template>
 
 <script setup>
-import { useToast } from '@/composables/useToast';
+import RoleChip from '@/components/auth/RoleChip.vue';
 import { usePermissions } from '@/composables/usePermissions';
+import { useToast } from '@/composables/useToast';
 import { userManagementService } from '@/services/auth/userManagementService';
 import { formatDate } from '@/utils/formatters';
 import { onMounted, ref } from 'vue';
@@ -331,6 +345,7 @@ const user = ref(null);
 const editedUser = ref(null);
 const editMode = ref(false);
 const availableRoles = ref([]);
+const uploadingPic = ref(false);
 
 const timezones = [
     'Africa/Nairobi',
@@ -392,7 +407,7 @@ const saveChanges = async () => {
                 .map(role => role.name)
         };
         
-        await userManagementService.updateUser(user.value.id, userData);
+        await userManagementService.patchUser(user.value.id, userData);
         showToast('success', 'User updated successfully', 'Success');
         editMode.value = false;
         await loadUserData();
@@ -416,13 +431,9 @@ const resetPassword = async () => {
 
 const toggleStatus = async () => {
     try {
-        if (user.value.is_active) {
-            await userManagementService.deactivateUser(user.value.id);
-            showToast('success', 'User deactivated', 'Success');
-        } else {
-            await userManagementService.activateUser(user.value.id);
-            showToast('success', 'User activated', 'Success');
-        }
+        const newStatus = !user.value.is_active;
+        await userManagementService.patchUser(user.value.id, { is_active: newStatus });
+        showToast('success', `User ${newStatus ? 'activated' : 'deactivated'}`, 'Success');
         await loadUserData();
     } catch (error) {
         console.error('Error toggling user status:', error);
@@ -432,6 +443,26 @@ const toggleStatus = async () => {
 
 const goBack = () => {
     router.push('/users');
+};
+
+const onPicUploader = async (event) => {
+    const file = (event?.files && event.files[0]) || null;
+    if (!file) return;
+    if (!file.type || !file.type.startsWith('image/')) {
+        showToast('warn', 'Please select a valid image file', 'Invalid file');
+        return;
+    }
+    uploadingPic.value = true;
+    try {
+        await userManagementService.uploadUserPic(user.value.id, file);
+        showToast('success', 'Profile photo updated', 'Success');
+        await loadUserData();
+    } catch (err) {
+        console.error('Error uploading profile photo:', err);
+        showToast('error', 'Failed to upload profile photo', 'Error');
+    } finally {
+        uploadingPic.value = false;
+    }
 };
 
 // Lifecycle

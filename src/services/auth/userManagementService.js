@@ -41,7 +41,43 @@ export const userManagementService = {
             throw error;
         }
     },
+
+    patchUser: async (id, partialData) => {
+        try {
+            return await axios.patch(`/auth/listusers/${id}/`, partialData);
+        } catch (error) {
+            console.error(`Failed to partially update user ${id}:`, error);
+            throw error;
+        }
+    },
+
+    uploadUserPic: async (id, file) => {
+        try {
+            const form = new FormData();
+            form.append('pic', file);
+            // Let axios/browser set proper multipart headers (interceptor removes JSON content-type)
+            return await axios.patch(`/auth/listusers/${id}/`, form);
+        } catch (error) {
+            console.error(`Failed to upload profile picture for user ${id}:`, error);
+            throw error;
+        }
+    },
     
+    uploadUserPic: async (id, file) => {
+        try {
+            const form = new FormData();
+            form.append('pic', file);
+            return await axios.patch(`/auth/listusers/${id}/`, form, {
+                headers: {
+                    'Content-Type': 'multipart/form-data'
+                }
+            });
+        } catch (error) {
+            console.error(`Failed to upload profile picture for user ${id}:`, error);
+            throw error;
+        }
+    },
+
     deleteUser: async (id) => {
         try {
             return await axios.delete(`/auth/listusers/${id}/`);

@@ -25,7 +25,7 @@
         <div class="p-6">
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 <!-- Business Settings -->
-                <Card class="hover:shadow-lg transition-shadow cursor-pointer" @click="navigateTo('/settings/business')">
+                <Card v-if="canBusiness" class="hover:shadow-lg transition-shadow cursor-pointer" @click="navigateTo('/settings/business')">
                     <template #header>
                         <div class="bg-gradient-to-r from-blue-500 to-blue-700 p-6">
                             <i class="pi pi-building text-white text-4xl"></i>
@@ -54,7 +54,7 @@
                 </Card>
 
                 <!-- Departments & Regions -->
-                <Card class="hover:shadow-lg transition-shadow cursor-pointer" @click="navigateTo('/settings/departments')">
+                <Card v-if="canDepartments" class="hover:shadow-lg transition-shadow cursor-pointer" @click="navigateTo('/settings/departments')">
                     <template #header>
                         <div class="bg-gradient-to-r from-purple-500 to-purple-700 p-6">
                             <i class="pi pi-sitemap text-white text-4xl"></i>
@@ -81,7 +81,7 @@
                 </Card>
 
                 <!-- Approval Workflows -->
-                <Card class="hover:shadow-lg transition-shadow cursor-pointer" @click="navigateTo('/settings/approvals')">
+                <Card v-if="canApprovals" class="hover:shadow-lg transition-shadow cursor-pointer" @click="navigateTo('/settings/approvals')">
                     <template #header>
                         <div class="bg-gradient-to-r from-green-500 to-green-700 p-6">
                             <i class="pi pi-check-circle text-white text-4xl"></i>
@@ -108,7 +108,7 @@
                 </Card>
 
                 <!-- Tax Settings -->
-                <Card class="hover:shadow-lg transition-shadow cursor-pointer" @click="navigateTo('/settings/finance/taxes')">
+                <Card v-if="canTaxes" class="hover:shadow-lg transition-shadow cursor-pointer" @click="navigateTo('/settings/finance/taxes')">
                     <template #header>
                         <div class="bg-gradient-to-r from-amber-500 to-amber-700 p-6">
                             <i class="pi pi-percentage text-white text-4xl"></i>
@@ -135,7 +135,7 @@
                 </Card>
 
                 <!-- Payroll Settings -->
-                <Card class="hover:shadow-lg transition-shadow cursor-pointer" @click="navigateTo('/settings/payroll/formulas')">
+                <Card v-if="canPayroll" class="hover:shadow-lg transition-shadow cursor-pointer" @click="navigateTo('/settings/payroll/formulas')">
                     <template #header>
                         <div class="bg-gradient-to-r from-pink-500 to-pink-700 p-6">
                             <i class="pi pi-calculator text-white text-4xl"></i>
@@ -163,7 +163,7 @@
                 </Card>
 
                 <!-- KRA eTIMS Integration -->
-                <Card class="hover:shadow-lg transition-shadow cursor-pointer" @click="navigateTo('/settings/integrations/kra')">
+                <Card v-if="canIntegrations" class="hover:shadow-lg transition-shadow cursor-pointer" @click="navigateTo('/settings/integrations/kra')">
                     <template #header>
                         <div class="bg-gradient-to-r from-red-500 to-red-700 p-6">
                             <i class="pi pi-globe text-white text-4xl"></i>
@@ -190,7 +190,7 @@
                 </Card>
 
                 <!-- HRM Appraisal Config -->
-                <Card class="hover:shadow-lg transition-shadow cursor-pointer" @click="navigateTo('/settings/hrm/appraisals/configuration')">
+                <Card v-if="canAppraisals" class="hover:shadow-lg transition-shadow cursor-pointer" @click="navigateTo('/settings/hrm/appraisals/configuration')">
                     <template #header>
                         <div class="bg-gradient-to-r from-teal-500 to-teal-700 p-6">
                             <i class="pi pi-star text-white text-4xl"></i>
@@ -217,7 +217,7 @@
                 </Card>
 
                 <!-- Security Settings -->
-                <Card class="hover:shadow-lg transition-shadow cursor-pointer" @click="navigateTo('/security/settings')">
+                <Card v-if="canSecurity" class="hover:shadow-lg transition-shadow cursor-pointer" @click="navigateTo('/security/settings')">
                     <template #header>
                         <div class="bg-gradient-to-r from-indigo-500 to-indigo-700 p-6">
                             <i class="pi pi-shield text-white text-4xl"></i>
@@ -244,7 +244,7 @@
                 </Card>
 
                 <!-- Backups -->
-                <Card class="hover:shadow-lg transition-shadow cursor-pointer" @click="navigateTo('/security/backups')">
+                <Card v-if="canBackups" class="hover:shadow-lg transition-shadow cursor-pointer" @click="navigateTo('/security/backups')">
                     <template #header>
                         <div class="bg-gradient-to-r from-cyan-500 to-cyan-700 p-6">
                             <i class="pi pi-database text-white text-4xl"></i>
@@ -364,6 +364,7 @@
 </template>
 
 <script setup>
+import { usePermissions } from '@/composables/usePermissions';
 import { useToast } from '@/composables/useToast';
 import { systemConfigService } from '@/services/shared/systemConfigService';
 import { formatDateTime } from '@/utils/formatters';
@@ -372,6 +373,7 @@ import { useRouter } from 'vue-router';
 
 const router = useRouter();
 const { showToast } = useToast();
+const { hasPermission, hasAnyPermission } = usePermissions();
 
 // State
 const loadingActivity = ref(false);
@@ -409,6 +411,17 @@ const recentActivity = ref([
 const navigateTo = (path) => {
     router.push(path);
 };
+
+// Permission flags
+const canBusiness = hasAnyPermission(['view_bussiness', 'change_bussiness', 'view_brandingsettings', 'change_brandingsettings']);
+const canDepartments = hasAnyPermission(['view_departments', 'view_regions']);
+const canApprovals = hasPermission('view_approvalworkflow');
+const canTaxes = hasAnyPermission(['view_tax', 'view_taxrates']);
+const canPayroll = hasAnyPermission(['view_payrollcomponents', 'view_defaultpayrollsettings', 'view_benefits', 'view_deductions', 'view_earnings']);
+const canIntegrations = hasAnyPermission(['view_krasettings', 'view_integrations', 'view_mpesasettings', 'view_emailconfiguration', 'view_smsconfiguration']);
+const canAppraisals = hasAnyPermission(['view_appraisaltemplate', 'view_appraisalcycle']);
+const canSecurity = hasAnyPermission(['view_securitysettings', 'view_passwordpolicy']);
+const canBackups = hasAnyPermission(['view_backup']);
 
 const loadStats = async () => {
     try {

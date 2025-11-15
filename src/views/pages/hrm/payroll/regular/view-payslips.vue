@@ -2,9 +2,11 @@
 import Payslip from '@/components/hrm/payroll/payslip.vue';
 import { generatePayslip } from '@/components/hrm/payroll/payslipGenerator';
 import Spinner from '@/components/ui/Spinner.vue';
+import { useEmployeeMapping } from '@/composables/useEmployeeMapping';
 import { useHrmFilters } from '@/composables/useHrmFilters';
 import { usePermissions } from '@/composables/usePermissions';
 import { useToast } from '@/composables/useToast';
+import { employeeService } from '@/services/hrm/employeeService';
 import { payrollService } from '@/services/hrm/payrollService';
 import { formatCurrency } from '@/utils/formatters';
 import { FilterMatchMode } from '@primevue/core/api';
@@ -16,12 +18,22 @@ import { processPayrollRequest } from './processPayrollRequest';
 
 const { showToast } = useToast();
 const { departments, regions, loadFilters } = useHrmFilters();
-const { hasAnyPermission } = usePermissions();
+const { hasAnyPermission, hasPermission } = usePermissions();
 const store = useStore();
 const router = useRouter();
 
 // Current user
 const currentUser = computed(() => store.state.auth.user);
+const roles = computed(() => Array.isArray(currentUser.value?.roles) ? currentUser.value.roles.map((r) => String(r).toLowerCase()) : []);
+const isManagerial = computed(() => hasAnyPermission(['change_payslip', 'delete_payslip', 'add_payslip']));
+const isStaffOnly = computed(() => {
+    const r = roles.value;
+    if (!r || r.length === 0) return false;
+    const elevated = ['admin', 'superusers', 'hr', 'finance', 'procurement', 'inventory', 'cto', 'ceo', 'manager', 'system'];
+    const hasElevated = elevated.some((er) => r.includes(er));
+    return r.includes('staff') && !hasElevated && !isManagerial.value;
+});
+const { hasEmployeeMapping, requireEmployeeMapping } = useEmployeeMapping();
 const isLoading = ref(false);
 const selectedPayslipId = ref();
 const showpayslipDialog = ref(false);
@@ -34,6 +46,7 @@ const payslipAudits = ref([]);
 const selectedEmployee = ref(null);
 const selectedRegion = ref(null);
 const selectedDepartment = ref(null);
+const filtersLocked = computed(() => isStaffOnly.value && hasEmployeeMapping.value);
 // const processDropdownVisible = ref(false);
 // const filteredSlips = ref([]);
 // const statusfilteredPayslips = ref([]);
@@ -190,24 +203,54 @@ const filterByStatus = (status) => {
 
 onMounted(async () => {
     console.log('onMounted: Component mounted');
+    // Centralized mapping guard
+    if (isStaffOnly.value) {
+        const ok = await requireEmployeeMapping(true);
+        if (!ok) return;
+    }
     fromDate.value = new Date(new Date().getFullYear(), new Date().getMonth() - 3, 1).toISOString().split('T')[0];
     toDate.value = new Date(new Date().getFullYear(), new Date().getMonth(), 2).toISOString().split('T')[0];
     console.log('onMounted: Date range set', { fromDate: fromDate.value, toDate: toDate.value });
     await loadFilters();
+    // If staff-only and mapped to an employee, lock filters to user's scope
+    if (isStaffOnly.value && hasEmployeeMapping.value) {
+        try {
+            const employeeId = currentUser.value?.employee_id;
+            selectedEmployee.value = [employeeId];
+            const hrDetails = await employeeService.getEmployeeHRDetails(employeeId);
+            if (hrDetails) {
+                selectedDepartment.value = hrDetails?.department_id || hrDetails?.department || selectedDepartment.value;
+                selectedRegion.value = hrDetails?.region_id || hrDetails?.region || selectedRegion.value;
+            }
+        } catch (e) {
+            console.warn('Failed to load employee HR details for staff scoping', e);
+        }
+    }
     fetchEmployees();
     fetchPayslips();
 });
 const fetchEmployees = () => {
+    const toArray = (val) => {
+        if (val == null) return [];
+        if (Array.isArray(val)) return val;
+        return [val];
+    };
     const params = {
-        department: selectedDepartment.value ? selectedDepartment.value : null,
-        region: selectedRegion.value ? selectedRegion.value : null,
+        'department[]': toArray(selectedDepartment.value),
+        'region[]': toArray(selectedRegion.value),
         fromdate: fromDate.value ? fromDate.value : null,
         todate: toDate.value ? toDate.value : null
     };
     payrollService
-        .listPayroll({ ...params, employees: true })
+        .getEmployees(params)
         .then((response) => {
-            employees.value = response.data;
+            const resp = Array.isArray(response.data) ? response.data : (response.data?.results || []);
+            if (isStaffOnly.value) {
+                const selfId = currentUser.value?.employee_id || currentUser.value?.id;
+                employees.value = resp.filter((e) => e.id === selfId);
+            } else {
+                employees.value = resp;
+            }
         })
         .catch((error) => {
             showToast('error', 'Error', error.toString(), 3000);
@@ -249,23 +292,38 @@ const findPayslipById = (id) => {
 };
 const fetchPayslips = async (params = {}) => {
     try {
-        // Check if user has managerial permissions (can view all payslips)
-        const hasManagerialPerms = hasAnyPermission(['change_payslip', 'delete_payslip', 'add_payslip']);
-        
-        // If user doesn't have managerial permissions, filter by their employee ID
-        if (!hasManagerialPerms) {
-            const employeeId = currentUser.value?.employee_id || currentUser.value?.id;
-            params = { ...params, employee: employeeId };
+        const toArray = (val) => {
+            if (val == null) return [];
+            if (Array.isArray(val)) return val;
+            return [val];
+        };
+        const hasManagerialPerms = isManagerial.value;
+
+        // Compose filter params from UI selections
+        const filterParams = {
+            ...params,
+            'department[]': toArray(selectedDepartment.value),
+            'region[]': toArray(selectedRegion.value)
+        };
+
+        // If managerial and employees selected, pass them through
+        if (hasManagerialPerms && selectedEmployee.value && selectedEmployee.value.length) {
+            filterParams.employee = selectedEmployee.value;
+        }
+
+        // If not managerial but mapped to employee, always scope to self
+        if (!hasManagerialPerms && hasEmployeeMapping.value) {
+            const employeeId = currentUser.value?.employee_id;
+            filterParams.employee = employeeId;
             console.log('fetchPayslips: Filtering for current user employee ID:', employeeId);
         } else {
-            console.log('fetchPayslips: User has managerial permissions, showing all payslips');
+            console.log('fetchPayslips: User has managerial permissions, applying optional filters');
         }
-        
-        const response = await payrollService.listPayroll(params);
+
+        const response = await payrollService.listPayroll(filterParams);
         console.log('fetchPayslips: API response', response);
         console.log('fetchPayslips: response.data', response.data);
         payslips.value = response.data;
-        // totalRecords.value = response.data.count; // This line was not in the new_code, so it's removed.
     } catch (error) {
         console.error('Error fetching payslips:', error);
     }
@@ -544,6 +602,7 @@ const getApprovalStatusDisplay = (approvalStatus) => {
                         :filter="true"
                         filterPlaceholder="Search Employees"
                         @change="fetchPayslips"
+                        :disabled="filtersLocked"
                     />
                     <MultiSelect
                         :options="departments"
@@ -557,6 +616,7 @@ const getApprovalStatusDisplay = (approvalStatus) => {
                         :filter="true"
                         filterPlaceholder="Search Department"
                         @change="fetchPayslips"
+                        :disabled="filtersLocked"
                     />
                     <MultiSelect
                         :options="regions"
@@ -570,6 +630,7 @@ const getApprovalStatusDisplay = (approvalStatus) => {
                         :filter="true"
                         filterPlaceholder="Search Region"
                         @change="fetchPayslips"
+                        :disabled="filtersLocked"
                     />
 
                     <!-- Refresh Button -->
@@ -578,7 +639,14 @@ const getApprovalStatusDisplay = (approvalStatus) => {
             </template>
 
             <template #end>
-                <SplitButton label="Process Payroll" icon="pi pi-money-bill" class="p-button-primary" @click="applyPayrollAction" :model="payrollProcessActions"></SplitButton>
+                <SplitButton
+                    v-if="isManagerial"
+                    label="Process Payroll"
+                    icon="pi pi-money-bill"
+                    class="p-button-primary"
+                    @click="applyPayrollAction"
+                    :model="payrollProcessActions"
+                />
             </template>
         </Toolbar>
 
@@ -599,8 +667,8 @@ const getApprovalStatusDisplay = (approvalStatus) => {
                         </InputIcon>
                         <InputText v-model="filters['global'].value" placeholder="Search..." />
                     </IconField>
-                    <Button label="" icon="pi pi-file-pdf" severity="danger" @click="printPayslips" class="m-1" />
-                    <Button label="" icon="pi pi-file-excel" severity="warning" @click="exportCSV($event)" class="m-1" />
+                    <Button v-if="isManagerial || hasPermission('view_payslip')" label="" icon="pi pi-file-pdf" severity="danger" @click="printPayslips" class="m-1" />
+                    <Button v-if="isManagerial || hasPermission('view_payslip')" label="" icon="pi pi-file-excel" severity="warning" @click="exportCSV($event)" class="m-1" />
                 </div>
             </template>
         </Toolbar>
@@ -663,7 +731,7 @@ const getApprovalStatusDisplay = (approvalStatus) => {
             </Column>
             <Column v-if="!isNodeExpanded">
                 <template #body="{ node }">
-                    <div class="inline-flex items-center gap-2">
+                    <div class="inline-flex items-center gap-2" v-if="isManagerial">
                         <router-link
                             :to="{
                                 name: 'regularpayroll-printpayslips',
@@ -706,8 +774,8 @@ const getApprovalStatusDisplay = (approvalStatus) => {
                     <div v-if="payslipInfo.approval_status === 'approved'" class="mb-4">
                         <!-- 40% width -->
                         <a href="#" class="text-sm rounded-lg bg-green-200 p-1 mb-2 block">Payslip Approver</a>
-                        <Button label="Print Payslip" icon="pi pi-print" @click="printPayslip" class="w-full mb-2" />
-                        <Button label="Email Payslip" icon="pi pi-send" @click="emailPayslip" class="w-full" />
+                        <Button v-if="hasPermission('view_payslip')" label="Print Payslip" icon="pi pi-print" @click="printPayslip" class="w-full mb-2" />
+                        <Button v-if="hasPermission('view_payslip')" label="Email Payslip" icon="pi pi-send" @click="emailPayslip" class="w-full" />
                     </div>
                     <div v-if="payslipAudits.length > 0" class="space-y-2">
                         <!-- Find and display the "Created" action -->
@@ -724,10 +792,22 @@ const getApprovalStatusDisplay = (approvalStatus) => {
                         <!-- Display approver information -->
                         <a href="#" class="text-sm rounded-lg bg-gold-200 p-1 block" v-if="payslipInfo.approver"> {{ payslipInfo.approver.name }} [{{ payslipInfo.approver.email }}] {{ payslipInfo.approved }} {{ payslipInfo.approval_date }} </a>
                         <!-- Action Buttons -->
-                        <Button label="Submit for Approval" icon="pi pi-send" class="p-button-secondary w-full" v-if="payslipInfo.approval_submitted_by === null" @click="submitApproval" />
-                        <Button label="Edit Slip" icon="pi pi-pencil" class="p-button-secondary w-full" @click="editSlip" />
-                        <Button label="Re-run Slip" icon="pi pi-sync" class="p-button-secondary w-full" @click="rerunPayslip" />
-                        <Button label="Delete Slip" icon="pi pi-trash" class="p-button-danger w-full" @click="confirmDeletePayslip(selectedPayslipId)" />
+                        <Button
+                            v-if="isManagerial && payslipInfo.approval_submitted_by === null"
+                            label="Submit for Approval"
+                            icon="pi pi-send"
+                            class="p-button-secondary w-full"
+                            @click="submitApproval"
+                        />
+                        <Button v-if="hasPermission('change_payslip')" label="Edit Slip" icon="pi pi-pencil" class="p-button-secondary w-full" @click="editSlip" />
+                        <Button v-if="hasPermission('change_payslip')" label="Re-run Slip" icon="pi pi-sync" class="p-button-secondary w-full" @click="rerunPayslip" />
+                        <Button
+                            v-if="hasPermission('delete_payslip')"
+                            label="Delete Slip"
+                            icon="pi pi-trash"
+                            class="p-button-danger w-full"
+                            @click="confirmDeletePayslip(selectedPayslipId)"
+                        />
                     </div>
                 </div>
             </div>

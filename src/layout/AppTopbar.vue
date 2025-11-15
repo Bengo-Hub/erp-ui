@@ -29,17 +29,11 @@ const userAvatar = computed(() => {
     return getUserAvatarUrl(currentUser.value, 128);
 });
 
-// Check if user has system settings permissions
+// Only superusers can access system settings
 const hasSystemSettingsAccess = computed(() => {
-    if (!currentUser.value?.permissions) return false;
-    return hasAnyPermission(currentUser.value.permissions, [
-        'view_appsettings',
-        'change_appsettings',
-        'view_brandingsettings',
-        'change_brandingsettings',
-        'view_bussiness',
-        'change_bussiness'
-    ]);
+    const u = currentUser.value;
+    const roles = Array.isArray(u?.roles) ? u.roles.map((r) => String(r).toLowerCase()) : [];
+    return u?.is_superuser === true || roles.includes('superusers');
 });
 
 onMounted(async () => {
@@ -129,6 +123,12 @@ const navigateToDashboard = () => {
     router.push(redirectPath);
 };
 
+const hasEmployeeMapping = computed(() => !!(currentUser.value?.employee_id));
+
+const navigateToESS = () => {
+    router.push('/ess');
+};
+
 const profileItems = computed(() => {
     const items = [
         {
@@ -157,6 +157,15 @@ const profileItems = computed(() => {
             label: 'System Settings',
             icon: 'pi pi-fw pi-cog',
             command: navigateToSettings
+        });
+    }
+
+    // Add Employee ESS link for any user mapped to an employee record
+    if (hasEmployeeMapping.value) {
+        items[0].items.push({
+            label: 'Employee ESS',
+            icon: 'pi pi-fw pi-id-card',
+            command: navigateToESS
         });
     }
     

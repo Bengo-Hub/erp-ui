@@ -2,6 +2,7 @@
 import { useChartOptions } from '@/composables/useChartOptions';
 import { useDashboardState } from '@/composables/useDashboardState';
 import { useToast } from '@/composables/useToast';
+import { usePermissions } from '@/composables/usePermissions';
 import { dashboardService } from '@/services/shared/dashboardService';
 import { PERIOD_OPTIONS } from '@/utils/constants';
 import Chart from 'primevue/chart';
@@ -12,6 +13,7 @@ const router = useRouter();
 const { showToast } = useToast();
 const { barChartOptions } = useChartOptions();
 const { state, executeDataFetch } = useDashboardState();
+const { hasPermission } = usePermissions();
 
 const loading = ref(false);
 const period = ref('month');
@@ -141,6 +143,12 @@ const navigateToQuality = () => {
     router.push('/manufacturing/quality');
 };
 
+// Visibility flags
+const canViewProduction = hasPermission('view_productionbatch');
+const canViewAnalytics = hasPermission('view_manufacturinganalytics') || hasPermission('view_productionbatch');
+const canViewQuality = hasPermission('view_qualitycheck');
+const canViewMaintenance = hasPermission('view_assetmaintenance') || hasPermission('view_productionbatch');
+
 // Watch for period changes
 watch(period, () => {
     loadDashboardData();
@@ -165,7 +173,7 @@ onMounted(() => {
         <div v-else class="space-y-6">
             <!-- Key Metrics Cards -->
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                <Card class="bg-gradient-to-r from-blue-500 to-blue-600 text-white">
+                <Card v-if="canViewProduction" class="bg-gradient-to-r from-blue-500 to-blue-600 text-white">
                     <template #title>
                         <div class="flex items-center justify-between">
                             <span>Production Orders</span>
@@ -179,7 +187,7 @@ onMounted(() => {
                     </template>
                 </Card>
 
-                <Card class="bg-gradient-to-r from-green-500 to-green-600 text-white">
+                <Card v-if="canViewProduction" class="bg-gradient-to-r from-green-500 to-green-600 text-white">
                     <template #title>
                         <div class="flex items-center justify-between">
                             <span>Total Output</span>
@@ -194,7 +202,7 @@ onMounted(() => {
                     </template>
                 </Card>
 
-                <Card class="bg-gradient-to-r from-orange-500 to-orange-600 text-white">
+                <Card v-if="canViewProduction" class="bg-gradient-to-r from-orange-500 to-orange-600 text-white">
                     <template #title>
                         <div class="flex items-center justify-between">
                             <span>Equipment Utilization</span>
@@ -208,7 +216,7 @@ onMounted(() => {
                     </template>
                 </Card>
 
-                <Card class="bg-gradient-to-r from-purple-500 to-purple-600 text-white">
+                <Card v-if="canViewAnalytics" class="bg-gradient-to-r from-purple-500 to-purple-600 text-white">
                     <template #title>
                         <div class="flex items-center justify-between">
                             <span>Production Efficiency</span>
@@ -225,7 +233,7 @@ onMounted(() => {
 
             <!-- Quality & Maintenance Metrics -->
             <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <Card class="bg-gradient-to-r from-red-500 to-red-600 text-white">
+                <Card v-if="canViewQuality" class="bg-gradient-to-r from-red-500 to-red-600 text-white">
                     <template #title>
                         <div class="flex items-center justify-between">
                             <span>Defect Rate</span>
@@ -239,7 +247,7 @@ onMounted(() => {
                     </template>
                 </Card>
 
-                <Card class="bg-gradient-to-r from-teal-500 to-teal-600 text-white">
+                <Card v-if="canViewProduction" class="bg-gradient-to-r from-teal-500 to-teal-600 text-white">
                     <template #title>
                         <div class="flex items-center justify-between">
                             <span>Waste Percentage</span>
@@ -253,7 +261,7 @@ onMounted(() => {
                     </template>
                 </Card>
 
-                <Card class="bg-gradient-to-r from-indigo-500 to-indigo-600 text-white">
+                <Card v-if="canViewMaintenance" class="bg-gradient-to-r from-indigo-500 to-indigo-600 text-white">
                     <template #title>
                         <div class="flex items-center justify-between">
                             <span>Maintenance Alerts</span>
@@ -271,7 +279,7 @@ onMounted(() => {
             <!-- Charts Row -->
             <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 <!-- Production by Line -->
-                <Card>
+                <Card v-if="canViewProduction">
                     <template #title>Production by Line</template>
                     <template #content>
                         <div class="h-80">
@@ -282,7 +290,7 @@ onMounted(() => {
                 </Card>
 
                 <!-- Efficiency Trends -->
-                <Card>
+                <Card v-if="canViewAnalytics">
                     <template #title>Efficiency Trends</template>
                     <template #content>
                         <div class="h-80">
@@ -296,7 +304,7 @@ onMounted(() => {
             <!-- Additional Charts Row -->
             <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 <!-- Equipment Status -->
-                <Card>
+                <Card v-if="canViewProduction">
                     <template #title>Equipment Utilization</template>
                     <template #content>
                         <div class="h-80">
@@ -307,7 +315,7 @@ onMounted(() => {
                 </Card>
 
                 <!-- Quality Metrics -->
-                <Card>
+                <Card v-if="canViewQuality">
                     <template #title>Quality Metrics</template>
                     <template #content>
                         <div class="h-80">
@@ -323,10 +331,10 @@ onMounted(() => {
                 <template #title>Quick Actions</template>
                 <template #content>
                     <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
-                        <Button label="Production Orders" icon="pi pi-list" class="p-button-outlined" @click="navigateToOrders" />
-                        <Button label="Equipment" icon="pi pi-cog" class="p-button-outlined" @click="navigateToEquipment" />
-                        <Button label="Maintenance" icon="pi pi-wrench" class="p-button-outlined" @click="navigateToMaintenance" />
-                        <Button label="Quality Control" icon="pi pi-check-circle" class="p-button-outlined" @click="navigateToQuality" />
+                        <Button v-if="canViewProduction" label="Production Orders" icon="pi pi-list" class="p-button-outlined" @click="navigateToOrders" />
+                        <Button v-if="canViewProduction" label="Equipment" icon="pi pi-cog" class="p-button-outlined" @click="navigateToEquipment" />
+                        <Button v-if="canViewMaintenance" label="Maintenance" icon="pi pi-wrench" class="p-button-outlined" @click="navigateToMaintenance" />
+                        <Button v-if="canViewQuality" label="Quality Control" icon="pi pi-check-circle" class="p-button-outlined" @click="navigateToQuality" />
                     </div>
                 </template>
             </Card>

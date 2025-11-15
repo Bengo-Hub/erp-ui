@@ -1,6 +1,7 @@
 <script setup>
 import { useChartOptions } from '@/composables/useChartOptions';
 import { useDashboardState } from '@/composables/useDashboardState';
+import { usePermissions } from '@/composables/usePermissions';
 import { useToast } from '@/composables/useToast';
 import { dashboardService } from '@/services/shared/dashboardService';
 import { PERIOD_OPTIONS } from '@/utils/constants';
@@ -12,6 +13,7 @@ const router = useRouter();
 const { showToast } = useToast();
 const { currencyChartOptions } = useChartOptions();
 const { state, executeDataFetch } = useDashboardState();
+const { hasAnyPermission } = usePermissions();
 
 const loading = ref(false);
 const period = ref('month');
@@ -170,6 +172,15 @@ const navigateToManufacturing = () => {
     router.push('/manufacturing');
 };
 
+// Role/module-based visibility
+const canFinance = hasAnyPermission(['view_payment', 'view_expense', 'view_budget', 'view_tax', 'view_transaction']);
+const canSales = hasAnyPermission(['view_sales']);
+const canHRM = hasAnyPermission(['view_employee', 'view_payslip']);
+const canCRM = hasAnyPermission(['view_contact', 'view_customergroup', 'view_customersegment']);
+const canProcurement = hasAnyPermission(['view_purchaseorder', 'view_procurementrequest', 'view_purchase']);
+const canManufacturing = hasAnyPermission(['view_productionbatch', 'view_formulas', 'view_qualitycheck']);
+const canAnalytics = hasAnyPermission(['view_analyticssnapshot']);
+
 // Watch for period changes
 watch(period, () => {
     loadDashboardData();
@@ -194,7 +205,7 @@ onMounted(() => {
         <div v-else class="space-y-6">
             <!-- Financial KPIs -->
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                <Card class="bg-gradient-to-r from-blue-500 to-blue-600 text-white">
+                <Card v-if="canFinance" class="bg-gradient-to-r from-blue-500 to-blue-600 text-white">
                     <template #title>
                         <div class="flex items-center justify-between">
                             <span>Total Revenue</span>
@@ -208,7 +219,7 @@ onMounted(() => {
                     </template>
                 </Card>
 
-                <Card class="bg-gradient-to-r from-green-500 to-green-600 text-white">
+                <Card v-if="canFinance" class="bg-gradient-to-r from-green-500 to-green-600 text-white">
                     <template #title>
                         <div class="flex items-center justify-between">
                             <span>Net Profit</span>
@@ -223,7 +234,7 @@ onMounted(() => {
                     </template>
                 </Card>
 
-                <Card class="bg-gradient-to-r from-orange-500 to-orange-600 text-white">
+                <Card v-if="canSales || canProcurement" class="bg-gradient-to-r from-orange-500 to-orange-600 text-white">
                     <template #title>
                         <div class="flex items-center justify-between">
                             <span>Total Orders</span>
@@ -237,7 +248,7 @@ onMounted(() => {
                     </template>
                 </Card>
 
-                <Card class="bg-gradient-to-r from-purple-500 to-purple-600 text-white">
+                <Card v-if="canCRM" class="bg-gradient-to-r from-purple-500 to-purple-600 text-white">
                     <template #title>
                         <div class="flex items-center justify-between">
                             <span>Total Customers</span>
@@ -254,7 +265,7 @@ onMounted(() => {
 
             <!-- Operational KPIs -->
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                <Card class="bg-gradient-to-r from-indigo-500 to-indigo-600 text-white">
+                <Card v-if="canHRM" class="bg-gradient-to-r from-indigo-500 to-indigo-600 text-white">
                     <template #title>
                         <div class="flex items-center justify-between">
                             <span>Employees</span>
@@ -268,7 +279,7 @@ onMounted(() => {
                     </template>
                 </Card>
 
-                <Card class="bg-gradient-to-r from-teal-500 to-teal-600 text-white">
+                <Card v-if="canProcurement" class="bg-gradient-to-r from-teal-500 to-teal-600 text-white">
                     <template #title>
                         <div class="flex items-center justify-between">
                             <span>Suppliers</span>
@@ -282,7 +293,7 @@ onMounted(() => {
                     </template>
                 </Card>
 
-                <Card class="bg-gradient-to-r from-pink-500 to-pink-600 text-white">
+                <Card v-if="canSales || canProcurement" class="bg-gradient-to-r from-pink-500 to-pink-600 text-white">
                     <template #title>
                         <div class="flex items-center justify-between">
                             <span>Fulfillment Rate</span>
@@ -294,7 +305,7 @@ onMounted(() => {
                     </template>
                 </Card>
 
-                <Card class="bg-gradient-to-r from-yellow-500 to-yellow-600 text-white">
+                <Card v-if="canCRM" class="bg-gradient-to-r from-yellow-500 to-yellow-600 text-white">
                     <template #title>
                         <div class="flex items-center justify-between">
                             <span>Customer Satisfaction</span>
@@ -362,12 +373,12 @@ onMounted(() => {
                 <template #title>Module Access</template>
                 <template #content>
                     <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-                        <Button label="Finance" icon="pi pi-dollar" class="p-button-outlined" @click="navigateToFinance" />
-                        <Button label="Sales" icon="pi pi-shopping-cart" class="p-button-outlined" @click="navigateToSales" />
-                        <Button label="HRM" icon="pi pi-users" class="p-button-outlined" @click="navigateToHRM" />
-                        <Button label="Procurement" icon="pi pi-shopping-bag" class="p-button-outlined" @click="navigateToProcurement" />
-                        <Button label="Manufacturing" icon="pi pi-cog" class="p-button-outlined" @click="navigateToManufacturing" />
-                        <Button label="Analytics" icon="pi pi-chart-bar" class="p-button-outlined" @click="() => router.push('/analytics')" />
+                        <Button v-if="canFinance" label="Finance" icon="pi pi-dollar" class="p-button-outlined" @click="navigateToFinance" />
+                        <Button v-if="canSales" label="Sales" icon="pi pi-shopping-cart" class="p-button-outlined" @click="navigateToSales" />
+                        <Button v-if="canHRM" label="HRM" icon="pi pi-users" class="p-button-outlined" @click="navigateToHRM" />
+                        <Button v-if="canProcurement" label="Procurement" icon="pi pi-shopping-bag" class="p-button-outlined" @click="navigateToProcurement" />
+                        <Button v-if="canManufacturing" label="Manufacturing" icon="pi pi-cog" class="p-button-outlined" @click="navigateToManufacturing" />
+                        <Button v-if="canAnalytics" label="Analytics" icon="pi pi-chart-bar" class="p-button-outlined" @click="() => router.push('/analytics')" />
                     </div>
                 </template>
             </Card>

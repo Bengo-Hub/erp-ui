@@ -1,4 +1,5 @@
 <script>
+import { orderService } from '@/services/ecommerce/orderService';
 import { formatCurrency, formatDate } from '@/utils/formatters';
 import { useToast } from 'primevue/usetoast';
 import { computed, onMounted, ref } from 'vue';
@@ -116,13 +117,8 @@ export default {
                 loading.value = true;
                 let response;
 
-                if (isStaffUser.value) {
-                    // Staff users can view all orders or filter by user
-                    response = await orderService.getAllOrders();
-                } else {
-                    // Customer users can only view their own orders
-                    response = await orderService.getUserOrders(userId.value);
-                }
+                // Backend scopes orders to request.user; do not pass user_id
+                response = await orderService.getOrders();
 
                 orders.value = response.data;
             } catch (error) {
@@ -161,7 +157,7 @@ export default {
         };
 
         const goToShop = () => {
-            router.push('/app/shop');
+            router.push('/ecommerce/shop');
         };
 
         const canTrackOrder = (order) => {
@@ -170,8 +166,7 @@ export default {
         };
 
         const canReorderItems = (order) => {
-            // Completed orders can be reordered
-            return ['DELIVERED', 'CANCELLED'].includes(order.status);
+            return false; // Not supported yet
         };
 
         const canUpdateOrder = (order) => {
@@ -183,25 +178,7 @@ export default {
             router.push(`/app/shop/order-tracking?orderId=${order.id}`);
         };
 
-        const reorderItems = async (order) => {
-            try {
-                await orderService.reorderItems(order.id);
-                toast.add({
-                    severity: 'success',
-                    summary: 'Success',
-                    detail: 'Items added to cart successfully',
-                    life: 3000
-                });
-                router.push('/app/shop/cart');
-            } catch (error) {
-                toast.add({
-                    severity: 'error',
-                    summary: 'Error',
-                    detail: 'Failed to add items to cart',
-                    life: 3000
-                });
-            }
-        };
+        const reorderItems = async (order) => {};
 
         const updateOrder = (order) => {
             router.push(`/app/orders/edit/${order.id}`);

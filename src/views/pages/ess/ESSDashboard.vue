@@ -59,6 +59,21 @@
                 </template>
             </Card>
 
+            <!-- P9 Tax Card - available if user can view payslips -->
+            <Card v-if="canViewPayslips && hasPermission('view_payslip')" class="action-card" @click="navigateTo('/hrm/reports/p9')">
+                <template #content>
+                    <div class="flex items-center gap-4">
+                        <div class="icon-wrapper bg-emerald-100 dark:bg-emerald-900">
+                            <i class="pi pi-file-pdf text-2xl text-emerald-600 dark:text-emerald-300"></i>
+                        </div>
+                        <div>
+                            <p class="text-sm text-surface-600 dark:text-surface-400">P9 Tax Card</p>
+                            <p class="text-lg font-semibold text-surface-900 dark:text-surface-0">View & Download</p>
+                        </div>
+                    </div>
+                </template>
+            </Card>
+
             <!-- Leave - ESS Setting + User Permission + Sensitive Access -->
             <Card v-if="canApplyLeave && canAccessLeaveRequests" class="action-card" @click="navigateTo('/hrm/Leave/newLeave')">
                 <template #content>
@@ -90,7 +105,7 @@
             </Card>
 
             <!-- Overtime - ESS Setting + User Permission -->
-            <Card v-if="canApplyOvertime && hasAnyPermission(['add_overtime', 'view_overtime'])" class="action-card" @click="navigateTo('/hrm/payroll/overtime')">
+            <Card v-if="canApplyOvertime && hasAnyPermission(['add_overtimerate', 'view_overtimerate'])" class="action-card" @click="navigateTo('/hrm/payroll/overtime')">
                 <template #content>
                     <div class="flex items-center gap-4">
                         <div class="icon-wrapper bg-indigo-100 dark:bg-indigo-900">
@@ -150,7 +165,7 @@
             </Card>
 
             <!-- Attendance - If has view permission -->
-            <Card v-if="hasAnyPermission(['view_attendancerecord', 'view_attendance'])" class="action-card" @click="navigateTo('/hrm/attendance/records')">
+            <Card v-if="hasPermission('view_attendancerecord')" class="action-card" @click="navigateTo('/hrm/attendance/records')">
                 <template #content>
                     <div class="flex items-center gap-4">
                         <div class="icon-wrapper bg-pink-100 dark:bg-pink-900">
@@ -295,7 +310,7 @@
             </Card>
 
             <!-- Attendance Summary -->
-            <Card v-if="hasAnyPermission(['view_attendancerecord', 'view_attendance'])">
+            <Card v-if="hasPermission('view_attendancerecord')">
                 <template #title>
                     <div class="flex items-center justify-between">
                         <span class="text-xl font-semibold">Attendance</span>
@@ -328,7 +343,7 @@
         <!-- Additional ESS Features -->
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mt-6">
             <!-- Overtime Applications - ESS Setting + User Permission -->
-            <Card v-if="canApplyOvertime && hasAnyPermission(['add_overtime', 'view_overtime'])">
+            <Card v-if="canApplyOvertime && hasAnyPermission(['add_overtimerate', 'view_overtimerate'])">
                 <template #title>
                     <span class="text-xl font-semibold">Overtime</span>
                 </template>
@@ -456,6 +471,7 @@ const attendanceRate = ref(0);
 
 // Current user from store
 const currentUser = computed(() => store.state.auth.user);
+const hasEmployeeMapping = computed(() => !!(currentUser.value?.employee_id));
 
 // User avatar with initials
 const userAvatarUrl = computed(() => {
@@ -475,12 +491,12 @@ const loadESSData = async () => {
         }
         
         // Load leave data if allowed
-        if (canApplyLeave.value && hasAnyPermission(['view_leave', 'view_leaveapplication'])) {
+        if (canApplyLeave.value && hasPermission('view_leaverequest')) {
             await loadLeaveData();
         }
         
         // Load attendance data if allowed
-        if (hasAnyPermission(['view_attendancerecord', 'view_attendance'])) {
+        if (hasPermission('view_attendancerecord')) {
             await loadAttendanceData();
         }
         
@@ -556,6 +572,11 @@ const getLeaveStatusSeverity = (status) => {
 };
 
 onMounted(() => {
+    if (!hasEmployeeMapping.value) {
+        showToast('warn', 'Incomplete Setup', 'Your account is not linked to an employee record. Please contact HR or complete your profile.', 6000);
+        router.replace('/users/account');
+        return;
+    }
     loadESSData();
 });
 </script>
