@@ -9,5 +9,11 @@ node_modules/
 # Development files not needed in production
 .env.local
 .env.development
+.csv
+.xlsx
+.xls
+.pdf
+.doc
+.docx
 
 
