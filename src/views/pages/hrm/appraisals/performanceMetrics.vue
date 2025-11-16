@@ -1,6 +1,7 @@
 <script setup>
 import { useToast } from '@/composables/useToast';
 import { appraisalService } from '@/services/hrm/appraisalService';
+import { employeeService } from '@/services/hrm/employeeService';
 import { useVuelidate } from '@vuelidate/core';
 import { helpers, minValue, required } from '@vuelidate/validators';
 import { computed, onMounted, ref } from 'vue';
@@ -70,7 +71,10 @@ const employeeCoverage = computed(() => {
 
     const calculateCoverage = async () => {
         try {
-            const [employeesResponse, metricsResponse] = await Promise.all([appraisalService.getAppraisalEmployees(), appraisalService.getPerformanceMetrics()]);
+            const [employeesResponse, metricsResponse] = await Promise.all([
+                employeeService.getEmployees(),
+                appraisalService.getPerformanceMetrics()
+            ]);
 
             totalEmployees.value = employeesResponse.data.length;
             const uniqueEmployees = new Set(metricsResponse.data.map((m) => m.employee));

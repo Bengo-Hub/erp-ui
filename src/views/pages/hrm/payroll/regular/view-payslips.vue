@@ -14,7 +14,6 @@ import moment from 'moment';
 import { computed, onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { useStore } from 'vuex';
-import { processPayrollRequest } from './processPayrollRequest';
 
 const { showToast } = useToast();
 const { departments, regions, loadFilters } = useHrmFilters();
@@ -242,7 +241,7 @@ const fetchEmployees = () => {
         todate: toDate.value ? toDate.value : null
     };
     payrollService
-        .getEmployees(params)
+        .getPayrollEmployees(params)
         .then((response) => {
             const resp = Array.isArray(response.data) ? response.data : (response.data?.results || []);
             if (isStaffOnly.value) {
@@ -446,20 +445,26 @@ const rerunPayslip = async () => {
         payment_period: moment(new Date(payslipInfo.value.payroll_period)).format('YYYY-MM'),
         employee_ids: [payslipInfo.value.empid],
         recover_advances: true,
-        command: 'rerun',
-        onSuccess: () => {
-            showpayslipDialog.value = false;
-            isLoading.value = false;
-            fetchPayslips();
-        },
-        onError: (error) => {
-            isLoading.value = false;
-            showToast('error', 'Error', error.summary, 10000);
-        }
+        command: 'rerun'
     };
     spinner_title.value = `Please wait! Re-running payslip...!`;
     isLoading.value = true;
-    await processPayrollRequest(payload);
+    try {
+        const response = await payrollService.postPayrollCommand(payload);
+        if (response.data?.success) {
+            showpayslipDialog.value = false;
+            fetchPayslips();
+            showToast('success', 'Success', 'Payslip rerun has been queued successfully.', 5000);
+        } else {
+            const detail = response.data?.detail || 'Failed to rerun payslip.';
+            showToast('error', 'Error', detail, 10000);
+        }
+    } catch (error) {
+        const detail = error.response?.data?.detail || error.message || 'Failed to rerun payslip.';
+        showToast('error', 'Error', detail, 10000);
+    } finally {
+        isLoading.value = false;
+    }
 };
 
 // Expand node on interaction

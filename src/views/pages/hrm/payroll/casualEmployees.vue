@@ -2,6 +2,7 @@
 import Payslip from '@/components/hrm/payroll/payslip.vue';
 import { generatePayslip } from '@/components/hrm/payroll/payslipGenerator';
 import Spinner from '@/components/ui/Spinner.vue';
+import { useToast } from '@/composables/useToast';
 import { payrollService } from '@/services/hrm/payrollService';
 import { formatCurrency } from '@/utils/formatters';
 import { FilterMatchMode } from '@primevue/core/api';
@@ -143,13 +144,14 @@ onMounted(async () => {
 });
 const fetchEmployees = () => {
     const params = {
-        department: selectedDepartment.value ? selectedDepartment.value : null,
-        region: selectedRegion.value ? selectedRegion.value : null,
-        fromdate: fromDate.value ? fromDate.value : null,
-        todate: toDate.value ? toDate.value : null
+        department: selectedDepartment.value || null,
+        region: selectedRegion.value || null,
+        fromdate: fromDate.value || null,
+        todate: toDate.value || null,
+        employment_type: ['casual']
     };
     payrollService
-        .listPayroll({ ...params, employees: true })
+        .getPayrollEmployees(params)
         .then((response) => {
             employees.value = response.data;
         })
@@ -168,11 +170,12 @@ function showPayslip(id) {
 }
 const fetchPayslips = async () => {
     const params = {
-        department: selectedDepartment.value ? selectedDepartment.value : null,
-        region: selectedRegion.value ? selectedRegion.value : null,
-        fromdate: fromDate.value ? fromDate.value : null,
-        todate: toDate.value ? toDate.value : null,
-        employee_ids: selectedEmployee.value ? selectedEmployee.value : null
+        department: selectedDepartment.value || null,
+        region: selectedRegion.value || null,
+        fromdate: fromDate.value || null,
+        todate: toDate.value || null,
+        employee_ids: selectedEmployee.value || null,
+        employment_type: ['casual']
     };
     await payrollService.listPayroll(params).then((response) => {
         let data = response.data;
@@ -276,20 +279,26 @@ const rerunPayslip = async () => {
         payment_period: moment(new Date(payslipInfo.value.payroll_period)).format('YYYY-MM'),
         employee_ids: [payslipInfo.value.empid],
         recover_advances: true,
-        command: 'rerun',
-        onSuccess: (data) => {
-            showpayslipDialog.value = false;
-            isLoading.value = false;
-            fetchPayslips();
-        },
-        onError: (error) => {
-            isLoading.value = false;
-            showToast('error', error.summary, error.detail, 10000);
-        }
+        command: 'rerun'
     };
     spinner_title.value = `Please wait! Re-running payslip...!`;
     isLoading.value = true;
-    await processPayrollRequest(payload);
+    try {
+        const response = await payrollService.postPayrollCommand(payload);
+        if (response.data?.success) {
+            showpayslipDialog.value = false;
+            fetchPayslips();
+            showToast('success', 'Success', 'Payslip rerun has been queued successfully.', 5000);
+        } else {
+            const detail = response.data?.detail || 'Failed to rerun payslip.';
+            showToast('error', 'Error', detail, 10000);
+        }
+    } catch (error) {
+        const detail = error.response?.data?.detail || error.message || 'Failed to rerun payslip.';
+        showToast('error', 'Error', detail, 10000);
+    } finally {
+        isLoading.value = false;
+    }
 };
 
 // Expand node on interaction

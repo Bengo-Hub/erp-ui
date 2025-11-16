@@ -1,5 +1,7 @@
 import { useToast } from '@/composables/useToast';
+import { employeeService } from '@/services/hrm/employeeService';
 import { coreService } from '@/services/shared/coreService';
+import store from '@/store';
 import { computed, ref } from 'vue';
 
 export function useHrmFilters() {
@@ -23,6 +25,13 @@ export function useHrmFilters() {
     const departments = ref([]);
     const regions = ref([]);
     const projects = ref([]);
+    const employees = ref([]);
+
+    // Field lock flags for restricted users
+    const disableEmployee = ref(false);
+    const disableDepartment = ref(false);
+    const disableRegion = ref(false);
+    const disableProject = ref(false);
     const employmentTypes = ref([
         { value: 'regular-open', label: 'Regular (Open-ended)' },
         { value: 'regular-fixed', label: 'Regular (Fixed-term)' },
@@ -46,7 +55,12 @@ export function useHrmFilters() {
 
         loading.value = true;
         try {
-            const [deptRes, regionRes, projectsRes] = await Promise.all([coreService.getDepartmentsV1(), coreService.getRegionsV1(), coreService.getProjectsV1()]);
+            const [deptRes, regionRes, projectsRes, employeesRes] = await Promise.all([
+                coreService.getDepartmentsV1(),
+                coreService.getRegionsV1(),
+                coreService.getProjectsV1(),
+                employeeService.getEmployees({ page_size: 500 })
+            ]);
 
             // Normalize departments (uses 'title' field)
             departments.value = (deptRes.data?.results || deptRes.data || []).map(dept => ({
@@ -64,8 +78,31 @@ export function useHrmFilters() {
             // Normalize projects (uses 'title' field)
             projects.value = (projectsRes.data?.results || projectsRes.data || []).map(proj => ({
                 ...proj,
-                title: proj.title || proj.name // Fallback to name if title missing
+                title: proj.title || proj.name, // Fallback to name if title missing
+                name: proj.title || proj.name   // Ensure 'name' exists for components using optionLabel="name"
             }));
+
+            // Normalize employees (provide 'name' and 'label' for dropdowns)
+            const rawEmployees = employeesRes?.data?.results || employeesRes?.data || [];
+            employees.value = rawEmployees.map((e) => {
+                const first = e?.user?.first_name || e?.first_name || '';
+                const last = e?.user?.last_name || e?.last_name || '';
+                const full = `${first} ${last}`.trim() || e?.name || e?.title || `Employee ${e?.id}`;
+                return {
+                    ...e,
+                    name: full,
+                    label: full
+                };
+            });
+
+            // Apply default/locked filters for restricted users
+            const current = store.state?.auth?.user;
+            const userPermissions = current?.permissions || [];
+            const canChangeEmployee = userPermissions.includes('change_employee');
+            if (!canChangeEmployee && current?.employee_id) {
+                filters.value.employee = current.employee_id;
+                disableEmployee.value = true;
+            }
 
             filtersLoaded.value = true;
         } catch (error) {
@@ -193,10 +230,15 @@ export function useHrmFilters() {
         departments,
         regions,
         projects,
+        employees,
         employmentTypes,
         contractStatuses,
         loading,
         filtersLoaded,
+        disableEmployee,
+        disableDepartment,
+        disableRegion,
+        disableProject,
 
         // Methods
         loadFilters,

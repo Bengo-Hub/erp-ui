@@ -1,84 +1,44 @@
+import { usePayrollRealtime } from '@/composables/usePayrollRealtime';
 import { useToast } from '@/composables/useToast';
-import { computed, onMounted, onUnmounted, reactive, ref } from 'vue';
+import { computed, onMounted, onUnmounted, reactive, ref, watch } from 'vue';
 
 export function useTaskManager() {
     const { showToast, showSuccess, showError, showWarning, showInfo } = useToast();
 
-    // WebSocket connection state
-    const ws = ref(null);
-    const isConnected = ref(false);
-    const connectionStatus = ref('disconnected'); // disconnected, connecting, connected, error
+    // Use centralized payroll websocket client
+    const { subscribe, send, isConnected, connectionStatus, subscribeTask, unsubscribeTask } = usePayrollRealtime();
 
     // Task management state
     const activeTasks = reactive(new Map());
     const taskHistory = ref([]);
     const maxHistorySize = 100;
 
-    // WebSocket connection management
+    // Watch connection status changes to show notifications
+    watch(isConnected, (connected) => {
+        if (connected) {
+            showInfo('Real-time task updates connected');
+        }
+    });
+
+    watch(connectionStatus, (status) => {
+        if (status === 'error') {
+            showError('Real-time task updates connection error');
+        }
+    });
+
+    // WebSocket connection management (no-op, handled by centralized client)
     const connectWebSocket = () => {
-        if (ws.value && ws.value.readyState === WebSocket.OPEN) {
-            return;
-        }
-
-        try {
-            connectionStatus.value = 'connecting';
-
-            // Get WebSocket URL from current location
-            const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-            const host = window.location.host;
-            const wsUrl = `${protocol}//${host}/ws/payroll/`;
-
-            ws.value = new WebSocket(wsUrl);
-
-            ws.value.onopen = () => {
-                isConnected.value = true;
-                connectionStatus.value = 'connected';
-                console.log('Payroll WebSocket connected');
-                showInfo('Real-time task updates connected');
-            };
-
-            ws.value.onmessage = (event) => {
-                try {
-                    const data = JSON.parse(event.data);
-                    handleWebSocketMessage(data);
-                } catch (error) {
-                    console.error('Error parsing WebSocket message:', error);
-                }
-            };
-
-            ws.value.onclose = (event) => {
-                isConnected.value = false;
-                connectionStatus.value = 'disconnected';
-                console.log('Payroll WebSocket disconnected:', event.code, event.reason);
-
-                // Attempt to reconnect after 3 seconds
-                setTimeout(() => {
-                    if (connectionStatus.value === 'disconnected') {
-                        connectWebSocket();
-                    }
-                }, 3000);
-            };
-
-            ws.value.onerror = (error) => {
-                connectionStatus.value = 'error';
-                console.error('Payroll WebSocket error:', error);
-                showError('Real-time task updates connection error');
-            };
-        } catch (error) {
-            connectionStatus.value = 'error';
-            console.error('Error creating WebSocket connection:', error);
-            showError('Failed to connect to real-time task updates');
-        }
+        // Connection is automatically managed by usePayrollRealtime
+        // No action needed
     };
 
     const disconnectWebSocket = () => {
-        if (ws.value) {
-            ws.value.close();
-            ws.value = null;
-        }
-        isConnected.value = false;
-        connectionStatus.value = 'disconnected';
+        // Connection is automatically managed by usePayrollRealtime
+        // No action needed
     };
+
+    // Subscribe to websocket messages
+    let unsubscribeMessage = null;
 
     // WebSocket message handling
     const handleWebSocketMessage = (data) => {
@@ -341,25 +301,11 @@ export function useTaskManager() {
 
     // Task subscription methods
     const subscribeToTask = (taskId) => {
-        if (ws.value && ws.value.readyState === WebSocket.OPEN) {
-            ws.value.send(
-                JSON.stringify({
-                    type: 'subscribe_task',
-                    task_id: taskId
-                })
-            );
-        }
+        subscribeTask(taskId);
     };
 
     const unsubscribeFromTask = (taskId) => {
-        if (ws.value && ws.value.readyState === WebSocket.OPEN) {
-            ws.value.send(
-                JSON.stringify({
-                    type: 'unsubscribe_task',
-                    task_id: taskId
-                })
-            );
-        }
+        unsubscribeTask(taskId);
     };
 
     // Utility methods
@@ -371,10 +317,19 @@ export function useTaskManager() {
     // Lifecycle hooks
     onMounted(() => {
         connectWebSocket();
+        // Subscribe to websocket messages
+        unsubscribeMessage = subscribe((data) => {
+            handleWebSocketMessage(data);
+        });
     });
 
     onUnmounted(() => {
         disconnectWebSocket();
+        // Unsubscribe from messages
+        if (unsubscribeMessage) {
+            unsubscribeMessage();
+            unsubscribeMessage = null;
+        }
     });
 
     return {

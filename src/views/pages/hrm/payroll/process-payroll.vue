@@ -2,20 +2,22 @@
 import PayrollData from '@/components/hrm/payroll/payrollData.vue';
 import ApprovalWorkflow from '@/components/shared/ApprovalWorkflow.vue';
 import Spinner from '@/components/ui/Spinner.vue';
+import { useEmployeeFilters } from '@/composables/useEmployeeFilters';
 import { useFormulaManagement } from '@/composables/useFormulaManagement';
 import { useHrmFilters } from '@/composables/useHrmFilters';
 import { useTaskManager } from '@/composables/useTaskManager';
 import { useToast } from '@/composables/useToast';
 import { payrollService } from '@/services/hrm/payrollService';
 import { formatCurrency, formatMonthForAPI, getMonthDateRange } from '@/utils/formatters';
-import { computed, onMounted, reactive, ref, watch } from 'vue';
-import { useRoute } from 'vue-router';
+import { computed, onMounted, onUnmounted, reactive, ref, watch } from 'vue';
+import { useRoute, useRouter } from 'vue-router';
 
 // Router and state
 const route = useRoute();
+const router = useRouter();
 const routeParams = ref(null);
 const { showToast } = useToast();
-const { subscribeToTask, unsubscribeFromTask } = useTaskManager();
+const { subscribeToTask, unsubscribeFromTask, taskHistory } = useTaskManager();
 
 // Processing states
 const isProcessing = ref(false);
@@ -35,13 +37,29 @@ const stepValidation = reactive({
 // Payroll configuration
 const selectedMonth = ref('');
 const selectedDepartment = ref([]);
-const selectedRegion = ref([]);
-const selectedProject = ref([]);
-const selectedEmploymentTypes = ref(['regular-open', 'regular-fixed', 'intern', 'probationary']); // Default to include regular employees
+const selectedRegion = ref(null);
+const selectedProject = ref(null);
+const DEFAULT_EMPLOYMENT_TYPES = ['regular-open', 'regular-fixed', 'intern', 'probationary'];
+const selectedEmploymentTypes = ref([...DEFAULT_EMPLOYMENT_TYPES]); // Default to include regular employees
+const lockedEmploymentType = ref(null);
+const employmentTypeLocked = computed(() => !!lockedEmploymentType.value);
+const currentPayrollMode = computed(() => lockedEmploymentType.value || 'regular');
+const EMPLOYMENT_TYPE_LABELS = {
+    'regular-open': 'Regular (Open-ended)',
+    'regular-fixed': 'Regular (Fixed-term)',
+    intern: 'Intern',
+    probationary: 'Probationary',
+    casual: 'Casual',
+    consultant: 'Consultant'
+};
 const recoverAdvances = ref(true);
 const showPayrollData = ref(false);
 
 // Employee data
+const runInBackground = ref(false);
+const activeProcessingTaskId = ref(null);
+const activeProcessingMode = ref('regular');
+
 const employees = ref([]);
 const filteredEmployees = ref([]);
 const selectedEmployees = ref([]);
@@ -89,6 +107,7 @@ const statusTabs = computed(() => [
 
 // Composables
 const { departments, regions, projects, loadFilters } = useHrmFilters();
+const { buildEmployeeFilterParams } = useEmployeeFilters();
 
 // Lifecycle
 onMounted(() => {
@@ -122,6 +141,24 @@ const validateCurrentStep = () => {
             break;
     }
 };
+
+const enforceEmploymentTypeLock = (type) => {
+    if (['casual', 'consultant'].includes(type)) {
+        lockedEmploymentType.value = type;
+        selectedEmploymentTypes.value = [type];
+    } else {
+        lockedEmploymentType.value = null;
+        selectedEmploymentTypes.value = [...DEFAULT_EMPLOYMENT_TYPES];
+    }
+};
+
+watch(
+    () => route.params?.employment_type,
+    (type) => {
+        enforceEmploymentTypeLock(type || 'regular');
+    },
+    { immediate: true }
+);
 
 // Navigation methods
 const nextStep = () => {
@@ -180,60 +217,78 @@ const fetchEmployees = async () => {
 
     isLoading.value = true;
     try {
-        // Get the date range for the selected month (first and last day)
-        const dateRange = getMonthDateRange(selectedMonth.value);
+    // Get the date range for the selected month (first and last day)
+    const dateRange = getMonthDateRange(selectedMonth.value);
 
-        // Prepare query parameters for the backend using useHrmFilters
-        const params = {
+    // Centralized filter params (auto-add employee if mapped, otherwise omit)
+    const params = buildEmployeeFilterParams({
+        includeEmployeeFromStore: true,
+        department: selectedDepartment.value,
+        region: selectedRegion.value ? [selectedRegion.value] : null,
+        project: selectedProject.value ? [selectedProject.value] : null,
+        extra: {
             fromdate: dateRange.fromdate,
-            todate: dateRange.todate
-        };
-
-        // Add employment type filter - send multiple employment types as array
-        if (selectedEmploymentTypes.value.length > 0) {
-            params.employement_type = selectedEmploymentTypes.value;
+            todate: dateRange.todate,
+            employment_type: selectedEmploymentTypes.value && selectedEmploymentTypes.value.length > 0
+                ? selectedEmploymentTypes.value
+                : undefined
         }
-
-        // Add department filter if selected - use the actual department IDs
-        if (selectedDepartment.value.length > 0) {
-            params.department = selectedDepartment.value;
-        }
-
-        // Add region filter if selected - use the actual region ID
-        if (selectedRegion.value) {
-            params.region = [selectedRegion.value];
-        }
-
-        // Add project filter if selected
-        if (selectedProject.value) {
-            params.project = [selectedProject.value];
-        }
+    });
 
         // Fetch employees with active contracts for the selected period
-        const response = await payrollService.getEmployees(params);
+        const response = await payrollService.getPayrollEmployees(params);
 
-        if (response.data) {
-            // Transform the data to match our frontend structure
-            employees.value = response.data.map((emp) => ({
+        const list = response?.data?.results || response?.data || [];
+        // Transform the data to match our frontend structure
+        employees.value = list.map((emp) => {
+            const first = emp?.user?.first_name || emp?.first_name || '';
+            const last = emp?.user?.last_name || emp?.last_name || '';
+            const hr0 = Array.isArray(emp?.hr_details) ? emp.hr_details[0] : null;
+            const fallbackName = hr0?.employee_name || emp?.name;
+            const fullName = `${first} ${last}`.trim() || fallbackName || `Employee ${emp?.id}`;
+
+            const department = emp?.department || hr0?.department || null;
+            const region = emp?.region || hr0?.region || null;
+            const project = emp?.project || hr0?.project || null;
+            const staffNo =
+                emp?.staffNo ||
+                emp?.staff_no ||
+                hr0?.job_or_staff_number ||
+                emp?.salary_details?.[0]?.employee?.staffNo ||
+                null;
+            const employmentType =
+                emp?.employment_type ||
+                hr0?.employment_type ||
+                emp?.salary_details?.[0]?.employment_type ||
+                'regular-open';
+
+            const basicSalary =
+                emp?.basic_salary ??
+                emp?.salary ??
+                Number(emp?.salary_details?.[0]?.monthly_salary) ??
+                0;
+
+            return {
                 id: emp.id,
-                staffNo: emp.staffNo || emp.name?.split('[')?.[1]?.replace(']', '') || '',
-                name: emp.name?.split('[')?.[0] || emp.name || '',
-                department: emp.department || null,
-                region: emp.region || null,
-                project: emp.project || null,
-                employmentType: emp.employment_type || 'regular-open',
-                basicSalary: emp.basic_salary || 0,
-                status: 'active', // Default status for payroll processing
-                benefits: emp.benefits || [],
-                deductions: emp.deductions || [],
-                advances: emp.advances || [],
-                earnings: emp.earnings || [],
-                loans: emp.loans || []
-            }));
+                staffNo,
+                name: fullName,
+                department,
+                region,
+                project,
+                employmentType,
+                employmentTypeLabel: getEmploymentTypeLabel(employmentType),
+                basicSalary: Number(basicSalary) || 0,
+                status: 'active',
+                benefits: emp?.benefits || [],
+                deductions: emp?.deductions || [],
+                advances: emp?.advances || [],
+                earnings: emp?.earnings || [],
+                loans: emp?.loans || []
+            };
+        });
 
-            filteredEmployees.value = [...employees.value];
-            selectedEmployees.value = [];
-        }
+        filteredEmployees.value = [...employees.value];
+        selectedEmployees.value = [];
     } catch (error) {
         console.error('Error fetching employees:', error);
         showToast('error', 'Error', 'Failed to fetch employees for payroll', 3000);
@@ -304,7 +359,9 @@ const clearFilters = () => {
     selectedDepartment.value = [];
     selectedRegion.value = null;
     selectedProject.value = null;
-    selectedEmploymentTypes.value = ['regular-open', 'regular-fixed', 'intern', 'probationary']; // Reset to default
+    selectedEmploymentTypes.value = employmentTypeLocked.value
+        ? [lockedEmploymentType.value]
+        : [...DEFAULT_EMPLOYMENT_TYPES];
     employeeSearch.value = '';
     statusFilter.value = '';
     applyFilters();
@@ -315,11 +372,56 @@ const verifyPayrollData = () => {
     showPayrollData.value = true;
 };
 
+const processSpecializedPayroll = async (mode) => {
+    const handler = mode === 'casual' ? payrollService.generateCasualVoucher : payrollService.generateConsultantVoucher;
+    const paymentPeriod = formatMonthForAPI(selectedMonth.value);
+    const employeeIds = selectedEmployees.value.map((employee) => employee.id);
+
+    spinnerTitle.value =
+        mode === 'casual' ? 'Queueing casual voucher generation...' : 'Queueing consultant voucher generation...';
+    isProcessing.value = true;
+    try {
+        const response = await handler(employeeIds, paymentPeriod, {
+            recover_advances: recoverAdvances.value
+        });
+
+        const taskId = response?.data?.task_id;
+        if (taskId) {
+            handleTaskSubscription(taskId, mode);
+        } else if (!runInBackground.value) {
+            redirectToPayslips(mode);
+        }
+
+        showToast(
+            'success',
+            'Processing Started',
+            response?.data?.message ||
+                `Queued ${mode} payroll processing for ${selectedEmployees.value.length} employee(s).`,
+            6000
+        );
+
+        if (currentStep.value < totalSteps) {
+            nextStep();
+        }
+    } catch (error) {
+        const detail = error?.response?.data?.detail || error.message || `Failed to process ${mode} payroll.`;
+        showToast('error', 'Error', detail, 10000);
+    } finally {
+        isProcessing.value = false;
+    }
+};
+
 // Payroll processing
 const processPayroll = async () => {
     // Only validate that we have the minimum required data
     if (!selectedMonth.value || selectedEmployees.value.length === 0) {
         showToast('error', 'Validation Error', 'Please select a payroll month and at least one employee', 5000);
+        return;
+    }
+
+    const payrollMode = currentPayrollMode.value;
+    if (['casual', 'consultant'].includes(payrollMode)) {
+        await processSpecializedPayroll(payrollMode);
         return;
     }
 
@@ -350,24 +452,35 @@ const processPayroll = async () => {
 
         // Use the new event-driven payroll processing
         const response = await payrollService.postPayrollCommand(payload);
+        const taskId = response?.data?.task_id;
 
         if (response.data.success) {
             // Subscribe to task updates if task_id is provided
-            if (response.data.task_id) {
-                subscribeToTask(response.data.task_id);
+            if (taskId) {
+                handleTaskSubscription(taskId, payrollMode);
 
-                showToast('success', 'Task Queued', `Payroll processing queued for ${selectedEmployees.value.length} employees. You'll receive real-time updates.`, 5000);
-
-                // Move to next step or complete
-                if (currentStep.value < totalSteps) {
-                    nextStep();
-                }
+                showToast(
+                    'success',
+                    'Task Queued',
+                    `Payroll processing queued for ${selectedEmployees.value.length} employees. You'll receive real-time updates.`,
+                    5000
+                );
             } else {
                 // Fallback for synchronous processing
-                showToast('success', 'Success', `Payroll processed successfully for ${selectedEmployees.value.length} employees`, 5000);
-                if (currentStep.value < totalSteps) {
-                    nextStep();
+                showToast(
+                    'success',
+                    'Success',
+                    `Payroll processed successfully for ${selectedEmployees.value.length} employees`,
+                    5000
+                );
+                if (!runInBackground.value) {
+                    redirectToPayslips(payrollMode);
                 }
+            }
+
+            // Move to next step or complete
+            if (currentStep.value < totalSteps) {
+                nextStep();
             }
         } else {
             showToast('error', 'Error', response.data.detail || 'Failed to process payroll', 10000);
@@ -376,6 +489,62 @@ const processPayroll = async () => {
         showToast('error', 'Error', error.message || 'Failed to process payroll', 10000);
     } finally {
         isProcessing.value = false;
+    }
+};
+
+const SUCCESS_EVENTS = ['payroll_processing_completed', 'task_completed'];
+const FAILURE_EVENTS = ['task_failed', 'error'];
+
+const handleTaskSubscription = (taskId, mode) => {
+    if (!taskId) return;
+    if (activeProcessingTaskId.value && activeProcessingTaskId.value !== taskId) {
+        cleanupTaskSubscription();
+    }
+    activeProcessingTaskId.value = taskId;
+    activeProcessingMode.value = mode || 'regular';
+    subscribeToTask(taskId);
+
+    if (runInBackground.value) {
+        showToast(
+            'info',
+            'Running in background',
+            'Payroll processing will continue in the background. We will notify you when it completes.',
+            5000
+        );
+    }
+};
+
+const cleanupTaskSubscription = () => {
+    if (activeProcessingTaskId.value) {
+        unsubscribeFromTask(activeProcessingTaskId.value);
+        activeProcessingTaskId.value = null;
+    }
+};
+
+const redirectToPayslips = (mode = 'regular') => {
+    const routeMap = {
+        casual: { name: 'casualEmployees' },
+        consultant: { name: 'consultants' },
+        regular: { name: 'regular-payslips' }
+    };
+    const target = routeMap[mode] || routeMap.regular;
+    router.push(target).catch(() => {});
+};
+
+const handleProcessingEvent = (event) => {
+    if (!event || !activeProcessingTaskId.value) {
+        return;
+    }
+
+    if (SUCCESS_EVENTS.includes(event.type)) {
+        if (!runInBackground.value) {
+            redirectToPayslips(activeProcessingMode.value);
+        }
+        showToast('success', 'Payroll Completed', event.message || 'Payroll processing completed successfully.', 6000);
+        cleanupTaskSubscription();
+    } else if (FAILURE_EVENTS.includes(event.type)) {
+        showToast('error', 'Payroll Failed', event.message || 'Payroll processing failed.', 8000);
+        cleanupTaskSubscription();
     }
 };
 
@@ -401,6 +570,11 @@ const getEmploymentTypeSeverity = (type) => {
     return severityMap[type] || 'info';
 };
 
+const getEmploymentTypeLabel = (type) => {
+    if (!type) return 'Unknown';
+    return EMPLOYMENT_TYPE_LABELS[type] || type.replace(/-/g, ' ').replace(/\b\w/g, (char) => char.toUpperCase());
+};
+
 const getStatusSeverity = (status) => {
     const severityMap = {
         active: 'success',
@@ -412,6 +586,24 @@ const getStatusSeverity = (status) => {
 };
 
 // Watchers
+watch(
+    taskHistory,
+    (history) => {
+        if (!activeProcessingTaskId.value || !Array.isArray(history) || history.length === 0) {
+            return;
+        }
+        const matchingEvent = history.find(
+            (event) =>
+                event.task_id === activeProcessingTaskId.value &&
+                (SUCCESS_EVENTS.includes(event.type) || FAILURE_EVENTS.includes(event.type))
+        );
+        if (matchingEvent) {
+            handleProcessingEvent(matchingEvent);
+        }
+    },
+    { deep: true }
+);
+
 watch(
     [selectedMonth, selectedDepartment, selectedRegion, selectedProject, selectedEmploymentTypes],
     () => {
@@ -442,6 +634,10 @@ watch(
     },
     { deep: true }
 );
+
+onUnmounted(() => {
+    cleanupTaskSubscription();
+});
 
 // Export functionality
 const exportCSV = () => {
@@ -539,17 +735,17 @@ const handleApproval = (action) => {
 
                     <div class="form-group">
                         <label class="form-label">Department</label>
-                        <MultiSelect v-model="selectedDepartment" :options="departments" optionLabel="title" optionValue="id" placeholder="All Departments" class="w-full" :filter="true" filterPlaceholder="Search departments" />
+                        <MultiSelect v-model="selectedDepartment" :options="departments" optionLabel="title" optionValue="id" placeholder="All Departments" class="w-full" :filter="true" filterPlaceholder="Search departments" :disabled="disableDepartment" />
                     </div>
 
                     <div class="form-group">
                         <label class="form-label">Region</label>
-                        <Dropdown v-model="selectedRegion" :options="regions" optionLabel="name" optionValue="id" placeholder="All Regions" class="w-full" :filter="true" filterPlaceholder="Search regions" />
+                        <Dropdown v-model="selectedRegion" :options="regions" optionLabel="title" optionValue="id" placeholder="All Regions" class="w-full" :filter="true" filterPlaceholder="Search regions" :disabled="disableRegion" />
                     </div>
 
                     <div class="form-group">
                         <label class="form-label">Project</label>
-                        <Dropdown v-model="selectedProject" :options="projects" optionLabel="name" optionValue="id" placeholder="All Projects" class="w-full" :filter="true" filterPlaceholder="Search projects" />
+                        <Dropdown v-model="selectedProject" :options="projects" optionLabel="name" optionValue="id" placeholder="All Projects" class="w-full" :filter="true" filterPlaceholder="Search projects" :disabled="disableProject" />
                     </div>
 
                     <div class="form-group">
@@ -570,6 +766,7 @@ const handleApproval = (action) => {
                             class="w-full"
                             :filter="true"
                             filterPlaceholder="Search employment types"
+                            :disabled="employmentTypeLocked"
                         />
                         <small class="text-gray-500">Select which employment types to include in payroll</small>
                     </div>
@@ -678,7 +875,10 @@ const handleApproval = (action) => {
 
                         <Column field="employmentType" header="Employment Type" sortable>
                             <template #body="{ data }">
-                                <Tag :value="data.employmentType" :severity="getEmploymentTypeSeverity(data.employmentType)" />
+                                <Tag
+                                    :value="data.employmentTypeLabel"
+                                    :severity="getEmploymentTypeSeverity(data.employmentType)"
+                                />
                             </template>
                         </Column>
 
@@ -815,6 +1015,13 @@ const handleApproval = (action) => {
                     <p class="text-gray-600">Configure final settings and process payroll for selected employees</p>
                 </div>
 
+                <div class="flex items-center space-x-3 mb-6">
+                    <InputSwitch v-model="runInBackground" />
+                    <span class="text-sm text-gray-600">
+                        Run in background and notify me when payroll processing finishes.
+                    </span>
+                </div>
+
                 <div class="processing-config">
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <!-- Formula Overrides -->
@@ -936,7 +1143,14 @@ const handleApproval = (action) => {
 
                 <div class="step-actions">
                     <Button label="Previous Step" icon="pi pi-arrow-left" class="p-button-outlined" @click="prevStep" />
-                    <Button label="Process Payroll" icon="pi pi-check-circle" class="p-button-success" :disabled="!stepValidation.step4 || isProcessing" :loading="isProcessing" @click="processPayroll" />
+                    <Button
+                        :label="isProcessing ? (runInBackground ? 'Processing in background...' : 'Processing...') : 'Process Payroll'"
+                        icon="pi pi-check-circle"
+                        class="p-button-success"
+                        :disabled="!stepValidation.step4 || isProcessing"
+                        :loading="isProcessing"
+                        @click="processPayroll"
+                    />
                 </div>
             </div>
         </div>
@@ -948,7 +1162,7 @@ const handleApproval = (action) => {
                 :filters="{
                     fromdate: dateRange.fromdate,
                     todate: dateRange.todate,
-                    employement_type: selectedEmploymentTypes
+                    employment_type: selectedEmploymentTypes
                 }"
             />
         </Dialog>

@@ -261,7 +261,7 @@ export const employeeService = {
     // Claims
     async getClaims(params) {
         try {
-            const response = await axios.get(`${PAYROLL_ROOT}/claims/`, { params });
+            const response = await axios.get(`${EMPLOYEES_BASE}/claims/`, { params });
             return response.data;
         } catch (error) {
             return handleError(error);
@@ -269,7 +269,7 @@ export const employeeService = {
     },
     async getClaimsById(id) {
         try {
-            const response = await axios.get(`${PAYROLL_ROOT}/claims/${id}/`);
+            const response = await axios.get(`${EMPLOYEES_BASE}/claims/${id}/`);
             return response.data;
         } catch (error) {
             return handleError(error);
@@ -277,7 +277,7 @@ export const employeeService = {
     },
     async createClaims(lossesAndDamagesData) {
         try {
-            const response = await axios.post(`${PAYROLL_ROOT}/claims/`, lossesAndDamagesData);
+            const response = await axios.post(`${EMPLOYEES_BASE}/claims/`, lossesAndDamagesData);
             return response.data;
         } catch (error) {
             return handleError(error);
@@ -285,7 +285,7 @@ export const employeeService = {
     },
     async updateClaims(id, lossesAndDamagesData) {
         try {
-            const response = await axios.put(`${PAYROLL_ROOT}/claims/${id}/`, lossesAndDamagesData);
+            const response = await axios.put(`${EMPLOYEES_BASE}/claims/${id}/`, lossesAndDamagesData);
             return response.data;
         } catch (error) {
             return handleError(error);
@@ -293,7 +293,7 @@ export const employeeService = {
     },
     async deleteClaims(id) {
         try {
-            const response = await axios.delete(`${PAYROLL_ROOT}/claims/${id}/`);
+            const response = await axios.delete(`${EMPLOYEES_BASE}/claims/${id}/`);
             return response.data;
         } catch (error) {
             return handleError(error);
@@ -301,7 +301,7 @@ export const employeeService = {
     },
     async bulkUpdateClaims(data) {
         try {
-            const response = await axios.patch(`${PAYROLL_ROOT}/claims/bulk-update/`, data);
+            const response = await axios.patch(`${EMPLOYEES_BASE}/claims/bulk-update/`, data);
             return response.data;
         } catch (error) {
             return handleError(error);
@@ -311,7 +311,7 @@ export const employeeService = {
     // Loss & Damages
     async getLossesAndDamages(params) {
         try {
-            const response = await axios.get(`${PAYROLL_ROOT}/losses-damages/`, { params });
+            const response = await axios.get(`${EMPLOYEES_BASE}/losses-damages/`, { params });
             return response.data;
         } catch (error) {
             return handleError(error);
@@ -319,7 +319,7 @@ export const employeeService = {
     },
     async getLossesAndDamagesById(id) {
         try {
-            const response = await axios.get(`${PAYROLL_ROOT}/losses-damages/${id}/`);
+            const response = await axios.get(`${EMPLOYEES_BASE}/losses-damages/${id}/`);
             return response.data;
         } catch (error) {
             return handleError(error);
@@ -327,7 +327,7 @@ export const employeeService = {
     },
     async createLossesAndDamages(lossesAndDamagesData) {
         try {
-            const response = await axios.post(`${PAYROLL_ROOT}/losses-damages/`, lossesAndDamagesData);
+            const response = await axios.post(`${EMPLOYEES_BASE}/losses-damages/`, lossesAndDamagesData);
             return response.data;
         } catch (error) {
             return handleError(error);
@@ -335,7 +335,7 @@ export const employeeService = {
     },
     async updateLossesAndDamages(id, lossesAndDamagesData) {
         try {
-            const response = await axios.put(`${PAYROLL_ROOT}/losses-damages/${id}/`, lossesAndDamagesData);
+            const response = await axios.put(`${EMPLOYEES_BASE}/losses-damages/${id}/`, lossesAndDamagesData);
             return response.data;
         } catch (error) {
             return handleError(error);
@@ -343,7 +343,7 @@ export const employeeService = {
     },
     async deleteLossesAndDamages(id) {
         try {
-            const response = await axios.delete(`${PAYROLL_ROOT}/losses-damages/${id}/`);
+            const response = await axios.delete(`${EMPLOYEES_BASE}/losses-damages/${id}/`);
             return response.data;
         } catch (error) {
             return handleError(error);
@@ -351,7 +351,7 @@ export const employeeService = {
     },
     async bulkUpdateLossDamages(data) {
         try {
-            const response = await axios.patch(`${PAYROLL_ROOT}/losses-damages/bulk-update/`, data);
+            const response = await axios.patch(`${EMPLOYEES_BASE}/losses-damages/bulk-update/`, data);
             return response.data;
         } catch (error) {
             return handleError(error);
@@ -361,7 +361,7 @@ export const employeeService = {
     // Employee Advances
     async getAdvances(params) {
         try {
-            const response = await axios.get(`${PAYROLL_ROOT}/advances/`, { params });
+            const response = await axios.get(`${EMPLOYEES_BASE}/advances/`, { params });
             return response.data;
         } catch (error) {
             return handleError(error);
@@ -370,7 +370,7 @@ export const employeeService = {
 
     async getEmployeeAdvances(employeeId) {
         try {
-            const response = await axios.get(`${PAYROLL_ROOT}/advances/`, { params: { emp_id: employeeId } });
+            const response = await axios.get(`${EMPLOYEES_BASE}/advances/`, { params: { employee: employeeId } });
             return response.data;
         } catch (error) {
             return handleError(error);
@@ -379,7 +379,7 @@ export const employeeService = {
 
     async addEmployeeAdvance(advanceData) {
         try {
-            const response = await axios.post(`${PAYROLL_ROOT}/advances/`, advanceData);
+            const response = await axios.post(`${EMPLOYEES_BASE}/advances/`, advanceData);
             return response.data;
         } catch (error) {
             return handleError(error);
@@ -388,7 +388,7 @@ export const employeeService = {
 
     async getAdvanceById(advanceId) {
         try {
-            const response = await axios.get(`${PAYROLL_ROOT}/advances/${advanceId}/`);
+            const response = await axios.get(`${EMPLOYEES_BASE}/advances/${advanceId}/`);
             return response.data;
         } catch (error) {
             return handleError(error);
@@ -397,7 +397,7 @@ export const employeeService = {
 
     async updateEmployeeAdvance(advanceId, advanceData) {
         try {
-            const response = await axios.put(`${PAYROLL_ROOT}/advances/${advanceId}/`, advanceData);
+            const response = await axios.put(`${EMPLOYEES_BASE}/advances/${advanceId}/`, advanceData);
             return response.data;
         } catch (error) {
             return handleError(error);
@@ -406,7 +406,7 @@ export const employeeService = {
 
     async removeEmployeeAdvance(advanceId) {
         try {
-            const response = await axios.delete(`${PAYROLL_ROOT}/advances/${advanceId}/`);
+            const response = await axios.delete(`${EMPLOYEES_BASE}/advances/${advanceId}/`);
             return response.data;
         } catch (error) {
             return handleError(error);

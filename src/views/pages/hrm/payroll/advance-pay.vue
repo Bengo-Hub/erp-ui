@@ -1,5 +1,6 @@
 <script setup>
 import AdvancePay from '@/components/hrm/payroll/AdvancePay.vue';
+import { useEmployeeFilters } from '@/composables/useEmployeeFilters';
 import { useHrmFilters } from '@/composables/useHrmFilters';
 import { usePermissions } from '@/composables/usePermissions';
 import { useToast } from '@/composables/useToast';
@@ -30,6 +31,7 @@ const employees = ref([]);
 
 // Composables
 const { departments, regions, projects, loadFilters } = useHrmFilters();
+const { buildEmployeeFilterParams } = useEmployeeFilters();
 const { showToast } = useToast();
 const { hasAnyPermission } = usePermissions();
 const store = useStore();
@@ -59,24 +61,17 @@ const fetchAdvances = async () => {
         // Check if user has managerial permissions
         const hasManagerialPerms = hasAnyPermission(['change_advance', 'delete_advance', 'change_advancepay', 'delete_advancepay']);
         
-        let params = {};
-        if (fromDate.value && toDate.value) {
-            params.from_date = moment(fromDate.value).format('YYYY-MM-DD');
-            params.to_date = moment(toDate.value).format('YYYY-MM-DD');
+    const params = buildEmployeeFilterParams({
+        includeEmployeeFromStore: !hasManagerialPerms && !selectedEmployee.value?.length,
+        employee: selectedEmployee.value?.length ? selectedEmployee.value : undefined,
+        department: selectedDepartment.value,
+        region: selectedRegion.value ? [selectedRegion.value] : null,
+        project: selectedProject.value ? [selectedProject.value] : null,
+        extra: {
+            from_date: fromDate.value ? moment(fromDate.value).format('YYYY-MM-DD') : undefined,
+            to_date: toDate.value ? moment(toDate.value).format('YYYY-MM-DD') : undefined
         }
-        
-        // If user doesn't have managerial permissions, filter by their employee ID
-        if (!hasManagerialPerms && !selectedEmployee.value?.length) {
-            const employeeId = currentUser.value?.employee_id || currentUser.value?.id;
-            params.employee = employeeId;
-            console.log('fetchAdvances: Filtering for current user employee ID:', employeeId);
-        } else if (selectedEmployee.value?.length) {
-            params.employee = selectedEmployee.value;
-        }
-        
-        if (selectedDepartment.value?.length) params.department = selectedDepartment.value;
-        if (selectedRegion.value) params.region = [selectedRegion.value];
-        if (selectedProject.value) params.project = [selectedProject.value];
+    });
 
         const res = await employeeService.getAdvances(params);
 

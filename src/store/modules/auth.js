@@ -1,3 +1,4 @@
+import { employeeService } from '@/services/hrm/employeeService';
 import axios from '@/utils/axiosConfig';
 import { applyAllBranding, applyPrimeVueTheme, DEFAULT_BRANDING, resetBranding, saveThemeSettings } from '@/utils/businessBranding';
 
@@ -124,6 +125,11 @@ const actions = {
 
                 // Apply all branding (logo, colors, etc.)
                 applyAllBranding(business || {}, DEFAULT_BRANDING);
+
+                // If backend requires password change (first login or expired), signal caller
+                if (data.password_change_required) {
+                    return { success: true, password_change_required: true, reason: data.password_change_reason };
+                }
 
                 // Best-effort: resolve employee mapping if missing
                 try {
@@ -304,7 +310,7 @@ const actions = {
             const current = state.user;
             if (!current?.id || current.employee_id) return;
             // Fetch a small page and try to find the employee with this user
-            const res = await axios.get('/hrm/employees/', { params: { page_size: 200 } });
+            const res = await employeeService.getEmployees({ page_size: 200 });
             const list = res?.data?.results || res?.data || [];
             const mine = Array.isArray(list) ? list.find((e) => e?.user?.id === current.id) : null;
             if (mine?.id) {

@@ -98,7 +98,7 @@ const handleNextStep = () => {
 
             <div class="form-group">
                 <label class="form-label">Region</label>
-                <Dropdown :model-value="selectedRegion" :options="regions" optionLabel="name" optionValue="id" placeholder="All Regions" class="w-full" :filter="true" filterPlaceholder="Search regions" @change="handleRegionChange" />
+                <Dropdown :model-value="selectedRegion" :options="regions" optionLabel="title" optionValue="id" placeholder="All Regions" class="w-full" :filter="true" filterPlaceholder="Search regions" @change="handleRegionChange" />
             </div>
 
             <div class="form-group">

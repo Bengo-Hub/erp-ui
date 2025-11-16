@@ -4,6 +4,7 @@ import Spinner from '@/components/ui/Spinner.vue';
 import { useHrmFilters } from '@/composables/useHrmFilters';
 import { useToast } from '@/composables/useToast';
 import { payrollService } from '@/services/hrm/payrollService';
+import { FilterMatchMode } from '@primevue/core/api';
 import moment from 'moment';
 import { computed, onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router'; // Import Vue Router
@@ -22,8 +23,15 @@ const selectedEmployee = ref([]);
 const selectedDepartment = ref([]);
 const selectedRegion = ref(null);
 const selectedProject = ref(null);
+const fromDate = ref(null);
+const toDate = ref(null);
 const payslips = ref([]);
 const filteredPayslips = ref([]);
+const allPayslips = ref([]);
+const payslipstoPrint = ref([]);
+const filters = ref({
+    global: { value: null, matchMode: FilterMatchMode.CONTAINS }
+});
 const isNodeExpanded = ref(false);
 
 // Composables
@@ -108,32 +116,34 @@ const statusTabs = computed(() => [
 
 // Function to count payslips by status
 const countStatus = (status) => {
-    if (status === 'all') {
-        return payslips.value.payslips.length;
-    } else {
-        return payslips.value.payslips.filter((payslip) => payslip.approval_status === status).length;
+    if (!Array.isArray(allPayslips.value)) {
+        return 0;
     }
+    if (status === 'all') {
+        return allPayslips.value.length;
+    }
+    return allPayslips.value.filter((payslip) => payslip.approval_status === status).length;
 };
 
 // Filter payslips by the selected status
 const filterByStatus = (status) => {
     if (status === 'all') {
-        payslips.value = statusfilteredPayslips.value.length;
-    } else {
-        payslips.value = statusfilteredPayslips.value.filter((payslip) => payslip.children.filter((item) => item.approval_status === status));
+        payslips.value = [...allPayslips.value];
+        return;
     }
+    payslips.value = allPayslips.value.filter((payslip) => payslip.approval_status === status);
 };
 
 // Fetch Data
 const fetchEmployees = () => {
     const params = {
         department: selectedDepartment.value.length > 0 ? selectedDepartment.value : null,
-        region: selectedRegion.value ? selectedRegion.value : null,
-        project: selectedProject.value ? selectedProject.value : null,
-        employment_type: 'consultant'
+        region: selectedRegion.value || null,
+        project: selectedProject.value || null,
+        employment_type: ['consultant']
     };
     payrollService
-        .getEmployees(params)
+        .getPayrollEmployees(params)
         .then((response) => {
             employees.value = response.data || [];
         })
@@ -149,15 +159,19 @@ const fetchEmployees = () => {
 const fetchPayslips = () => {
     const params = {
         department: selectedDepartment.value.length > 0 ? selectedDepartment.value : null,
-        region: selectedRegion.value ? selectedRegion.value : null,
-        project: selectedProject.value ? selectedProject.value : null,
-        employment_type: 'consultant'
+        region: selectedRegion.value || null,
+        project: selectedProject.value || null,
+        employment_type: ['consultant']
     };
     payrollService
         .listPayroll(params)
         .then((response) => {
-            payslips.value = response.data || [];
-            filteredPayslips.value = [...payslips.value];
+            const data = response.data || [];
+            const flattenedPayslips = data.flatMap((group) => group?.payslips || []);
+            allPayslips.value = flattenedPayslips;
+            payslips.value = [...flattenedPayslips];
+            filteredPayslips.value = [];
+            payslipstoPrint.value = [...flattenedPayslips];
         })
         .catch((error) => {
             showToast('error', 'Error', error.toString(), 3000);
@@ -260,20 +274,26 @@ const rerunPayslip = async () => {
         payment_period: moment(new Date(payslipInfo.value.payroll_period)).format('YYYY-MM'),
         employee_ids: [payslipInfo.value.empid],
         recover_advances: true,
-        command: 'rerun',
-        onSuccess: (data) => {
-            showpayslipDialog.value = false;
-            isLoading.value = false;
-            fetchPayslips();
-        },
-        onError: (error) => {
-            isLoading.value = false;
-            showToast('error', error.summary, error.detail, 10000);
-        }
+        command: 'rerun'
     };
     spinner_title.value = `Please wait! Re-running payslip...!`;
     isLoading.value = true;
-    await processPayrollRequest(payload);
+    try {
+        const response = await payrollService.postPayrollCommand(payload);
+        if (response.data?.success) {
+            showpayslipDialog.value = false;
+            fetchPayslips();
+            showToast('success', 'Success', 'Payslip rerun has been queued successfully.', 5000);
+        } else {
+            const detail = response.data?.detail || 'Failed to rerun payslip.';
+            showToast('error', 'Error', detail, 10000);
+        }
+    } catch (error) {
+        const detail = error.response?.data?.detail || error.message || 'Failed to rerun payslip.';
+        showToast('error', 'Error', detail, 10000);
+    } finally {
+        isLoading.value = false;
+    }
 };
 
 // Expand node on interaction
@@ -368,7 +388,7 @@ const toggleProcessDropdown = () => {
 };
 
 // Remove local formatCurrency since we're importing it
-import { formatCurrency, formatDate } from '@/utils/formatters';
+import { formatCurrency } from '@/utils/formatters';
 // const formatCurrency = (data) => {
 //     return `KES ${data.toLocaleString()}`;
 // };

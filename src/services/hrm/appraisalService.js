@@ -59,8 +59,7 @@ export const appraisalService = {
     updateGoalProgressEntry: (id, data) => axios.put(`${baseURL}/goal-progress/${id}/`, data),
     deleteGoalProgress: (id) => axios.delete(`${baseURL}/goal-progress/${id}/`),
 
-    // Employees for appraisals
-    getAppraisalEmployees: () => axios.get('/hrm/employees/'),
+    // Employees for appraisals - use centralized employeeService in callers
 
     // Analytics and Reports
     getAppraisalAnalytics: (params) => axios.get(`${baseURL}/analytics/`, { params }),

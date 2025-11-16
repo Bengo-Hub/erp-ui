@@ -1,4 +1,5 @@
 import { appraisalService } from '@/services/hrm/appraisalService';
+import { employeeService } from '@/services/hrm/employeeService';
 import { computed, ref } from 'vue';
 
 export function useAppraisalData() {
@@ -45,7 +46,12 @@ export function useAppraisalData() {
     const loadBasics = async () => {
         loading.value = true;
         try {
-            const [cyclesRes, templatesRes, questionsRes, employeesRes] = await Promise.all([appraisalService.getCycles(), appraisalService.getTemplates(), appraisalService.getQuestions(), appraisalService.getAppraisalEmployees()]);
+            const [cyclesRes, templatesRes, questionsRes, employeesRes] = await Promise.all([
+                appraisalService.getCycles(),
+                appraisalService.getTemplates(),
+                appraisalService.getQuestions(),
+                employeeService.getEmployees()
+            ]);
 
             cycles.value = cyclesRes.data?.results || cyclesRes.data || [];
             templates.value = templatesRes.data?.results || templatesRes.data || [];

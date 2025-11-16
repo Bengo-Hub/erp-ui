@@ -89,6 +89,11 @@ const handleLogin = async () => {
             // Save email for 2FA step
             localStorage.setItem('lastLoginEmail', email);
         } else if (response && response.success) {
+            // Force password change flow
+            if (response.password_change_required) {
+                router.push('/users/account');
+                return;
+            }
             // Login successful (store hydrated by authService.login)
             localStorage.setItem('lastLoginEmail', email);
 

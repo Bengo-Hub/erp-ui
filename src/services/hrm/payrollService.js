@@ -1,23 +1,26 @@
 import axios from '@/utils/axiosConfig';
 
 const V1_HRM_BASE = '/hrm';
+const V1_PAYROLL_BASE = `${V1_HRM_BASE}/payroll`;
 
 export const payrollService = {
     // Payroll listing and actions
     listPayroll(params = {}) {
-        return axios.get(`${V1_HRM_BASE}/payroll/`, { params });
+        // Fetch processed payroll records grouped by period
+        return axios.get(`${V1_PAYROLL_BASE}/`, { params });
     },
-    getEmployees(params = {}) {
-        return axios.get(`${V1_HRM_BASE}/payroll/employees/`, { params });
+    getPayrollEmployees(params = {}) {
+        // Backend exposes payroll-ready employees at /hrm/payroll/employees/
+        return axios.get(`${V1_PAYROLL_BASE}/employees/`, { params });
     },
     getPayslip(id) {
-        return axios.get(`${V1_HRM_BASE}/payroll/${id}/`);
+        return axios.get(`${V1_PAYROLL_BASE}/${id}/`);
     },
     deletePayrollRecord(id) {
-        return axios.delete(`${V1_HRM_BASE}/payroll/${id}/`);
+        return axios.delete(`${V1_PAYROLL_BASE}/${id}/`);
     },
     postPayrollCommand(data) {
-        return axios.post(`${V1_HRM_BASE}/payroll/`, data);
+        return axios.post(`${V1_PAYROLL_BASE}/`, data);
     },
 
     // Payroll audits
@@ -148,19 +151,17 @@ export const payrollService = {
     },
 
     // Voucher Operations
-    generateCasualVoucher(employeeId, paymentPeriod, data = {}) {
-        return axios.post(`${V1_HRM_BASE}/payroll/generate_casual_voucher/`, {
-            employee_id: employeeId,
-            payment_period: paymentPeriod,
-            ...data
-        });
+    generateCasualVoucher(employeeIds, paymentPeriod, data = {}) {
+        const payload = Array.isArray(employeeIds)
+            ? { employee_ids: employeeIds, payment_period: paymentPeriod, ...data }
+            : { employee_id: employeeIds, payment_period: paymentPeriod, ...data };
+        return axios.post(`${V1_PAYROLL_BASE}/generate_casual_voucher/`, payload);
     },
-    generateConsultantVoucher(employeeId, paymentPeriod, data = {}) {
-        return axios.post(`${V1_HRM_BASE}/payroll/generate_consultant_voucher/`, {
-            employee_id: employeeId,
-            payment_period: paymentPeriod,
-            ...data
-        });
+    generateConsultantVoucher(employeeIds, paymentPeriod, data = {}) {
+        const payload = Array.isArray(employeeIds)
+            ? { employee_ids: employeeIds, payment_period: paymentPeriod, ...data }
+            : { employee_id: employeeIds, payment_period: paymentPeriod, ...data };
+        return axios.post(`${V1_PAYROLL_BASE}/generate_consultant_voucher/`, payload);
     },
     // Note: voucher-status/approve-voucher endpoints are not defined in backend; use approvals endpoints instead where applicable.
 
@@ -168,6 +169,7 @@ export const payrollService = {
     processPayrollWithFormulas(data) {
         return axios.post(`${V1_HRM_BASE}/payroll/process-with-formulas/`, data);
     },
+
     processBatchPayrollWithFormulas(data) {
         return axios.post(`${V1_HRM_BASE}/payroll/process-batch-with-formulas/`, data);
     },

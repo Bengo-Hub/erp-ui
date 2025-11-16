@@ -5,7 +5,6 @@ import EarningsTable from '@/components/hrm/payroll/parts/EarningsTable.vue';
 import LoansTable from '@/components/hrm/payroll/parts/LoansTable.vue';
 
 import { employeeService } from '@/services/hrm/employeeService';
-import axios from '@/utils/axiosConfig';
 import { useToast } from 'primevue/usetoast';
 import { onMounted, ref, watch } from 'vue';
 
@@ -34,26 +33,22 @@ const items = ref([
     {
         route: 'deductions',
         label: 'Deductions',
-        icon: 'pi pi-minus',
-        endpoint: `/hrm/employees/deductions/?emp_id=`
+        icon: 'pi pi-minus'
     },
     {
         route: 'earnings',
         label: 'Earnings',
-        icon: 'pi pi-plus',
-        endpoint: '/hrm/employees/earnings/?emp_id='
+        icon: 'pi pi-plus'
     },
     {
         route: 'benefits',
         label: 'Benefits',
-        icon: 'pi pi-receipt',
-        endpoint: '/hrm/employees/benefits/?emp_id='
+        icon: 'pi pi-receipt'
     },
     {
         route: 'loans',
         label: 'Loans',
-        icon: 'pi pi-money-bill',
-        endpoint: '/hrm/employees/loans/?emp_id='
+        icon: 'pi pi-money-bill'
     }
 ]);
 const totalRecords = ref(0);
@@ -92,12 +87,29 @@ const getData = () => {
     }
 };
 
-const fetchData = async (endpoint) => {
+const fetchDataForTab = async (tabRoute) => {
     loading.value = true;
     try {
-        const response = await axios.get(endpoint);
-        data.value = response.data?.results || response.data || [];
-        totalRecords.value = response.data?.count ?? data.value.length ?? 0;
+        let response;
+        const params = { emp_id: selectedEmployee.value };
+        switch (tabRoute) {
+            case 'deductions':
+                response = await employeeService.listEmployeeDeductions(params);
+                break;
+            case 'earnings':
+                response = await employeeService.listEmployeeEarnings(params);
+                break;
+            case 'benefits':
+                response = await employeeService.listEmployeeBenefits(params);
+                break;
+            case 'loans':
+                response = await employeeService.listEmployeeLoans(params);
+                break;
+            default:
+                response = { data: [] };
+        }
+        data.value = response?.data?.results || response?.data || [];
+        totalRecords.value = response?.data?.count ?? data.value.length ?? 0;
     } catch (error) {
         toast.add({
             severity: 'error',
@@ -140,9 +152,7 @@ const selectTab = (tabRoute) => {
 
     // Fallback to fetching data if no parent data available
     const selectedTab = items.value.find((tab) => tab.route === tabRoute);
-    if (selectedTab) {
-        fetchData(selectedTab.endpoint + selectedEmployee.value);
-    }
+    if (selectedTab) fetchDataForTab(selectedTab.route);
 };
 
 const fetchEmployees = () => {

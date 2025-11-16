@@ -1,7 +1,9 @@
 <script setup>
 import Spinner from '@/components/ui/Spinner.vue';
+import { useEmployeeFilters } from '@/composables/useEmployeeFilters';
 import { useHrmFilters } from '@/composables/useHrmFilters';
 import { useToast } from '@/composables/useToast';
+import { employeeService } from '@/services/hrm/employeeService';
 import { payrollService } from '@/services/hrm/payrollService';
 import { formatDate, formatMonthForAPI, getMonthDateRange } from '@/utils/formatters';
 import { FilterMatchMode } from '@primevue/core/api';
@@ -31,6 +33,7 @@ const filters = ref({
 
 // Composables
 const { departments, regions, projects, loadFilters } = useHrmFilters();
+const { buildEmployeeFilterParams } = useEmployeeFilters();
 
 // Lifecycle
 onMounted(() => {
@@ -51,15 +54,18 @@ const fetchpaySlips = async () => {
         // Get the date range for the selected month (first and last day)
         const dateRange = getMonthDateRange(selectedMonth.value);
 
-        const params = {
-            payment_period: dateRange.fromdate, // Use the first day of the month for payment_period
-            department: selectedDepartment.value.length > 0 ? selectedDepartment.value : null,
-            region: selectedRegion.value ? [selectedRegion.value] : null,
-            project: selectedProject.value ? [selectedProject.value] : null
-        };
+    const params = buildEmployeeFilterParams({
+        includeEmployeeFromStore: true,
+        department: selectedDepartment.value,
+        region: selectedRegion.value ? [selectedRegion.value] : null,
+        project: selectedProject.value ? [selectedProject.value] : null,
+        extra: {
+            payment_period: dateRange.fromdate
+        }
+    });
 
         console.log('fetchpaySlips: API params', params);
-        const response = await payrollService.getEmployees(params);
+        const response = await employeeService.getEmployees(params);
         console.log('fetchpaySlips: API response', response);
         console.log('fetchpaySlips: response.data', response.data);
 
