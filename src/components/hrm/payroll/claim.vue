@@ -1,4 +1,5 @@
 <script setup>
+import { payrollService } from '@/services/hrm/payrollService';
 import { usePrimeVue } from 'primevue/config';
 import { useToast } from 'primevue/usetoast';
 import { computed, onMounted, ref, watch } from 'vue';
@@ -154,12 +155,12 @@ const submitClaim = async () => {
         const url = props.editmode ? `v1/hrm/payroll/claims/${props.id}/` : 'v1/hrm/payroll/claims/';
 
         const response = props.editmode
-            ? await employeeService.updateClaim(props.id, formData, {
+            ? await payrollService.updateClaim(props.id, formData, {
                   headers: {
                       'Content-Type': 'multipart/form-data'
                   }
               })
-            : await employeeService.createClaim(formData, {
+            : await payrollService.createClaim(formData, {
                   headers: {
                       'Content-Type': 'multipart/form-data'
                   }
@@ -201,8 +202,8 @@ const fetchClaimData = async () => {
     if (props.editmode && props.id) {
         isLoading.value = true;
         try {
-            const response = await employeeService.getClaim(props.id);
-            const claim = response.data;
+            const response = await payrollService.getClaim(props.id);
+            const claim = response?.data;
             selectedEmployee.value = claim.employee.id;
             expenseCategory.value = claim.category;
             application_date.value = new Date(claim.application_date);

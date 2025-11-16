@@ -1,5 +1,5 @@
 <script setup>
-import { employeeService } from '@/services/hrm/employeeService';
+import { payrollService } from '@/services/hrm/payrollService';
 import { useToast } from 'primevue/usetoast';
 import { computed, onMounted, ref, watch } from 'vue';
 import { formatCurrency } from './payslipGenerator';
@@ -102,8 +102,8 @@ onMounted(() => {
 
 async function loadExistingRecord() {
     try {
-        const response = await employeeService.getLossesAndDamagesById(props.id);
-        loss_damage.value = response;
+        const response = await payrollService.getLossDamage(props.id);
+        loss_damage.value = response?.data;
 
         // Populate form fields
         selectedEmployee.value = loss_damage.value.employee.id;
@@ -181,7 +181,7 @@ async function saveDetails() {
         };
 
         if (isEditMode.value) {
-            await employeeService.updateLossesAndDamages(props.id, payload);
+            await payrollService.updateLossDamage(props.id, payload);
             toast.add({
                 severity: 'success',
                 summary: 'Success',
@@ -189,7 +189,7 @@ async function saveDetails() {
                 life: 3000
             });
         } else {
-            await employeeService.createLossesAndDamages(payload);
+            await payrollService.createLossDamage(payload);
             toast.add({
                 severity: 'success',
                 summary: 'Success',

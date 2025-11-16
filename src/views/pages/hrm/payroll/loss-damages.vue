@@ -3,6 +3,7 @@ import { useHrmFilters } from '@/composables/useHrmFilters';
 import { usePermissions } from '@/composables/usePermissions';
 import { useToast } from '@/composables/useToast';
 import { employeeService } from '@/services/hrm/employeeService';
+import { payrollService } from '@/services/hrm/payrollService';
 import { formatCurrency } from '@/utils/formatters';
 import moment from 'moment';
 import { computed, onMounted, ref } from 'vue';
@@ -138,8 +139,8 @@ const fetchLossesAndDamages = async () => {
             console.log('fetchLossesAndDamages: Filtering for current user employee ID:', employeeId);
         }
 
-        const res = await employeeService.getLossesAndDamages(params);
-        let data = res.data?.results || res.data || [];
+        const response = await payrollService.listLossDamages(params);
+        const data = response?.data?.results || response?.data || [];
         console.log(data);
 
         lossesAndDamages.value = formatAdvanceData(data);
@@ -309,7 +310,7 @@ const bulkUpdateLossDamages = async (action, update_fields = {}) => {
     isLoading.value = true;
     try {
         const ids = selectedNodes.value.map((node) => node.id || node.data?.id).filter(Boolean);
-        await employeeService.bulkUpdateLossDamages(ids, action, update_fields);
+        await payrollService.bulkUpdateLossDamages({ ids, action, update_fields });
         showToast('success', 'Success', `${action.charAt(0).toUpperCase() + action.slice(1)} action completed.`, 3000);
         fetchLossesAndDamages();
     } catch (error) {

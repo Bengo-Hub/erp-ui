@@ -7,20 +7,58 @@ export const payrollService = {
     // Payroll listing and actions
     listPayroll(params = {}) {
         // Fetch processed payroll records grouped by period
-        return axios.get(`${V1_PAYROLL_BASE}/`, { params });
+        return axios.get(`${V1_PAYROLL_BASE}/payroll/`, { params });
     },
     getPayrollEmployees(params = {}) {
         // Backend exposes payroll-ready employees at /hrm/payroll/employees/
-        return axios.get(`${V1_PAYROLL_BASE}/employees/`, { params });
+        return axios.get(`${V1_PAYROLL_BASE}/payroll/employees/`, { params });
     },
     getPayslip(id) {
-        return axios.get(`${V1_PAYROLL_BASE}/${id}/`);
+        return axios.get(`${V1_PAYROLL_BASE}/payroll/${id}/`);
     },
     deletePayrollRecord(id) {
-        return axios.delete(`${V1_PAYROLL_BASE}/${id}/`);
+        return axios.delete(`${V1_PAYROLL_BASE}/payroll/${id}/`);
     },
     postPayrollCommand(data) {
-        return axios.post(`${V1_PAYROLL_BASE}/`, data);
+        return axios.post(`${V1_PAYROLL_BASE}/payroll/`, data);
+    },
+    // Payroll advances
+    listAdvances(params = {}) {
+        return axios.get(`${V1_PAYROLL_BASE}/advances/`, { params });
+    },
+    getAdvance(id) {
+        return axios.get(`${V1_PAYROLL_BASE}/advances/${id}/`);
+    },
+    createAdvance(data) {
+        return axios.post(`${V1_PAYROLL_BASE}/advances/`, data);
+    },
+    updateAdvance(id, data) {
+        return axios.put(`${V1_PAYROLL_BASE}/advances/${id}/`, data);
+    },
+    deleteAdvance(id) {
+        return axios.delete(`${V1_PAYROLL_BASE}/advances/${id}/`);
+    },
+    bulkUpdateAdvances(payload) {
+        return axios.patch(`${V1_PAYROLL_BASE}/advances/bulk-update/`, payload);
+    },
+    // Losses and damages
+    listLossDamages(params = {}) {
+        return axios.get(`${V1_PAYROLL_BASE}/losses-damages/`, { params });
+    },
+    getLossDamage(id) {
+        return axios.get(`${V1_PAYROLL_BASE}/losses-damages/${id}/`);
+    },
+    createLossDamage(data) {
+        return axios.post(`${V1_PAYROLL_BASE}/losses-damages/`, data);
+    },
+    updateLossDamage(id, data) {
+        return axios.put(`${V1_PAYROLL_BASE}/losses-damages/${id}/`, data);
+    },
+    deleteLossDamage(id) {
+        return axios.delete(`${V1_PAYROLL_BASE}/losses-damages/${id}/`);
+    },
+    bulkUpdateLossDamages(payload) {
+        return axios.patch(`${V1_PAYROLL_BASE}/losses-damages/bulk-update/`, payload);
     },
 
     // Payroll audits
@@ -215,6 +253,15 @@ export const payrollService = {
     // Claims
     listClaims(params = {}) {
         return axios.get(`${V1_HRM_BASE}/payroll/claims/`, { params });
+    },
+    getClaim(id) {
+        return axios.get(`${V1_HRM_BASE}/payroll/claims/${id}/`);
+    },
+    createClaim(data, config = {}) {
+        return axios.post(`${V1_HRM_BASE}/payroll/claims/`, data, config);
+    },
+    updateClaim(id, data, config = {}) {
+        return axios.put(`${V1_HRM_BASE}/payroll/claims/${id}/`, data, config);
     },
     deleteClaim(id) {
         return axios.delete(`${V1_HRM_BASE}/payroll/claims/${id}/`);

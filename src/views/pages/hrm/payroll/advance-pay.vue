@@ -5,6 +5,7 @@ import { useHrmFilters } from '@/composables/useHrmFilters';
 import { usePermissions } from '@/composables/usePermissions';
 import { useToast } from '@/composables/useToast';
 import { employeeService } from '@/services/hrm/employeeService';
+import { payrollService } from '@/services/hrm/payrollService';
 import { formatCurrency } from '@/utils/formatters';
 import moment from 'moment';
 import { computed, onMounted, ref } from 'vue';
@@ -73,11 +74,12 @@ const fetchAdvances = async () => {
         }
     });
 
-        const res = await employeeService.getAdvances(params);
+        const response = await payrollService.listAdvances(params);
+        const results = response?.data?.results || response?.data || [];
 
         // Group advances by month
         const groupedAdvances = {};
-        res.results.forEach((advance) => {
+        results.forEach((advance) => {
             const monthYear = moment(advance.issue_date).format('MMMM YYYY');
             if (!groupedAdvances[monthYear]) {
                 groupedAdvances[monthYear] = [];

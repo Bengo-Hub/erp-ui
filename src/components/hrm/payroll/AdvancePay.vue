@@ -1,5 +1,5 @@
 <script setup>
-import { employeeService } from '@/services/hrm/employeeService';
+import { payrollService } from '@/services/hrm/payrollService';
 import { useToast } from 'primevue/usetoast';
 import { computed, onMounted, ref, watch } from 'vue';
 import { formatCurrency } from './payslipGenerator';
@@ -14,7 +14,8 @@ const installments = ref([
     { label: '2 Installments', installment: 2 },
     { label: '3 Installments', installment: 3 },
     { label: '4 Installments', installment: 4 },
-    { label: '5 Installments', installment: 5 }
+    { label: '5 Installments', installment: 5 },
+    { label: '6 Installments', installment: 6 },
 ]);
 
 // Form data
@@ -121,8 +122,8 @@ const fetchAdvanceDetails = async () => {
 
     isLoading.value = true;
     try {
-        const response = await employeeService.getAdvanceById(props.advanceId);
-        advance.value = response;
+        const response = await payrollService.getAdvance(props.advanceId);
+        advance.value = response?.data;
 
         // Set form values from existing advance
         selectedEmployee.value = advance.value.employee.id;
@@ -173,7 +174,7 @@ const saveNewAdvance = async () => {
         };
 
         // Wait for the API call to complete before closing
-        await employeeService.addEmployeeAdvance(payload);
+        await payrollService.createAdvance(payload);
 
         toast.add({
             severity: 'success',
@@ -219,7 +220,7 @@ const updateDetails = async () => {
         };
 
         // Wait for the API call to complete before closing
-        await employeeService.updateEmployeeAdvance(props.advanceId, payload);
+        await payrollService.updateAdvance(props.advanceId, payload);
 
         toast.add({
             severity: 'success',
