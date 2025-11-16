@@ -15,7 +15,7 @@ export const employeeService = {
     // Employee status
     async getEmployeeStatus(params = {}) {
         try {
-            const response = await axios.get(`${EMPLOYEES_BASE}/employee-status/`, { params });
+            const response = await axios.get(`${V1_HRM_BASE}/employee-status/`, { params });
             return response;
         } catch (error) {
             return handleError(error);
@@ -68,10 +68,49 @@ export const employeeService = {
         }
     },
 
+    // Employee Bank Accounts
+    async listEmployeeBankAccounts(employeeId) {
+        try {
+            const response = await axios.get(`${V1_HRM_BASE}/bank-accounts/`, { params: { emp_id: employeeId } });
+            return response.data;
+        } catch (error) {
+            return handleError(error);
+        }
+    },
+
+    async addEmployeeBankAccount(employeeId, data) {
+        try {
+            const payload = { ...data, employee: employeeId };
+            const response = await axios.post(`${V1_HRM_BASE}/bank-accounts/`, payload);
+            return response.data;
+        } catch (error) {
+            return handleError(error);
+        }
+    },
+
+    async updateEmployeeBankAccount(employeeId, bankAccountId, data) {
+        try {
+            const payload = { ...data, employee: employeeId };
+            const response = await axios.put(`${V1_HRM_BASE}/bank-accounts/${bankAccountId}/`, payload);
+            return response.data;
+        } catch (error) {
+            return handleError(error);
+        }
+    },
+
+    async removeEmployeeBankAccount(employeeId, bankAccountId) {
+        try {
+            const response = await axios.delete(`${V1_HRM_BASE}/bank-accounts/${bankAccountId}/`);
+            return response.data;
+        } catch (error) {
+            return handleError(error);
+        }
+    },
+
     // Employee Salary Details
     async getEmployeeSalaryDetails(employeeId) {
         try {
-            const response = await axios.get(`${EMPLOYEES_BASE}/salary-details/`, { params: { emp_id: employeeId } });
+            const response = await axios.get(`${V1_HRM_BASE}/salary-details/`, { params: { emp_id: employeeId } });
             return response.data;
         } catch (error) {
             return handleError(error);
@@ -80,14 +119,14 @@ export const employeeService = {
 
     // Salary details listing for tables/filters
     listSalaryDetails(params = {}) {
-        return axios.get(`${EMPLOYEES_BASE}/salary-details/`, { params });
+        return axios.get(`${V1_HRM_BASE}/salary-details/`, { params });
     },
 
     async updateEmployeeSalary(employeeId, salaryData) {
         try {
             // Attempt upsert via salary-details endpoint (expects serializer to handle create/update)
             const payload = { ...salaryData, employee: employeeId };
-            const response = await axios.post(`${EMPLOYEES_BASE}/salary-details/`, payload);
+            const response = await axios.post(`${V1_HRM_BASE}/salary-details/`, payload);
             return response.data;
         } catch (error) {
             return handleError(error);
@@ -97,7 +136,7 @@ export const employeeService = {
     // Employee Benefits
     async getEmployeeBenefits(employeeId) {
         try {
-            const response = await axios.get(`${EMPLOYEES_BASE}/benefits/`, { params: { emp_id: employeeId } });
+            const response = await axios.get(`${V1_HRM_BASE}/benefits/`, { params: { emp_id: employeeId } });
             return response.data;
         } catch (error) {
             return handleError(error);
@@ -106,30 +145,30 @@ export const employeeService = {
 
     // Generic list endpoints with flexible filters
     listEmployeeEarnings(params = {}) {
-        return axios.get(`${EMPLOYEES_BASE}/earnings/`, { params });
+        return axios.get(`${V1_HRM_BASE}/earnings/`, { params });
     },
     listEmployeeDeductions(params = {}) {
-        return axios.get(`${EMPLOYEES_BASE}/deductions/`, { params });
+        return axios.get(`${V1_HRM_BASE}/deductions/`, { params });
     },
     listEmployeeBenefits(params = {}) {
-        return axios.get(`${EMPLOYEES_BASE}/benefits/`, { params });
+        return axios.get(`${V1_HRM_BASE}/benefits/`, { params });
     },
     listEmployeeLoans(params = {}) {
-        return axios.get(`${EMPLOYEES_BASE}/loans/`, { params });
+        return axios.get(`${V1_HRM_BASE}/loans/`, { params });
     },
 
     // Bulk upserts for tables
     bulkUpsertEarnings(records = []) {
-        return axios.post(`${EMPLOYEES_BASE}/earnings/`, records);
+        return axios.post(`${V1_HRM_BASE}/earnings/`, records);
     },
     bulkUpsertDeductions(records = []) {
-        return axios.post(`${EMPLOYEES_BASE}/deductions/`, records);
+        return axios.post(`${V1_HRM_BASE}/deductions/`, records);
     },
     bulkUpsertBenefits(records = []) {
-        return axios.post(`${EMPLOYEES_BASE}/benefits/`, records);
+        return axios.post(`${V1_HRM_BASE}/benefits/`, records);
     },
     bulkUpsertLoans(records = []) {
-        return axios.post(`${EMPLOYEES_BASE}/loans/`, records);
+        return axios.post(`${V1_HRM_BASE}/loans/`, records);
     },
 
     // ESS (Employee Self-Service) Management
@@ -549,6 +588,15 @@ export const employeeService = {
         }
     },
 
+    async renewContractsBatch(batchData) {
+        try {
+            const response = await axios.post(`${V1_HRM_BASE}/contracts/renew/`, batchData);
+            return response.data;
+        } catch (error) {
+            return handleError(error);
+        }
+    },
+
     async linkContract(contractId, linkData) {
         try {
             const response = await axios.post(`${V1_HRM_BASE}/contracts/${contractId}/link/`, linkData);
@@ -607,7 +655,7 @@ export const employeeService = {
     // Employee Next of Kin
     async getEmployeeNextOfKins(employeeId) {
         try {
-            const response = await axios.get(`${EMPLOYEES_BASE}/next-of-kin/`, { params: { emp_id: employeeId } });
+            const response = await axios.get(`${V1_HRM_BASE}/next-of-kin/`, { params: { emp_id: employeeId } });
             return response.data;
         } catch (error) {
             return handleError(error);
@@ -616,7 +664,7 @@ export const employeeService = {
 
     async addEmployeeNextOfKin(employeeId, kinData) {
         try {
-            const response = await axios.post(`${EMPLOYEES_BASE}/next-of-kin/`, { ...kinData, employee: employeeId });
+            const response = await axios.post(`${V1_HRM_BASE}/next-of-kin/`, { ...kinData, employee: employeeId });
             return response.data;
         } catch (error) {
             return handleError(error);
@@ -625,7 +673,7 @@ export const employeeService = {
 
     async updateEmployeeNextOfKin(employeeId, kinId, kinData) {
         try {
-            const response = await axios.put(`${EMPLOYEES_BASE}/next-of-kin/${kinId}/`, { ...kinData, employee: employeeId });
+            const response = await axios.put(`${V1_HRM_BASE}/next-of-kin/${kinId}/`, { ...kinData, employee: employeeId });
             return response.data;
         } catch (error) {
             return handleError(error);
@@ -634,7 +682,7 @@ export const employeeService = {
 
     async removeEmployeeNextOfKin(employeeId, kinId) {
         try {
-            const response = await axios.delete(`${EMPLOYEES_BASE}/next-of-kin/${kinId}/`);
+            const response = await axios.delete(`${V1_HRM_BASE}/next-of-kin/${kinId}/`);
             return response.data;
         } catch (error) {
             return handleError(error);
@@ -681,7 +729,7 @@ export const employeeService = {
     // HR Details
     async getEmployeeHRDetails(employeeId) {
         try {
-            const response = await axios.get(`${EMPLOYEES_BASE}/hr-details/`, { params: { emp_id: employeeId } });
+            const response = await axios.get(`${V1_HRM_BASE}/hr-details/`, { params: { emp_id: employeeId } });
             return response.data;
         } catch (error) {
             return handleError(error);
@@ -690,7 +738,7 @@ export const employeeService = {
 
     async updateEmployeeHRDetails(employeeId, hrDetailsData) {
         try {
-            const response = await axios.post(`${EMPLOYEES_BASE}/hr-details/`, { ...hrDetailsData, employee: employeeId });
+            const response = await axios.post(`${V1_HRM_BASE}/hr-details/`, { ...hrDetailsData, employee: employeeId });
             return response.data;
         } catch (error) {
             return handleError(error);
@@ -732,7 +780,7 @@ export const employeeService = {
             formData.append('file', importData.file);
             formData.append('mapping', JSON.stringify(importData.mapping));
 
-            const response = await axios.post(`${EMPLOYEES_BASE}/upload-employee-data/`, formData, {
+            const response = await axios.post(`${V1_HRM_BASE}/upload-employee-data/`, formData, {
                 headers: {
                     'Content-Type': 'multipart/form-data'
                 }

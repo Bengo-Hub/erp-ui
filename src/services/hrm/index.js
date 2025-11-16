@@ -35,12 +35,12 @@ export const HRM_ENDPOINTS = {
     ANALYTICS: '/hrm/analytics',
 
     // Specific endpoints
-    EMPLOYEE_STATUS: '/hrm/employees/employee-status',
-    SALARY_DETAILS: '/hrm/employees/salary-details',
-    BENEFITS: '/hrm/employees/benefits',
-    EARNINGS: '/hrm/employees/earnings',
-    DEDUCTIONS: '/hrm/employees/deductions',
-    CONTRACTS: '/hrm/employees/contracts',
+    EMPLOYEE_STATUS: '/hrm/employee-status',
+    SALARY_DETAILS: '/hrm/salary-details',
+    BENEFITS: '/hrm/benefits',
+    EARNINGS: '/hrm/earnings',
+    DEDUCTIONS: '/hrm/deductions',
+    CONTRACTS: '/hrm/contracts',
 
     // Payroll endpoints
     PAYROLL_PROCESS: '/hrm/payroll/payroll',
@@ -50,7 +50,7 @@ export const HRM_ENDPOINTS = {
     LOSS_DAMAGES: '/hrm/payroll/losses-damages',
 
     // Analytics endpoints
-    EMPLOYEE_ANALYTICS: '/hrm/employees/analytics',
+    EMPLOYEE_ANALYTICS: '/hrm/analytics',
     PAYROLL_ANALYTICS: '/hrm/payroll/analytics',
     ATTENDANCE_ANALYTICS: '/hrm/attendance/analytics',
     LEAVE_ANALYTICS: '/hrm/leave/analytics',

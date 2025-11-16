@@ -411,6 +411,11 @@
                     </div>
                 </TabPanel>
 
+                <!-- Employee Profile Tab -->
+                <TabPanel v-if="hasEmployeeMapping" header="Employee Profile">
+                    <EmployeeCoreForm :employee-id="currentUser?.employee_id" />
+                </TabPanel>
+
                 <!-- Addresses Tab -->
                 <TabPanel header="Addresses">
                     <AddressManager />
@@ -465,8 +470,9 @@
 </template>
 
 <script setup>
-import RoleChip from '@/components/auth/RoleChip.vue';
+import RoleChip from '@/components/Auth/RoleChip.vue';
 import AddressManager from '@/components/ecommerce/AddressManager.vue';
+import EmployeeCoreForm from '@/components/hrm/employees/EmployeeCoreForm.vue';
 import UserOrders from '@/components/user/UserOrders.vue';
 import { useEmployeeMapping } from '@/composables/useEmployeeMapping';
 import { useToast } from '@/composables/useToast';
@@ -550,6 +556,49 @@ const languageOptions = [
     { name: 'English', code: 'en' },
     { name: 'Swahili', code: 'sw' }
 ];
+
+// Employee profile forms/state
+const employeeForm = reactive({
+    id: null,
+    national_id: '',
+    pin_no: '',
+    shif_or_nhif_number: '',
+    nssf_no: '',
+    date_of_birth: ''
+});
+const contactForm = reactive({
+    id: null,
+    personal_email: '',
+    mobile_phone: ''
+});
+const kinForm = reactive({
+    id: null,
+    name: '',
+    relation: '',
+    phone: '',
+    email: ''
+});
+const bankForm = reactive({
+    id: null,
+    bank_institution: null,
+    bank_branch: null,
+    branch_code: '',
+    account_number: '',
+    is_primary: true
+});
+const banks = ref([]);
+const branches = ref([]);
+const salaryDetails = ref(null);
+const ageYears = computed(() => {
+    if (!employeeForm.date_of_birth) return '';
+    const dob = new Date(employeeForm.date_of_birth);
+    if (Number.isNaN(dob.getTime())) return '';
+    const today = new Date();
+    let age = today.getFullYear() - dob.getFullYear();
+    const m = today.getMonth() - dob.getMonth();
+    if (m < 0 || (m === 0 && today.getDate() < dob.getDate())) age--;
+    return age;
+});
 
 const loginActivities = ref([
     {
@@ -699,6 +748,146 @@ const loadProfileForm = () => {
     }
 };
 
+async function loadEmployeeData() {
+    try {
+        if (!hasEmployeeMapping.value) return;
+        const empId = currentUser.value?.employee_id;
+        if (!empId) return;
+
+        // Employee core
+        const empCore = await employeeService.getEmployeeById(empId);
+        if (empCore) {
+            employeeForm.id = empCore.id;
+            employeeForm.national_id = empCore.national_id || '';
+            employeeForm.pin_no = empCore.pin_no || '';
+            employeeForm.shif_or_nhif_number = empCore.shif_or_nhif_number || '';
+            employeeForm.nssf_no = empCore.nssf_no || '';
+            employeeForm.date_of_birth = empCore.date_of_birth || '';
+        }
+
+        // Contacts
+        const contacts = await employeeService.getEmployeeContacts(empId);
+        const primaryContact = (Array.isArray(contacts?.results) ? contacts.results : contacts || [])[0] || null;
+        if (primaryContact) {
+            contactForm.id = primaryContact.id;
+            contactForm.personal_email = primaryContact.personal_email || '';
+            contactForm.mobile_phone = primaryContact.mobile_phone || '';
+        }
+
+        // Next of kin
+        const kins = await employeeService.getEmployeeNextOfKins(empId);
+        const firstKin = (Array.isArray(kins?.results) ? kins.results : kins || [])[0] || null;
+        if (firstKin) {
+            kinForm.id = firstKin.id;
+            kinForm.name = firstKin.name || '';
+            kinForm.relation = firstKin.relation || '';
+            kinForm.phone = firstKin.phone || '';
+            kinForm.email = firstKin.email || '';
+        }
+
+        // Salary details and bank accounts
+        salaryDetails.value = await employeeService.getEmployeeSalaryDetails(empId);
+        const bankAccounts = await employeeService.listEmployeeBankAccounts(empId);
+        const list = Array.isArray(bankAccounts?.results) ? bankAccounts.results : (bankAccounts || []);
+        const primary = list.find(a => a.is_primary) || list[0];
+        if (primary) {
+            bankForm.id = primary.id;
+            bankForm.bank_institution = primary.bank_institution || null;
+            bankForm.bank_branch = primary.bank_branch || null;
+            bankForm.account_number = primary.account_number || '';
+            bankForm.is_primary = true;
+        }
+
+        // Banks and branches for selects
+        const banksRes = await systemConfigService.getBanks();
+        banks.value = banksRes?.data || [];
+        if (bankForm.bank_institution) {
+            const branchesRes = await systemConfigService.getBankBranches({ bank: bankForm.bank_institution });
+            branches.value = branchesRes?.data || [];
+        }
+    } catch (e) {
+        // Non-fatal
+    }
+}
+
+async function saveEmployeeProfile() {
+    try {
+        const empId = employeeForm.id;
+        if (!empId) return;
+        // Update employee core
+        await employeeService.updateEmployee(empId, {
+            national_id: employeeForm.national_id || null,
+            pin_no: employeeForm.pin_no || null,
+            shif_or_nhif_number: employeeForm.shif_or_nhif_number || null,
+            nssf_no: employeeForm.nssf_no || null,
+            date_of_birth: employeeForm.date_of_birth || null
+        });
+        // Update contact details
+        if (contactForm.id) {
+            await employeeService.updateEmployeeContact(empId, contactForm.id, {
+                personal_email: contactForm.personal_email || null,
+                mobile_phone: contactForm.mobile_phone || null
+            });
+        } else if (contactForm.personal_email || contactForm.mobile_phone) {
+            await employeeService.addEmployeeContact(empId, {
+                personal_email: contactForm.personal_email || null,
+                mobile_phone: contactForm.mobile_phone || null,
+                country: 'KE'
+            });
+        }
+        // Update next of kin
+        if (kinForm.id) {
+            await employeeService.updateEmployeeNextOfKin(empId, kinForm.id, {
+                name: kinForm.name || null,
+                relation: kinForm.relation || null,
+                phone: kinForm.phone || null,
+                email: kinForm.email || null
+            });
+        } else if (kinForm.name) {
+            await employeeService.addEmployeeNextOfKin(empId, {
+                name: kinForm.name,
+                relation: kinForm.relation || '',
+                phone: kinForm.phone || '',
+                email: kinForm.email || ''
+            });
+        }
+        // Update bank account
+        if (bankForm.account_number && bankForm.bank_institution && bankForm.bank_branch) {
+            let bankAccountId = bankForm.id;
+            if (bankAccountId) {
+                await employeeService.updateEmployeeBankAccount(empId, bankAccountId, {
+                    bank_institution: bankForm.bank_institution,
+                    bank_branch: bankForm.bank_branch,
+                    account_number: bankForm.account_number,
+                    is_primary: true
+                });
+            } else {
+                const created = await employeeService.addEmployeeBankAccount(empId, {
+                    bank_institution: bankForm.bank_institution,
+                    bank_branch: bankForm.bank_branch,
+                    account_number: bankForm.account_number,
+                    is_primary: true
+                });
+                bankAccountId = created?.id;
+                bankForm.id = bankAccountId || bankForm.id;
+            }
+            // Link to salary details if present
+            if (bankForm.id && salaryDetails.value) {
+                await employeeService.updateEmployeeSalary(empId, {
+                    bank_account: bankForm.id,
+                    payment_type: 'bank',
+                    mobile_number: contactForm.mobile_phone || null
+                });
+            }
+        }
+        showToast('success', 'Success', 'Employee profile updated successfully');
+    } catch (e) {
+        showToast('error', 'Error', (e?.message || e)?.toString());
+    } finally {
+        await loadEmployeeData();
+    }
+}
+
 async function loadPreferences() {
     try {
         if (!currentUser.value?.id) return;
@@ -735,7 +924,61 @@ onMounted(async () => {
     if (currentUser.value?.two_factor_enabled) {
         twoFactorEnabled.value = true;
     }
+    await loadEmployeeData();
 });
+
+async function handleCreateBank(payload) {
+    try {
+        const res = await systemConfigService.createBank(payload);
+        if (res?.success) {
+            const banksRes = await systemConfigService.getBanks();
+            banks.value = banksRes?.data || [];
+            const created = Array.isArray(banks.value) ? banks.value.find(b =>
+                (payload.code && String(b.code).toUpperCase() === String(payload.code).toUpperCase()) ||
+                (payload.name && String(b.name).toLowerCase() === String(payload.name).toLowerCase())
+            ) : null;
+            if (created) {
+                bankForm.bank_institution = created.id;
+                const branchesRes = await systemConfigService.getBankBranches({ bank: created.id });
+                branches.value = branchesRes?.data || [];
+            }
+            showToast('success', 'Bank added', 'Bank saved successfully');
+        }
+    } catch (e) {
+        showToast('error', 'Bank add failed', (e?.message || e)?.toString());
+    }
+}
+
+async function handleCreateBranch(payload) {
+    try {
+        const res = await systemConfigService.createBankBranch(payload);
+        if (res?.success) {
+            const branchesRes = await systemConfigService.getBankBranches({ bank: payload.bank });
+            branches.value = branchesRes?.data || [];
+            const created = Array.isArray(branches.value) ? branches.value.find(br =>
+                (payload.code && String(br.code).toUpperCase() === String(payload.code).toUpperCase()) ||
+                (payload.name && String(br.name).toLowerCase() === String(payload.name).toLowerCase())
+            ) : null;
+            if (created) {
+                bankForm.bank_branch = created.id;
+            }
+            showToast('success', 'Branch added', 'Bank branch saved successfully');
+        }
+    } catch (e) {
+        showToast('error', 'Branch add failed', (e?.message || e)?.toString());
+    }
+}
+
+async function handleBankChanged(bankId) {
+    if (!bankId) {
+        branches.value = [];
+        bankForm.bank_branch = null;
+        return;
+    }
+    const branchesRes = await systemConfigService.getBankBranches({ bank: bankId });
+    branches.value = branchesRes?.data || [];
+    bankForm.bank_branch = null;
+}
 </script>
 
 <style scoped>

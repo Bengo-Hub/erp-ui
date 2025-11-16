@@ -69,6 +69,20 @@ const fetchEmployees = async () => {
             staffNo: emp.staffNo,
             name: `${emp.user?.first_name || ''} ${emp.user?.last_name || ''}`.trim()
         }));
+
+        // Ensure currently selected employee appears in options when editing
+        if (props.editMode && props.contractData?.employee?.id) {
+            const currentId = props.contractData.employee.id;
+            const exists = employees.value.some((e) => e.value === currentId);
+            if (!exists) {
+                employees.value.push({
+                    label: props.contractData.employee?.name || props.contractData.employee?.staffNo || `Employee #${currentId}`,
+                    value: currentId,
+                    staffNo: props.contractData.employee?.staffNo,
+                    name: props.contractData.employee?.name
+                });
+            }
+        }
     } catch (error) {
         console.error('Error fetching employees:', error);
         toast.add({

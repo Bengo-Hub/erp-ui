@@ -163,24 +163,20 @@ const executeBulkAction = async () => {
 
     isLoading.value = true;
     try {
-        const promises = [];
-        
         switch (props.actionType) {
             case 'renew':
-                // Renew contracts
-                for (const contract of props.selectedContracts) {
-                    const renewalData = {
-                        renewal_duration: form.renewal_duration,
-                        salary_adjustment: form.salary_adjustment,
-                        status: form.status,
-                        original_contract_id: contract.id
-                    };
-                    promises.push(employeeService.renewContract(contract.id, renewalData));
-                }
+                // Batch renew contracts
+                await employeeService.renewContractsBatch({
+                    ids: props.selectedContracts.map(c => c.id),
+                    renewal_duration: form.renewal_duration,
+                    salary_adjustment: form.salary_adjustment,
+                    status: form.status
+                });
                 break;
                 
             case 'link':
                 // Link contracts
+                const promises = [];
                 for (const contract of props.selectedContracts) {
                     const linkData = {
                         link_type: form.link_type,
@@ -189,37 +185,40 @@ const executeBulkAction = async () => {
                     };
                     promises.push(employeeService.linkContract(contract.id, linkData));
                 }
+                await Promise.all(promises);
                 break;
                 
             case 'status':
                 // Update status
+                const statusPromises = [];
                 for (const contract of props.selectedContracts) {
                     const statusData = {
                         status: form.new_status,
                         status_reason: form.status_reason
                     };
-                    promises.push(employeeService.updateContractStatus(contract.id, statusData));
+                    statusPromises.push(employeeService.updateContractStatus(contract.id, statusData));
                 }
+                await Promise.all(statusPromises);
                 break;
                 
             case 'terminate':
                 // Terminate contracts
+                const termPromises = [];
                 for (const contract of props.selectedContracts) {
                     const terminationData = {
                         termination_date: form.termination_date.toISOString().split('T')[0],
                         termination_reason: form.termination_reason,
                         termination_type: form.termination_type
                     };
-                    promises.push(employeeService.terminateEmployeeContract(
+                    termPromises.push(employeeService.terminateEmployeeContract(
                         contract.employee?.id || contract.employee, 
                         contract.id, 
                         terminationData
                     ));
                 }
+                await Promise.all(termPromises);
                 break;
         }
-
-        await Promise.all(promises);
 
         toast.add({
             severity: 'success',

@@ -13,6 +13,60 @@ export const systemConfigService = {
         }
     },
 
+    // Banks
+    async getBanks(params = {}) {
+        try {
+            const response = await axios.get(`core/banks/`, { params });
+            const data = response.data?.results ?? response.data ?? [];
+            return { success: true, data };
+        } catch (error) {
+            return handleError(error);
+        }
+    },
+
+    async getBankBranches(params = {}) {
+        try {
+            const response = await axios.get(`core/bank-branches/`, { params });
+            const data = response.data?.results ?? response.data ?? [];
+            return { success: true, data };
+        } catch (error) {
+            return handleError(error);
+        }
+    },
+
+    async createBank(data) {
+        try {
+            const payload = {
+                name: (data.name || '').trim(),
+                code: String(data.code || '').toUpperCase().trim(),
+                short_code: String(data.short_code || data.code || '').toUpperCase().trim(),
+                swift_code: data.swift_code ? String(data.swift_code).toUpperCase().trim() : undefined,
+                country: data.country || 'Kenya'
+            };
+            const response = await axios.post(`core/banks/`, payload);
+            return { success: true, data: response.data };
+        } catch (error) {
+            return handleError(error);
+        }
+    },
+
+    async createBankBranch(data) {
+        try {
+            const payload = {
+                bank: data.bank,
+                name: (data.name || '').trim(),
+                code: String(data.code || '').toUpperCase().trim(),
+                address: data.address || '',
+                phone: data.phone || '',
+                email: data.email || ''
+            };
+            const response = await axios.post(`core/bank-branches/`, payload);
+            return { success: true, data: response.data };
+        } catch (error) {
+            return handleError(error);
+        }
+    },
+
     async getApprovalById(id) {
         try {
             const response = await axios.get(`approvals/workflows/${id}/`);

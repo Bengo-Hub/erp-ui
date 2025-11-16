@@ -1,84 +1,105 @@
 <script setup>
 import Spinner from '@/components/ui/Spinner.vue';
-import axios from 'axios';
-import { useToast } from 'primevue/usetoast';
+import { employeeService } from '@/services/hrm/employeeService';
+import { useToast } from '@/composables/useToast';
 import { ref } from 'vue';
 
 const isLoading = ref(false);
 const spinner_title = ref('Please wait! Importing employee data...');
 const csvData = ref([]);
 const dt = ref();
-const selectedFile = ref(null); // Store the selected file
-const toast = useToast();
+const selectedFile = ref(null);
+const { showToast } = useToast();
+const previewNote = ref('');
 
-// Export the CSV template (if required)
 function exportCSV() {
-    dt.value.exportCSV();
+    dt.value?.exportCSV();
 }
 
-// Handle file change and parse the CSV for preview
 function onFileChange(event) {
     const file = event.target.files[0];
-    selectedFile.value = file; // Store the selected file
-    if (file) {
-        const reader = new FileReader();
+    selectedFile.value = file;
+    csvData.value = [];
+    previewNote.value = '';
+    if (!file) return;
 
+    const ext = (file.name.split('.').pop() || '').toLowerCase();
+    if (ext === 'csv') {
+        const reader = new FileReader();
         reader.onload = (e) => {
             const content = e.target.result;
             parseCSV(content);
         };
-
         reader.readAsText(file);
+    } else {
+        previewNote.value = 'Preview is available for CSV only. XLS/XLSX will be parsed on the server.';
     }
 }
 
-// Parse the CSV file to preview
 function parseCSV(content) {
-    const rows = content.split('\n').map((row) => row.split(','));
-    const headers = rows[0];
-    const data = rows.slice(1).map((row) => {
+    // Robust CSV parser that respects quoted fields and embedded commas
+    const rows = [];
+    let row = [];
+    let cur = '';
+    let inQuotes = false;
+    const text = content.replace(/\r\n/g, '\n');
+    for (let i = 0; i < text.length; i++) {
+        const ch = text[i];
+        if (ch === '"') {
+            if (inQuotes && text[i + 1] === '"') {
+                cur += '"';
+                i++;
+            } else {
+                inQuotes = !inQuotes;
+            }
+        } else if (ch === ',' && !inQuotes) {
+            row.push(cur);
+            cur = '';
+        } else if ((ch === '\n') && !inQuotes) {
+            row.push(cur);
+            rows.push(row);
+            row = [];
+            cur = '';
+        } else {
+            cur += ch;
+        }
+    }
+    // push last field/row if any
+    if (cur.length || row.length) {
+        row.push(cur);
+        rows.push(row);
+    }
+    if (!rows.length) {
+        csvData.value = [];
+        return;
+    }
+    const headers = rows[0] || [];
+    const data = rows.slice(1).filter(r => r.some(cell => cell && cell.trim() !== '')).map((r) => {
         const obj = {};
-        row.forEach((cell, i) => {
-            obj[headers[i]] = cell;
+        headers.forEach((h, idx) => {
+            obj[h] = r[idx] ?? '';
         });
         return obj;
     });
     csvData.value = data;
 }
 
-// Submit CSV function
 async function submitCSV() {
     if (!selectedFile.value) {
-        alert('No file selected');
+        showToast('warn', 'No file selected', 'Please choose a CSV/XLS/XLSX file to import.');
         return;
     }
-
-    const formData = new FormData();
-    formData.append('file', selectedFile.value);
-    formData.append('fileType', 'employees');
-
     try {
-        isLoading.value = true; // Show spinner
-        const response = await axios.post('uploads/', formData, {
-            headers: {
-                'Content-Type': 'multipart/form-data'
-            }
+        isLoading.value = true;
+        const res = await employeeService.importEmployees({
+            file: selectedFile.value,
+            mapping: {} // optional; backend uses header names by default
         });
-        toast.add({
-            severity: 'success',
-            summary: 'Success',
-            detail: `${response.data.message}`,
-            life: 3000
-        });
+        showToast('success', 'Employees imported', String(res?.message || 'Import complete'));
     } catch (error) {
-        toast.add({
-            severity: 'error',
-            summary: 'Error',
-            detail: error.toString(),
-            life: 3000
-        });
+        showToast('error', 'Import failed', (error?.message || error)?.toString());
     } finally {
-        isLoading.value = false; // Hide spinner
+        isLoading.value = false;
     }
 }
 </script>
@@ -94,8 +115,9 @@ async function submitCSV() {
 
         <!-- File input for uploading the CSV -->
         <div class="mb-5">
-            <h2 class="text-xl mb-2 text-center lg:text-left">Upload and Preview Employee CSV</h2>
-            <input type="file" @change="onFileChange" accept=".csv" class="border p-2 w-full sm:w-auto" />
+            <h2 class="text-xl mb-2 text-center lg:text-left">Upload Employee File (CSV/XLS/XLSX)</h2>
+            <input type="file" @change="onFileChange" accept=".csv,.xls,.xlsx" class="border p-2 w-full sm:w-auto" />
+            <p v-if="previewNote" class="mt-2 text-sm text-surface-500">{{ previewNote }}</p>
         </div>
 
         <!-- Preview the uploaded CSV file -->
