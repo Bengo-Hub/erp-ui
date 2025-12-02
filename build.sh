@@ -222,64 +222,11 @@ if [[ "$DEPLOY" == "true" ]]; then
     if [[ "$DEPLOY" == "true" ]]; then
         log_step "Starting enhanced deployment process..."
 
-        # Database setup logic (moved from reusable workflow)
+        # Database setup is centralized in devops-k8s (shared PostgreSQL/Redis in infra namespace).
+        # This UI build script must NOT install or upgrade databases; it should only connect to existing ones.
         if [[ "$SETUP_DATABASES" == "true" ]]; then
-            log_step "Setting up databases..."
-
-            # Ensure kubectl is available
-            if ! command -v kubectl &> /dev/null; then
-                log_error "kubectl is required for database setup"
-                exit 1
-            fi
-
-            # Setup kubeconfig if available
-            if [[ -n "${KUBE_CONFIG:-}" ]]; then
-                mkdir -p ~/.kube
-                echo "$KUBE_CONFIG" | base64 -d > ~/.kube/config
-                chmod 600 ~/.kube/config
-                export KUBECONFIG=~/.kube/config
-            fi
-
-            # Create namespace if it doesn't exist
-            kubectl get ns "$NAMESPACE" >/dev/null 2>&1 || kubectl create ns "$NAMESPACE"
-
-            # Install Helm repos
-            helm repo add bitnami https://charts.bitnami.com/bitnami >/dev/null 2>&1 || true
-            helm repo update >/dev/null 2>&1 || true
-
-            # Parse database types
-            SAVEIFS=$IFS; IFS=','; set -f; types=($DB_TYPES); IFS=$SAVEIFS; set +f
-
-            for db in "${types[@]}"; do
-                db=$(echo "$db" | xargs)
-                case "$db" in
-                    postgres)
-                        log_info "Installing PostgreSQL..."
-                        helm upgrade --install postgresql bitnami/postgresql -n "$NAMESPACE" \
-                            --set global.postgresql.auth.postgresPassword="$POSTGRES_PASSWORD" \
-                            --set global.postgresql.auth.database="appdb" \
-                            --wait --timeout=300s || log_warning "PostgreSQL installation failed"
-                        ;;
-                    redis)
-                        log_info "Installing Redis..."
-                        helm upgrade --install redis bitnami/redis -n "$NAMESPACE" \
-                            --set global.redis.password="$REDIS_PASSWORD" \
-                            --wait --timeout=300s || log_warning "Redis installation failed"
-                        ;;
-                    *)
-                        log_warning "Unknown database type: $db"
-                        ;;
-                esac
-            done
-
-            # Create environment secret with database URLs
-            if [[ -n "${POSTGRES_PASSWORD:-}" ]]; then
-                kubectl -n "$NAMESPACE" create secret generic "$ENV_SECRET_NAME" \
-                    --from-literal=DATABASE_URL="postgresql://postgres:${POSTGRES_PASSWORD}@postgresql.${NAMESPACE}.svc.cluster.local:5432/appdb" \
-                    --dry-run=client -o yaml | kubectl apply -f - || log_warning "Failed to create DB secret"
-            fi
-
-            log_success "Database setup completed"
+            log_step "Skipping local PostgreSQL/Redis installation (managed by devops-k8s infrastructure)"
+            log_info "Ensure shared databases are provisioned via devops-k8s scripts (install-postgres.sh / install-redis.sh) or CI workflows before deploying this UI."
         fi
 
         # Kubernetes secrets and JWT setup

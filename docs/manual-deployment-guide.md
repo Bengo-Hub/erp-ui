@@ -245,25 +245,20 @@ imagePullSecrets:
 
 ---
 
-## Step 6 — Optional: Database setup (if using build.sh SETUP_DATABASES=true)
+## Step 6 — Databases (centralized infra)
 
-`build.sh` can install Postgres/Redis using Bitnami charts. Manual:
+Database infrastructure (shared PostgreSQL & Redis) is **not** installed by this UI service.
+It is provisioned centrally via the `devops-k8s` repository:
+
 ```bash
-kubectl create ns ${NAMESPACE} --dry-run=client -o yaml | kubectl apply -f -
-helm repo add bitnami https://charts.bitnami.com/bitnami || true
-helm repo update
-
-# Postgres
-helm upgrade --install postgresql bitnami/postgresql -n ${NAMESPACE}   --set global.postgresql.auth.postgresPassword="${POSTGRES_PASSWORD}"   --set global.postgresql.auth.database="appdb" --wait --timeout=300s
-
-# Redis
-helm upgrade --install redis bitnami/redis -n ${NAMESPACE}   --set global.redis.password="${REDIS_PASSWORD}" --wait --timeout=300s
+# From devops-k8s repo root
+DB_NAMESPACE=infra PG_DATABASE=bengo_erp ./scripts/infrastructure/install-postgres.sh
+DB_NAMESPACE=infra ./scripts/infrastructure/install-redis.sh
 ```
 
-Create secret with DB URL (build.sh creates Jwt secret and DB secret):
-```bash
-kubectl -n ${NAMESPACE} create secret generic ${ENV_SECRET_NAME}   --from-literal=DATABASE_URL="postgresql://postgres:${POSTGRES_PASSWORD}@postgresql.${NAMESPACE}.svc.cluster.local:5432/appdb"   --dry-run=client -o yaml | kubectl apply -f -
-```
+The UI only needs a valid API backend; it does not talk to the database directly.
+Ensure the backend (ERP API) has its database configured via `create-service-database.sh`
+and app values in `devops-k8s/apps/erp-api/values.yaml`.
 
 ---
 
