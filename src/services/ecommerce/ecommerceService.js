@@ -47,6 +47,10 @@ export const ecommerceService = {
             params: { search: query, ...params }
         });
     },
+    // Lightweight product search for autocomplete (optimized)
+    searchProductsLite(params = {}) {
+        return axios.get(`${API_URL}/product/products/search-lite/`, { params });
+    },
     getProductsByCategory(categoryId, params = {}) {
         return axios.get(`${API_URL}/product/products/`, {
             params: { category: categoryId, ...params }

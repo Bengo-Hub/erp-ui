@@ -1,156 +1,388 @@
 <script setup>
-import AddExpense from '@/components/finance/expenses/AddExpense.vue';
 import Spinner from '@/components/ui/Spinner.vue';
+import PermissionButton from '@/components/common/PermissionButton.vue';
+import { useDocumentFilters } from '@/composables/finance/useDocumentFilters';
+import { usePermissions } from '@/composables/usePermissions';
 import { useToast } from '@/composables/useToast';
 import { expenseService } from '@/services/finance/expenseService';
 import { formatCurrency, formatDate } from '@/utils/formatters';
 import { computed, onMounted, ref } from 'vue';
+import { useRouter } from 'vue-router';
 
+const router = useRouter();
 const { showToast } = useToast();
+const { hasPermission } = usePermissions();
+
+// Use shared filter composable
+const { filters, currentPage, perPage, totalRecords, onPage, onFilter, getFilterParams } = useDocumentFilters();
 
 // Data
-const title = ref('Expenses');
 const expenses = ref([]);
-const filter = ref('');
-const fromdate = ref('');
-const todate = ref('');
-const currentPage = ref(1);
-const perPage = ref(25);
-const pageOptions = ref([
-    { label: '25', value: 25 },
-    { label: '50', value: 50 },
-    { label: '100', value: 100 }
-]);
-const totalRows = ref(0);
-const isLoading = ref(false);
-const modals = ref({
-    'modal-expense': false,
-    'modal-receipt': false
+const loading = ref(false);
+const selectedExpenses = ref([]);
+const summary = ref({
+    total_expenses: 0,
+    draft: 0,
+    pending: 0,
+    approved: 0,
+    rejected: 0,
+    paid: 0,
+    total_amount: 0,
+    pending_amount: 0
 });
 
-// Business context - get from session storage
-const business = ref(JSON.parse(sessionStorage.getItem('business') || '{}'));
+// Dialogs
+const showApprovalDialog = ref(false);
+const showRejectionDialog = ref(false);
+const showPaymentDialog = ref(false);
+const selectedExpense = ref(null);
+const approvalAction = ref('approve');
+const actionLoading = ref(false);
 
 // Computed
-const filteredExpenses = computed(() => {
-    if (!filter.value) return expenses.value;
-
-    const searchTerm = filter.value.toLowerCase();
-    return expenses.value.filter((expense) => {
-        return expense.reference_no?.toLowerCase().includes(searchTerm) || expense.category_name?.toLowerCase().includes(searchTerm) || expense.expense_note?.toLowerCase().includes(searchTerm);
-    });
-});
+const canCreate = computed(() => hasPermission('add_expense'));
+const canApprove = computed(() => hasPermission('approve_expense'));
+const canEdit = computed(() => hasPermission('change_expense'));
+const canDelete = computed(() => hasPermission('delete_expense'));
 
 // Methods
 const fetchExpenses = async () => {
-    isLoading.value = true;
+    loading.value = true;
     try {
-        const params = {
-            limit: perPage.value,
-            offset: (currentPage.value - 1) * perPage.value,
-            branch_code: business.value.branch_code,
-            fromdate: fromdate.value,
-            todate: todate.value
-        };
-        const response = await expenseService.getExpenses(params);
-        expenses.value = response.data.results || response.data || [];
-        totalRows.value = response.data.count || expenses.value.length;
+        const params = getFilterParams();
+        const response = await expenseService.getAll(params);
+        
+        // Handle different response structures
+        const data = response.data || response;
+        expenses.value = data?.results || data || [];
+        totalRecords.value = data?.count || expenses.value.length;
+        
+        console.log('✅ Expenses loaded:', expenses.value.length);
     } catch (error) {
-        console.error('Error fetching expenses:', error);
-        showToast('error', 'Failed to load expenses');
+        console.error('❌ Error fetching expenses:', error);
+        showToast('error', 'Error', 'Failed to load expenses');
+        expenses.value = [];
+        totalRecords.value = 0;
     } finally {
-        isLoading.value = false;
+        loading.value = false;
     }
 };
 
-const handlePageChange = (page) => {
-    currentPage.value = page.page + 1;
-    fetchExpenses();
+const fetchSummary = async () => {
+    try {
+        const response = await expenseService.getExpenseSummary();
+        if (response.data) {
+            summary.value = response.data;
+        }
+    } catch (error) {
+        console.error('Error fetching summary:', error);
+    }
 };
 
-const exportToCSV = () => {
-    const csvRows = [];
-    const headers = ['Ref No.', 'Category', 'Total Amount', 'Date Added', 'Note', 'Is Refund'];
-    csvRows.push(headers.join(','));
+const createExpense = () => {
+    router.push('/finance/expenses/create');
+};
 
-    expenses.value.forEach((expense) => {
-        const values = [expense.reference_no, expense.category_name, expense.total_amount, expense.date_added, expense.expense_note, expense.is_refund ? 'Yes' : 'No'];
-        csvRows.push(values.join(','));
-    });
+const viewExpense = (expense) => {
+    router.push(`/finance/expenses/${expense.id}`);
+};
 
-    const csvData = csvRows.join('\n');
-    const blob = new Blob([csvData], { type: 'text/csv' });
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'expenses.csv';
-    a.click();
-    window.URL.revokeObjectURL(url);
-    showToast('success', 'Expenses exported successfully');
+const editExpense = (expense) => {
+    router.push(`/finance/expenses/${expense.id}/edit`);
+};
+
+const openApprovalDialog = (expense) => {
+    selectedExpense.value = expense;
+    approvalAction.value = 'approve';
+    showApprovalDialog.value = true;
+};
+
+const openRejectionDialog = (expense) => {
+    selectedExpense.value = expense;
+    approvalAction.value = 'reject';
+    showRejectionDialog.value = true;
+};
+
+const handleApprove = async (data) => {
+    actionLoading.value = true;
+    try {
+        await expenseService.approve(selectedExpense.value.id, data);
+        showToast('success', 'Success', 'Expense approved successfully');
+        showApprovalDialog.value = false;
+        await Promise.all([fetchExpenses(), fetchSummary()]);
+    } catch (error) {
+        console.error('Error approving expense:', error);
+        showToast('error', 'Error', 'Failed to approve expense');
+    } finally {
+        actionLoading.value = false;
+    }
+};
+
+const handleReject = async (data) => {
+    actionLoading.value = true;
+    try {
+        await expenseService.reject(selectedExpense.value.id, data);
+        showToast('success', 'Success', 'Expense rejected');
+        showRejectionDialog.value = false;
+        await Promise.all([fetchExpenses(), fetchSummary()]);
+    } catch (error) {
+        console.error('Error rejecting expense:', error);
+        showToast('error', 'Error', 'Failed to reject expense');
+    } finally {
+        actionLoading.value = false;
+    }
+};
+
+const openPaymentDialog = (expense) => {
+    selectedExpense.value = expense;
+    showPaymentDialog.value = true;
+};
+
+const handleRecordPayment = async (data) => {
+    actionLoading.value = true;
+    try {
+        await expenseService.recordPayment(selectedExpense.value.id, data);
+        showToast('success', 'Success', 'Payment recorded successfully');
+        showPaymentDialog.value = false;
+        await Promise.all([fetchExpenses(), fetchSummary()]);
+    } catch (error) {
+        console.error('Error recording payment:', error);
+        showToast('error', 'Error', 'Failed to record payment');
+    } finally {
+        actionLoading.value = false;
+    }
 };
 
 const deleteExpense = async (expense) => {
     if (!confirm(`Are you sure you want to delete expense "${expense.reference_no}"?`)) return;
 
     try {
-        await expenseService.deleteExpense(expense.id);
-        showToast('success', 'Expense deleted successfully!');
-        fetchExpenses();
+        await expenseService.delete(expense.id);
+        showToast('success', 'Success', 'Expense deleted successfully');
+        await Promise.all([fetchExpenses(), fetchSummary()]);
     } catch (error) {
         console.error('Error deleting expense:', error);
-        showToast('error', 'Failed to delete expense');
+        showToast('error', 'Error', 'Failed to delete expense');
     }
 };
 
-const openAddExpenseModal = () => {
-    modals.value['modal-expense'] = true;
+const bulkApprove = async () => {
+    if (selectedExpenses.value.length === 0) {
+        showToast('warn', 'Warning', 'Please select expenses to approve');
+        return;
+    }
+
+    if (!confirm(`Approve ${selectedExpenses.value.length} selected expense(s)?`)) return;
+
+    try {
+        const ids = selectedExpenses.value.map(e => e.id);
+        await expenseService.bulkApprove(ids);
+        showToast('success', 'Success', 'Expenses approved successfully');
+        selectedExpenses.value = [];
+        await Promise.all([fetchExpenses(), fetchSummary()]);
+    } catch (error) {
+        console.error('Error bulk approving:', error);
+        showToast('error', 'Error', 'Failed to approve expenses');
+    }
 };
 
-const closeAddExpenseModal = () => {
-    modals.value['modal-expense'] = false;
-    fetchExpenses(); // Refresh data after adding
+const bulkReject = async () => {
+    if (selectedExpenses.value.length === 0) {
+        showToast('warn', 'Warning', 'Please select expenses to reject');
+        return;
+    }
+
+    const reason = prompt('Please provide a reason for rejection:');
+    if (!reason) return;
+
+    try {
+        const ids = selectedExpenses.value.map(e => e.id);
+        await expenseService.bulkReject(ids, reason);
+        showToast('success', 'Success', 'Expenses rejected');
+        selectedExpenses.value = [];
+        await Promise.all([fetchExpenses(), fetchSummary()]);
+    } catch (error) {
+        console.error('Error bulk rejecting:', error);
+        showToast('error', 'Error', 'Failed to reject expenses');
+    }
 };
 
-const viewExpense = (_expense) => {
-    showToast('info', 'View functionality coming soon');
-};
-
-const editExpense = (_expense) => {
-    showToast('info', 'Edit functionality coming soon');
+const exportExpenses = async () => {
+    try {
+        showToast('info', 'Exporting', 'Generating export file...');
+        const response = await expenseService.exportExpenses(getFilterParams(), 'csv');
+        
+        const blob = new Blob([response.data], { type: 'text/csv' });
+        const url = window.URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `expenses-${new Date().toISOString().split('T')[0]}.csv`;
+        link.click();
+        window.URL.revokeObjectURL(url);
+        
+        showToast('success', 'Success', 'Expenses exported successfully');
+    } catch (error) {
+        console.error('Error exporting expenses:', error);
+        showToast('error', 'Error', 'Failed to export expenses');
+    }
 };
 
 // Lifecycle
 onMounted(() => {
-    fetchExpenses();
+    Promise.all([fetchExpenses(), fetchSummary()]);
 });
 </script>
 
 <template>
     <div class="expenses-page">
+        <!-- Page Header -->
+        <div class="page-header bg-white border-b border-surface-200 px-6 py-4 sticky top-0 z-10">
+            <div class="flex justify-between items-center">
+                <div>
+                    <h1 class="text-2xl font-bold text-surface-900 dark:text-surface-0">Expenses</h1>
+                    <p class="text-surface-600 dark:text-surface-400 text-sm mt-1">Manage and track business expenses</p>
+                </div>
+                <div class="flex gap-2">
+                    <Button 
+                        v-if="selectedExpenses.length > 0 && canApprove"
+                        label="Bulk Approve" 
+                        icon="pi pi-check" 
+                        @click="bulkApprove"
+                        class="p-button-success"
+                    />
+                    <Button 
+                        v-if="selectedExpenses.length > 0 && canApprove"
+                        label="Bulk Reject" 
+                        icon="pi pi-times" 
+                        @click="bulkReject"
+                        class="p-button-danger"
+                    />
+                    <Button 
+                        label="Export" 
+                        icon="pi pi-download" 
+                        @click="exportExpenses"
+                        class="p-button-secondary"
+                    />
+                    <Button 
+                        v-if="canCreate"
+                        label="New Expense" 
+                        icon="pi pi-plus" 
+                        @click="createExpense"
+                        class="p-button-primary"
+                    />
+                </div>
+            </div>
+        </div>
+
+        <!-- Summary Cards -->
+        <div class="summary-cards p-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <Card class="summary-card">
+                <template #content>
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <div class="text-surface-600 dark:text-surface-400 text-sm mb-2">Total Expenses</div>
+                            <div class="text-2xl font-bold text-surface-900 dark:text-surface-0">{{ summary.total_expenses }}</div>
+                        </div>
+                        <div class="bg-blue-100 dark:bg-blue-900 rounded-full p-3">
+                            <i class="pi pi-receipt text-blue-600 text-xl"></i>
+                        </div>
+                    </div>
+                </template>
+            </Card>
+
+            <Card class="summary-card">
+                <template #content>
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <div class="text-surface-600 dark:text-surface-400 text-sm mb-2">Pending Approval</div>
+                            <div class="text-2xl font-bold text-orange-600">{{ summary.pending }}</div>
+                        </div>
+                        <div class="bg-orange-100 dark:bg-orange-900 rounded-full p-3">
+                            <i class="pi pi-clock text-orange-600 text-xl"></i>
+                        </div>
+                    </div>
+                </template>
+            </Card>
+
+            <Card class="summary-card">
+                <template #content>
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <div class="text-surface-600 dark:text-surface-400 text-sm mb-2">Approved</div>
+                            <div class="text-2xl font-bold text-green-600">{{ summary.approved }}</div>
+                        </div>
+                        <div class="bg-green-100 dark:bg-green-900 rounded-full p-3">
+                            <i class="pi pi-check-circle text-green-600 text-xl"></i>
+                        </div>
+                    </div>
+                </template>
+            </Card>
+
+            <Card class="summary-card">
+                <template #content>
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <div class="text-surface-600 dark:text-surface-400 text-sm mb-2">Total Amount</div>
+                            <div class="text-2xl font-bold text-primary">{{ formatCurrency(summary.total_amount) }}</div>
+                        </div>
+                        <div class="bg-primary-100 dark:bg-primary-900 rounded-full p-3">
+                            <i class="pi pi-dollar text-primary text-xl"></i>
+                        </div>
+                    </div>
+                </template>
+            </Card>
+        </div>
+
         <!-- Filters Section -->
-        <div class="filters-section bg-white border-b border-gray-200 px-6 py-4">
+        <div class="filters-section bg-white border-b border-surface-200 px-6 py-4">
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                <!-- Search Filter -->
-                <div class="search-filter">
-                    <label class="block text-sm font-medium text-gray-700 mb-2">Search</label>
-                    <InputText v-model="filter" placeholder="Search expenses..." class="w-full" icon="pi pi-search" />
+                <!-- Status Filter -->
+                <div>
+                    <label class="block text-sm font-medium mb-2">Status</label>
+                    <Dropdown 
+                        v-model="filters.status_filter"
+                        :options="EXPENSE_STATUS_OPTIONS"
+                        optionLabel="label"
+                        optionValue="value"
+                        placeholder="All Status"
+                        class="w-full"
+                        @change="onFilter(fetchExpenses)"
+                    />
                 </div>
 
-                <!-- Date Range Filters -->
-                <div class="date-filter">
-                    <label class="block text-sm font-medium text-gray-700 mb-2">From Date</label>
-                    <Calendar v-model="fromdate" placeholder="From Date" class="w-full" dateFormat="dd/mm/yy" />
+                <!-- Search -->
+                <div>
+                    <label class="block text-sm font-medium mb-2">Search</label>
+                    <InputText 
+                        v-model="filters.search"
+                        placeholder="Search reference, category..."
+                        class="w-full"
+                        @input="onFilter(fetchExpenses)"
+                    />
                 </div>
 
-                <div class="date-filter">
-                    <label class="block text-sm font-medium text-gray-700 mb-2">To Date</label>
-                    <Calendar v-model="todate" placeholder="To Date" class="w-full" dateFormat="dd/mm/yy" />
+                <!-- Date From -->
+                <div>
+                    <label class="block text-sm font-medium mb-2">From Date</label>
+                    <Calendar 
+                        v-model="filters.date_from"
+                        dateFormat="dd/mm/yy"
+                        :showIcon="true"
+                        class="w-full"
+                        @date-select="onFilter(fetchExpenses)"
+                    />
                 </div>
 
-                <!-- Items Per Page -->
-                <div class="per-page-filter">
-                    <label class="block text-sm font-medium text-gray-700 mb-2">Items Per Page</label>
-                    <Dropdown v-model="perPage" :options="pageOptions" optionLabel="label" optionValue="value" placeholder="Select" class="w-full" @change="fetchExpenses" />
+                <!-- Date To -->
+                <div>
+                    <label class="block text-sm font-medium mb-2">To Date</label>
+                    <Calendar 
+                        v-model="filters.date_to"
+                        dateFormat="dd/mm/yy"
+                        :showIcon="true"
+                        class="w-full"
+                        @date-select="onFilter(fetchExpenses)"
+                    />
                 </div>
             </div>
         </div>
@@ -158,100 +390,170 @@ onMounted(() => {
         <!-- Main Content -->
         <div class="main-content p-6">
             <!-- Loading State -->
-            <div v-if="isLoading" class="flex justify-center items-center py-12">
+            <div v-if="loading" class="flex justify-center items-center py-12">
                 <Spinner />
             </div>
 
             <!-- Data Table -->
-            <div v-else class="bg-white rounded-lg shadow">
-                <DataTable
-                    :value="filteredExpenses"
-                    :paginator="true"
-                    :rows="perPage"
-                    :totalRecords="totalRows"
-                    :loading="isLoading"
-                    paginatorTemplate="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink CurrentPageReport RowsPerPageDropdown"
-                    currentPageReportTemplate="Showing {first} to {last} of {totalRecords} expenses"
-                    :rowsPerPageOptions="[25, 50, 100]"
-                    @page="handlePageChange"
-                    stripedRows
-                    responsiveLayout="scroll"
-                    class="p-datatable-sm"
-                >
-                    <!-- Reference Number -->
-                    <Column field="reference_no" header="Reference No." sortable>
-                        <template #body="{ data }">
-                            <span class="font-medium text-blue-600">{{ data.reference_no }}</span>
-                        </template>
-                    </Column>
-
-                    <!-- Category -->
-                    <Column field="category_name" header="Category" sortable>
-                        <template #body="{ data }">
-                            <span class="px-2 py-1 bg-blue-100 text-blue-800 rounded-full text-xs">
-                                {{ data.category_name }}
-                            </span>
-                        </template>
-                    </Column>
-
-                    <!-- Total Amount -->
-                    <Column field="total_amount" header="Amount" sortable>
-                        <template #body="{ data }">
-                            <span class="font-semibold text-green-600">
-                                {{ formatCurrency(data.total_amount) }}
-                            </span>
-                        </template>
-                    </Column>
-
-                    <!-- Date Added -->
-                    <Column field="date_added" header="Date Added" sortable>
-                        <template #body="{ data }">
-                            <span class="text-gray-600">{{ formatDate(data.date_added) }}</span>
-                        </template>
-                    </Column>
-
-                    <!-- Note -->
-                    <Column field="expense_note" header="Note">
-                        <template #body="{ data }">
-                            <span class="text-gray-700 truncate max-w-xs block" :title="data.expense_note">
-                                {{ data.expense_note || 'No note' }}
-                            </span>
-                        </template>
-                    </Column>
-
-                    <!-- Is Refund -->
-                    <Column field="is_refund" header="Refund" sortable>
-                        <template #body="{ data }">
-                            <Tag :value="data.is_refund ? 'Yes' : 'No'" :severity="data.is_refund ? 'warning' : 'success'" />
-                        </template>
-                    </Column>
-
-                    <!-- Actions -->
-                    <Column header="Actions" :exportable="false" style="min-width: 8rem">
-                        <template #body="{ data }">
-                            <div class="flex gap-2">
-                                <Button icon="pi pi-eye" class="p-button-text p-button-sm p-button-info" @click="viewExpense(data)" v-tooltip.top="'View Details'" />
-                                <Button icon="pi pi-pencil" class="p-button-text p-button-sm p-button-warning" @click="editExpense(data)" v-tooltip.top="'Edit Expense'" />
-                                <Button icon="pi pi-trash" class="p-button-text p-button-sm p-button-danger" @click="deleteExpense(data)" v-tooltip.top="'Delete Expense'" />
+            <Card v-else>
+                <template #content>
+                    <DataTable
+                        v-model:selection="selectedExpenses"
+                        :value="expenses"
+                        :paginator="true"
+                        :rows="perPage"
+                        :totalRecords="totalRecords"
+                        :loading="loading"
+                        :lazy="true"
+                        @page="onPage($event, fetchExpenses)"
+                        paginatorTemplate="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink CurrentPageReport RowsPerPageDropdown"
+                        currentPageReportTemplate="Showing {first} to {last} of {totalRecords} expenses"
+                        :rowsPerPageOptions="[25, 50, 100]"
+                        dataKey="id"
+                        stripedRows
+                        responsiveLayout="scroll"
+                        class="p-datatable-sm"
+                    >
+                        <template #empty>
+                            <div class="text-center py-12">
+                                <i class="pi pi-inbox text-4xl text-surface-400 mb-4"></i>
+                                <h3 class="text-lg font-medium text-surface-900 dark:text-surface-0 mb-2">No expenses found</h3>
+                                <p class="text-surface-600 dark:text-surface-400 mb-4">Get started by creating your first expense</p>
+                                <Button v-if="canCreate" icon="pi pi-plus" label="New Expense" @click="createExpense" />
                             </div>
                         </template>
-                    </Column>
-                </DataTable>
 
-                <!-- Empty State -->
-                <div v-if="!isLoading && filteredExpenses.length === 0" class="text-center py-12">
-                    <i class="pi pi-inbox text-4xl text-gray-400 mb-4"></i>
-                    <h3 class="text-lg font-medium text-gray-900 mb-2">No expenses found</h3>
-                    <p class="text-gray-600 mb-4">Get started by adding your first expense</p>
-                    <Button icon="pi pi-plus" label="Add Expense" class="p-button-primary" @click="openAddExpenseModal" />
-                </div>
-            </div>
+                        <!-- Selection Column -->
+                        <Column selectionMode="multiple" headerStyle="width: 3rem"></Column>
+
+                        <!-- Reference Number -->
+                        <Column field="reference_no" header="Reference #" sortable style="min-width: 150px">
+                            <template #body="{ data }">
+                                <span class="font-mono font-medium text-primary cursor-pointer hover:underline" @click="viewExpense(data)">
+                                    {{ data.reference_no }}
+                                </span>
+                            </template>
+                        </Column>
+
+                        <!-- Category -->
+                        <Column field="category_name" header="Category" sortable>
+                            <template #body="{ data }">
+                                <Tag :value="data.category_name" severity="info" />
+                            </template>
+                        </Column>
+
+                        <!-- Date -->
+                        <Column field="date_added" header="Date" sortable>
+                            <template #body="{ data }">
+                                {{ formatDate(data.date_added) }}
+                            </template>
+                        </Column>
+
+                        <!-- Amount -->
+                        <Column field="total_amount" header="Amount" sortable>
+                            <template #body="{ data }">
+                                <span class="font-semibold">{{ formatCurrency(data.total_amount) }}</span>
+                            </template>
+                        </Column>
+
+                        <!-- Status -->
+                        <Column field="status" header="Status" sortable>
+                            <template #body="{ data }">
+                                <DocumentStatusBadge :status="data.status" documentType="expense" />
+                            </template>
+                        </Column>
+
+                        <!-- Flags -->
+                        <Column header="Flags" style="min-width: 100px">
+                            <template #body="{ data }">
+                                <div class="flex gap-1">
+                                    <Tag v-if="data.is_refund" value="Refund" severity="warning" class="text-xs" />
+                                    <Tag v-if="data.is_recurring" value="Recurring" severity="info" class="text-xs" />
+                                </div>
+                            </template>
+                        </Column>
+
+                        <!-- Actions -->
+                        <Column header="Actions" :exportable="false" style="min-width: 200px">
+                            <template #body="{ data }">
+                                <div class="flex gap-1">
+                                    <Button 
+                                        icon="pi pi-eye" 
+                                        class="p-button-text p-button-sm" 
+                                        @click="viewExpense(data)"
+                                        v-tooltip.top="'View'"
+                                    />
+                                    <Button 
+                                        v-if="canApprove && data.status === 'pending'"
+                                        icon="pi pi-check" 
+                                        class="p-button-text p-button-sm p-button-success" 
+                                        @click="openApprovalDialog(data)"
+                                        v-tooltip.top="'Approve'"
+                                    />
+                                    <Button 
+                                        v-if="canApprove && data.status === 'pending'"
+                                        icon="pi pi-times" 
+                                        class="p-button-text p-button-sm p-button-danger" 
+                                        @click="openRejectionDialog(data)"
+                                        v-tooltip.top="'Reject'"
+                                    />
+                                    <Button 
+                                        v-if="data.status === 'approved'"
+                                        icon="pi pi-money-bill" 
+                                        class="p-button-text p-button-sm p-button-primary" 
+                                        @click="openPaymentDialog(data)"
+                                        v-tooltip.top="'Record Payment'"
+                                    />
+                                    <Button 
+                                        v-if="canEdit && ['draft', 'rejected'].includes(data.status)"
+                                        icon="pi pi-pencil" 
+                                        class="p-button-text p-button-sm" 
+                                        @click="editExpense(data)"
+                                        v-tooltip.top="'Edit'"
+                                    />
+                                    <Button 
+                                        v-if="canDelete && data.status === 'draft'"
+                                        icon="pi pi-trash" 
+                                        class="p-button-text p-button-sm p-button-danger" 
+                                        @click="deleteExpense(data)"
+                                        v-tooltip.top="'Delete'"
+                                    />
+                                </div>
+                            </template>
+                        </Column>
+                    </DataTable>
+                </template>
+            </Card>
         </div>
 
-        <!-- Add Expense Modal -->
-        <Dialog v-model:visible="modals['modal-expense']" modal header="Add New Expense" :style="{ width: '50rem' }" :closable="true" @hide="closeAddExpenseModal">
-            <AddExpense @expense-added="closeAddExpenseModal" />
-        </Dialog>
+        <!-- Approval Dialog -->
+        <ApprovalDialog 
+            v-model:visible="showApprovalDialog"
+            :document="selectedExpense"
+            documentType="expense"
+            action="approve"
+            :loading="actionLoading"
+            @approve="handleApprove"
+        />
+
+        <!-- Rejection Dialog -->
+        <ApprovalDialog 
+            v-model:visible="showRejectionDialog"
+            :document="selectedExpense"
+            documentType="expense"
+            action="reject"
+            :loading="actionLoading"
+            @reject="handleReject"
+        />
+
+        <!-- Payment Dialog -->
+        <PaymentRecordDialog 
+            v-model:visible="showPaymentDialog"
+            :document="selectedExpense"
+            documentType="expense"
+            :loading="actionLoading"
+            @record-payment="handleRecordPayment"
+        />
     </div>
 </template>
 
@@ -262,50 +564,42 @@ onMounted(() => {
 }
 
 .page-header {
-    position: sticky;
-    top: 0;
-    z-index: 10;
+    box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
 }
 
-.filters-section {
-    position: sticky;
-    top: 80px;
-    z-index: 9;
+.summary-card {
+    transition: transform 0.2s, box-shadow 0.2s;
 }
 
-.main-content {
-    min-height: calc(100vh - 200px);
+.summary-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
 }
 
 /* Responsive adjustments */
 @media (max-width: 768px) {
-    .page-header {
-        padding: 1rem;
+    .page-header .flex {
+        flex-direction: column;
+        gap: 1rem;
     }
-
-    .filters-section {
-        padding: 1rem;
+    
+    .page-header .flex > div:last-child {
+        width: 100%;
     }
-
-    .main-content {
-        padding: 1rem;
+    
+    .summary-cards {
+        grid-template-columns: 1fr;
     }
-
+    
     .filters-section .grid {
         grid-template-columns: 1fr;
     }
 }
 
-/* Dark mode support */
-@media (prefers-color-scheme: light) {
+/* Dark mode */
+@media (prefers-color-scheme: dark) {
     .expenses-page {
-        background-color: #fffefe;
-    }
-
-    .page-header,
-    .filters-section {
-        background-color: #dee5e7;
-        border-color: #f4eef3;
+        background-color: #1e293b;
     }
 }
 </style>

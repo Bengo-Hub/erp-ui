@@ -202,7 +202,7 @@ export const ROUTE_PERMISSIONS = {
 };
 
 export default function permissionMiddleware(to, from, next) {
-    const { hasPermission, hasAnyPermission } = usePermissions();
+    const { hasPermission, hasAnyPermission, isSuperuser } = usePermissions();
 
     // Helper: convert route pattern with :params into a regex
     const patternToRegex = (pattern) => {
@@ -236,6 +236,12 @@ export default function permissionMiddleware(to, from, next) {
 
     // Skip permission check for public routes
     if (to.meta && to.meta.requiresAuth === false) {
+        next();
+        return;
+    }
+
+    // Superusers bypass all permission checks - allow access to all routes
+    if (isSuperuser.value) {
         next();
         return;
     }
@@ -335,7 +341,13 @@ export function getRoutePermissions(routePath) {
 
 // Helper function to check if user can access a route
 export function canAccessRoute(routePath) {
-    const { hasAnyPermission } = usePermissions();
+    const { hasAnyPermission, isSuperuser } = usePermissions();
+    
+    // Superusers bypass all permission checks
+    if (isSuperuser.value) {
+        return true;
+    }
+    
     const requiredPermissions = getRoutePermissions(routePath);
 
     if (!requiredPermissions || requiredPermissions.length === 0) {

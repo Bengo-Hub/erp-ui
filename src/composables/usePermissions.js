@@ -1,4 +1,4 @@
-import { computed, ref } from 'vue';
+import { computed } from 'vue';
 import { useStore } from 'vuex';
 
 // Permission categories for better organization
@@ -150,44 +150,85 @@ export const PERMISSION_ACTIONS = {
 export function usePermissions() {
     const store = useStore();
 
+    // Get current user from store (reactive)
+    const currentUser = computed(() => store.state.auth.user);
+
     // Get permissions from store (reactive)
     const userPermissions = computed(() => {
         const user = store.state.auth.user;
         return user && user.permissions ? user.permissions : [];
     });
 
+    // Check if current user is a superuser
+    const isSuperuser = computed(() => {
+        const user = currentUser.value;
+        if (!user) return false;
+        
+        const roles = Array.isArray(user.roles) ? user.roles.map((r) => String(r).toLowerCase()) : [];
+        return user.is_superuser === true || 
+               user.isSuperuser === true || 
+               roles.includes('superusers') ||
+               userPermissions.value.includes('is_superuser');
+    });
+
     // Check if user has specific permission
     const hasPermission = (permission) => {
         if (!permission) return false;
+        // Superusers bypass all permission checks
+        if (isSuperuser.value) return true;
         return userPermissions.value.includes(permission);
     };
 
     // Check if user has any of the provided permissions
     const hasAnyPermission = (permissions) => {
         if (!permissions || !Array.isArray(permissions)) return false;
+        // Superusers bypass all permission checks
+        if (isSuperuser.value) return true;
         return permissions.some((permission) => hasPermission(permission));
     };
 
     // Check if user has all of the provided permissions
     const hasAllPermissions = (permissions) => {
         if (!permissions || !Array.isArray(permissions)) return false;
-        return permissions.every((permission) => hasPermission(permission));
+        // Superusers bypass all permission checks
+        if (isSuperuser.value) return true;
+        return permissions.every((permission) => userPermissions.value.includes(permission));
     };
 
     // Check permission for specific module and action
     const hasModulePermission = (module, action) => {
+        // Superusers bypass all permission checks
+        if (isSuperuser.value) return true;
         const permission = `${action}_${module}`;
         return hasPermission(permission);
     };
 
     // Check if user can perform CRUD operations on a module
-    const canCreate = (module) => hasModulePermission(module, PERMISSION_ACTIONS.CREATE);
-    const canRead = (module) => hasModulePermission(module, PERMISSION_ACTIONS.READ);
-    const canUpdate = (module) => hasModulePermission(module, PERMISSION_ACTIONS.UPDATE);
-    const canDelete = (module) => hasModulePermission(module, PERMISSION_ACTIONS.DELETE);
+    const canCreate = (module) => {
+        // Superusers bypass all permission checks
+        if (isSuperuser.value) return true;
+        return hasModulePermission(module, PERMISSION_ACTIONS.CREATE);
+    };
+    const canRead = (module) => {
+        // Superusers bypass all permission checks
+        if (isSuperuser.value) return true;
+        return hasModulePermission(module, PERMISSION_ACTIONS.READ);
+    };
+    const canUpdate = (module) => {
+        // Superusers bypass all permission checks
+        if (isSuperuser.value) return true;
+        return hasModulePermission(module, PERMISSION_ACTIONS.UPDATE);
+    };
+    const canDelete = (module) => {
+        // Superusers bypass all permission checks
+        if (isSuperuser.value) return true;
+        return hasModulePermission(module, PERMISSION_ACTIONS.DELETE);
+    };
 
     // Check if user has any CRUD permission for a module
     const canAccess = (module) => {
+        // Superusers bypass all permission checks
+        if (isSuperuser.value) return true;
         return canCreate(module) || canRead(module) || canUpdate(module) || canDelete(module);
     };
 
@@ -204,6 +245,8 @@ export function usePermissions() {
 
     // Check if user has any permission in a category
     const hasCategoryPermission = (category) => {
+        // Superusers bypass all permission checks
+        if (isSuperuser.value) return true;
         const categoryPermissions = getCategoryPermissions(category);
         return hasAnyPermission(categoryPermissions);
     };
@@ -234,25 +277,33 @@ export function usePermissions() {
     };
 
     // Check if user is admin (has all permissions)
-    const isAdmin = ref(false);
+    const isAdmin = computed(() => isSuperuser.value);
 
     // Check if user can manage users
     const canManageUsers = () => {
-        return hasCategoryPermission('SYSTEM') || isAdmin.value;
+        // Superusers bypass all permission checks
+        if (isSuperuser.value) return true;
+        return hasCategoryPermission('SYSTEM');
     };
 
     // Check if user can manage payroll
     const canManagePayroll = () => {
-        return hasCategoryPermission('PAYROLL') || isAdmin.value;
+        // Superusers bypass all permission checks
+        if (isSuperuser.value) return true;
+        return hasCategoryPermission('PAYROLL');
     };
 
     // Check if user can manage HR
     const canManageHR = () => {
-        return hasCategoryPermission('HRM') || isAdmin.value;
+        // Superusers bypass all permission checks
+        if (isSuperuser.value) return true;
+        return hasCategoryPermission('HRM');
     };
 
     return {
         userPermissions,
+        currentUser,
+        isSuperuser,
         hasPermission,
         hasAnyPermission,
         hasAllPermissions,

@@ -88,11 +88,21 @@ export const PERMISSION_CATEGORIES = {
 
 /**
  * Check if user has specific permission
- * @param {Array} userPermissions - Array of user permissions
+ * @param {Array|Object} userPermissionsOrUser - Array of user permissions or user object
  * @param {string} requiredPermission - Permission to check
  * @returns {boolean} - True if user has permission
  */
-export const hasPermission = (userPermissions, requiredPermission) => {
+export const hasPermission = (userPermissionsOrUser, requiredPermission) => {
+    // Check if superuser first - superusers bypass all permission checks
+    if (isSuperUser(userPermissionsOrUser)) {
+        return true;
+    }
+    
+    // Extract permissions array from object or use as-is
+    const userPermissions = Array.isArray(userPermissionsOrUser) 
+        ? userPermissionsOrUser 
+        : (userPermissionsOrUser?.permissions || []);
+    
     if (!userPermissions || !Array.isArray(userPermissions)) {
         return false;
     }
@@ -101,11 +111,21 @@ export const hasPermission = (userPermissions, requiredPermission) => {
 
 /**
  * Check if user has any of the specified permissions
- * @param {Array} userPermissions - Array of user permissions
+ * @param {Array|Object} userPermissionsOrUser - Array of user permissions or user object
  * @param {Array} requiredPermissions - Array of permissions to check
  * @returns {boolean} - True if user has at least one permission
  */
-export const hasAnyPermission = (userPermissions, requiredPermissions) => {
+export const hasAnyPermission = (userPermissionsOrUser, requiredPermissions) => {
+    // Check if superuser first - superusers bypass all permission checks
+    if (isSuperUser(userPermissionsOrUser)) {
+        return true;
+    }
+    
+    // Extract permissions array from object or use as-is
+    const userPermissions = Array.isArray(userPermissionsOrUser) 
+        ? userPermissionsOrUser 
+        : (userPermissionsOrUser?.permissions || []);
+    
     if (!userPermissions || !Array.isArray(userPermissions)) {
         return false;
     }
@@ -114,11 +134,21 @@ export const hasAnyPermission = (userPermissions, requiredPermissions) => {
 
 /**
  * Check if user has all of the specified permissions
- * @param {Array} userPermissions - Array of user permissions
+ * @param {Array|Object} userPermissionsOrUser - Array of user permissions or user object
  * @param {Array} requiredPermissions - Array of permissions to check
  * @returns {boolean} - True if user has all permissions
  */
-export const hasAllPermissions = (userPermissions, requiredPermissions) => {
+export const hasAllPermissions = (userPermissionsOrUser, requiredPermissions) => {
+    // Check if superuser first - superusers bypass all permission checks
+    if (isSuperUser(userPermissionsOrUser)) {
+        return true;
+    }
+    
+    // Extract permissions array from object or use as-is
+    const userPermissions = Array.isArray(userPermissionsOrUser) 
+        ? userPermissionsOrUser 
+        : (userPermissionsOrUser?.permissions || []);
+    
     if (!userPermissions || !Array.isArray(userPermissions)) {
         return false;
     }
@@ -151,11 +181,21 @@ export const getPermissionsByCategory = (userPermissions) => {
 
 /**
  * Check if user has access to a specific module
- * @param {Array} userPermissions - Array of user permissions
+ * @param {Array|Object} userPermissionsOrUser - Array of user permissions or user object
  * @param {string} module - Module name (e.g., 'HRM', 'FINANCE')
  * @returns {boolean} - True if user has access to module
  */
-export const hasModuleAccess = (userPermissions, module) => {
+export const hasModuleAccess = (userPermissionsOrUser, module) => {
+    // Check if superuser first - superusers bypass all permission checks
+    if (isSuperUser(userPermissionsOrUser)) {
+        return true;
+    }
+    
+    // Extract permissions array from object or use as-is
+    const userPermissions = Array.isArray(userPermissionsOrUser) 
+        ? userPermissionsOrUser 
+        : (userPermissionsOrUser?.permissions || []);
+    
     if (!userPermissions || !Array.isArray(userPermissions)) {
         return false;
     }
@@ -173,10 +213,20 @@ export const hasModuleAccess = (userPermissions, module) => {
 /**
  * Filter menu items based on user permissions
  * @param {Array} menuItems - Array of menu items
- * @param {Array} userPermissions - Array of user permissions
+ * @param {Array|Object} userPermissionsOrUser - Array of user permissions or user object
  * @returns {Array} - Filtered menu items
  */
-export const filterMenuItems = (menuItems, userPermissions) => {
+export const filterMenuItems = (menuItems, userPermissionsOrUser) => {
+    // Superusers see all menu items - no filtering
+    if (isSuperUser(userPermissionsOrUser)) {
+        return menuItems;
+    }
+
+    // Extract permissions array from object or use as-is
+    const userPermissions = Array.isArray(userPermissionsOrUser) 
+        ? userPermissionsOrUser 
+        : (userPermissionsOrUser?.permissions || []);
+
     if (!userPermissions || !Array.isArray(userPermissions)) {
         return [];
     }
@@ -226,9 +276,30 @@ export const getDashboardRedirectPath = (user) => {
     const permissions = user.permissions;
     const roles = Array.isArray(user.roles) ? user.roles.map((r) => String(r).toLowerCase()) : [];
 
-    // 1) Executives / Admins → Executive dashboard
+    // Check if user is a superuser
+    const isSuperuser = user.is_superuser === true || 
+                       user.isSuperuser === true || 
+                       roles.includes('superusers') ||
+                       permissions.includes('is_superuser');
+
+    // Superusers: Allow access to executive dashboard (home) by default
+    // But if they have employee mapping, they can navigate to ESS and other modules
+    if (isSuperuser) {
+        // Superusers go to the main executive dashboard
+        return '/';
+    }
+
+    // For users with employee_id (employees): ALWAYS default to ESS dashboard
+    // They can still access other modules if permissions allow, but ESS is their home
+    if (user.employee_id) {
+        return '/ess';
+    }
+
+    // For users WITHOUT employee mapping (non-employees):
+    // Route based on their highest-level role or module permissions
+
+    // 1) Executives / Admins without employee mapping → Executive dashboard
     if (
-        roles.includes('superusers') ||
         roles.includes('cto') ||
         roles.includes('ceo') ||
         roles.includes('manager')
@@ -241,8 +312,6 @@ export const getDashboardRedirectPath = (user) => {
         return '/dashboard/ict';
     }
 
-    // 2) Do not hard-redirect staff to ESS; use permissions instead
-
     // Helper: check any view or manage permission for a module
     const canAccessModule = (viewPerms = [], managePerms = []) => {
         return (
@@ -251,7 +320,7 @@ export const getDashboardRedirectPath = (user) => {
         );
     };
 
-    // 3) Route by module access (view or manage). Priority by common org flows.
+    // 2) Route by module access (view or manage). Priority by common org flows.
     if (canAccessModule(['view_payment', 'view_expense', 'view_budget'], ['add_payment', 'change_payment', 'delete_payment'])) {
         return '/finance';
     }
@@ -271,23 +340,34 @@ export const getDashboardRedirectPath = (user) => {
         return '/hrm';
     }
 
-    // 4) Fallback → ESS if mapped to employee, else profile
-    return user.employee_id ? '/ess' : '/users/account';
+    // 3) Fallback → user account profile
+    return '/users/account';
 };
 
 /**
  * Check if user is superuser (has all permissions)
- * @param {Array} userPermissions - Array of user permissions
+ * @param {Object|Array} user - User object or user permissions array
  * @returns {boolean} - True if user is superuser
  */
-export const isSuperUser = (userPermissions) => {
-    if (!userPermissions || !Array.isArray(userPermissions)) {
-        return false;
+export const isSuperUser = (user) => {
+    // If passed an object (user object)
+    if (user && typeof user === 'object' && !Array.isArray(user)) {
+        const roles = Array.isArray(user.roles) ? user.roles.map((r) => String(r).toLowerCase()) : [];
+        const permissions = Array.isArray(user.permissions) ? user.permissions : [];
+        
+        return user.is_superuser === true || 
+               user.isSuperuser === true || 
+               roles.includes('superusers') ||
+               permissions.includes('is_superuser');
     }
     
-    // Superuser typically has all permissions or specific superuser permissions
-    return userPermissions.includes('is_superuser') || 
-           userPermissions.length > 100; // Arbitrary threshold for superuser
+    // If passed an array (permissions array - legacy support)
+    if (Array.isArray(user)) {
+        return user.includes('is_superuser') || 
+               user.length > 100; // Arbitrary threshold for superuser (legacy)
+    }
+    
+    return false;
 };
 
 export default {

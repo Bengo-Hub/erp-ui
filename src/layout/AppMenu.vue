@@ -491,6 +491,18 @@ const originalModel = ref([
                 icon: 'pi pi-cog',
                 items: [
                     {
+                        label: 'Invoices',
+                        icon: 'pi pi-file',
+                        to: '/finance/invoices',
+                        permission: 'view_billingdocument'
+                    },
+                    {
+                        label: 'Quotations',
+                        icon: 'pi pi-file-edit',
+                        to: '/finance/quotations',
+                        permission: 'view_billingdocument'
+                    },
+                    {
                         label: 'Accounts',
                         icon: 'pi pi-wallet',
                         to: '/finance/accounts',

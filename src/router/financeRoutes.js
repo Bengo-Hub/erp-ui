@@ -42,6 +42,24 @@ export const financeRoutes = [
         meta: { requiresAuth: true, title: 'Expense Management' }
     },
     {
+        path: '/finance/expenses/create',
+        name: 'finance-expense-create',
+        component: () => import('@/views/pages/finance/expenses/ExpenseForm.vue'),
+        meta: { requiresAuth: true, title: 'Create Expense' }
+    },
+    {
+        path: '/finance/expenses/:id',
+        name: 'finance-expense-view',
+        component: () => import('@/views/pages/finance/expenses/ExpenseView.vue'),
+        meta: { requiresAuth: true, title: 'View Expense' }
+    },
+    {
+        path: '/finance/expenses/:id/edit',
+        name: 'finance-expense-edit',
+        component: () => import('@/views/pages/finance/expenses/ExpenseForm.vue'),
+        meta: { requiresAuth: true, title: 'Edit Expense' }
+    },
+    {
         path: '/finance/expense-categories',
         name: 'finance-expense-categories',
         component: () => import('@/views/pages/finance/expenses/ExpenseCategories.vue'),
@@ -106,5 +124,55 @@ export const financeRoutes = [
         name: 'finance-analytics',
         component: () => import('@/components/finance/analytics/FinancialAnalytics.vue'),
         meta: { requiresAuth: true, title: 'Financial Analytics' }
+    },
+    // NEW: Invoice Management Routes
+    {
+        path: '/finance/invoices',
+        name: 'finance-invoices',
+        component: () => import('@/views/pages/finance/invoicing/Invoices.vue'),
+        meta: { requiresAuth: true, title: 'Invoices', permission: 'view_billingdocument' }
+    },
+    {
+        path: '/finance/invoices/create',
+        name: 'finance-invoice-create',
+        component: () => import('@/views/pages/finance/invoicing/InvoiceForm.vue'),
+        meta: { requiresAuth: true, title: 'Create Invoice', permission: 'add_billingdocument' }
+    },
+    {
+        path: '/finance/invoices/:id',
+        name: 'finance-invoice-view',
+        component: () => import('@/views/pages/finance/invoicing/InvoiceView.vue'),
+        meta: { requiresAuth: true, title: 'View Invoice', permission: 'view_billingdocument' }
+    },
+    {
+        path: '/finance/invoices/:id/edit',
+        name: 'finance-invoice-edit',
+        component: () => import('@/views/pages/finance/invoicing/InvoiceForm.vue'),
+        meta: { requiresAuth: true, title: 'Edit Invoice', permission: 'change_billingdocument' }
+    },
+    // NEW: Quotation Management Routes
+    {
+        path: '/finance/quotations',
+        name: 'finance-quotations',
+        component: () => import('@/views/pages/finance/quotations/Quotations.vue'),
+        meta: { requiresAuth: true, title: 'Quotations', permission: 'view_billingdocument' }
+    },
+    {
+        path: '/finance/quotations/create',
+        name: 'finance-quotation-create',
+        component: () => import('@/views/pages/finance/quotations/QuotationForm.vue'),
+        meta: { requiresAuth: true, title: 'Create Quotation', permission: 'add_billingdocument' }
+    },
+    {
+        path: '/finance/quotations/:id',
+        name: 'finance-quotation-view',
+        component: () => import('@/views/pages/finance/quotations/QuotationView.vue'),
+        meta: { requiresAuth: true, title: 'View Quotation', permission: 'view_billingdocument' }
+    },
+    {
+        path: '/finance/quotations/:id/edit',
+        name: 'finance-quotation-edit',
+        component: () => import('@/views/pages/finance/quotations/QuotationForm.vue'),
+        meta: { requiresAuth: true, title: 'Edit Quotation', permission: 'change_billingdocument' }
     }
 ];

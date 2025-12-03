@@ -2,7 +2,7 @@
 import NotificationPanel from '@/components/notification/NotificationPanel.vue';
 import { useTheme } from '@/composables/useTheme';
 import { useLayout } from '@/layout/composables/layout';
-import { getDashboardRedirectPath, hasAnyPermission } from '@/services/auth/permissionService';
+import { getDashboardRedirectPath } from '@/services/auth/permissionService';
 import { notificationService } from '@/services/notifications/notificationService';
 import { getUserAvatarUrl } from '@/utils/avatarHelper';
 import { getBusinessDetails } from '@/utils/businessBranding';
@@ -119,6 +119,8 @@ const navigateToSettings = () => {
 
 const navigateToDashboard = () => {
     // Navigate to user's appropriate dashboard based on role/permissions
+    // For employees (users with employee_id), always go to ESS dashboard
+    // For superusers and other users, use the getDashboardRedirectPath logic
     const redirectPath = getDashboardRedirectPath(currentUser.value);
     router.push(redirectPath);
 };

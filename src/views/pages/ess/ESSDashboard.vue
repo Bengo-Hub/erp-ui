@@ -387,7 +387,9 @@
                     <div class="text-center py-6">
                         <i class="pi pi-receipt text-5xl text-cyan-500 mb-3"></i>
                         <p class="text-surface-600 dark:text-surface-400 mb-4">Submit expense claims</p>
-                        <Button
+                        <PermissionButton
+                            :permission="['add_expenseclaims', 'change_expenseclaims']"
+                            mode="any"
                             label="New Claim"
                             icon="pi pi-plus"
                             @click="navigateTo('/hrm/payroll/claims')"
@@ -428,6 +430,7 @@ import { formatCurrency, formatDate } from '@/utils/formatters';
 import { computed, onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { useStore } from 'vuex';
+import PermissionButton from '@/components/common/PermissionButton.vue';
 
 const router = useRouter();
 const store = useStore();

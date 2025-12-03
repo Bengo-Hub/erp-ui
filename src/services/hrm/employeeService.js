@@ -624,7 +624,7 @@ export const employeeService = {
             formData.append('file', importData.file);
             formData.append('mapping', JSON.stringify(importData.mapping));
 
-            const response = await axios.post(`${V1_HRM_BASE}/upload-employee-data/`, formData, {
+            const response = await axios.post(`${EMPLOYEES_BASE}/upload-employee-data/`, formData, {
                 headers: {
                     'Content-Type': 'multipart/form-data'
                 }
