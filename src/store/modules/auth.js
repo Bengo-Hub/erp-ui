@@ -77,7 +77,10 @@ const actions = {
                 } catch (_) {
                     // roles optional
                 }
-                const imgBaseUrl = (axios.defaults.baseURL || '').replace('/api/v1/', '/media/');
+                // Get base URL for constructing full URLs
+                // Backend returns logo.url which already includes /media/ prefix
+                // We just need the base domain URL
+                const baseUrl = (axios.defaults.baseURL || '').replace('/api/v1', '');
 
                 // Build safe business fallback
                 const rawBiz = data.business || {};
@@ -94,8 +97,9 @@ const actions = {
                     address: rawBiz.address || '',
                     email: rawBiz.email || '',
                     website: rawBiz.website || '',
-                    business__logo: rawBiz.business__logo ? imgBaseUrl + rawBiz.business__logo : '',
-                    business__watermarklogo: rawBiz.business__watermarklogo ? imgBaseUrl + rawBiz.business__watermarklogo : '',
+                    // Backend logo.url already includes /media/ prefix, just prepend base URL
+                    business__logo: rawBiz.business__logo ? (rawBiz.business__logo.startsWith('http') ? rawBiz.business__logo : baseUrl + rawBiz.business__logo) : '',
+                    business__watermarklogo: rawBiz.business__watermarklogo ? (rawBiz.business__watermarklogo.startsWith('http') ? rawBiz.business__watermarklogo : baseUrl + rawBiz.business__watermarklogo) : '',
                     branding_settings: rawBiz.branding_settings || null,
                     id: rawBiz.id || null
                 };
