@@ -10,6 +10,8 @@ const toast = useToast();
 // Data
 const products = ref([]);
 const loading = ref(false);
+const searchTerm = ref('');
+const productTypeFilter = ref('all');
 const productDialog = ref(false);
 const deleteDialog = ref(false);
 const detailDialog = ref(false);
@@ -51,21 +53,60 @@ onMounted(async () => {
 });
 
 // Methods
-const fetchProducts = async () => {
-    try {
-        loading.value = true;
-        const response = await ecommerceService.fetchAllProducts();
-        products.value = response.data.results;
-        products.value.forEach((product) => {
-            product.maincategory = product.maincategory || {};
-            product.brand = product.brand || {};
-            product.model = product.model || {};
-        });
-    } catch (error) {
-        showError('Failed to fetch products');
-    } finally {
-        loading.value = false;
-    }
+    const fetchProducts = async () => {
+        try {
+            loading.value = true;
+            // Build params from filters
+            const params = {};
+            if (searchTerm.value) params.search = searchTerm.value;
+            if (productTypeFilter.value && productTypeFilter.value !== 'all') params.product_type = productTypeFilter.value;
+
+            // Use the standard products endpoint which supports filtering (returns StockInventory objects)
+            const response = await ecommerceService.getProducts(params);
+            // Support APIResponse wrapper or plain results
+            const payload = response.data || response || {};
+            let data = payload.data ?? payload.results ?? payload;
+            const raw = Array.isArray(data) ? data : (Array.isArray(data?.results) ? data.results : []);
+
+            // Normalize/flatten data for the table so templates are simpler and consistent
+            products.value = raw.map((item) => {
+                const prod = item.product || {};
+                // Derive a boolean is_active for consistent frontend usage. Backend
+                // may return either `status: 'active'` or `is_active: true` in different
+                // endpoints; normalize to a single source of truth here.
+                const isActive = prod.hasOwnProperty('is_active') ? !!prod.is_active : (String(prod.status).toLowerCase() === 'active');
+
+                return {
+                    id: item.id,
+                    title: prod.title || prod.name || '',
+                    image: prod.images && prod.images.length ? prod.images[0].image : null,
+                    sku: prod.sku || '',
+                    serial: prod.serial || '',
+                    product_type: prod.product_type || prod.type || '', // goods/service
+                    inventory_type: item.product_type || item.product_type || '', // single/variable/combo
+                    selling_price: item.selling_price ?? null,
+                    default_price: prod.default_price ?? null,
+                    stock_level: item.stock_level ?? null,
+                    availability: item.availability ?? (item.stock_level > 0 ? 'In Stock' : 'Out of Stock'),
+                    applicable_tax: item.applicable_tax ?? null,
+                    is_active: isActive,
+                    status_label: isActive ? 'Active' : 'Inactive',
+                    is_featured: prod.is_featured || false,
+                    branch_name: item.branch?.name || item.branch?.business?.name || null,
+                    raw: item
+                };
+            });
+        } catch (error) {
+            showError('Failed to fetch products');
+        } finally {
+            loading.value = false;
+        }
+    };
+
+const clearFilters = async () => {
+    searchTerm.value = '';
+    productTypeFilter.value = 'all';
+    await fetchProducts();
 };
 
 const fetchDependencies = async () => {
@@ -227,6 +268,16 @@ const showError = (message) => {
         life: 3000
     });
 };
+
+const formatCurrency = (value) => {
+    if (value === null || value === undefined) return '-';
+    try {
+        // Use Intl to format numbers consistently
+        return Number(value).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    } catch (e) {
+        return value;
+    }
+};
 </script>
 
 <template>
@@ -234,7 +285,12 @@ const showError = (message) => {
         <Card>
             <template #title>
                 <div class="flex justify-between items-center">
-                    <span>Product Management</span>
+                    <div class="flex items-center gap-4">
+                        <span>Product Management</span>
+                        <InputText v-model="searchTerm" placeholder="Search products..." class="w-64" @input="fetchProducts" />
+                        <Dropdown v-model="productTypeFilter" :options="[{label:'All',value:'all'},{label:'Goods',value:'goods'},{label:'Services',value:'service'}]" optionLabel="label" optionValue="value" class="w-40" @change="fetchProducts" />
+                        <Button label="Clear" icon="pi pi-filter-slash" class="p-button-text" @click="clearFilters" />
+                    </div>
                     <Button label="Add Product" icon="pi pi-plus" @click="openAddDialog" />
                 </div>
             </template>
@@ -252,22 +308,61 @@ const showError = (message) => {
                     class="p-datatable-sm"
                     stripedRows
                 >
-                    <Column field="id" header="ID" :sortable="true"></Column>
-                    <Column field=".title" header="Name" :sortable="true">
+                    <Column field="id" header="ID" :sortable="true" style="min-width:80px"></Column>
+                    <Column field="title" header="Name" :sortable="true" style="min-width:220px">
                         <template #body="{ data }">
                             <div class="flex items-center gap-3">
-                                <img v-if="data.images && data.images.length > 0" :src="data.images[0].image" :alt="data.title" class="w-10 h-10 object-cover rounded" />
-                                <span>{{ data.title }}</span>
+                                <img v-if="data.image" :src="data.image" :alt="data.title" class="w-10 h-10 object-cover rounded" />
+                                <span class="truncate">{{ data.title }}</span>
                             </div>
                         </template>
                     </Column>
-                    <Column field="sku" header="SKU" :sortable="true"></Column>
-                    <Column field="maincategory.name" header="Main Category" :sortable="true"></Column>
-                    <Column field="status" header="Status" :sortable="true">
+                    <Column field="sku" header="SKU" :sortable="true" style="min-width:120px"></Column>
+                    <Column field="product_type" header="Type" :sortable="true" style="min-width:120px">
                         <template #body="{ data }">
-                            <Tag :value="data.status === '1' ? 'Active' : 'Inactive'" :severity="data.status === '1' ? 'success' : 'danger'" />
+                            <Tag :value="data.product_type" :severity="data.product_type === 'service' ? 'info' : 'success'" />
                         </template>
                     </Column>
+                    <Column field="selling_price" header="Price" :sortable="true" style="min-width:120px">
+                        <template #body="{ data }">
+                            <div>
+                                <span v-if="data.selling_price !== null">{{ formatCurrency(data.selling_price) }}</span>
+                                <span v-else-if="data.default_price !== null">{{ formatCurrency(data.default_price) }}</span>
+                                <span v-else>—</span>
+                            </div>
+                        </template>
+                    </Column>
+                    <Column field="default_price" header="Default" :sortable="true" style="min-width:120px">
+                        <template #body="{ data }">
+                            <span>{{ data.default_price !== null ? formatCurrency(data.default_price) : '-' }}</span>
+                        </template>
+                    </Column>
+                    <Column field="stock_level" header="Stock" :sortable="true" style="min-width:100px">
+                        <template #body="{ data }">
+                            <span>{{ data.stock_level !== null ? data.stock_level : (data.product_type === 'service' ? '-' : 'N/A') }}</span>
+                        </template>
+                    </Column>
+                    <Column field="availability" header="Availability" :sortable="true" style="min-width:120px">
+                        <template #body="{ data }">
+                            <span>{{ data.availability || (data.product_type === 'service' ? 'Service' : '-') }}</span>
+                        </template>
+                    </Column>
+                    <Column header="Tax (%)" :sortable="true" style="min-width:100px">
+                        <template #body="{ data }">
+                            <span>{{ data.applicable_tax?.percentage ?? (data.raw?.product?.applicable_tax?.percentage ?? '-') }}</span>
+                        </template>
+                    </Column>
+                    <Column header="Branch" :sortable="true" style="min-width:140px">
+                        <template #body="{ data }">
+                            <span>{{ data.branch_name || '-' }}</span>
+                        </template>
+                    </Column>
+                    <Column header="Status" :sortable="true" style="min-width:100px">
+                        <template #body="{ data }">
+                            <Tag :value="data.status_label" :severity="data.is_active ? 'success' : 'danger'" />
+                        </template>
+                    </Column>
+                    <!-- removed duplicate/unused columns to avoid header overlap -->
                     <Column header="Featured" :sortable="false">
                         <template #body="{ data }">
                             <i class="pi" :class="data.is_featured ? 'pi-check-circle text-green-500' : 'pi-times-circle text-red-500'" />
@@ -275,9 +370,9 @@ const showError = (message) => {
                     </Column>
                     <Column header="Actions" :exportable="false" style="min-width: 10rem">
                         <template #body="{ data }">
-                            <Button icon="pi pi-eye" class="p-button-rounded p-button-text p-button-sm mr-2" @click="viewProduct(data.id)" />
-                            <Button icon="pi pi-pencil" class="p-button-rounded p-button-text p-button-sm mr-2" @click="editProduct(data.id)" />
-                            <Button icon="pi pi-trash" class="p-button-rounded p-button-text p-button-sm p-button-danger" @click="confirmDeleteProduct(data.id)" />
+                            <Button icon="pi pi-eye" class="p-button-rounded p-button-text p-button-sm mr-2" @click="viewProduct(data.raw.product.id)" />
+                            <Button icon="pi pi-pencil" class="p-button-rounded p-button-text p-button-sm mr-2" @click="editProduct(data.raw.product.id)" />
+                            <Button icon="pi pi-trash" class="p-button-rounded p-button-text p-button-sm p-button-danger" @click="confirmDeleteProduct(data.raw.product.id)" />
                         </template>
                     </Column>
                 </DataTable>

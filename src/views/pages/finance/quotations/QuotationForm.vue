@@ -97,6 +97,20 @@ const productDialogForItems = ref(false);
 const productEditMode = ref(false);
 const productEditData = ref(null);
 
+// Handlers to open product dialogs (avoid inline arrow functions in template)
+const handleAddProductClick = () => {
+    productDialogForItems.value = true;
+    productEditMode.value = false;
+    productEditData.value = null;
+    showProductDialog.value = true;
+};
+
+const handleEditProductClick = (product) => {
+    productEditMode.value = true;
+    productEditData.value = product;
+    showProductDialog.value = true;
+};
+
 // Product modal
 const productModal = useAddEditModal({
   entityName: 'Product',
@@ -237,15 +251,17 @@ const loadProducts = async () => {
     try {
         // Use lightweight search endpoint for better performance
         const response = await ecommerceService.searchProductsLite({ search: '' });
-        let data = response.data || [];
-        
-        // Check if data is wrapped in a results object
-        if (data.results && Array.isArray(data.results)) {
-            data = data.results;
-        }
-        
-        // Ensure we have an array
-        products.value = Array.isArray(data) ? data : [];
+            // Handle APIResponse wrapper or raw array
+            const payload = response.data || response || {};
+            let data = payload.data ?? payload.results ?? payload;
+
+            // If data itself has results (nested), unwrap
+            if (data && data.results && Array.isArray(data.results)) {
+                data = data.results;
+            }
+
+            // Ensure we have an array
+            products.value = Array.isArray(data) ? data : [];
         filteredProducts.value = products.value;
         
         console.log('✅ Products loaded:', products.value.length);
@@ -289,7 +305,8 @@ const handleProductSaved = async (saved) => {
         if (productDialogForItems.value && saved) {
             const product = saved?.product || saved || saved?.data || null;
             if (product) {
-                const newItem = { product: product, quantity: 1, unit_price: parseFloat(product.selling_price || product.price || 0), description: product.description || '' };
+                const unitPrice = parseFloat(product.selling_price || product.default_price || product.price || 0);
+                const newItem = { product: product, quantity: 1, unit_price: unitPrice, description: product.description || '' };
                 form.items.push(newItem);
                 calculateTotals();
             }
@@ -749,8 +766,8 @@ const loadQuotation = async (id) => {
                             :show-edit-product="true"
                             :show-tax-fields="true"
                             :show-description="true"
-                            @add-product="() => { productDialogForItems.value = true; productEditMode.value = false; productEditData.value = null; showProductDialog.value = true }"
-                            @edit-product="(product, index) => { productEditMode.value = true; productEditData.value = product; showProductDialog.value = true }"
+                            @add-product="handleAddProductClick"
+                            @edit-product="handleEditProductClick"
                             @update:items="calculateTotals"
                         />
                     </div>

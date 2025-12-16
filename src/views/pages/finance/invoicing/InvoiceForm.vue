@@ -240,13 +240,15 @@ const loadProducts = async () => {
     try {
         // Use lightweight search endpoint for better performance
         const response = await ecommerceService.searchProductsLite({ search: '' });
-        let data = response.data?.data || response.data || [];
-        
-        // Check if data is wrapped in a results object
-        if (data.results && Array.isArray(data.results)) {
+        // Handle APIResponse wrapper or raw array
+        const payload = response.data || response || {};
+        let data = payload.data ?? payload.results ?? payload;
+
+        // If data itself has results (nested), unwrap
+        if (data && data.results && Array.isArray(data.results)) {
             data = data.results;
         }
-        
+
         // Ensure we have an array
         products.value = Array.isArray(data) ? data : [];
         filteredProducts.value = products.value;
@@ -306,21 +308,22 @@ const handleProductSaved = async (saved) => {
         if (productDialogForItems.value && product) {
             // If the product already exists in the items list, increment its quantity instead of adding a duplicate line
             const prodId = product.id || product.product_id || null;
+            const unitPriceVal = parseFloat(product.selling_price || product.default_price || product.price || 0);
             if (prodId) {
                 const existing = form.items.find(i => (i.product && (i.product.id || i.product.product_id) || i.product) === prodId);
                 if (existing) {
                     existing.quantity = (Number(existing.quantity) || 0) + 1;
                     // Recalculate line & totals
-                    existing.unit_price = parseFloat(existing.unit_price || product.selling_price || 0);
+                    existing.unit_price = parseFloat(existing.unit_price || unitPriceVal || 0);
                     calculateLineItem(existing);
                     calculateTotals();
                 } else {
-                    const newItem = { product: product, quantity: 1, unit_price: parseFloat(product.selling_price || product.price || 0), description: product.description || '' };
+                    const newItem = { product: product, quantity: 1, unit_price: unitPriceVal, description: product.description || '' };
                     form.items.push(newItem);
                     calculateTotals();
                 }
             } else {
-                const newItem = { product: product, quantity: 1, unit_price: parseFloat(product.selling_price || product.price || 0), description: product.description || '' };
+                const newItem = { product: product, quantity: 1, unit_price: unitPriceVal, description: product.description || '' };
                 form.items.push(newItem);
                 calculateTotals();
             }

@@ -37,7 +37,7 @@ const form = ref({
     is_featured: false,
     is_manufactured: false,
     product_type: 'goods',
-    default_price: 0.00,
+    unit_price: 0.00,
     seo_title: '',
     seo_description: '',
     seo_keywords: ''
@@ -133,7 +133,7 @@ const fetchProduct = async (id) => {
             is_featured: product.is_featured || false,
             is_manufactured: product.is_manufactured || false,
             product_type: product.product_type || 'goods',
-            default_price: product.default_price || 0.00,
+            unit_price: product.default_price || product.unit_price || 0.00,
             seo_title: product.seo_title || '',
             seo_description: product.seo_description || '',
             seo_keywords: product.seo_keywords || ''
@@ -196,6 +196,11 @@ const submitForm = async () => {
                 }
             }
         });
+
+        // Backward compatibility: ensure backend receives default_price
+        if (form.value.unit_price !== undefined && form.value.unit_price !== null) {
+            formData.append('default_price', form.value.unit_price);
+        }
 
         // Append new images
         newImages.value.forEach(image => {
@@ -387,7 +392,7 @@ onMounted(async () => {
                 is_featured: props.product.is_featured || false,
                 is_manufactured: props.product.is_manufactured || false,
                 product_type: props.product.product_type || 'goods',
-                default_price: props.product.default_price || 0.00,
+                    unit_price: props.product.unit_price || props.product.default_price || 0.00,
                 seo_title: props.product.seo_title || '',
                 seo_description: props.product.seo_description || '',
                 seo_keywords: props.product.seo_keywords || ''
@@ -414,9 +419,22 @@ onMounted(async () => {
                 <h3 class="text-lg font-semibold mb-4">Basic Information</h3>
                 
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div class="col-span-2">
+                    <div>
                         <label class="block text-sm font-medium mb-2">Product/Service Title <span class="text-red-500">*</span></label>
                         <InputText v-model="form.title" placeholder="Enter product/service title" class="w-full" />
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium mb-2">Product Type</label>
+                        <Dropdown 
+                            v-model="form.product_type" 
+                            :options="productTypeOptions" 
+                            optionLabel="label" 
+                            optionValue="value"
+                            placeholder="Select type" 
+                            class="w-full"
+                        />
+                        <small v-if="form.product_type === 'service'" class="text-sm text-gray-500 mt-2 block">💡 Services are billable items and are <strong>not</strong> added to inventory or stock.</small>
                     </div>
 
                     <div>
@@ -436,8 +454,8 @@ onMounted(async () => {
                 </div>
             </div>
 
-            <!-- Classification -->
-            <div class="card p-6">
+            <!-- Classification (hidden for services) -->
+            <div class="card p-6" v-if="form.product_type !== 'service'">
                 <h3 class="text-lg font-semibold mb-4">Classification</h3>
                 
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -553,6 +571,7 @@ onMounted(async () => {
                             placeholder="Select type" 
                             class="w-full"
                         />
+                        <small v-if="form.product_type === 'service'" class="text-sm text-gray-500 mt-2 block">💡 Services are billable items and are <strong>not</strong> added to inventory or stock.</small>
                     </div>
                 </div>
             </div>
@@ -563,9 +582,9 @@ onMounted(async () => {
                 
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
-                        <label class="block text-sm font-medium mb-2">Default Price</label>
+                        <label class="block text-sm font-medium mb-2">Unit Price</label>
                         <InputNumber 
-                            v-model="form.default_price" 
+                            v-model="form.unit_price" 
                             mode="currency" 
                             currency="KES" 
                             locale="en-KE"
@@ -574,12 +593,12 @@ onMounted(async () => {
                         />
                     </div>
 
-                    <div>
+                    <div v-if="form.product_type !== 'service'">
                         <label class="block text-sm font-medium mb-2">Weight</label>
                         <InputText v-model="form.weight" placeholder="e.g., 2.5kg" class="w-full" />
                     </div>
 
-                    <div>
+                    <div v-if="form.product_type !== 'service'">
                         <label class="block text-sm font-medium mb-2">Dimensions</label>
                         <InputText v-model="form.dimentions" placeholder="e.g., 10x20x30 cm" class="w-full" />
                     </div>
@@ -598,12 +617,12 @@ onMounted(async () => {
                 </div>
 
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
-                    <div class="flex items-center">
+                    <div class="flex items-center" v-if="form.product_type !== 'service'">
                         <Checkbox v-model="form.is_featured" inputId="is_featured" binary />
                         <label for="is_featured" class="ml-2">Featured Product</label>
                     </div>
 
-                    <div class="flex items-center">
+                    <div class="flex items-center" v-if="form.product_type !== 'service'">
                         <Checkbox v-model="form.is_manufactured" inputId="is_manufactured" binary />
                         <label for="is_manufactured" class="ml-2">Manufactured Product</label>
                     </div>
@@ -611,7 +630,7 @@ onMounted(async () => {
             </div>
 
             <!-- Product Images -->
-            <div class="card p-6">
+            <div class="card p-6" v-if="form.product_type !== 'service'">
                 <h3 class="text-lg font-semibold mb-4">Product Images</h3>
                 
                 <div class="space-y-4">
