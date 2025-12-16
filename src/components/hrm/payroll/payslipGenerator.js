@@ -493,3 +493,7 @@ export const formattedMonthYear = (mydate) => {
     const date = new Date(mydate);
     return date.toLocaleDateString('en-KE', { year: 'numeric', month: 'long' });
 };
+
+// Re-export commonly used formatter for compatibility with other components
+export { formatCurrency };
+
