@@ -300,7 +300,7 @@ watch(() => props.balanceDue, (newAmount) => {
                     <div v-if="invoice?.payment_accounts?.length > 0" class="space-y-2">
                         <div v-for="account in invoice.payment_accounts" :key="account.id" class="text-sm bg-white dark:bg-gray-800 p-3 rounded">
                             <p class="font-medium">{{ account.account_name }}</p>
-                            <p>{{ account.account_type }}: {{ account.account_number }}</p>
+                            <p>{{ account.account_type === 'mobile_money' ? 'Mobile' : account.account_type }}: {{ account.account_number }}</p>
                             <p v-if="account.additional_info" class="text-xs text-gray-500">{{ account.additional_info }}</p>
                         </div>
                     </div>

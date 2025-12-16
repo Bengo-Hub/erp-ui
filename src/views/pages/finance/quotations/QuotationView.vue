@@ -182,9 +182,12 @@ const convertToInvoice = async () => {
         showToast('success', 'Success', 'Quotation converted to invoice');
         showConvertDialog.value = false;
 
-        // Navigate to the new invoice (response contains { invoice: {...}, quotation: {...} })
-        if (response?.invoice?.id) {
-            router.push(`/finance/invoices/${response.invoice.id}`);
+        // Normalize service response which may wrap data under `data`.
+        const payload = response?.data || response || {};
+
+        // Navigate to the new invoice (payload contains { invoice: {...}, quotation: {...} })
+        if (payload?.invoice?.id) {
+            router.push(`/finance/invoices/${payload.invoice.id}`);
         } else {
             router.push('/finance/invoices');
         }
@@ -200,7 +203,8 @@ const cloneQuotation = async () => {
     try {
         const response = await quotationService.cloneQuotation(quotation.value.id);
         showToast('success', 'Success', 'Quotation cloned successfully');
-        router.push(`/finance/quotations/${response.data.id}/edit`);
+        const payload = response?.data || response || {};
+        router.push(`/finance/quotations/${payload.id}/edit`);
     } catch (error) {
         console.error('Error cloning quotation:', error);
         showToast('error', 'Error', 'Failed to clone quotation');

@@ -274,7 +274,8 @@ onMounted(() => {
                                          class="bg-white dark:bg-gray-800 p-4 rounded border border-gray-200 dark:border-gray-700">
                                         <p class="font-semibold text-gray-800 dark:text-white mb-2">{{ account.account_name }}</p>
                                         <p class="text-sm text-gray-600 dark:text-gray-400 mb-1">
-                                            <span class="font-medium">{{ account.account_type }}:</span> {{ account.account_number }}
+                                            <span class="font-medium">{{ account.account_type === 'mobile_money' ? 'Mobile' : account.account_type }}:</span>
+                                            {{ account.account_number }}
                                         </p>
                                         <p v-if="account.additional_info" class="text-xs text-gray-500 dark:text-gray-500">{{ account.additional_info }}</p>
                                     </div>

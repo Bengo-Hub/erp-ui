@@ -189,8 +189,16 @@ const openConvertDialog = (quotation) => {
 const convertToInvoice = async () => {
     try {
         loading.value = true;
-        const response = await quotationService.convertToInvoice(selectedQuotation.value.id, conversionData.value);
-        showToast('success', 'Success', `Quotation converted to invoice ${response.data.invoice.invoice_number}`);
+        const payload = {
+            ...conversionData.value,
+            invoice_date: conversionData.value.invoice_date instanceof Date
+                ? conversionData.value.invoice_date.toISOString().split('T')[0]
+                : conversionData.value.invoice_date
+        };
+
+        const response = await quotationService.convertToInvoice(selectedQuotation.value.id, payload);
+        const respPayload = response?.data || response || {};
+        showToast('success', 'Success', `Quotation converted to invoice ${respPayload?.invoice?.invoice_number || respPayload?.invoice?.invoice_number}`);
         showConvertDialog.value = false;
         fetchQuotations();
         fetchSummary();
@@ -210,7 +218,8 @@ const cloneQuotation = async (quotation) => {
     try {
         loading.value = true;
         const response = await quotationService.cloneQuotation(quotation.id);
-        showToast('success', 'Success', `Quotation cloned as ${response.data.quotation_number}`);
+        const respPayload = response?.data || response || {};
+        showToast('success', 'Success', `Quotation cloned as ${respPayload.quotation_number || respPayload.data?.quotation_number || ''}`);
         fetchQuotations();
     } catch (error) {
         showToast('error', 'Error', 'Failed to clone quotation');

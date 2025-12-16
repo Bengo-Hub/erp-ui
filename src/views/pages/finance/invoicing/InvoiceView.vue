@@ -169,6 +169,17 @@ const handleRecordPayment = async (data) => {
         }
         showToast('success', 'Success', 'Payment recorded successfully');
         showPaymentDialog.value = false;
+            // Refresh payment accounts and notify account detail views to refresh transactions
+            try {
+                await fetchPaymentAccounts();
+                // Dispatch a custom event that account detail views can listen to
+                if (data && data.payment_account) {
+                    window.dispatchEvent(new CustomEvent('finance.payment.recorded', { detail: { account_id: data.payment_account } }));
+                }
+            } catch (e) {
+                // non-fatal
+                console.error('Error refreshing accounts after payment:', e);
+            }
     } catch (error) {
         console.error('Error recording payment:', error);
         showToast('error', 'Error', 'Failed to record payment');

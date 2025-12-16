@@ -5,6 +5,8 @@ import { useToast } from '@/composables/useToast';
 import { financeService } from '@/services/finance/financeService';
 import { useConfirm } from 'primevue/useconfirm';
 import { computed, onMounted, ref } from 'vue';
+import AccountDetail from '@/views/pages/finance/cashflow/AccountDetail.vue';
+import { useRouter } from 'vue-router';
 
 const { showToast } = useToast();
 const confirm = useConfirm();
@@ -55,7 +57,7 @@ const printpdf = (val) => {
     const data = paymentAccounts.value.map((row) => ({
         ID: row.id,
         Name: row.name,
-        'A/C No.': row.account_number,
+        'A/C No.': row.account_type === 'mobile_money' ? `Mobile: ${row.account_number}` : row.account_number,
         Type: row.account_type,
         'Opening Balance': row.opening_balance
     }));
@@ -72,7 +74,7 @@ const getrpt = () => {
     const data = paymentAccounts.value.map((row) => ({
         ID: row.id,
         Name: row.name,
-        'A/C No.': row.account_number,
+        'A/C No.': row.account_type === 'mobile_money' ? `Mobile: ${row.account_number}` : row.account_number,
         Type: row.account_type,
         'Opening Balance': row.opening_balance
     }));
@@ -119,7 +121,14 @@ const deleterec = (index, id, code) => {
     });
 };
 
-const edit = () => {};
+// Open account details in a modal (prefer modal for quick review)
+const showAccountModal = ref(false);
+const activeAccountId = ref(null);
+
+const edit = (data) => {
+    activeAccountId.value = data.id;
+    showAccountModal.value = true;
+};
 
 onMounted(async () => {
     await Promise.all([fetchAccountTypes(), fetchPaymentAccounts()]);
@@ -167,7 +176,12 @@ onMounted(async () => {
         <DataTable :value="paymentAccounts" :paginator="true" :rows="perPage" :totalRecords="rows" responsiveLayout="scroll" class="p-datatable-striped" :rowHover="true">
             <Column field="id" header="ID" :sortable="true" />
             <Column field="name" header="Name" :sortable="true" />
-            <Column field="account_number" header="Account Number" :sortable="true" />
+            <Column header="Account Number" :sortable="true">
+                <template #body="{ data }">
+                    <span v-if="data.account_type === 'mobile_money'">Mobile: {{ data.account_number }}</span>
+                    <span v-else>{{ data.account_number }}</span>
+                </template>
+            </Column>
             <Column field="account_type" header="Account Type" :sortable="true" />
             <Column field="opening_balance" header="Opening Balance" :sortable="true" />
             <Column header="Actions" :exportable="false" style="min-width: 8rem">
@@ -179,6 +193,11 @@ onMounted(async () => {
                 </template>
             </Column>
         </DataTable>
+
+        <!-- Account Detail Modal -->
+        <Dialog v-model:visible="showAccountModal" header="Account Details" :modal="true" :style="{ width: '80vw' }">
+            <AccountDetail :account-id-prop="activeAccountId" />
+        </Dialog>
 
         <Dialog v-model:visible="showme" header="Print PDF" :modal="true" :style="{ width: '50vw' }">
             <reportdet :title="title" :orderData="orderData" :pl="pl" :headers="headers" :uniqueCars="uniqueCars" :shome="showme" />

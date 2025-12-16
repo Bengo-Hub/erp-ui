@@ -18,7 +18,7 @@ import { coreService } from '@/services/shared/coreService';
 import { systemConfigService } from '@/services/shared/systemConfigService';
 import { formatCurrency } from '@/utils/formatters';
 import { useVuelidate } from '@vuelidate/core';
-import { minValue, required } from '@vuelidate/validators';
+import { minLength, required } from '@vuelidate/validators';
 import { computed, onMounted, reactive, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 
@@ -76,7 +76,8 @@ const rules = {
     quotation_date: { required },
     items: {
         required,
-        minValue: minValue(1)
+        // items must be an array with at least one element
+        minLength: minLength(1)
     }
 };
 
@@ -485,15 +486,28 @@ const saveDraft = async () => {
 };
 
 const saveAndSend = async () => {
+    // Normalize items to an array to avoid validation issues
+    form.items = Array.isArray(form.items) ? form.items : [];
+
     const isValid = await v$.value.$validate();
     if (!isValid) {
         showToast('warn', 'Validation Error', 'Please fill all required fields');
         return;
     }
-    
+
     if (form.items.length === 0) {
         showToast('warn', 'Validation Error', 'Please add at least one line item');
         return;
+    }
+
+    // Validate each line item has sensible quantity and unit price
+    for (const it of form.items) {
+        const qty = Number(it.quantity || 0);
+        const price = Number(it.unit_price || 0);
+        if (!Number.isFinite(qty) || qty <= 0 || !Number.isFinite(price) || price < 0) {
+            showToast('warn', 'Validation Error', 'Each item must have a valid quantity and unit price');
+            return;
+        }
     }
     
     try {
@@ -596,16 +610,18 @@ const loadQuotation = async (id) => {
         form.billing_address = quotation.billing_address;
         form.shipping_cost = quotation.shipping_cost;
         
+        // Map incoming order items to form.items. Backend returns order items with
+        // GenericForeignKey fields: content_type and object_id (object_id is the product id)
         form.items = (quotation.items || []).map(item => ({
-            product: item.product_id ? products.value.find(p => p.id === item.product_id) : null,
-            name: item.name,
-            description: item.description,
-            quantity: item.quantity,
-            unit_price: item.unit_price,
-            tax_rate: item.tax_rate,
-            tax_amount: item.tax_amount,
-            subtotal: item.subtotal,
-            total: item.total
+            product: item.object_id ? products.value.find(p => p.id === item.object_id) : null,
+            name: item.name || item.product_title || '',
+            description: item.description || '',
+            quantity: item.quantity || 1,
+            unit_price: parseFloat(item.unit_price || item.unit_price || item.unit_price || 0),
+            tax_rate: parseFloat(item.tax_rate || 0),
+            tax_amount: parseFloat(item.tax_amount || 0),
+            subtotal: parseFloat(item.subtotal || item.total || 0),
+            total: parseFloat(item.total || 0)
         }));
         
         calculateTotals();

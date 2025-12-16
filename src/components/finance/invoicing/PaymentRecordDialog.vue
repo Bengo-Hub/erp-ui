@@ -262,8 +262,11 @@ onMounted(() => {
                                 <div class="flex items-center gap-2">
                                     <i class="pi pi-wallet text-surface-500"></i>
                                     <div>
-                                        <div class="font-medium">{{ slotProps.option.name }}</div>
-                                        <div class="text-sm text-surface-500">{{ slotProps.option.account_number }}</div>
+                                                <div class="font-medium">{{ slotProps.option.name }}</div>
+                                                <div class="text-sm text-surface-500">
+                                                    <span v-if="slotProps.option.account_type === 'mobile_money'">Mobile: {{ slotProps.option.account_number }}</span>
+                                                    <span v-else>Acct: {{ slotProps.option.account_number }}</span>
+                                                </div>
                                     </div>
                                 </div>
                                 <Button 

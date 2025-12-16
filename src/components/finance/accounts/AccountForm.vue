@@ -63,6 +63,21 @@ const statusOptions = [
 // Computed
 const isEdit = computed(() => !!props.account);
 
+const isAccountNumberRequired = computed(() => {
+    // Account number is not required for cash accounts
+    return form.account_type !== 'cash';
+});
+
+const accountNumberLabel = computed(() => {
+    if (form.account_type === 'mobile_money') return 'Mobile Number';
+    return 'Account Number';
+});
+
+const accountNumberPlaceholder = computed(() => {
+    if (form.account_type === 'mobile_money') return 'Enter mobile number (e.g., +2547...)';
+    return 'Enter account number';
+});
+
 // Watch for account changes
 watch(
     () => props.account,
@@ -115,8 +130,10 @@ const validateForm = () => {
         errors.value.name = 'Account name is required';
     }
 
-    if (!form.account_number.trim()) {
-        errors.value.account_number = 'Account number is required';
+    if (isAccountNumberRequired.value) {
+        if (!form.account_number || !String(form.account_number).trim()) {
+            errors.value.account_number = form.account_type === 'mobile_money' ? 'Mobile number is required' : 'Account number is required';
+        }
     }
 
     if (!form.account_type) {
@@ -173,9 +190,11 @@ const closeDialog = () => {
                 </div>
 
                 <div class="space-y-2">
-                    <label class="block text-sm font-medium text-gray-700"> Account Number <span class="text-red-500">*</span> </label>
-                    <InputText v-model="form.account_number" class="w-full" placeholder="Enter account number" :class="{ 'p-invalid': errors.account_number }" required />
+                    <label class="block text-sm font-medium text-gray-700"> {{ accountNumberLabel }} <span v-if="isAccountNumberRequired" class="text-red-500">*</span> </label>
+                    <InputText v-model="form.account_number" class="w-full" :placeholder="accountNumberPlaceholder" :class="{ 'p-invalid': errors.account_number }" :required="isAccountNumberRequired" />
                     <small v-if="errors.account_number" class="p-error">{{ errors.account_number }}</small>
+                    <small v-else-if="form.account_type === 'cash'" class="text-gray-500">Account number is optional for cash accounts; the system will generate one if omitted.</small>
+                    <small v-else-if="form.account_type === 'mobile_money'" class="text-gray-500">Provide the mobile number used for the mobile money account.</small>
                 </div>
             </div>
 

@@ -29,6 +29,9 @@ export const financeService = {
     getAccountTransactions(accountId, params = {}) {
         return axios.get(`${FINANCE_BASE}/accounts/paymentaccounts/${accountId}/transactions/`, { params });
     },
+    getAccountBalance(accountId) {
+        return axios.get(`${FINANCE_BASE}/accounts/paymentaccounts/${accountId}/balance/`);
+    },
 
     // Voucher Management
     getVouchers(params = {}) {

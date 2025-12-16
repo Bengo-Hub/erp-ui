@@ -1,5 +1,6 @@
 <script setup>
 import AccountForm from '@/components/finance/accounts/AccountForm.vue';
+import AccountDetail from '@/views/pages/finance/cashflow/AccountDetail.vue';
 import { useToast } from '@/composables/useToast';
 import { financeService } from '@/services/finance/financeService';
 import { formatCurrency, formatDate } from '@/utils/formatters';
@@ -94,11 +95,11 @@ const onSort = (event) => {
     loadAccounts();
 };
 
-// View account details
+// View account details (open details dialog)
+const showAccountDetailDialog = ref(false);
 const viewAccount = (account) => {
     selectedAccount.value = account;
-    // Implement view functionality
-    showToast('info', `Viewing account: ${account.name}`);
+    showAccountDetailDialog.value = true;
 };
 
 // View transactions
@@ -193,9 +194,6 @@ onMounted(() => {
 
 <template>
     <div class="space-y-6">
-        <!-- Breadcrumb -->
-        <PageBreadcrumb :customBreadcrumbs="[{ label: 'Finance', to: '/finance' }, { label: 'Accounts Management' }]" />
-
         <!-- Header -->
         <div class="flex flex-col lg:flex-row lg:justify-between lg:items-center gap-4">
             <div>
@@ -339,7 +337,7 @@ onMounted(() => {
                 <DataTable :value="transactions" :loading="transactionsLoading" :paginator="true" :rows="20" class="p-datatable-sm" stripedRows>
                     <Column field="date" header="Date" sortable>
                         <template #body="{ data }">
-                            {{ formatDate(data.date) }}
+                            {{ formatDate(data.transaction_date) }}
                         </template>
                     </Column>
                     <Column field="description" header="Description">
@@ -365,6 +363,13 @@ onMounted(() => {
                         </template>
                     </Column>
                 </DataTable>
+            </div>
+        </Dialog>
+
+        <!-- Account Details Dialog -->
+        <Dialog v-model:visible="showAccountDetailDialog" :modal="true" header="Account Details" :style="{ width: '80vw' }">
+            <div v-if="selectedAccount">
+                <AccountDetail :account-id-prop="selectedAccount.id" />
             </div>
         </Dialog>
     </div>

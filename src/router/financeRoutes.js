@@ -102,6 +102,12 @@ export const financeRoutes = [
         meta: { requiresAuth: true, title: 'List Accounts' }
     },
     {
+        path: '/finance/cashflow/accounts/:id',
+        name: 'finance-account-detail',
+        component: () => import('@/views/pages/finance/cashflow/AccountDetail.vue'),
+        meta: { requiresAuth: true, title: 'Account Details' }
+    },
+    {
         path: '/finance/cashflow/cash-flow',
         name: 'finance-cash-flow',
         component: () => import('@/views/pages/finance/cashflow/cashFlow.vue'),
