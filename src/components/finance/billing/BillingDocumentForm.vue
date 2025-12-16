@@ -1,9 +1,11 @@
 <script setup>
 import { useToast } from '@/composables/useToast';
 import { financeService } from '@/services/finance/financeService';
+import { coreService } from '@/services/shared/coreService';
 import { getBusinessDetails } from '@/utils/businessBranding';
 import { formatCurrency } from '@/utils/formatters';
 import { computed, onMounted, reactive, ref, watch } from 'vue';
+import PDFPreview from '@/components/shared/PDFPreview.vue';
 
 const props = defineProps({
     visible: {
@@ -24,6 +26,8 @@ const loading = ref(false);
 const taxRates = ref([]);
 const businessDetails = ref(null);
 const activeTab = ref(0);
+const showPdfModal = ref(false);
+const pdfBlob = ref(null);
 
 const documentTypes = [
     { label: 'Invoice', value: 'invoice', icon: 'pi pi-file-pdf' },
@@ -75,8 +79,10 @@ const loadBusinessDetails = () => {
 // Load tax rates for billing items
 const loadTaxRates = async () => {
     try {
-        const response = await financeService.getTaxRates();
-        taxRates.value = response.data.results || response.data || [];
+        const response = await coreService.getTaxRates({ page_size: 100 });
+        const data = response.data || response;
+        const list = data?.results || data || [];
+        taxRates.value = Array.isArray(list) ? list.map(t => ({ id: t.id, name: t.tax_name || t.name, rate: parseFloat(t.percentage || t.tax_rate || 0) })) : [];
     } catch (error) {
         console.error('Error loading tax rates:', error);
         showToast('error', 'Failed to load tax rates');
@@ -181,10 +187,13 @@ const handleSubmit = async () => {
     loading.value = true;
     try {
         if (isEdit.value) {
-            await financeService.updateBillingDocument(props.document.id, form);
+            const res = await financeService.updateBillingDocument(props.document.id, form);
+            // Preview after saving
+            previewDocument(res.data.id || props.document.id);
             showToast('success', 'Billing document updated successfully');
         } else {
-            await financeService.createBillingDocument(form);
+            const res = await financeService.createBillingDocument(form);
+            previewDocument(res.data.id);
             showToast('success', 'Billing document created successfully');
         }
         emit('saved');
@@ -197,9 +206,23 @@ const handleSubmit = async () => {
     }
 };
 
-// Preview document
-const previewDocument = () => {
-    showToast('info', 'Document preview feature coming soon');
+// Preview document (open PDF in new tab)
+const previewDocument = async (id = null) => {
+    try {
+        const documentId = id || (props.document && props.document.id);
+        if (!documentId) {
+            showToast('error', 'Document ID not found for preview');
+            return;
+        }
+        const res = await financeService.getBillingDocumentPdf(documentId, { branch_id: (props.document && props.document.branch) || undefined });
+        const blob = new Blob([res.data], { type: 'application/pdf' });
+        // Use shared preview modal
+        pdfBlob.value = blob;
+        showPdfModal.value = true;
+    } catch (err) {
+        console.error('Error previewing document:', err);
+        showToast('error', 'Failed to load preview');
+    }
 };
 
 // Watch for document changes
@@ -287,7 +310,7 @@ onMounted(() => {
 
                                             <div>
                                                 <label class="block text-sm font-medium text-gray-700 mb-1">Tax Rate</label>
-                                                <Dropdown v-model="item.tax_rate" :options="taxRates" optionLabel="name" optionValue="id" class="w-full" placeholder="Select tax rate" />
+                                                <Dropdown v-model="item.tax_rate" :options="taxRates" optionLabel="name" class="w-full" placeholder="Select tax rate" />
                                             </div>
 
                                             <div>
@@ -329,6 +352,7 @@ onMounted(() => {
                             </div>
 
                             <div class="flex justify-end space-x-3 pt-4 border-t">
+                                <Button type="button" label="Preview PDF" icon="pi pi-eye" class="p-button-secondary" @click="previewDocument()" />
                                 <Button type="button" label="Cancel" severity="secondary" @click="$emit('update:visible', false)" />
                                 <Button type="submit" :label="isEdit ? 'Update Document' : 'Create Document'" :loading="loading" />
                             </div>
@@ -338,6 +362,9 @@ onMounted(() => {
             </div>
         </div>
     </Dialog>
+
+    <!-- PDF Preview Modal -->
+    <PDFPreview v-model:isOpen="showPdfModal" :pdfBlob="pdfBlob" :title="`Document - ${form.document_number || ''}`" :filename="`document-${form.document_number || ''}.pdf`" />
 </template>
 
 <style scoped>

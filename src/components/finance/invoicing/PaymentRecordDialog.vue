@@ -1,6 +1,9 @@
 <script setup>
-import { ref, computed, watch } from 'vue';
+import { ref, computed, watch, onMounted } from 'vue';
 import { formatCurrency } from '@/utils/formatters';
+import { useToast } from '@/composables/useToast';
+import AccountForm from '@/components/finance/accounts/AccountForm.vue';
+import axios from '@/utils/axiosConfig';
 
 const props = defineProps({
     visible: {
@@ -27,6 +30,15 @@ const props = defineProps({
 
 const emit = defineEmits(['update:visible', 'record-payment']);
 
+const { showToast } = useToast();
+
+// Local accounts state
+const localAccounts = ref([]);
+const loadingAccounts = ref(false);
+const showAccountDialog = ref(false);
+const accountEditMode = ref(false);
+const accountEditData = ref(null);
+
 const paymentData = ref({
     amount: 0,
     payment_method: 'bank',
@@ -44,6 +56,11 @@ const paymentMethods = [
     { label: 'Cheque', value: 'cheque', icon: 'pi-file' },
 ];
 
+// Use local accounts if available, otherwise use prop
+const availableAccounts = computed(() => {
+    return localAccounts.value.length > 0 ? localAccounts.value : props.paymentAccounts;
+});
+
 // Computed
 const dialogVisible = computed({
     get: () => props.visible,
@@ -51,7 +68,22 @@ const dialogVisible = computed({
 });
 
 const balanceDue = computed(() => {
-    return props.document?.balance_due || props.document?.total || 0;
+    // Use numeric balance_due when available, otherwise fall back to balance_due_display or total
+    const bd = props.document?.balance_due ?? props.document?.balance_due_display ?? props.document?.total ?? 0;
+    return parseFloat(bd) || 0;
+});
+
+const customerName = computed(() => {
+    const cd = props.document?.customer_details || props.document?.customer;
+    if (!cd) return 'N/A';
+    if (cd.business_name) return cd.business_name;
+    if (cd.user) return `${cd.user.first_name || ''} ${cd.user.last_name || ''}`.trim() || 'N/A';
+    return 'N/A';
+});
+
+const customerEmail = computed(() => {
+    const cd = props.document?.customer_details || props.document?.customer;
+    return cd?.user?.email || cd?.email || '';
 });
 
 const documentNumber = computed(() => {
@@ -63,6 +95,11 @@ const isValid = computed(() => {
            paymentData.value.payment_method &&
            paymentData.value.payment_account &&
            paymentData.value.amount <= balanceDue.value;
+});
+
+const showReference = computed(() => {
+    // Only show reference field for non-cash payment methods
+    return paymentData.value.payment_method !== 'cash';
 });
 
 // Methods
@@ -87,13 +124,53 @@ const setFullAmount = () => {
     paymentData.value.amount = parseFloat(balanceDue.value);
 };
 
+// Methods for account management
+const loadPaymentAccounts = async () => {
+    loadingAccounts.value = true;
+    try {
+        const response = await axios.get('/finance/accounts/paymentaccounts/');
+        localAccounts.value = response.data?.results || response.data || [];
+    } catch (error) {
+        console.error('Error loading payment accounts:', error);
+        showToast('error', 'Error', 'Failed to load payment accounts');
+    } finally {
+        loadingAccounts.value = false;
+    }
+};
+
+const handleAddAccount = () => {
+    accountEditMode.value = false;
+    accountEditData.value = null;
+    showAccountDialog.value = true;
+};
+
+const handleEditAccount = (account) => {
+    accountEditMode.value = true;
+    accountEditData.value = account;
+    showAccountDialog.value = true;
+};
+
+const handleAccountSaved = async (savedAccount) => {
+    showAccountDialog.value = false;
+    await loadPaymentAccounts();
+    // Auto-select the newly created or edited account
+    if (savedAccount && savedAccount.id) {
+        paymentData.value.payment_account = savedAccount.id;
+    }
+};
+
 // Watch document changes
 watch(() => props.document, (newDoc) => {
     if (newDoc) {
-        paymentData.value.amount = parseFloat(newDoc.balance_due || newDoc.total || 0);
+        paymentData.value.amount = balanceDue.value;
         paymentData.value.payment_date = new Date();
     }
 }, { immediate: true });
+
+// Load accounts on mount
+onMounted(() => {
+    loadPaymentAccounts();
+});
 </script>
 
 <template>
@@ -113,11 +190,14 @@ watch(() => props.document, (newDoc) => {
                 </div>
                 <div class="flex justify-between items-center mb-2">
                     <span class="text-sm text-surface-600 dark:text-surface-400">Customer:</span>
-                    <span class="font-medium">{{ document.customer?.business_name || `${document.customer?.user?.first_name} ${document.customer?.user?.last_name}` }}</span>
+                    <span class="font-medium">{{ customerName }}</span>
                 </div>
                 <Divider />
                 <div class="flex justify-between items-center">
-                    <span class="text-lg font-semibold">Balance Due:</span>
+                    <div>
+                        <div class="text-lg font-semibold">Balance Due:</div>
+                        <div class="text-sm text-surface-500">{{ customerEmail }}</div>
+                    </div>
                     <span class="text-2xl font-bold text-primary">{{ formatCurrency(balanceDue) }}</span>
                 </div>
             </div>
@@ -166,25 +246,42 @@ watch(() => props.document, (newDoc) => {
             <!-- Payment Account -->
             <div>
                 <label class="block text-sm font-medium mb-2">Payment Account *</label>
-                <Dropdown 
-                    v-model="paymentData.payment_account"
-                    :options="paymentAccounts"
-                    optionLabel="account_name"
-                    optionValue="id"
-                    placeholder="Select payment account"
-                    class="w-full"
-                    :class="{ 'p-invalid': !paymentData.payment_account }"
-                >
-                    <template #option="slotProps">
-                        <div class="flex items-center gap-2">
-                            <i class="pi pi-wallet text-surface-500"></i>
-                            <div>
-                                <div class="font-medium">{{ slotProps.option.account_name }}</div>
-                                <div class="text-sm text-surface-500">{{ slotProps.option.account_number }}</div>
+                <div class="flex gap-2">
+                    <Dropdown 
+                        v-model="paymentData.payment_account"
+                        :options="availableAccounts"
+                        optionLabel="name"
+                        optionValue="id"
+                        placeholder="Select payment account"
+                        class="flex-1"
+                        :class="{ 'p-invalid': !paymentData.payment_account }"
+                        :loading="loadingAccounts"
+                    >
+                        <template #option="slotProps">
+                            <div class="flex items-center justify-between gap-2 w-full">
+                                <div class="flex items-center gap-2">
+                                    <i class="pi pi-wallet text-surface-500"></i>
+                                    <div>
+                                        <div class="font-medium">{{ slotProps.option.name }}</div>
+                                        <div class="text-sm text-surface-500">{{ slotProps.option.account_number }}</div>
+                                    </div>
+                                </div>
+                                <Button 
+                                    icon="pi pi-pencil" 
+                                    class="p-button-text p-button-sm p-button-rounded"
+                                    v-tooltip.top="'Edit account'"
+                                    @click.stop="handleEditAccount(slotProps.option)"
+                                />
                             </div>
-                        </div>
-                    </template>
-                </Dropdown>
+                        </template>
+                    </Dropdown>
+                    <Button 
+                        icon="pi pi-plus" 
+                        class="p-button-success p-button-outlined"
+                        v-tooltip.top="'Add new account'"
+                        @click="handleAddAccount"
+                    />
+                </div>
             </div>
 
             <!-- Payment Date -->
@@ -200,7 +297,7 @@ watch(() => props.document, (newDoc) => {
             </div>
 
             <!-- Reference Number -->
-            <div>
+            <div v-if="showReference">
                 <label class="block text-sm font-medium mb-2">Reference Number</label>
                 <InputText 
                     v-model="paymentData.reference"
@@ -239,6 +336,15 @@ watch(() => props.document, (newDoc) => {
             />
         </template>
     </Dialog>
+
+    <!-- Account Form Dialog -->
+    <AccountForm 
+        :visible="showAccountDialog"
+        :account="accountEditData" 
+        @update:visible="showAccountDialog = $event"
+        @saved="handleAccountSaved"
+        @close="showAccountDialog = false"
+    />
 </template>
 
 <style scoped>

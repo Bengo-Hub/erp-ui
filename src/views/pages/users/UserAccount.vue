@@ -473,7 +473,7 @@
 import RoleChip from '@/components/Auth/RoleChip.vue';
 import AddressManager from '@/components/ecommerce/AddressManager.vue';
 import EmployeeCoreForm from '@/components/hrm/employees/EmployeeCoreForm.vue';
-import UserOrders from '@/components/user/UserOrders.vue';
+import UserOrders from '@/components/shared/UserOrders.vue';
 import { useEmployeeMapping } from '@/composables/useEmployeeMapping';
 import { useToast } from '@/composables/useToast';
 import { userManagementService } from '@/services/auth/userManagementService';

@@ -1,16 +1,22 @@
 <script setup>
-import LineItemsTable from '@/components/finance/shared/LineItemsTable.vue';
+import ItemsTable from '@/components/shared/ItemsTable.vue';
 import Spinner from '@/components/ui/Spinner.vue';
+import AddSupplier from '@/components/crm/AddSupplier.vue';
+import AccountForm from '@/components/finance/accounts/AccountForm.vue';
+import PermissionButton from '@/components/common/PermissionButton.vue';
 import { useToast } from '@/composables/useToast';
+import { useAddEditModal } from '@/composables/useAddEditModal';
 import { PAYMENT_METHODS } from '@/constants/finance/paymentMethods';
 import { userManagementService } from '@/services/auth/userManagementService';
 import { crmService } from '@/services/crm/crmService';
 import { expenseCategoryService, expenseService, paymentAccountService } from '@/services/finance/expenseService';
+import { procurementService } from '@/services/procurement/procurementService';
 import { formatCurrency } from '@/utils/formatters';
 import { useVuelidate } from '@vuelidate/core';
 import { minValue, required } from '@vuelidate/validators';
 import { computed, onMounted, reactive, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
+import axios from '@/utils/axiosConfig';
 
 const router = useRouter();
 const route = useRoute();
@@ -65,6 +71,57 @@ const contacts = ref([]);
 const paymentAccounts = ref([]);
 const intervalTypes = ref(['Days', 'Weeks', 'Months', 'Years']);
 
+// Supplier Dialog state
+const showContactDialog = ref(false);
+const contactEditMode = ref(false);
+const contactEditId = ref(null);
+
+// Account Dialog state
+const showAccountDialog = ref(false);
+const accountEditMode = ref(false);
+const accountEditData = ref(null);
+
+const openAddContact = () => {
+    contactEditMode.value = false;
+    contactEditId.value = null;
+    showContactDialog.value = true;
+};
+
+const openEditContact = (id, data) => {
+    contactEditMode.value = true;
+    contactEditId.value = id;
+    showContactDialog.value = true;
+};
+
+const handleAddAccount = () => {
+    accountEditMode.value = false;
+    accountEditData.value = null;
+    showAccountDialog.value = true;
+};
+
+const handleEditAccount = (account) => {
+    accountEditMode.value = true;
+    accountEditData.value = account;
+    showAccountDialog.value = true;
+};
+
+const handleAccountSaved = async (savedAccount) => {
+    showAccountDialog.value = false;
+    await loadPaymentAccounts();
+    // Auto-select the newly created or edited account
+    if (savedAccount && savedAccount.id) {
+        form.payment_account = savedAccount;
+    }
+};
+const handleSupplierSaved = async (saved) => {
+    // Refresh contacts and close dialog; if the saved payload includes an id, select it
+    await loadContacts();
+    showContactDialog.value = false;
+    if (saved && saved.id) {
+        form.expense_for_contact = saved;
+    }
+};
+
 // Options
 const statusOptions = [
     { label: 'Draft', value: 'draft' },
@@ -79,7 +136,7 @@ const loadCategories = async () => {
         categories.value = data?.results || data || [];
         console.log('✅ Expense categories loaded:', categories.value.length);
     } catch (error) {
-        console.error('❌ Error loading categories:', error);
+        console.error('❌ Error loading categories:', error.message);
         categories.value = [];
     }
 };
@@ -91,7 +148,7 @@ const loadUsers = async () => {
         users.value = data?.results || data || [];
         console.log('✅ Users loaded:', users.value.length);
     } catch (error) {
-        console.error('❌ Error loading users:', error);
+        console.error('❌ Error loading users:', error.message);
         users.value = [];
     }
 };
@@ -103,7 +160,7 @@ const loadContacts = async () => {
         contacts.value = data?.results || data || [];
         console.log('✅ Contacts loaded:', contacts.value.length);
     } catch (error) {
-        console.error('❌ Error loading contacts:', error);
+        console.error('❌ Error loading contacts:', error.message);
         contacts.value = [];
     }
 };
@@ -115,7 +172,7 @@ const loadPaymentAccounts = async () => {
         paymentAccounts.value = data?.results || data || [];
         console.log('✅ Payment accounts loaded:', paymentAccounts.value.length);
     } catch (error) {
-        console.error('❌ Error loading payment accounts:', error);
+        console.error('❌ Error loading payment accounts:', error.message);
         paymentAccounts.value = [];
     }
 };
@@ -125,9 +182,10 @@ const calculateTotals = () => {
     let subtotal = 0;
     let taxTotal = 0;
 
-    form.items.forEach(item => {
-        subtotal += parseFloat(item.subtotal || 0);
-        taxTotal += parseFloat(item.tax_amount || 0);
+    const itemsArray = Array.isArray(form.items) ? form.items : [];
+    itemsArray.forEach(item => {
+        subtotal += parseFloat(item.subtotal || 0) || 0;
+        taxTotal += parseFloat(item.tax_amount || 0) || 0;
     });
 
     form.subtotal = subtotal;
@@ -406,13 +464,37 @@ const loadExpense = async (id) => {
                         <!-- Payment Account -->
                         <div>
                             <label class="block text-sm font-medium mb-2">Payment Account</label>
-                            <Dropdown 
-                                v-model="form.payment_account"
-                                :options="paymentAccounts"
-                                optionLabel="account_name"
-                                placeholder="Select account"
-                                class="w-full"
-                            />
+                            <div class="flex gap-2">
+                                <Dropdown 
+                                    v-model="form.payment_account"
+                                    :options="paymentAccounts"
+                                    optionLabel="account_name"
+                                    placeholder="Select account"
+                                    class="w-full"
+                                >
+                                    <template #option="slotProps">
+                                        <div class="flex items-center justify-between w-full group">
+                                            <span>{{ slotProps.option.account_name }}</span>
+                                            <Button 
+                                                v-if="slotProps.option"
+                                                type="button"
+                                                icon="pi pi-pencil"
+                                                class="p-button-sm p-button-text opacity-0 group-hover:opacity-100 transition-opacity"
+                                                @click.stop="handleEditAccount(slotProps.option)"
+                                                text
+                                            />
+                                        </div>
+                                    </template>
+                                </Dropdown>
+                                <Button 
+                                    type="button"
+                                    icon="pi pi-plus"
+                                    class="p-button-sm"
+                                    severity="success"
+                                    @click="handleAddAccount"
+                                    v-tooltip.top="'Add new account'"
+                                />
+                            </div>
                         </div>
 
                         <!-- Expense For User -->
@@ -431,14 +513,29 @@ const loadExpense = async (id) => {
                         <!-- Expense For Contact -->
                         <div>
                             <label class="block text-sm font-medium mb-2">Expense For (Contact)</label>
-                            <Dropdown 
-                                v-model="form.expense_for_contact"
-                                :options="contacts"
-                                optionLabel="business_name"
-                                placeholder="Select contact"
-                                class="w-full"
-                                :filter="true"
-                            />
+                            <div class="flex gap-2">
+                                <Dropdown 
+                                    v-model="form.expense_for_contact"
+                                    :options="contacts"
+                                    optionLabel="business_name"
+                                    placeholder="Select contact"
+                                    class="flex-1"
+                                    :filter="true"
+                                />
+                                <PermissionButton 
+                                    icon="pi pi-plus" 
+                                    @click="openAddContact" 
+                                    severity="success"
+                                    tooltip="Add new contact"
+                                />
+                                <PermissionButton 
+                                    v-if="form.expense_for_contact"
+                                    icon="pi pi-pencil" 
+                                    @click="openEditContact(form.expense_for_contact.id, form.expense_for_contact)" 
+                                    severity="info"
+                                    tooltip="Edit contact"
+                                />
+                            </div>
                         </div>
                     </div>
 
@@ -464,7 +561,7 @@ const loadExpense = async (id) => {
                     </div>
                 </template>
                 <template #content>
-                    <LineItemsTable 
+                    <ItemsTable 
                         :items="form.items"
                         :readonly="false"
                         @update:items="handleLineItemsChange"
@@ -585,6 +682,28 @@ const loadExpense = async (id) => {
             </Card>
         </div>
     </div>
+
+    <!-- Supplier Dialog -->
+    <Dialog v-model:visible="showContactDialog" header="Add / Edit Supplier" :modal="true" :style="{ width: '700px' }">
+        <AddSupplier :id="contactEditId" :editmode="contactEditMode" @saved="handleSupplierSaved" />
+    </Dialog>
+
+    <!-- Account Dialog -->
+    <Dialog 
+        v-model:visible="showAccountDialog"
+        :header="accountEditMode ? 'Edit Account' : 'Create New Account'"
+        modal
+        :style="{ width: '100%', maxWidth: '600px' }"
+        class="p-4"
+    >
+        <AccountForm 
+            v-if="showAccountDialog"
+            :account="accountEditData"
+            :isEdit="accountEditMode"
+            @saved="handleAccountSaved"
+            @cancel="showAccountDialog = false"
+        />
+    </Dialog>
 </template>
 
 <style scoped>

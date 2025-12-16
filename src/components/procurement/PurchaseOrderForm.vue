@@ -4,7 +4,14 @@ import { useVuelidate } from '@vuelidate/core';
 import { required } from '@vuelidate/validators';
 import { useToast } from 'primevue/usetoast';
 import { procurementService } from '@/services/procurement/procurementService';
+import { productService } from '@/services/ecommerce/productService';
 import { formatCurrency } from '@/utils/formatters';
+import PDFPreview from '@/components/shared/PDFPreview.vue';
+import AddSupplier from '@/components/crm/AddSupplier.vue';
+import ProductForm from '@/components/products/ProductForm.vue';
+import RequisitionForm from '@/components/procurement/RequisitionForm.vue';
+import ItemsTable from '@/components/shared/ItemsTable.vue';
+import { useAddEditModal } from '@/composables/useAddEditModal';
 
 const props = defineProps({
     order: {
@@ -50,6 +57,58 @@ const selectedRequisition = ref(null);
 const isSubmitting = ref(false);
 const itemsValidated = ref(false);
 
+// PDF Preview state
+const showPDFModal = ref(false);
+const pdfBlob = ref(null);
+const pdfFilename = ref('LPO.pdf');
+
+// Dialog states for supplier/requisition/product forms
+const showSupplierDialog = ref(false);
+const showProductDialog = ref(false);
+const showRequisitionDialog = ref(false);
+
+// Product modal
+const productModal = useAddEditModal({
+  entityName: 'Product',
+  fields: [
+    { name: 'title', label: 'Product Name', type: 'text', required: true, placeholder: 'e.g. Office Desk' },
+    { name: 'sku', label: 'SKU/Code', type: 'text', required: false, placeholder: 'AUTO-GENERATED' },
+    { name: 'selling_price', label: 'Selling Price', type: 'number', required: true, placeholder: '0.00' },
+    { name: 'description', label: 'Description', type: 'textarea', required: false, placeholder: 'Product details...' }
+  ],
+  onSubmit: async (data) => {
+    const response = await productService.createProduct(data);
+    toast.add({ severity: 'success', summary: 'Success', detail: 'Product created successfully', life: 3000 });
+    return response.data;
+  }
+});
+
+// Requisition modal
+const requisitionModal = useAddEditModal({
+  entityName: 'Requisition',
+  fields: [
+    { name: 'purpose', label: 'Purpose', type: 'textarea', required: true, placeholder: 'Reason for this requisition...' },
+    { name: 'request_type', label: 'Request Type', type: 'select', required: true, options: [
+      { label: 'Existing Inventory Item', value: 'inventory' },
+      { label: 'External Item Purchase', value: 'external_item' },
+      { label: 'External Service', value: 'service' }
+    ]},
+    { name: 'priority', label: 'Priority', type: 'select', required: false, options: [
+      { label: 'Low', value: 'low' },
+      { label: 'Medium', value: 'medium' },
+      { label: 'High', value: 'high' },
+      { label: 'Critical', value: 'critical' }
+    ]},
+    { name: 'required_by_date', label: 'Required By', type: 'date', required: true }
+  ],
+  onSubmit: async (data) => {
+    const response = await procurementService.createRequisition(data);
+    await loadRequisitions();
+    selectedRequisition.value = response.data;
+    return response.data;
+  }
+});
+
 const breadcrumbHome = { icon: 'pi pi-home', to: '/' };
 const breadcrumbItems = ref([{ label: 'Procurement', to: '/procurement' }, { label: 'Purchase Orders', to: '/procurement/purchase-orders' }, { label: 'Create New' }]);
 
@@ -81,6 +140,41 @@ const loadRequisitions = async (id) => {
     }
 };
 
+// Handlers for saved events
+const handleSupplierSaved = async (saved) => {
+    try {
+        await loadSuppliers();
+        const id = saved?.id || saved?.data?.id || saved?.contact?.id || saved?.contact_id;
+        if (id) form.supplier = suppliers.value.find(s => s.id === id) || suppliers.value[0] || null;
+    } catch (e) {
+        console.error('Error handling saved supplier:', e);
+    } finally {
+        showSupplierDialog.value = false;
+    }
+}
+
+const handleProductSaved = async (saved) => {
+    try {
+        // No immediate action required; product list consumers will refresh when needed
+    } catch (e) {
+        console.error('Error handling saved product:', e);
+    } finally {
+        showProductDialog.value = false;
+    }
+}
+
+const handleRequisitionSaved = async (saved) => {
+    try {
+        await loadRequisitions();
+        const id = saved?.id || saved?.data?.id;
+        if (id) selectedRequisition.value = requisitions.value.find(r => r.id === id) || null;
+    } catch (e) {
+        console.error('Error handling saved requisition:', e);
+    } finally {
+        showRequisitionDialog.value = false;
+    }
+}
+
 const setRequisitionItems = () => {
     try {
         if (!selectedRequisition.value) {
@@ -88,34 +182,32 @@ const setRequisitionItems = () => {
             requisitionItems.value = [];
             return;
         }
-        form.requisition_reference = selectedRequisition.value.reference_number;
-        requisitionItems.value = selectedRequisition.value.items.map((item) => ({
-            stockItem: item.stock_item,
-            quantity: item.quantity,
-            unitPrice: item.stock_item.buying_price,
-            urgent: item.urgent
-        }));
+
+        const req = selectedRequisition.value;
+        form.requisition_reference = req.reference_number;
+
+        // Safely map requisition items (stock_item can be null for non-inventory types)
+        requisitionItems.value = (req.items || []).map((item) => {
+            const stockItem = item.stock_item || {};
+            return {
+                stockItem,
+                quantity: item.quantity ?? 0,
+                unitPrice: stockItem.buying_price ?? 0,
+                urgent: !!item.urgent
+            };
+        });
+
         form.items = requisitionItems.value;
-        if (requisitions.value.find((req) => req.request_approvals.some((approval) => approval.status === 'approved'))) {
+
+        // If approvals are present and any is approved, derive approved budget from subtotal
+        const hasApproved = (req.approvals || []).some((approval) => approval.status === 'approved');
+        if (hasApproved) {
             form.approved_budget = calculateSubtotal();
         }
     } catch (error) {
         console.error(error);
         handleError(error);
     }
-};
-
-const addItem = () => {
-    form.items.push({
-        stockItem: null,
-        quantity: 1,
-        unitPrice: 0,
-        urgent: false
-    });
-};
-
-const removeItem = (index) => {
-    form.items.splice(index, 1);
 };
 
 const calculateSubtotal = () => {
@@ -174,19 +266,35 @@ const submitOrder = async () => {
 
     try {
         isSubmitting.value = true;
-        await procurementService.createPurchaseOrder({
+        const orderData = {
             ...form,
             status: 'submitted',
             requisition: selectedRequisition.value.id,
             supplier: form.supplier.id,
             expected_delivery: form.expected_delivery ? form.expected_delivery.toISOString().split('T')[0] : null
-        });
+        };
+        
+        const response = await procurementService.createPurchaseOrder(orderData);
+        const orderId = response.data.id;
+        
         toast.add({
             severity: 'success',
             summary: 'Success',
             detail: 'Purchase order submitted successfully',
             life: 3000
         });
+        
+        // Fetch PDF for preview
+        try {
+            const pdfResponse = await procurementService.getPurchaseOrderPDF(orderId);
+            // pdfResponse should be a Blob
+            pdfBlob.value = pdfResponse;
+            pdfFilename.value = `LPO-${response.data.order_number}.pdf`;
+            showPDFModal.value = true;
+        } catch (pdfError) {
+            console.warn('Could not generate PDF preview:', pdfError);
+        }
+        
         emit('saved');
         emit('submitted');
     } catch (error) {
@@ -227,14 +335,17 @@ onMounted(() => {
                     <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                         <div class="field-group">
                             <label for="supplier" class="field-label"> Supplier <span class="required-indicator">*</span> </label>
-                            <Dropdown id="supplier" v-model="form.supplier" :options="suppliers" optionLabel="name" placeholder="Select supplier" :class="{ 'p-invalid': v$.supplier.$error }" class="modern-dropdown" filter showClear>
-                                <template #option="slotProps">
-                                    <div class="supplier-option">
-                                        <span>{{ slotProps.option.name }}</span>
-                                        <small class="text-gray-500">{{ slotProps.option.code }}</small>
-                                    </div>
-                                </template>
-                            </Dropdown>
+                            <div class="flex gap-2">
+                                <Dropdown id="supplier" v-model="form.supplier" :options="suppliers" optionLabel="name" placeholder="Select supplier" :class="{ 'p-invalid': v$.supplier.$error }" class="modern-dropdown flex-1" filter showClear>
+                                    <template #option="slotProps">
+                                        <div class="supplier-option">
+                                            <span>{{ slotProps.option.name }}</span>
+                                            <small class="text-gray-500">{{ slotProps.option.contact_id }}</small>
+                                        </div>
+                                    </template>
+                                </Dropdown>
+                                <Button icon="pi pi-plus" @click="showSupplierDialog = true" class="p-button-success" v-tooltip.top="'Add new supplier'" />
+                            </div>
                             <small class="error-message" v-if="v$.supplier.$error"> Please select a supplier </small>
                         </div>
 
@@ -245,7 +356,10 @@ onMounted(() => {
 
                         <div class="field-group">
                             <label for="reference" class="field-label">Requisition Reference</label>
-                            <Dropdown id="reference" v-model="selectedRequisition" :options="requisitions" optionLabel="reference_number" placeholder="Select requisition" class="modern-dropdown" @change="setRequisitionItems()" />
+                            <div class="flex gap-2">
+                                <Dropdown id="reference" v-model="selectedRequisition" :options="requisitions" optionLabel="reference_number" placeholder="Select requisition" class="modern-dropdown flex-1" @change="setRequisitionItems()" />
+                                <Button icon="pi pi-plus" @click="requisitionModal.modal.isOpen.value = true" class="p-button-success" v-tooltip.top="'Create new requisition'" />
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -296,50 +410,11 @@ onMounted(() => {
                         <h2 class="section-title">Order Items</h2>
                     </div>
 
-                    <div class="items-table-container">
-                        <DataTable :value="form.items" class="modern-datatable" responsiveLayout="scroll" :rowClass="rowClass">
-                            <Column header="Item" style="width: 40%">
-                                <template #body="{ data, index }">
-                                    <Dropdown
-                                        v-model="data.stockItem"
-                                        :options="requisitionItems"
-                                        :filter="true"
-                                        optionLabel="stockItem.product.title"
-                                        optionValue="stockItem"
-                                        placeholder="Select item"
-                                        class="w-full"
-                                        :class="{ 'border-red-500': !data.stockItem && itemsValidated }"
-                                    />
-                                </template>
-                            </Column>
-
-                            <Column header="Quantity" style="width: 20%">
-                                <template #body="{ data }">
-                                    <InputNumber v-model="data.quantity" mode="decimal" :min="1" :max="1000" showButtons class="compact-inputnumber" />
-                                </template>
-                            </Column>
-
-                            <Column header="Unit Price" style="width: 20%">
-                                <template #body="{ data }">
-                                    <InputNumber v-model="data.unitPrice" mode="currency" currency="KES" locale="en-US" :min="0.01" class="compact-inputnumber" />
-                                </template>
-                            </Column>
-
-                            <Column header="" style="width: 20%">
-                                <template #body="{ index }">
-                                    <Button icon="pi pi-trash" class="p-button-text p-button-danger delete-btn" @click="removeItem(index)" v-tooltip="'Remove item'" />
-                                </template>
-                            </Column>
-                        </DataTable>
-
-                        <div class="flex justify-between mt-4">
-                            <Button v-if="form.items.length === 0" icon="pi pi-plus" label="Add Item" class="add-item-btn" @click="addItem" />
-                            <div class="total-summary">
-                                <span class="total-label">Subtotal:</span>
-                                <span class="total-amount">{{ formatCurrency(calculateSubtotal()) }}</span>
-                            </div>
-                        </div>
-                    </div>
+                    <ItemsTable 
+                        v-model:items="form.items"
+                        :available-products="requisitionItems"
+                        :show-add-product="false"
+                    />
                 </div>
 
                 <!-- Form Actions -->
@@ -351,6 +426,29 @@ onMounted(() => {
             </form>
         </div>
     </div>
+
+    <!-- PDF Preview Modal -->
+    <PDFPreview
+        v-model:isOpen="showPDFModal"
+        :pdfBlob="pdfBlob"
+        :title="`Purchase Order - ${pdfFilename}`"
+        :filename="pdfFilename"
+    />
+
+    <!-- Supplier Dialog -->
+    <Dialog v-model:visible="showSupplierDialog" header="Add Supplier" :modal="true" :style="{ width: '700px' }">
+        <AddSupplier contact_type="Suppliers" @saved="handleSupplierSaved" />
+    </Dialog>
+
+    <!-- Product Dialog -->
+    <Dialog v-model:visible="showProductDialog" header="Add Product" :modal="true" :style="{ width: '900px' }">
+        <ProductForm @saved="handleProductSaved" @fetch-products="loadProducts" />
+    </Dialog>
+
+    <!-- Requisition Dialog -->
+    <Dialog v-model:visible="showRequisitionDialog" header="Add Requisition" :modal="true" :style="{ width: '800px' }">
+        <RequisitionForm @saved="handleRequisitionSaved" />
+    </Dialog>
 </template>
 
 <style scoped>

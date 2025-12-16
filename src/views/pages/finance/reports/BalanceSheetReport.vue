@@ -75,74 +75,74 @@
                                     <tr class="bg-blue-25 font-semibold text-sm">
                                         <td class="py-2 px-4 pl-8">Current Assets</td>
                                         <td class="text-right py-2 px-4">{{ formatCurrency(summary.currentAssets) }}</td>
-                                        <td class="text-right py-2 px-4">{{ ((summary.currentAssets / summary.totalAssets) * 100).toFixed(1) }}%</td>
+                                        <td class="text-right py-2 px-4">{{ (summary.totalAssets > 0 ? ((summary.currentAssets / summary.totalAssets) * 100).toFixed(1) : '0.0') }}%</td>
                                     </tr>
                                     <tr v-for="item in reportData.current_assets" :key="item.id" class="border-b border-gray-200">
                                         <td class="py-3 px-4 pl-12">{{ item.description }}</td>
                                         <td class="text-right py-3 px-4">{{ formatCurrency(item.amount) }}</td>
-                                        <td class="text-right py-3 px-4">{{ ((item.amount / summary.totalAssets) * 100).toFixed(1) }}%</td>
+                                        <td class="text-right py-3 px-4">{{ (summary.totalAssets > 0 ? ((item.amount / summary.totalAssets) * 100).toFixed(1) : '0.0') }}%</td>
                                     </tr>
 
                                     <!-- Non-Current Assets -->
                                     <tr class="bg-blue-25 font-semibold text-sm">
                                         <td class="py-2 px-4 pl-8">Non-Current Assets</td>
                                         <td class="text-right py-2 px-4">{{ formatCurrency(summary.nonCurrentAssets) }}</td>
-                                        <td class="text-right py-2 px-4">{{ ((summary.nonCurrentAssets / summary.totalAssets) * 100).toFixed(1) }}%</td>
+                                        <td class="text-right py-2 px-4">{{ (summary.totalAssets > 0 ? ((summary.nonCurrentAssets / summary.totalAssets) * 100).toFixed(1) : '0.0') }}%</td>
                                     </tr>
                                     <tr v-for="item in reportData.non_current_assets" :key="item.id" class="border-b border-gray-200">
                                         <td class="py-3 px-4 pl-12">{{ item.description }}</td>
                                         <td class="text-right py-3 px-4">{{ formatCurrency(item.amount) }}</td>
-                                        <td class="text-right py-3 px-4">{{ ((item.amount / summary.totalAssets) * 100).toFixed(1) }}%</td>
+                                        <td class="text-right py-3 px-4">{{ (summary.totalAssets > 0 ? ((item.amount / summary.totalAssets) * 100).toFixed(1) : '0.0') }}%</td>
                                     </tr>
 
                                     <!-- Liabilities Section -->
                                     <tr class="bg-red-50 font-bold mt-4">
                                         <td class="py-3 px-4">LIABILITIES</td>
                                         <td class="text-right py-3 px-4">{{ formatCurrency(summary.totalLiabilities) }}</td>
-                                        <td class="text-right py-3 px-4">{{ ((summary.totalLiabilities / summary.totalAssets) * 100).toFixed(1) }}%</td>
+                                        <td class="text-right py-3 px-4">{{ (summary.totalAssets > 0 ? ((summary.totalLiabilities / summary.totalAssets) * 100).toFixed(1) : '0.0') }}%</td>
                                     </tr>
 
                                     <!-- Current Liabilities -->
                                     <tr class="bg-red-25 font-semibold text-sm">
                                         <td class="py-2 px-4 pl-8">Current Liabilities</td>
                                         <td class="text-right py-2 px-4">{{ formatCurrency(summary.currentLiabilities) }}</td>
-                                        <td class="text-right py-2 px-4">{{ ((summary.currentLiabilities / summary.totalAssets) * 100).toFixed(1) }}%</td>
+                                        <td class="text-right py-2 px-4">{{ (summary.totalAssets > 0 ? ((summary.currentLiabilities / summary.totalAssets) * 100).toFixed(1) : '0.0') }}%</td>
                                     </tr>
                                     <tr v-for="item in reportData.current_liabilities" :key="item.id" class="border-b border-gray-200">
                                         <td class="py-3 px-4 pl-12">{{ item.description }}</td>
                                         <td class="text-right py-3 px-4">{{ formatCurrency(item.amount) }}</td>
-                                        <td class="text-right py-3 px-4">{{ ((item.amount / summary.totalAssets) * 100).toFixed(1) }}%</td>
+                                        <td class="text-right py-3 px-4">{{ (summary.totalAssets > 0 ? ((item.amount / summary.totalAssets) * 100).toFixed(1) : '0.0') }}%</td>
                                     </tr>
 
                                     <!-- Non-Current Liabilities -->
                                     <tr class="bg-red-25 font-semibold text-sm">
                                         <td class="py-2 px-4 pl-8">Non-Current Liabilities</td>
                                         <td class="text-right py-2 px-4">{{ formatCurrency(summary.nonCurrentLiabilities) }}</td>
-                                        <td class="text-right py-2 px-4">{{ ((summary.nonCurrentLiabilities / summary.totalAssets) * 100).toFixed(1) }}%</td>
+                                        <td class="text-right py-2 px-4">{{ (summary.totalAssets > 0 ? ((summary.nonCurrentLiabilities / summary.totalAssets) * 100).toFixed(1) : '0.0') }}%</td>
                                     </tr>
                                     <tr v-for="item in reportData.non_current_liabilities" :key="item.id" class="border-b border-gray-200">
                                         <td class="py-3 px-4 pl-12">{{ item.description }}</td>
                                         <td class="text-right py-3 px-4">{{ formatCurrency(item.amount) }}</td>
-                                        <td class="text-right py-3 px-4">{{ ((item.amount / summary.totalAssets) * 100).toFixed(1) }}%</td>
+                                        <td class="text-right py-3 px-4">{{ (summary.totalAssets > 0 ? ((item.amount / summary.totalAssets) * 100).toFixed(1) : '0.0') }}%</td>
                                     </tr>
 
                                     <!-- Equity Section -->
                                     <tr class="bg-green-50 font-bold mt-4">
                                         <td class="py-3 px-4">SHAREHOLDERS' EQUITY</td>
                                         <td class="text-right py-3 px-4">{{ formatCurrency(summary.totalEquity) }}</td>
-                                        <td class="text-right py-3 px-4">{{ ((summary.totalEquity / summary.totalAssets) * 100).toFixed(1) }}%</td>
+                                        <td class="text-right py-3 px-4">{{ (summary.totalAssets > 0 ? ((summary.totalEquity / summary.totalAssets) * 100).toFixed(1) : '0.0') }}%</td>
                                     </tr>
                                     <tr v-for="item in reportData.equity" :key="item.id" class="border-b border-gray-200">
                                         <td class="py-3 px-4 pl-8">{{ item.description }}</td>
                                         <td class="text-right py-3 px-4">{{ formatCurrency(item.amount) }}</td>
-                                        <td class="text-right py-3 px-4">{{ ((item.amount / summary.totalAssets) * 100).toFixed(1) }}%</td>
+                                        <td class="text-right py-3 px-4">{{ (summary.totalAssets > 0 ? ((item.amount / summary.totalAssets) * 100).toFixed(1) : '0.0') }}%</td>
                                     </tr>
 
                                     <!-- Balance Check -->
                                     <tr class="font-bold text-lg bg-gray-100">
                                         <td class="py-3 px-4">Total Liabilities + Equity</td>
                                         <td class="text-right py-3 px-4">{{ formatCurrency(summary.totalLiabilities + summary.totalEquity) }}</td>
-                                        <td class="text-right py-3 px-4">{{ (((summary.totalLiabilities + summary.totalEquity) / summary.totalAssets) * 100).toFixed(1) }}%</td>
+                                        <td class="text-right py-3 px-4">{{ (summary.totalAssets > 0 ? (((summary.totalLiabilities + summary.totalEquity) / summary.totalAssets) * 100).toFixed(1) : '0.0') }}%</td>
                                     </tr>
                                 </tbody>
                             </table>

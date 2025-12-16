@@ -49,82 +49,57 @@ const fetchInvoices = async () => {
     try {
         const params = getFilterParams();
         const response = await invoiceService.getInvoices(params);
-        
-        // Handle different response structures
         const data = response.data || response;
-        invoices.value = data?.results || data || [];
-        totalRecords.value = data?.count || invoices.value.length;
-        
-        console.log('✅ Invoices loaded:', invoices.value.length);
+        invoices.value = data.results || data || [];
+        totalRecords.value = data.count || invoices.value.length;
     } catch (error) {
-        console.error('❌ Error fetching invoices:', error);
+        console.error('Error fetching invoices:', error);
         showToast('error', 'Error', 'Failed to load invoices');
         invoices.value = [];
-        totalRecords.value = 0;
     } finally {
         loading.value = false;
     }
 };
 
-const fetchSummary = async () => {
-    try {
-        const response = await invoiceService.getInvoiceSummary();
-        if (response.data) {
-            summary.value = response.data;
-        }
-    } catch (error) {
-        console.error('Error fetching summary:', error);
+// Actions generator for each invoice row (used by SplitButton menu)
+const getInvoiceActions = (invoice) => {
+    const actions = [];
+
+    if (!invoice) return actions;
+
+    // Approve action for draft invoices
+    if (invoice.status === 'draft') {
+        actions.push({ label: 'Approve', icon: 'pi pi-check', command: () => approveInvoice(invoice) });
     }
-};
 
-// Use composable's onPage and onFilter with fetchInvoices
-
-const createInvoice = () => {
-    router.push('/finance/invoices/create');
-};
-
-const editInvoice = (invoice) => {
-    router.push(`/finance/invoices/${invoice.id}/edit`);
-};
-
-const viewInvoice = (invoice) => {
-    router.push(`/finance/invoices/${invoice.id}`);
-};
-
-const openSendDialog = (invoice) => {
-    selectedInvoice.value = invoice;
-    showSendDialog.value = true;
-};
-
-const handleSendInvoice = async (data) => {
-    actionLoading.value = true;
-    try {
-        await invoiceService.sendInvoice(selectedInvoice.value.id, data);
-        showToast('success', 'Success', 'Invoice sent successfully');
-        showSendDialog.value = false;
-        await Promise.all([fetchInvoices(), fetchSummary()]);
-    } catch (error) {
-        console.error('Error sending invoice:', error);
-        showToast('error', 'Error', 'Failed to send invoice');
-    } finally {
-        actionLoading.value = false;
+    // Only allow sending for non-draft invoices (sent, overdue, etc.)
+    if (invoice.status === 'sent' || invoice.status === 'overdue') {
+        actions.push({ label: 'Send Invoice', icon: 'pi pi-send', command: () => openSendDialog(invoice) });
     }
+
+    if (invoice.status !== 'paid' && invoice.status !== 'void' && invoice.status !== 'cancelled') {
+        actions.push({ label: 'Record Payment', icon: 'pi pi-money-bill', command: () => openPaymentDialog(invoice) });
+    }
+
+    if (invoice.status === 'sent' || invoice.status === 'overdue') {
+        actions.push({ label: 'Send Reminder', icon: 'pi pi-bell', command: () => sendReminder(invoice) });
+    }
+
+    actions.push({ label: 'Download PDF', icon: 'pi pi-file-pdf', command: () => downloadPDF(invoice) });
+    actions.push({ label: 'Clone', icon: 'pi pi-copy', command: () => cloneInvoice(invoice) });
+
+    if (invoice.status !== 'paid' && invoice.status !== 'void') {
+        actions.push({ separator: true });
+        actions.push({ label: 'Void', icon: 'pi pi-ban', class: 'text-red-600', command: () => voidInvoice(invoice) });
+    }
+
+    if (invoice.status === 'draft' && canDelete.value) {
+        actions.push({ label: 'Delete', icon: 'pi pi-trash', class: 'text-red-600', command: () => deleteInvoice(invoice) });
+    }
+
+    return actions;
 };
 
-const handleScheduleInvoice = async (data) => {
-    actionLoading.value = true;
-    try {
-        await invoiceService.scheduleInvoice(selectedInvoice.value.id, data);
-        showToast('success', 'Success', 'Invoice scheduled successfully');
-        showSendDialog.value = false;
-        await Promise.all([fetchInvoices(), fetchSummary()]);
-    } catch (error) {
-        console.error('Error scheduling invoice:', error);
-        showToast('error', 'Error', 'Failed to schedule invoice');
-    } finally {
-        actionLoading.value = false;
-    }
-};
 
 const openPaymentDialog = (invoice) => {
     selectedInvoice.value = invoice;
@@ -134,10 +109,22 @@ const openPaymentDialog = (invoice) => {
 const handleRecordPayment = async (data) => {
     actionLoading.value = true;
     try {
-        await invoiceService.recordPayment(selectedInvoice.value.id, data);
+        const response = await invoiceService.recordPayment(selectedInvoice.value.id, data);
+        const updatedInvoice = response?.invoice || null;
+
+        if (updatedInvoice) {
+            const idx = invoices.value.findIndex(i => i.id === updatedInvoice.id);
+            if (idx !== -1) invoices.value.splice(idx, 1, updatedInvoice);
+            selectedInvoice.value = updatedInvoice;
+            // refresh summary independently
+            await fetchSummary();
+        } else {
+            // Fallback: refresh list and summary
+            await Promise.all([fetchInvoices(), fetchSummary()]);
+        }
+
         showToast('success', 'Success', 'Payment recorded successfully');
         showPaymentDialog.value = false;
-        await Promise.all([fetchInvoices(), fetchSummary()]);
     } catch (error) {
         console.error('Error recording payment:', error);
         showToast('error', 'Error', 'Failed to record payment');
@@ -170,10 +157,22 @@ const cloneInvoice = async (invoice) => {
     }
 };
 
+const createInvoice = () => {
+    router.push({ name: 'finance-invoice-create' });
+};
+
+const viewInvoice = (invoice) => {
+    router.push(`/finance/invoices/${invoice.id}`);
+};
+
+const editInvoice = (invoice) => {
+    router.push(`/finance/invoices/${invoice.id}/edit`);
+};
+
 const downloadPDF = async (invoice) => {
     try {
-        const response = await invoiceService.downloadPDF(invoice.id);
-        const blob = new Blob([response.data], { type: 'application/pdf' });
+        // getInvoicePDF returns a Blob
+        const blob = await invoiceService.getInvoicePDF(invoice.id);
         const url = window.URL.createObjectURL(blob);
         const link = document.createElement('a');
         link.href = url;
@@ -211,12 +210,25 @@ const deleteInvoice = async (invoice) => {
     if (!confirm(`Are you sure you want to delete invoice ${invoice.invoice_number}?`)) return;
 
     try {
-        await invoiceService.delete(invoice.id);
+        await invoiceService.deleteInvoice(invoice.id);
         showToast('success', 'Success', 'Invoice deleted successfully');
         await Promise.all([fetchInvoices(), fetchSummary()]);
     } catch (error) {
         console.error('Error deleting invoice:', error);
         showToast('error', 'Error', 'Failed to delete invoice');
+    }
+};
+
+const approveInvoice = async (invoice) => {
+    if (!confirm(`Are you sure you want to approve invoice ${invoice.invoice_number}? It will be ready to send to the customer.`)) return;
+
+    try {
+        await invoiceService.approveInvoice(invoice.id);
+        showToast('success', 'Success', 'Invoice approved successfully');
+        await Promise.all([fetchInvoices(), fetchSummary()]);
+    } catch (error) {
+        console.error('Error approving invoice:', error);
+        showToast('error', 'Error', 'Failed to approve invoice');
     }
 };
 
@@ -228,6 +240,63 @@ const sendReminder = async (invoice) => {
     } catch (error) {
         console.error('Error sending reminder:', error);
         showToast('error', 'Error', 'Failed to send reminder');
+    }
+};
+
+// Fetch summary data for the dashboard cards
+const fetchSummary = async () => {
+    try {
+        const params = getFilterParams();
+        const data = await invoiceService.getInvoiceSummary(params);
+        if (data) {
+            summary.value = {
+                total_invoices: data.total_invoices ?? summary.value.total_invoices,
+                draft: data.draft ?? summary.value.draft,
+                sent: data.sent ?? summary.value.sent,
+                paid: data.paid ?? summary.value.paid,
+                overdue: data.overdue ?? summary.value.overdue,
+                total_amount: data.total_amount ?? summary.value.total_amount,
+                outstanding_amount: data.outstanding_amount ?? summary.value.outstanding_amount
+            };
+        }
+    } catch (error) {
+        console.error('Error fetching summary:', error);
+    }
+};
+
+// Open send dialog for a given invoice (used by actions menu)
+const openSendDialog = (invoice) => {
+    selectedInvoice.value = invoice;
+    showSendDialog.value = true;
+};
+
+// Handler when EmailSendDialog emits a send event
+const handleSendInvoice = async (payload) => {
+    if (!selectedInvoice.value) return;
+    actionLoading.value = true;
+    try {
+        await invoiceService.sendInvoice(selectedInvoice.value.id, payload);
+        showToast('success', 'Success', 'Invoice sent successfully');
+        showSendDialog.value = false;
+        selectedInvoice.value = null;
+        await Promise.all([fetchInvoices(), fetchSummary()]);
+    } catch (error) {
+        console.error('Error sending invoice:', error);
+        const serverData = error?.response?.data;
+        let serverMsg = 'Failed to send invoice';
+        try {
+            if (serverData) {
+                if (serverData.detail) serverMsg = serverData.detail;
+                else if (serverData.message) serverMsg = serverData.message;
+                else if (typeof serverData === 'object') serverMsg = Object.values(serverData).flat().join('; ');
+                else serverMsg = String(serverData);
+            }
+        } catch (e) {
+            // ignore
+        }
+        showToast('error', 'Error', serverMsg);
+    } finally {
+        actionLoading.value = false;
     }
 };
 
@@ -448,8 +517,16 @@ onMounted(() => {
                             <div class="text-right">
                                 <p class="font-semibold">{{ formatCurrency(data.total) }}</p>
                                 <p v-if="data.balance_due > 0" class="text-sm text-orange-600">
-                                    Due: {{ formatCurrency(data.balance_due) }}
                                 </p>
+                            </div>
+                        </template>
+                    </Column>
+
+                    <!-- New column for Amount Due -->
+                    <Column field="balance_due" header="Amount Due" sortable>
+                        <template #body="{ data }">
+                            <div class="text-right">
+                                <p class="font-semibold text-red-600">{{ formatCurrency(data.balance_due || 0) }}</p>
                             </div>
                         </template>
                     </Column>
@@ -525,7 +602,7 @@ export default {
                 actions.push({
                     label: 'Record Payment',
                     icon: 'pi pi-money-bill',
-                    command: () => this.openPaymentDialog(invoice)
+                    command: () => openPaymentDialog(invoice)
                 });
             }
 
@@ -540,13 +617,13 @@ export default {
             actions.push({
                 label: 'Download PDF',
                 icon: 'pi pi-file-pdf',
-                command: () => this.downloadPDF(invoice)
+                command: () => downloadPDF(invoice)
             });
 
             actions.push({
                 label: 'Clone',
                 icon: 'pi pi-copy',
-                command: () => this.cloneInvoice(invoice)
+                command: () => cloneInvoice(invoice)
             });
 
             if (invoice.status !== 'paid' && invoice.status !== 'void') {
@@ -557,16 +634,16 @@ export default {
                     label: 'Void',
                     icon: 'pi pi-ban',
                     class: 'text-red-600',
-                    command: () => this.voidInvoice(invoice)
+                    command: () => voidInvoice(invoice)
                 });
             }
 
-            if (invoice.status === 'draft' && this.canDelete) {
+            if (invoice.status === 'draft' && canDelete.value) {
                 actions.push({
                     label: 'Delete',
                     icon: 'pi pi-trash',
                     class: 'text-red-600',
-                    command: () => this.deleteInvoice(invoice)
+                    command: () => deleteInvoice(invoice)
                 });
             }
 

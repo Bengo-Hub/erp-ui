@@ -2,12 +2,14 @@
 import EmailSendDialog from '@/components/finance/invoicing/EmailSendDialog.vue';
 import DocumentStatusBadge from '@/components/finance/shared/DocumentStatusBadge.vue';
 import Spinner from '@/components/ui/Spinner.vue';
+import PermissionButton from '@/components/common/PermissionButton.vue';
 import { usePermissions } from '@/composables/usePermissions';
 import { useToast } from '@/composables/useToast';
 import { quotationService } from '@/services/finance/quotationService';
 import { formatCurrency, formatDate } from '@/utils/formatters';
 import { PAYMENT_TERMS } from '@/constants/finance/paymentMethods';
 import { computed, onMounted, ref } from 'vue';
+import PDFPreview from '@/components/shared/PDFPreview.vue';
 import { useRoute, useRouter } from 'vue-router';
 
 const route = useRoute();
@@ -21,6 +23,8 @@ const loading = ref(false);
 const showSendDialog = ref(false);
 const showConvertDialog = ref(false);
 const actionLoading = ref(false);
+const showPdfModal = ref(false);
+const pdfBlob = ref(null);
 
 // Conversion data
 const conversionData = ref({
@@ -85,7 +89,7 @@ const deleteQuotation = async () => {
     if (!confirm('Are you sure you want to delete this quotation?')) return;
 
     try {
-        await quotationService.delete(quotation.value.id);
+        await quotationService.deleteQuotation(quotation.value.id);
         showToast('success', 'Success', 'Quotation deleted successfully');
         router.push('/finance/quotations');
     } catch (error) {
@@ -177,10 +181,10 @@ const convertToInvoice = async () => {
         const response = await quotationService.convertToInvoice(quotation.value.id, data);
         showToast('success', 'Success', 'Quotation converted to invoice');
         showConvertDialog.value = false;
-        
-        // Navigate to the new invoice
-        if (response.data?.invoice_id) {
-            router.push(`/finance/invoices/${response.data.invoice_id}`);
+
+        // Navigate to the new invoice (response contains { invoice: {...}, quotation: {...} })
+        if (response?.invoice?.id) {
+            router.push(`/finance/invoices/${response.invoice.id}`);
         } else {
             router.push('/finance/invoices');
         }
@@ -217,20 +221,32 @@ const sendFollowUp = async () => {
 const downloadPDF = async () => {
     try {
         showToast('info', 'Generating PDF', 'Please wait...');
-        const response = await quotationService.downloadPDF(quotation.value.id);
-        
-        const blob = new Blob([response.data], { type: 'application/pdf' });
+        const blob = await quotationService.getQuotationPDF(quotation.value.id);
+
         const url = window.URL.createObjectURL(blob);
         const link = document.createElement('a');
         link.href = url;
         link.download = `quotation-${quotation.value.quotation_number}.pdf`;
         link.click();
         window.URL.revokeObjectURL(url);
-        
+
         showToast('success', 'Success', 'PDF downloaded successfully');
     } catch (error) {
         console.error('Error downloading PDF:', error);
         showToast('error', 'Error', 'Failed to download PDF');
+    }
+};
+
+const previewPDF = async () => {
+    try {
+        showToast('info', 'Generating PDF', 'Please wait...');
+        const blob = await quotationService.getQuotationPDF(quotation.value.id);
+        pdfBlob.value = blob;
+        showPdfModal.value = true;
+        showToast('success', 'Success', 'Preview ready');
+    } catch (error) {
+        console.error('Error generating preview:', error);
+        showToast('error', 'Error', 'Failed to generate preview');
     }
 };
 
@@ -283,63 +299,80 @@ onMounted(() => {
 
                     <!-- Action Buttons -->
                     <div class="flex flex-wrap gap-2">
-                        <Button 
+                        <PermissionButton 
                             v-if="canConvert"
+                            :permission="'convert_quotation'"
                             label="Convert to Invoice" 
                             icon="pi pi-arrow-right" 
                             @click="openConvertDialog"
                             class="p-button-success"
                             v-tooltip.bottom="'Convert this quotation to an invoice'"
                         />
-                        <Button 
+                        <PermissionButton 
                             v-if="canAccept"
+                            :permission="'accept_quotation'"
                             label="Accept" 
                             icon="pi pi-check" 
                             @click="acceptQuotation"
                             class="p-button-success"
                         />
-                        <Button 
+                        <PermissionButton 
                             v-if="canDecline"
+                            :permission="'decline_quotation'"
                             label="Decline" 
                             icon="pi pi-times" 
                             @click="declineQuotation"
                             class="p-button-danger"
                         />
-                        <Button 
+                        <PermissionButton 
                             v-if="canSend"
+                            :permission="'send_quotation'"
                             label="Send" 
                             icon="pi pi-send" 
                             @click="openSendDialog"
                             class="p-button-primary"
                         />
-                        <Button 
+                        <PermissionButton 
+                            v-if="quotation" 
+                            :permission="'view_quotation'"
+                            icon="pi pi-eye" 
+                            label="Preview" 
+                            class="p-button-secondary" 
+                            @click="previewPDF" 
+                        />
+                        <PermissionButton 
                             v-if="quotation.status === 'sent'"
+                            :permission="'send_followup'"
                             label="Send Follow-up" 
                             icon="pi pi-bell" 
                             @click="sendFollowUp"
                             class="p-button-secondary"
                         />
-                        <Button 
+                        <PermissionButton 
+                            :permission="'download_quotation'"
                             label="Download PDF" 
                             icon="pi pi-file-pdf" 
                             @click="downloadPDF"
                             class="p-button-secondary"
                         />
-                        <Button 
+                        <PermissionButton 
+                            :permission="'clone_quotation'"
                             label="Clone" 
                             icon="pi pi-copy" 
                             @click="cloneQuotation"
                             class="p-button-secondary"
                         />
-                        <Button 
+                        <PermissionButton 
                             v-if="canEdit"
+                            :permission="'change_quotation'"
                             label="Edit" 
                             icon="pi pi-pencil" 
                             @click="editQuotation"
                             class="p-button-secondary"
                         />
-                        <Button 
+                        <PermissionButton 
                             v-if="canDelete"
+                            :permission="'delete_quotation'"
                             label="Delete" 
                             icon="pi pi-trash" 
                             @click="deleteQuotation"
@@ -557,6 +590,9 @@ onMounted(() => {
             @send="handleSendQuotation"
             @schedule="handleScheduleQuotation"
         />
+
+        <!-- PDF Preview Modal -->
+        <PDFPreview v-model:isOpen="showPdfModal" :pdfBlob="pdfBlob" :title="`Quotation - ${quotation?.quotation_number || ''}`" :filename="`quotation-${quotation?.quotation_number || ''}.pdf`" />
 
         <!-- Convert to Invoice Dialog -->
         <Dialog 

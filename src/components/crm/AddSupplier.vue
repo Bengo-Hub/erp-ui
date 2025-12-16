@@ -5,6 +5,7 @@ import { useToast } from 'primevue/usetoast';
 import { onMounted, ref } from 'vue';
 
 const toast = useToast();
+const emit = defineEmits(['saved'])
 // Props
 const first_name = ref('');
 const last_name = ref('');
@@ -62,9 +63,11 @@ const addRec = async () => {
     const data = prepareData();
 
     try {
-        await procurementService.createSupplier(data);
+        const response = await procurementService.createSupplier(data);
         toast.add({ severity: 'success', summary: 'Success', detail: `Supplier ${first_name.value} added`, life: 3000 });
         clearValues();
+        // Emit saved event so parent components can react and close dialogs
+        emit('saved', response.data || response);
     } catch (error) {
         toast.add({ severity: 'error', summary: 'Error', detail: error.message, life: 5000 });
     } finally {

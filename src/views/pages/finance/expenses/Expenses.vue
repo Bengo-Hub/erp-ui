@@ -59,7 +59,7 @@ const fetchExpenses = async () => {
         
         console.log('✅ Expenses loaded:', expenses.value.length);
     } catch (error) {
-        console.error('❌ Error fetching expenses:', error);
+        console.error('❌ Error fetching expenses:', error.message);
         showToast('error', 'Error', 'Failed to load expenses');
         expenses.value = [];
         totalRecords.value = 0;
@@ -71,11 +71,12 @@ const fetchExpenses = async () => {
 const fetchSummary = async () => {
     try {
         const response = await expenseService.getExpenseSummary();
-        if (response.data) {
-            summary.value = response.data;
+        const data = response.data || response;
+        if (data) {
+            summary.value = data;
         }
     } catch (error) {
-        console.error('Error fetching summary:', error);
+        console.error('Error fetching summary:', error.message);
     }
 };
 

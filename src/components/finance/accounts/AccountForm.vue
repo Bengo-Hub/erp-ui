@@ -14,7 +14,7 @@ const props = defineProps({
     }
 });
 
-const emit = defineEmits(['update:visible', 'saved']);
+const emit = defineEmits(['update:visible', 'saved', 'close']);
 
 const { showToast } = useToast();
 

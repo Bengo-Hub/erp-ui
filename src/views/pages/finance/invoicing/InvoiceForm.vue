@@ -1,13 +1,24 @@
 <script setup>
 import Spinner from '@/components/ui/Spinner.vue';
+import ItemsTable from '@/components/shared/ItemsTable.vue';
+import ProductForm from '@/components/products/ProductForm.vue';
+import AddSupplier from '@/components/crm/AddSupplier.vue';
+import AddCustomer from '@/components/crm/AddCustomer.vue';
+import BranchForm from '@/components/branches/BranchForm.vue';
+import PermissionButton from '@/components/common/PermissionButton.vue';
 import { useToast } from '@/composables/useToast';
+import { useAddEditModal } from '@/composables/useAddEditModal';
 import { crmService } from '@/services/crm/crmService';
 import { ecommerceService } from '@/services/ecommerce/ecommerceService';
+import { productService } from '@/services/ecommerce/productService';
 import { invoiceService } from '@/services/finance/invoiceService';
+import { procurementService } from '@/services/procurement/procurementService';
 import { coreService } from '@/services/shared/coreService';
+import { systemConfigService } from '@/services/shared/systemConfigService';
 import { formatCurrency } from '@/utils/formatters';
+import axios from '@/utils/axiosConfig';
 import { useVuelidate } from '@vuelidate/core';
-import { minValue, required } from '@vuelidate/validators';
+import { minLength, required } from '@vuelidate/validators';
 import { computed, onMounted, reactive, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 
@@ -44,7 +55,7 @@ const rules = {
     invoice_date: { required },
     items: {
         required,
-        minValue: minValue(1)
+        minLength: minLength(1)
     }
 };
 
@@ -59,6 +70,98 @@ const taxRates = ref([]);
 const addresses = ref([]);
 const filteredCustomers = ref([]);
 const filteredProducts = ref([]);
+
+// Dialogs state for specific entity forms
+const showCustomerDialog = ref(false);
+const customerEditMode = ref(false);
+const customerEditId = ref(null);
+
+const openAddCustomer = () => {
+    customerEditMode.value = false;
+    customerEditId.value = null;
+    showCustomerDialog.value = true;
+};
+
+const openEditCustomer = (id, data) => {
+    customerEditMode.value = true;
+    customerEditId.value = id;
+    showCustomerDialog.value = true;
+};
+
+// (handler implemented lower down with full behavior)
+const showProductDialog = ref(false);
+const showBranchDialog = ref(false);
+const productDialogForItems = ref(false);
+const productEditMode = ref(false);
+const productEditData = ref(null);
+
+// Product modal
+const productModal = useAddEditModal({
+  entityName: 'Product',
+  fields: [
+    { name: 'title', label: 'Product Name', type: 'text', required: true, placeholder: 'e.g. Office Desk' },
+    { name: 'sku', label: 'SKU/Code', type: 'text', required: false, placeholder: 'AUTO-GENERATED' },
+        { name: 'selling_price', label: 'Unit Price (Selling)', type: 'number', required: true, placeholder: '0.00' },
+        { name: 'buying_price', label: 'Buying Price (optional)', type: 'number', required: false, placeholder: '0.00' },
+    { name: 'description', label: 'Description', type: 'textarea', required: false, placeholder: 'Product details...' }
+  ],
+  onSubmit: async (data) => {
+        // Create product
+        const response = await productService.createProduct(data);
+        const createdProduct = response.data;
+        // NOTE: Stock items should only be created on receipt of purchased goods.
+        // Creating a product here must NOT automatically create a stock entry —
+        // that behavior caused inventory to appear prematurely (e.g. when creating
+        // a product from a purchase order). Stock creation is now handled during
+        // the procurement receive workflow (server-side / on receipt).
+
+        await loadProducts();
+        showToast('success', 'Success', 'Product created successfully');
+        return response.data;
+  },
+  onUpdate: async (id, data) => {
+        // If editing a stock item, update the stock API; otherwise update product model
+        if (data._isStock) {
+            const payload = {};
+            if (data.selling_price !== undefined) payload.selling_price = data.selling_price;
+            if (data.buying_price !== undefined) payload.buying_price = data.buying_price;
+            const response = await axios.put(`/ecommerce/stockinventory/stock/${id}/`, payload);
+            await loadProducts();
+            showToast('success', 'Success', 'Product stock updated successfully');
+            return response.data;
+        } else {
+            const response = await productService.updateProduct(id, data);
+            await loadProducts();
+            showToast('success', 'Success', 'Product updated successfully');
+            return response.data;
+        }
+  }
+});
+
+// Branch modal
+const branchModal = useAddEditModal({
+  entityName: 'Branch',
+  fields: [
+    { name: 'name', label: 'Branch Name', type: 'text', required: true, placeholder: 'e.g. Main Branch' },
+    { name: 'contact_number', label: 'Contact Number', type: 'text', required: true, placeholder: '+254712345678' }
+  ],
+  onSubmit: async (data) => {
+        // ensure location is provided (backend requires a BusinessLocation)
+        if (!data.location) {
+            const biz = JSON.parse(sessionStorage.getItem('business') || '{}') || {}
+            if (biz && biz.location) data.location = biz.location.id || biz.location
+            else {
+                const locResp = await systemConfigService.getBusinessLocations({ business_name: biz.name || biz.business__name })
+                if (locResp && locResp.success && locResp.data && locResp.data.length > 0) data.location = locResp.data[0].id
+            }
+        }
+        const response = await coreService.createBranch(data);
+    await loadBranches();
+    form.branch = response.data.id;
+    showToast('success', 'Success', 'Branch created successfully');
+    return response.data;
+  }
+});
 
 // Options
 const paymentTermsOptions = [
@@ -80,7 +183,11 @@ const templateOptions = [
 
 // Computed
 const grandTotal = computed(() => {
-    return form.subtotal + form.tax_amount - form.discount_amount + form.shipping_cost;
+    const n = (v) => {
+        const x = Number(v);
+        return Number.isFinite(x) ? x : 0;
+    };
+    return n(form.subtotal) + n(form.tax_amount) - n(form.discount_amount) + n(form.shipping_cost);
 });
 
 const showCustomTerms = computed(() => form.payment_terms === 'custom');
@@ -88,8 +195,10 @@ const showCustomTerms = computed(() => form.payment_terms === 'custom');
 // Methods
 const loadCustomers = async () => {
     try {
-        const response = await crmService.getContacts({ contact_type: 'Customer', page_size: 100 });
-        customers.value = (response.data?.results || response.data || []).map(c => ({
+        // Use the same contact_type conventions as other parts of the app (plural)
+        const response = await crmService.getContacts({ contact_type: 'Customers', page_size: 100 });
+        let data = response.data?.data || response.data || [];
+        customers.value = (data?.results || data || []).map(c => ({
             ...c,
             displayName: c.business_name || `${c.user?.first_name || ''} ${c.user?.last_name || ''}`.trim()
         }));
@@ -102,7 +211,8 @@ const loadCustomers = async () => {
 const loadBranches = async () => {
     try {
         const response = await coreService.getBranches();
-        branches.value = response.data?.results || response.data || [];
+        let data = response.data?.data || response.data || [];
+        branches.value = data?.results || data || [];
         if (branches.value.length > 0) {
             form.branch = branches.value[0].id;
         }
@@ -111,11 +221,26 @@ const loadBranches = async () => {
     }
 };
 
+const openEditProductModal = (product) => {
+    if (product && product.id) {
+        // Determine if the supplied object is a stock item (has selling_price/buying_price)
+        const isStock = product.selling_price !== undefined || product.buying_price !== undefined;
+        productModal.openEditModal(product.id, {
+            title: product.product?.title || product.title,
+            sku: product.product?.sku || product.sku,
+            selling_price: product.selling_price ?? product.product?.selling_price ?? null,
+            buying_price: product.buying_price ?? product.product?.buying_price ?? null,
+            description: product.product?.description || product.description,
+            _isStock: isStock
+        });
+    }
+};
+
 const loadProducts = async () => {
     try {
         // Use lightweight search endpoint for better performance
         const response = await ecommerceService.searchProductsLite({ search: '' });
-        let data = response.data || [];
+        let data = response.data?.data || response.data || [];
         
         // Check if data is wrapped in a results object
         if (data.results && Array.isArray(data.results)) {
@@ -155,6 +280,84 @@ const loadTaxRates = async () => {
     } catch (error) {
         console.error('Error loading tax rates:', error);
     }
+};
+
+// Handlers for forms saved events
+const handleCustomerSaved = async (saved) => {
+    try {
+        await loadCustomers();
+        const id = saved?.id || saved?.data?.id || saved?.contact?.id || saved?.contact_id;
+        if (id) {
+            form.customer = customers.value.find(c => c.id === id) || customers.value[0] || null;
+        }
+    } catch (e) {
+        console.error('Error handling saved customer:', e);
+    } finally {
+        showCustomerDialog.value = false;
+    }
+}
+
+const handleProductSaved = async (saved) => {
+    try {
+        await loadProducts();
+
+        // If this product was created from the ItemsTable "Add product" flow, add it as a new line
+        const product = saved?.product || saved || saved?.data || null;
+        if (productDialogForItems.value && product) {
+            // If the product already exists in the items list, increment its quantity instead of adding a duplicate line
+            const prodId = product.id || product.product_id || null;
+            if (prodId) {
+                const existing = form.items.find(i => (i.product && (i.product.id || i.product.product_id) || i.product) === prodId);
+                if (existing) {
+                    existing.quantity = (Number(existing.quantity) || 0) + 1;
+                    // Recalculate line & totals
+                    existing.unit_price = parseFloat(existing.unit_price || product.selling_price || 0);
+                    calculateLineItem(existing);
+                    calculateTotals();
+                } else {
+                    const newItem = { product: product, quantity: 1, unit_price: parseFloat(product.selling_price || product.price || 0), description: product.description || '' };
+                    form.items.push(newItem);
+                    calculateTotals();
+                }
+            } else {
+                const newItem = { product: product, quantity: 1, unit_price: parseFloat(product.selling_price || product.price || 0), description: product.description || '' };
+                form.items.push(newItem);
+                calculateTotals();
+            }
+        }
+    } catch (e) {
+        console.error('Error handling saved product:', e);
+    } finally {
+        productDialogForItems.value = false;
+        productEditMode.value = false;
+        productEditData.value = null;
+        showProductDialog.value = false;
+    }
+}
+
+const handleBranchSaved = async (saved) => {
+    try {
+        await loadBranches();
+        const id = saved?.id || saved?.data?.id;
+        if (id) form.branch = id;
+    } catch (e) {
+        console.error('Error handling saved branch:', e);
+    } finally {
+        showBranchDialog.value = false;
+    }
+}
+
+const handleAddProduct = () => {
+    productDialogForItems.value = true;
+    productEditMode.value = false;
+    productEditData.value = null;
+    showProductDialog.value = true;
+};
+
+const handleEditProduct = (product, index) => {
+    productEditMode.value = true;
+    productEditData.value = product;
+    showProductDialog.value = true;
 };
 
 const searchCustomers = (event) => {
@@ -217,20 +420,6 @@ const loadCustomerAddresses = async (customerId) => {
     }
 };
 
-const addLineItem = () => {
-    form.items.push({
-        product: null,
-        name: '',
-        description: '',
-        quantity: 1,
-        unit_price: 0,
-        tax_rate: 0,
-        tax_amount: 0,
-        subtotal: 0,
-        total: 0
-    });
-};
-
 const removeLineItem = (index) => {
     form.items.splice(index, 1);
     calculateTotals();
@@ -285,18 +474,28 @@ const calculateLineItem = (item) => {
     // Calculate tax
     item.tax_amount = (item.subtotal * item.tax_rate) / 100;
     
+    // Round to 2 decimal places to prevent backend validation errors
+    item.tax_amount = Math.round(item.tax_amount * 100) / 100;
+    
     // Calculate total
     item.total = item.subtotal + item.tax_amount;
+    item.total = Math.round(item.total * 100) / 100;
     
     // Recalculate form totals
     calculateTotals();
 };
 
 const calculateTotals = () => {
-    // Sum all items
-    form.subtotal = form.items.reduce((sum, item) => sum + item.subtotal, 0);
-    form.tax_amount = form.items.reduce((sum, item) => sum + item.tax_amount, 0);
-    form.total = form.subtotal + form.tax_amount - form.discount_amount + form.shipping_cost;
+    // Sum all items - guard if items is not an array
+    const itemsArray = Array.isArray(form.items) ? form.items : [];
+    form.subtotal = itemsArray.reduce((sum, item) => sum + (Number(item.subtotal) || 0), 0);
+    form.tax_amount = itemsArray.reduce((sum, item) => sum + (Number(item.tax_amount) || 0), 0);
+    form.total = form.subtotal + form.tax_amount - (Number(form.discount_amount) || 0) + (Number(form.shipping_cost) || 0);
+    
+    // Round all totals to 2 decimal places to prevent backend validation errors
+    form.subtotal = Math.round(form.subtotal * 100) / 100;
+    form.tax_amount = Math.round(form.tax_amount * 100) / 100;
+    form.total = Math.round(form.total * 100) / 100;
 };
 
 const applyDiscount = () => {
@@ -331,7 +530,27 @@ const saveAndSend = async () => {
     // Validate form
     const isValid = await v$.value.$validate();
     if (!isValid) {
-        showToast('warn', 'Validation Error', 'Please fill all required fields');
+        // Build a helpful error summary for the user so they know which fields failed
+        const errors = [];
+        try {
+            if (v$.value.customer && v$.value.customer.$error) errors.push('Customer is required');
+            if (v$.value.invoice_date && v$.value.invoice_date.$error) errors.push('Invoice date is required');
+            if (v$.value.items && v$.value.items.$error) errors.push('Please add at least one line item');
+        } catch (e) {
+            // fallback generic message
+        }
+
+        const message = errors.length ? errors.join('; ') : 'Please fill all required fields';
+        showToast('warn', 'Validation Error', message);
+        // Also log detailed validation state to the console for debugging
+        console.warn('Invoice form validation failed', { validation: v$.value });
+        // Focus the first invalid input (best-effort)
+        setTimeout(() => {
+            const firstInvalid = document.querySelector('.p-invalid');
+            if (firstInvalid && typeof firstInvalid.focus === 'function') {
+                firstInvalid.focus();
+            }
+        }, 50);
         return;
     }
     
@@ -362,13 +581,29 @@ const saveAndSend = async () => {
         router.push('/finance/invoices');
     } catch (error) {
         console.error('Error saving and sending:', error);
-        showToast('error', 'Error', 'Failed to create/send invoice');
+        // Try to surface server-side validation errors if present
+        const serverData = error?.response?.data;
+        let serverMsg = 'Failed to create/send invoice';
+        try {
+            if (serverData) {
+                if (serverData.detail) serverMsg = serverData.detail;
+                else if (serverData.message) serverMsg = serverData.message;
+                else if (typeof serverData === 'object') serverMsg = Object.values(serverData).flat().join('; ');
+                else serverMsg = String(serverData);
+            }
+        } catch (e) {
+            // ignore
+        }
+        showToast('error', 'Error', serverMsg);
     } finally {
         loading.value = false;
     }
 };
 
 const prepareInvoiceData = (status) => {
+    // Helper to round to 2 decimal places
+    const round2 = (val) => Math.round((Number(val) || 0) * 100) / 100;
+    
     return {
         customer: form.customer?.id || form.customer,
         branch: form.branch,
@@ -379,22 +614,22 @@ const prepareInvoiceData = (status) => {
         template_name: form.template_name,
         customer_notes: form.customer_notes,
         terms_and_conditions: form.terms_and_conditions,
-        subtotal: form.subtotal,
-        tax_amount: form.tax_amount,
-        discount_amount: form.discount_amount,
-        shipping_cost: form.shipping_cost,
-        total: grandTotal.value,
+        subtotal: round2(form.subtotal),
+        tax_amount: round2(form.tax_amount),
+        discount_amount: round2(form.discount_amount),
+        shipping_cost: round2(form.shipping_cost),
+        total: round2(grandTotal.value),
         shipping_address: form.shipping_address,
         billing_address: form.billing_address,
         items: form.items.map(item => ({
             name: item.name,
             description: item.description,
             quantity: item.quantity,
-            unit_price: item.unit_price,
+            unit_price: round2(item.unit_price),
             tax_rate: item.tax_rate,
-            tax_amount: item.tax_amount,
-            subtotal: item.subtotal,
-            total: item.total,
+            tax_amount: round2(item.tax_amount),
+            subtotal: round2(item.subtotal),
+            total: round2(item.total),
             product_id: item.product?.id
         }))
     };
@@ -414,11 +649,6 @@ onMounted(async () => {
         loadProducts(),
         loadTaxRates()
     ]);
-    
-    // Add initial line item
-    if (form.items.length === 0) {
-        addLineItem();
-    }
     
     // Load invoice if edit mode
     if (isEditMode.value) {
@@ -514,46 +744,70 @@ const loadInvoice = async (id) => {
 
         <!-- Main Content with max-width for better readability -->
         <div class="max-w-7xl mx-auto px-6 py-6">
-            <Card>
+            <Card class="invoice-card">
                 <template #content>
                     <div class="space-y-6">
                     <!-- Customer & Basic Info -->
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
                             <label class="block text-sm font-medium mb-2 required">Customer *</label>
-                            <AutoComplete 
-                                v-model="form.customer"
-                                :suggestions="filteredCustomers"
-                                @complete="searchCustomers"
-                                @item-select="onCustomerSelect"
-                                optionLabel="displayName"
-                                placeholder="Select or search customer..."
-                                class="w-full"
-                                :class="{ 'p-invalid': v$.customer.$error }"
-                            >
-                                <template #item="slotProps">
-                                    <div class="flex items-center gap-3">
-                                        <Avatar :label="slotProps.item.displayName[0]" shape="circle" />
-                                        <div>
-                                            <div class="font-medium">{{ slotProps.item.displayName }}</div>
-                                            <div class="text-sm text-surface-500">{{ slotProps.item.user?.email }}</div>
+                            <div class="flex gap-2">
+                                <AutoComplete 
+                                    v-model="form.customer"
+                                    :suggestions="filteredCustomers"
+                                    @complete="searchCustomers"
+                                    @item-select="onCustomerSelect"
+                                    optionLabel="displayName"
+                                    placeholder="Select or search customer..."
+                                    class="flex-1"
+                                    :class="{ 'p-invalid': v$.customer.$error }"
+                                >
+                                    <template #item="slotProps">
+                                        <div class="flex items-center gap-3">
+                                            <Avatar :label="slotProps.item.displayName[0]" shape="circle" />
+                                            <div>
+                                                <div class="font-medium">{{ slotProps.item.displayName }}</div>
+                                                <div class="text-sm text-surface-500">{{ slotProps.item.user?.email }}</div>
+                                            </div>
                                         </div>
-                                    </div>
-                                </template>
-                            </AutoComplete>
+                                    </template>
+                                </AutoComplete>
+                                <PermissionButton 
+                                    icon="pi pi-plus" 
+                                    @click="openAddCustomer" 
+                                    severity="success"
+                                    tooltip="Add new customer"
+                                />
+                                <PermissionButton 
+                                    v-if="form.customer"
+                                    icon="pi pi-pencil" 
+                                    @click="openEditCustomer(form.customer.id, form.customer)" 
+                                    severity="info"
+                                    tooltip="Edit customer"
+                                />
+                            </div>
                             <small v-if="v$.customer.$error" class="p-error">Customer is required</small>
                         </div>
 
                         <div>
                             <label class="block text-sm font-medium mb-2 required">Branch</label>
-                            <Dropdown 
-                                v-model="form.branch"
-                                :options="branches"
-                                optionLabel="name"
-                                optionValue="id"
-                                placeholder="Select branch"
-                                class="w-full"
-                            />
+                            <div class="flex gap-2">
+                                <Dropdown 
+                                    v-model="form.branch"
+                                    :options="branches"
+                                    optionLabel="name"
+                                    optionValue="id"
+                                    placeholder="Select branch"
+                                    class="flex-1"
+                                />
+                                <PermissionButton 
+                                    permission="add_branch"
+                                    icon="pi pi-plus" 
+                                    @click="showBranchDialog = true" 
+                                    severity="success"
+                                    tooltip="Add new branch"
+                                />
+                            </div>
                         </div>
 
                         <div>
@@ -605,146 +859,20 @@ const loadInvoice = async (id) => {
 
                     <!-- Line Items Section -->
                     <div>
-                        <div class="flex justify-between items-center mb-4">
-                            <h3 class="text-lg font-semibold text-surface-900 dark:text-surface-0">Line Items</h3>
-                            <Button 
-                                icon="pi pi-plus" 
-                                label="Add Item" 
-                                class="p-button-sm p-button-outlined"
-                                @click="addLineItem"
-                            />
+                        <h3 class="text-lg font-semibold text-surface-900 dark:text-surface-0 mb-4">Line Items</h3>
+                        <div class="overflow-x-auto">
+                        <ItemsTable 
+                            v-model:items="form.items"
+                            :available-products="products"
+                            :show-add-product="true"
+                            :show-edit-product="true"
+                            :show-tax-fields="true"
+                            :show-description="true"
+                            @add-product="handleAddProduct"
+                            @edit-product="handleEditProduct"
+                            @update:items="calculateTotals"
+                        />
                         </div>
-
-                        <DataTable 
-                            :value="form.items"
-                            responsiveLayout="scroll"
-                            class="p-datatable-sm"
-                            :rowHover="true"
-                        >
-                            <Column header="#" headerStyle="width: 50px">
-                                <template #body="{ index }">
-                                    <span class="font-mono text-surface-500">{{ index + 1 }}</span>
-                                </template>
-                            </Column>
-
-                            <Column header="Product/Service *" style="min-width: 300px">
-                                <template #body="{ data, index }">
-                                    <AutoComplete 
-                                        v-model="data.product"
-                                        :suggestions="filteredProducts"
-                                        @complete="searchProducts($event, index)"
-                                        @item-select="onProductSelect(data)"
-                                        optionLabel="displayName"
-                                        placeholder="Search product by name or SKU..."
-                                        class="w-full"
-                                        :dropdown="true"
-                                        :forceSelection="false"
-                                    >
-                                        <template #item="slotProps">
-                                            <div class="flex items-center gap-3 py-2">
-                                                <div class="bg-primary-50 dark:bg-primary-900 p-2 rounded">
-                                                    <i class="pi pi-box text-primary text-lg"></i>
-                                                </div>
-                                                <div class="flex-1">
-                                                    <div class="font-semibold text-surface-900 dark:text-surface-0">
-                                                        {{ slotProps.item.product?.title || slotProps.item.title }}
-                                                    </div>
-                                                    <div class="flex gap-3 text-sm text-surface-600">
-                                                        <span>{{ slotProps.item.product?.sku || slotProps.item.sku }}</span>
-                                                        <span class="text-green-600">Stock: {{ slotProps.item.stock_level }}</span>
-                                                        <span class="font-semibold text-primary">{{ formatCurrency(slotProps.item.selling_price) }}</span>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </template>
-                                    </AutoComplete>
-                                </template>
-                            </Column>
-
-                            <Column header="Description" style="min-width: 200px">
-                                <template #body="{ data }">
-                                    <InputText 
-                                        v-model="data.name"
-                                        placeholder="Item name"
-                                        class="w-full mb-2"
-                                    />
-                                    <Textarea 
-                                        v-model="data.description"
-                                        rows="2"
-                                        placeholder="Description..."
-                                        class="w-full"
-                                    />
-                                </template>
-                            </Column>
-
-                            <Column header="Qty *" headerStyle="width: 100px">
-                                <template #body="{ data }">
-                                    <InputNumber 
-                                        v-model="data.quantity"
-                                        :min="1"
-                                        class="w-full"
-                                        @input="calculateLineItem(data)"
-                                    />
-                                </template>
-                            </Column>
-
-                            <Column header="Unit Price *" headerStyle="width: 120px">
-                                <template #body="{ data }">
-                                    <InputNumber 
-                                        v-model="data.unit_price"
-                                        mode="currency"
-                                        currency="KES"
-                                        locale="en-KE"
-                                        class="w-full"
-                                        @input="calculateLineItem(data)"
-                                    />
-                                </template>
-                            </Column>
-
-                            <Column header="Tax %" headerStyle="width: 100px">
-                                <template #body="{ data }">
-                                    <InputNumber 
-                                        v-model="data.tax_rate"
-                                        suffix="%"
-                                        :min="0"
-                                        :max="100"
-                                        class="w-full"
-                                        @input="calculateLineItem(data)"
-                                    />
-                                </template>
-                            </Column>
-
-                            <Column header="Amount" headerStyle="width: 120px">
-                                <template #body="{ data }">
-                                    <div class="text-right font-semibold">
-                                        {{ formatCurrency(data.total) }}
-                                    </div>
-                                </template>
-                            </Column>
-
-                            <Column headerStyle="width: 80px">
-                                <template #body="{ index }">
-                                    <Button 
-                                        icon="pi pi-trash" 
-                                        class="p-button-rounded p-button-text p-button-danger p-button-sm"
-                                        @click="removeLineItem(index)"
-                                        v-tooltip.top="'Remove'"
-                                    />
-                                </template>
-                            </Column>
-
-                            <template #empty>
-                                <div class="text-center py-6">
-                                    <p class="text-surface-600 dark:text-surface-400">No items added yet</p>
-                                    <Button 
-                                        label="Add First Item" 
-                                        icon="pi pi-plus" 
-                                        class="mt-3 p-button-sm p-button-outlined"
-                                        @click="addLineItem"
-                                    />
-                                </div>
-                            </template>
-                        </DataTable>
                     </div>
 
                     <Divider />
@@ -820,6 +948,12 @@ const loadInvoice = async (id) => {
                                     </div>
                                 </template>
                             </Card>
+
+                            <!-- Mobile action bar -->
+                            <div class="fixed bottom-0 left-0 right-0 bg-white dark:bg-surface-900 border-t p-3 flex gap-3 justify-end md:hidden z-50">
+                                <Button label="Save Draft" icon="pi pi-save" class="p-button-secondary" @click="saveDraft" :loading="loading" />
+                                <Button label="Save & Send" icon="pi pi-send" class="p-button-primary" @click="saveAndSend" :loading="loading" />
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -829,6 +963,29 @@ const loadInvoice = async (id) => {
 
         <Spinner :isLoading="loading" title="Processing invoice..." />
     </div>
+
+    <!-- Customer Dialog (uses AddSupplier component) -->
+    <Dialog :visible="showCustomerDialog" @update:visible="(v) => { showCustomerDialog.value = v }" header="Add / Edit Customer" :modal="true" :style="{ width: '700px' }">
+        <AddCustomer :id="customerEditId" :editmode="customerEditMode" @saved="handleCustomerSaved" />
+    </Dialog>
+
+    <!-- Product Dialog (uses ProductForm) -->
+    <Dialog :visible="showProductDialog" @update:visible="(v) => showProductDialog = v" :modal="true" :style="{ width: '95%', maxWidth: '1000px' }" :dismissableMask="true">
+        <template #header>
+            <h3 class="text-xl font-semibold">{{ productEditMode ? 'Edit Product' : 'Add Product' }}</h3>
+        </template>
+        <ProductForm 
+            :product="productEditData" 
+            :editMode="productEditMode" 
+            @saved="handleProductSaved" 
+            @fetch-products="loadProducts"
+        />
+    </Dialog>
+
+    <!-- Branch Dialog (uses BranchForm) -->
+    <Dialog :visible="showBranchDialog" @update:visible="(v) => { showBranchDialog.value = v }" header="Add Branch" :modal="true" :style="{ width: '600px' }">
+        <BranchForm @saved="handleBranchSaved" />
+    </Dialog>
 </template>
 
 <style scoped>
@@ -839,6 +996,15 @@ const loadInvoice = async (id) => {
 
 .form-header {
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.invoice-card {
+    border-radius: 12px;
+    padding: 1rem;
+}
+
+.invoice-card :deep(.p-card) {
+    background: var(--surface-card);
 }
 
 .required::after {
@@ -862,5 +1028,10 @@ const loadInvoice = async (id) => {
     .invoice-form-page {
         background-color: #1e293b;
     }
+}
+
+/* Improve ItemsTable responsiveness */
+.invoice-card .overflow-x-auto {
+    overflow-x: auto;
 }
 </style>

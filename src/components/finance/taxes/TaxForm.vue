@@ -79,6 +79,29 @@ const roundingMethodOptions = [
 // Computed
 const isEdit = computed(() => !!props.tax);
 
+// Reset form helper (declared before watcher to avoid initialization timing issues)
+const resetForm = () => {
+    Object.assign(form, {
+        name: '',
+        code: '',
+        category: null,
+        rate_type: 'percentage',
+        rate: 0,
+        status: 'active',
+        effective_date: new Date(),
+        expiry_date: null,
+        calculation_method: 'standard',
+        rounding_method: 'round',
+        is_default: false,
+        is_compound: false,
+        is_recoverable: true,
+        description: '',
+        kra_code: '',
+        kra_name: ''
+    });
+    errors.value = {};
+};
+
 // Watch for tax changes
 watch(
     () => props.tax,
@@ -149,15 +172,17 @@ const saveTax = async () => {
     try {
         const taxData = { ...form };
 
-        if (isEdit.value) {
-            await financeService.updateTax(props.tax.id, taxData);
-            showToast('success', 'Tax rate updated successfully');
-        } else {
-            await financeService.createTax(taxData);
-            showToast('success', 'Tax rate created successfully');
-        }
+            let response;
+            if (isEdit.value) {
+                response = await financeService.updateTaxRate(props.tax.id, taxData);
+                showToast('success', 'Tax rate updated successfully');
+            } else {
+                response = await financeService.createTaxRate(taxData);
+                showToast('success', 'Tax rate created successfully');
+            }
 
-        emit('saved');
+            // emit the newly created/updated tax object so callers can assign it
+            emit('saved', response.data || response);
         closeDialog();
     } catch (error) {
         console.error('Error saving tax:', error);
@@ -172,27 +197,7 @@ const closeDialog = () => {
     resetForm();
 };
 
-const resetForm = () => {
-    Object.assign(form, {
-        name: '',
-        code: '',
-        category: null,
-        rate_type: 'percentage',
-        rate: 0,
-        status: 'active',
-        effective_date: new Date(),
-        expiry_date: null,
-        calculation_method: 'standard',
-        rounding_method: 'round',
-        is_default: false,
-        is_compound: false,
-        is_recoverable: true,
-        description: '',
-        kra_code: '',
-        kra_name: ''
-    });
-    errors.value = {};
-};
+// resetForm defined above
 </script>
 
 <template>

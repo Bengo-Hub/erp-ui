@@ -119,6 +119,15 @@ export const quotationService = {
         }
     },
 
+    async generateShareLink(id, options = {}) {
+        try {
+            const response = await axios.post(`${QUOTATIONS_BASE}/quotations/${id}/generate-share-link/`, options);
+            return response.data.data || response.data;
+        } catch (error) {
+            return handleError(error);
+        }
+    },
+
     // Quotation Analytics
     async getQuotationSummary(params = {}) {
         try {
@@ -174,6 +183,32 @@ export const quotationService = {
     async getConvertedQuotations(params = {}) {
         return this.getQuotations({ converted: 'true', ...params });
     },
+
+    // PDF Methods
+    async getQuotationPDF(id, download = false) {
+        try {
+            const response = await axios.get(`${QUOTATIONS_BASE}/quotations/${id}/pdf/`, {
+                params: { download },
+                responseType: 'blob'
+            });
+            return response.data;
+        } catch (error) {
+            return handleError(error);
+        }
+    },
+
+    async downloadQuotationPDF(id) {
+        return this.getQuotationPDF(id, true);
+    },
+
+    async getPublicQuotation(id, token) {
+        try {
+            const response = await axios.get(`${QUOTATIONS_BASE}/public/quotation/${id}/${token}/`);
+            return response.data.data || response.data;
+        } catch (error) {
+            return handleError(error);
+        }
+    }
 };
 
 export default quotationService;

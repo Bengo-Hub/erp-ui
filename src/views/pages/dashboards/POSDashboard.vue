@@ -6,6 +6,7 @@ import { useToast } from '@/composables/useToast';
 import { dashboardService } from '@/services/shared/dashboardService';
 import { PERIOD_OPTIONS } from '@/utils/constants';
 import Chart from 'primevue/chart';
+import { formatCurrency, safeNumber } from '@/utils/formatters';
 import { onMounted, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
 
@@ -176,7 +177,7 @@ onMounted(() => {
                     </template>
                     <template #content>
                         <div class="text-3xl font-bold">
-                            {{ new Intl.NumberFormat('en-KE', { style: 'currency', currency: 'KES' }).format(dashboardData.total_sales) }}
+                            {{ formatCurrency(safeNumber(dashboardData.total_sales, 0)) }}
                         </div>
                     </template>
                 </Card>
@@ -204,7 +205,7 @@ onMounted(() => {
                     </template>
                     <template #content>
                         <div class="text-3xl font-bold">
-                            {{ new Intl.NumberFormat('en-KE', { style: 'currency', currency: 'KES' }).format(dashboardData.average_transaction_value) }}
+                            {{ formatCurrency(safeNumber(dashboardData.average_transaction_value, 0)) }}
                         </div>
                     </template>
                 </Card>
@@ -218,7 +219,7 @@ onMounted(() => {
                     </template>
                     <template #content>
                         <div class="text-3xl font-bold">
-                            {{ new Intl.NumberFormat('en-KE', { style: 'currency', currency: 'KES' }).format(dashboardData.discount_given) }}
+                            {{ formatCurrency(safeNumber(dashboardData.discount_given, 0)) }}
                         </div>
                     </template>
                 </Card>

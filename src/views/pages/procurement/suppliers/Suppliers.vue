@@ -1,6 +1,6 @@
 <script setup>
 import ReportHeader from '@/components/report/header.vue';
-import AddSupplier from '@/components/supplier/AddSupplier.vue';
+import AddSupplier from '@/components/crm/AddSupplier.vue';
 import Spinner from '@/components/ui/Spinner.vue';
 import { useToast } from '@/composables/useToast';
 import { procurementService } from '@/services/procurement/procurementService';

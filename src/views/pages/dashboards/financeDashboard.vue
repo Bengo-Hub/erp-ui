@@ -6,6 +6,7 @@ import { useToast } from '@/composables/useToast';
 import { dashboardService } from '@/services/shared/dashboardService';
 import { PERIOD_OPTIONS } from '@/utils/constants';
 import Chart from 'primevue/chart';
+import { formatCurrency, safeNumber } from '@/utils/formatters';
 import { onMounted, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
 
@@ -68,7 +69,7 @@ const processChartData = () => {
             datasets: [
                 {
                     label: 'Revenue',
-                    data: dashboardData.value.revenue_trends.map((item) => item.amount),
+                    data: dashboardData.value.revenue_trends.map((item) => safeNumber(item.amount, 0)),
                     borderColor: '#42A5F5',
                     backgroundColor: 'rgba(66, 165, 245, 0.1)',
                     tension: 0.4
@@ -83,7 +84,7 @@ const processChartData = () => {
             labels: dashboardData.value.expense_breakdown.map((item) => item.category),
             datasets: [
                 {
-                    data: dashboardData.value.expense_breakdown.map((item) => item.amount),
+                    data: dashboardData.value.expense_breakdown.map((item) => safeNumber(item.amount, 0)),
                     backgroundColor: ['#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF', '#FF9F40', '#FF6384', '#C9CBCF']
                 }
             ]
@@ -97,7 +98,7 @@ const processChartData = () => {
             datasets: [
                 {
                     label: 'Cash Flow',
-                    data: dashboardData.value.cash_flow_data.map((item) => item.amount),
+                    data: dashboardData.value.cash_flow_data.map((item) => safeNumber(item.amount, 0)),
                     borderColor: '#66BB6A',
                     backgroundColor: 'rgba(102, 187, 106, 0.1)',
                     tension: 0.4
@@ -165,7 +166,7 @@ onMounted(() => {
                     </template>
                     <template #content>
                         <div class="text-3xl font-bold">
-                            {{ new Intl.NumberFormat('en-KE', { style: 'currency', currency: 'KES' }).format(dashboardData.total_revenue) }}
+                            {{ formatCurrency(safeNumber(dashboardData.total_revenue, 0)) }}
                         </div>
                     </template>
                 </Card>
@@ -179,7 +180,7 @@ onMounted(() => {
                     </template>
                     <template #content>
                         <div class="text-3xl font-bold">
-                            {{ new Intl.NumberFormat('en-KE', { style: 'currency', currency: 'KES' }).format(dashboardData.total_expenses) }}
+                            {{ formatCurrency(safeNumber(dashboardData.total_expenses, 0)) }}
                         </div>
                     </template>
                 </Card>
@@ -193,7 +194,7 @@ onMounted(() => {
                     </template>
                     <template #content>
                         <div class="text-3xl font-bold">
-                            {{ new Intl.NumberFormat('en-KE', { style: 'currency', currency: 'KES' }).format(dashboardData.net_profit) }}
+                            {{ formatCurrency(safeNumber(dashboardData.net_profit, 0)) }}
                         </div>
                     </template>
                 </Card>
@@ -207,7 +208,7 @@ onMounted(() => {
                     </template>
                     <template #content>
                         <div class="text-3xl font-bold">
-                            {{ new Intl.NumberFormat('en-KE', { style: 'currency', currency: 'KES' }).format(dashboardData.cash_flow) }}
+                            {{ formatCurrency(safeNumber(dashboardData.cash_flow, 0)) }}
                         </div>
                     </template>
                 </Card>

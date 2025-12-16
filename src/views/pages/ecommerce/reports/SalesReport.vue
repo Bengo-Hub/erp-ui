@@ -101,7 +101,7 @@
                                         <td class="py-3 px-4 font-medium">{{ item.category }}</td>
                                         <td class="text-right py-3 px-4">{{ item.quantity }}</td>
                                         <td class="text-right py-3 px-4">{{ formatCurrency(item.sales) }}</td>
-                                        <td class="text-right py-3 px-4">{{ ((item.sales / summary.totalSales) * 100).toFixed(1) }}%</td>
+                                        <td class="text-right py-3 px-4">{{ (summary.totalSales > 0 ? ((item.sales / summary.totalSales) * 100).toFixed(1) : '0.0') }}%</td>
                                     </tr>
                                 </tbody>
                             </table>

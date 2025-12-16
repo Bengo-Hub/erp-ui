@@ -37,6 +37,7 @@ const scheduleData = ref({
 });
 
 const ccEmails = ref('');
+const whatsappPhone = ref('');
 
 // Computed
 const dialogVisible = computed({
@@ -57,6 +58,20 @@ const sendButtonLabel = computed(() => {
     return 'Schedule';
 });
 
+const customerEmail = computed(() => {
+    return props.document?.customer?.user?.email || '';
+});
+
+const customerPhone = computed(() => {
+    return props.document?.customer?.user?.phone || '';
+});
+
+const customerName = computed(() => {
+    return props.document?.customer?.user?.first_name 
+        ? `${props.document.customer.user.first_name} ${props.document.customer.user.last_name || ''}`.trim()
+        : props.document?.customer?.name || '';
+});
+
 // Methods
 const handleSend = () => {
     if (sendMethod.value === 'email') {
@@ -69,7 +84,9 @@ const handleSend = () => {
 };
 
 const sendViaEmail = () => {
-    if (!emailData.value.email_to && !props.document?.customer?.user?.email) {
+    const recipient = emailData.value.email_to || customerEmail.value;
+    
+    if (!recipient) {
         showToast('warn', 'Validation', 'Recipient email is required');
         return;
     }
@@ -78,20 +95,22 @@ const sendViaEmail = () => {
     const ccList = ccEmails.value ? ccEmails.value.split(',').map(e => e.trim()).filter(Boolean) : [];
     
     emit('send', {
-        email_to: emailData.value.email_to || props.document.customer.user.email,
+        email_to: recipient,
         send_copy_to: ccList,
         message: emailData.value.message
     });
 };
 
 const sendViaWhatsApp = () => {
-    if (!props.document?.customer?.user?.phone) {
+    const phone = whatsappPhone.value || customerPhone.value;
+    
+    if (!phone) {
         showToast('warn', 'Validation', 'Customer phone number is required');
         return;
     }
     
     emit('send-via-whatsapp', {
-        phone: props.document.customer.user.phone,
+        phone: phone,
         message: emailData.value.message
     });
 };
@@ -109,10 +128,12 @@ const cancel = () => {
     dialogVisible.value = false;
 };
 
-// Watch document changes
+// Watch document changes and update form with customer details
 watch(() => props.document, (newDoc) => {
     if (newDoc) {
+        // Auto-load email from customer profile
         emailData.value.email_to = newDoc.customer?.user?.email || '';
+        whatsappPhone.value = newDoc.customer?.user?.phone || '';
     }
 }, { immediate: true });
 </script>
@@ -161,14 +182,19 @@ watch(() => props.document, (newDoc) => {
 
             <!-- Email Method -->
             <div v-if="sendMethod === 'email'" class="space-y-4">
+                <div class="bg-blue-50 dark:bg-blue-900 p-4 rounded mb-4">
+                    <p class="text-sm font-medium">To: <span class="text-blue-700 dark:text-blue-300 font-semibold">{{ customerName }}</span></p>
+                    <p class="text-sm text-surface-600">{{ customerEmail || 'No email on file' }}</p>
+                </div>
+
                 <div>
                     <label class="block text-sm font-medium mb-2">To: *</label>
                     <InputText 
                         v-model="emailData.email_to"
-                        placeholder="customer@example.com"
+                        :placeholder="customerEmail || 'customer@example.com'"
                         class="w-full"
                     />
-                    <small class="text-surface-500">Customer email from profile will be used if empty</small>
+                    <small class="text-surface-500">Leave empty to use customer email from profile</small>
                 </div>
 
                 <div>
@@ -194,7 +220,7 @@ watch(() => props.document, (newDoc) => {
                 <Message severity="info" :closable="false">
                     <div class="flex items-center gap-2">
                         <i class="pi pi-paperclip"></i>
-                        <span>PDF will be automatically attached</span>
+                        <span>PDF will be automatically attached with a public view link</span>
                     </div>
                 </Message>
             </div>
@@ -206,9 +232,26 @@ watch(() => props.document, (newDoc) => {
                         <i class="pi pi-whatsapp text-3xl text-green-600"></i>
                         <div>
                             <p class="font-semibold">Send via WhatsApp</p>
-                            <p class="text-sm text-surface-600">{{ document?.customer?.user?.phone || 'No phone number' }}</p>
+                            <p class="text-sm text-surface-600">{{ customerName }}</p>
+                            <p class="text-sm text-green-700 dark:text-green-300 font-semibold">{{ customerPhone || 'No phone number on file' }}</p>
                         </div>
                     </div>
+                </div>
+
+                <div v-if="!customerPhone" class="bg-amber-50 dark:bg-amber-900 p-3 rounded border border-amber-200">
+                    <div class="flex gap-2">
+                        <i class="pi pi-exclamation-triangle text-amber-600 flex-shrink-0"></i>
+                        <p class="text-sm text-amber-700 dark:text-amber-300">Customer phone number not found. Please enter it below.</p>
+                    </div>
+                </div>
+
+                <div v-if="!customerPhone">
+                    <label class="block text-sm font-medium mb-2">Phone Number: *</label>
+                    <InputText 
+                        v-model="whatsappPhone"
+                        placeholder="Enter customer WhatsApp number with country code (e.g., +254712345678)"
+                        class="w-full"
+                    />
                 </div>
 
                 <div>
@@ -217,12 +260,12 @@ watch(() => props.document, (newDoc) => {
                         v-model="emailData.message"
                         rows="4"
                         class="w-full"
-                        :placeholder="`Hello, here is your ${documentType} from ${document?.branch?.business?.name || 'us'}. Click the link to view.`"
+                        :placeholder="`Hello ${customerName}, here is your ${documentType === 'invoice' ? 'invoice' : 'quotation'}. Click the link to view.`"
                     />
                 </div>
 
-                <Message severity="warn" :closable="false">
-                    This will open WhatsApp Web with the message pre-filled. The PDF link will be included.
+                <Message severity="info" :closable="false">
+                    This will open WhatsApp Web with a public view link to your {{ documentType }}.
                 </Message>
             </div>
 

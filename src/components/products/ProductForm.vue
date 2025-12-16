@@ -1,511 +1,811 @@
 <script setup>
-import { ref, computed, onMounted } from 'vue';
-import { useRouter, useRoute } from 'vue-router';
-import { useToast } from 'primevue/usetoast';
-import { ecommerceService } from '@/services/ecommerce/ecommerceService';
+import { ref, computed, onMounted, watch } from 'vue';
+import { useToast } from '@/composables/useToast';
+import { usePermissions } from '@/composables/usePermissions';
+import axios from '@/utils/axiosConfig';
 
-const router = useRouter();
-const route = useRoute();
-const toast = useToast();
+const { showToast } = useToast();
+const { hasPermission } = usePermissions();
 
-//define emits
-const emit = defineEmits(['fetch-products']);
+// Props
+const props = defineProps({
+    product: {
+        type: [Number, Object],
+        default: null
+    },
+    editMode: {
+        type: Boolean,
+        default: false
+    }
+});
 
-// Form data
-const product = ref({
+// Emits
+const emit = defineEmits(['saved', 'fetch-products', 'close']);
+
+// Form state
+const form = ref({
     title: '',
     sku: '',
     serial: '',
     description: '',
-    maincategory: null,
     category: null,
-    subcategory: null,
     brand: null,
     model: null,
     weight: '',
-    dimensions: '',
+    dimentions: '',
     status: 'active',
     is_featured: false,
     is_manufactured: false,
+    product_type: 'goods',
+    default_price: 0.00,
     seo_title: '',
     seo_description: '',
     seo_keywords: ''
 });
 
-const productImages = ref([]);
+// State
 const loading = ref(false);
-const editMode = ref(false);
+const submitting = ref(false);
+const productImages = ref([]);
+const newImages = ref([]);
+
+// Dependency Management
+const showCategoryDialog = ref(false);
+const showBrandDialog = ref(false);
+const showModelDialog = ref(false);
+
+const categoryForm = ref({
+    name: '',
+    parent: null,
+    status: 'active'
+});
+
+const brandForm = ref({
+    title: ''
+});
+
+const modelForm = ref({
+    title: ''
+});
+
+const categorySubmitting = ref(false);
+const brandSubmitting = ref(false);
+const modelSubmitting = ref(false);
 
 // Options
-const statusOptions = ref([
-    { label: 'Active', value: 'active' },
-    { label: 'Inactive', value: 'inactive' }
-]);
-
-// Dependencies data
-const mainCategories = ref([]);
 const categories = ref([]);
-const subcategories = ref([]);
 const brands = ref([]);
 const models = ref([]);
 
-// Dialogs
-const showAddMainCategoryDialog = ref(false);
-const showAddCategoryDialog = ref(false);
-const showAddSubcategoryDialog = ref(false);
-const showAddBrandDialog = ref(false);
-const showAddModelDialog = ref(false);
+const statusOptions = [
+    { label: 'Active', value: 'active' },
+    { label: 'Inactive', value: 'inactive' }
+];
+
+const productTypeOptions = [
+    { label: 'Goods', value: 'goods' },
+    { label: 'Service', value: 'service' }
+];
 
 // Computed
-const filteredCategories = computed(() => {
-    if (!product.value.maincategory) return [];
-    return categories.value.filter((cat) => cat.maincategory?.id === product.value.maincategory || cat.maincategory === product.value.maincategory);
-});
-
-const filteredSubcategories = computed(() => {
-    if (!product.value.category) return [];
-    return subcategories.value.filter((sub) => sub.category?.id === product.value.category || sub.category === product.value.category);
-});
-
-//props
-const props = defineProps({
-    product: {
-        type: Number,
-        default: null
-    },
-    is_manufactured: {
-        type: Boolean,
-        default: false
-    },
-    editMode: {
-        type: Boolean,
-        default: false
-    },
-    mainCategories: {
-        type: Array,
-        default: () => []
-    },
-    categories: {
-        type: Array,
-        default: () => []
-    },
-    subcategories: {
-        type: Array,
-        default: () => []
-    },
-    brands: {
-        type: Array,
-        default: () => []
-    },
-    models: {
-        type: Array,
-        default: () => []
-    }
-});
-
-// Lifecycle hooks
-onMounted(async () => {
-    if (props.editMode) {
-        // Fetch product data if in edit mode
-        product.value = props.product;
-        product.value.maincategory = props.product.maincategory.id;
-        product.value.status = 'active';
-        productImages.value = props.product.images || [];
-        mainCategories.value = props.mainCategories;
-        categories.value = props.categories;
-        subcategories.value = props.subcategories;
-        brands.value = props.brands;
-        models.value = props.models;
-        editMode.value = props.editMode;
-    } else {
-        // Fetch dependencies if in add mode
-        await fetchDependencies();
-    }
-    if (props.is_manufactured) {
-        product.value.is_manufactured = props.is_manufactured;
-    }
-});
+const title = computed(() => props.editMode ? 'Edit Product' : 'Create Product');
+const submitLabel = computed(() => props.editMode ? 'Update Product' : 'Create Product');
 
 // Methods
 const fetchDependencies = async () => {
+    loading.value = true;
     try {
-        let mainCatsRes = await ecommerceService.getMainCategories();
-        let catsRes = await ecommerceService.getCategories();
-        let subcatsRes = await ecommerceService.getSubcategories();
-        let brandsRes = await ecommerceService.getBrands();
-        let modelsRes = await ecommerceService.getModels();
+        const [categoriesRes, brandsRes, modelsRes] = await Promise.all([
+            axios.get('/ecommerce/product/categories/'),
+            axios.get('/ecommerce/product/brands/'),
+            axios.get('/ecommerce/product/models/')
+        ]);
 
-        mainCategories.value = mainCatsRes.data.results;
-        console.log(mainCategories.value);
-        categories.value = catsRes.data.results;
-        subcategories.value = subcatsRes.data.results;
-        brands.value = brandsRes.data.results;
-        models.value = modelsRes.data.results;
+        categories.value = categoriesRes.data?.results || categoriesRes.data || [];
+        brands.value = brandsRes.data?.results || brandsRes.data || [];
+        models.value = modelsRes.data?.results || modelsRes.data || [];
     } catch (error) {
         console.error('Error fetching dependencies:', error);
-        showError('Failed to load dependencies');
+        showToast('error', 'Error', 'Failed to load form dependencies');
+    } finally {
+        loading.value = false;
     }
 };
 
 const fetchProduct = async (id) => {
+    loading.value = true;
     try {
-        loading.value = true;
-        const response = await ecommerceService.getProduct(id);
-        product.value = response.data;
+        const response = await axios.get(`/ecommerce/product/products-crud/${id}/`);
+        const product = response.data?.data || response.data;
+        
+        // Populate form with product data
+        form.value = {
+            title: product.title || '',
+            sku: product.sku || '',
+            serial: product.serial || '',
+            description: product.description || '',
+            category: product.category?.id || product.category || null,
+            brand: product.brand?.id || product.brand || null,
+            model: product.model?.id || product.model || null,
+            weight: product.weight || '',
+            dimentions: product.dimentions || '',
+            status: product.status || 'active',
+            is_featured: product.is_featured || false,
+            is_manufactured: product.is_manufactured || false,
+            product_type: product.product_type || 'goods',
+            default_price: product.default_price || 0.00,
+            seo_title: product.seo_title || '',
+            seo_description: product.seo_description || '',
+            seo_keywords: product.seo_keywords || ''
+        };
 
-        // Set images if they exist
-        if (response.data.images) {
-            productImages.value = response.data.images;
-        }
+        productImages.value = product.images || [];
     } catch (error) {
-        showError('Failed to load product');
+        console.error('Error fetching product:', error);
+        showToast('error', 'Error', 'Failed to load product');
     } finally {
         loading.value = false;
     }
+};
+
+const handleImageSelect = (event) => {
+    const files = Array.from(event.target.files || []);
+    newImages.value = [...newImages.value, ...files];
+};
+
+const removeNewImage = (index) => {
+    newImages.value.splice(index, 1);
+};
+
+const removeExistingImage = async (imageId) => {
+    if (confirm('Are you sure you want to remove this image?')) {
+        try {
+            // You may need to implement image deletion endpoint
+            productImages.value = productImages.value.filter(img => img.id !== imageId);
+            showToast('success', 'Success', 'Image removed');
+        } catch (error) {
+            console.error('Error removing image:', error);
+            showToast('error', 'Error', 'Failed to remove image');
+        }
+    }
+};
+
+const validateForm = () => {
+    if (!form.value.title) {
+        showToast('error', 'Validation Error', 'Product title is required');
+        return false;
+    }
+    return true;
 };
 
 const submitForm = async () => {
-    try {
-        loading.value = true;
+    if (!validateForm()) return;
 
-        // Prepare form data for upload
+    submitting.value = true;
+    try {
         const formData = new FormData();
 
-        // Prepare the product data object
-        const productData = {
-            ...product.value,
-            // Ensure related fields are IDs only
-            maincategory: product.value.maincategory,
-            brand: product.value.brand ? product.value.brand.id : null,
-            model: product.value.model ? product.value.model.id : null
-        };
-
-        // Append product data
-        for (const key in productData) {
-            if (productData[key] !== null && productData[key] !== undefined) {
-                // Handle boolean values
-                if (typeof productData[key] === 'boolean') {
-                    formData.append(key, productData[key] ? 'true' : 'false');
+        // Append all form fields
+        Object.keys(form.value).forEach(key => {
+            const value = form.value[key];
+            if (value !== null && value !== undefined && value !== '') {
+                if (typeof value === 'boolean') {
+                    formData.append(key, value ? 'true' : 'false');
                 } else {
-                    formData.append(key, productData[key]);
+                    formData.append(key, value);
                 }
             }
-        }
-
-        //apend categories and subcategories
-        if (product.value.category) {
-            formData.append('category', product.value.category);
-        }
-        if (product.value.subcategory) {
-            formData.append('subcategory', product.value.subcategory);
-        }
-
-        // Append images - only new files
-        productImages.value.forEach((image, index) => {
-            if (image instanceof File) {
-                formData.append('images', image); // Changed to match backend expectation
-            }
         });
 
-        // Determine if we're creating or updating
-        if (editMode.value) {
-            await ecommerceService.updateProduct(product.value.id, formData);
+        // Append new images
+        newImages.value.forEach(image => {
+            formData.append('images', image);
+        });
+
+        let response;
+        if (props.editMode && props.product) {
+            const productId = typeof props.product === 'object' ? (props.product.id || props.product.product_id) : props.product;
+            response = await axios.put(`/ecommerce/product/products-crud/${productId}/`, formData, {
+                headers: { 'Content-Type': 'multipart/form-data' }
+            });
         } else {
-            console.log(formData);
-            await ecommerceService.createProduct(formData);
+            response = await axios.post('/ecommerce/product/products-crud/', formData, {
+                headers: { 'Content-Type': 'multipart/form-data' }
+            });
         }
 
-        toast.add({
-            severity: 'success',
-            summary: 'Success',
-            detail: editMode.value ? 'Product updated' : 'Product created',
-            life: 3000
-        });
-        //emit fetch products
+        const savedProduct = response.data?.data || response.data;
+        showToast('success', 'Success', `Product ${props.editMode ? 'updated' : 'created'} successfully`);
+        emit('saved', savedProduct);
         emit('fetch-products');
-
-        //router.push({ name: 'products' })
+        emit('close');
     } catch (error) {
         console.error('Error saving product:', error);
-        showError('Failed to save product: ' + (error.response?.data?.message || error.message));
+        const errorMessage = error.response?.data?.message || error.response?.data?.detail || 'Failed to save product';
+        showToast('error', 'Error', errorMessage);
     } finally {
-        loading.value = false;
+        submitting.value = false;
     }
 };
 
-const onImageSelect = (event) => {
-    for (const file of event.files) {
-        if (file.type.match('image.*')) {
-            productImages.value.push(file);
+const cancel = () => {
+    emit('close');
+};
+
+// Category Management
+const handleAddCategory = () => {
+    categoryForm.value = { name: '', parent: null, status: 'active' };
+    showCategoryDialog.value = true;
+};
+
+const handleEditCategory = (category) => {
+    categoryForm.value = {
+        name: category.name || '',
+        parent: category.parent?.id || null,
+        status: category.status || 'active',
+        id: category.id
+    };
+    showCategoryDialog.value = true;
+};
+
+const submitCategory = async () => {
+    if (!categoryForm.value.name) {
+        showToast('error', 'Validation Error', 'Category name is required');
+        return;
+    }
+
+    categorySubmitting.value = true;
+    try {
+        const data = {
+            name: categoryForm.value.name,
+            status: categoryForm.value.status
+        };
+        if (categoryForm.value.parent) {
+            data.parent = categoryForm.value.parent;
+        }
+
+        if (categoryForm.value.id) {
+            await axios.put(`/ecommerce/product/categories/${categoryForm.value.id}/`, data);
+        } else {
+            await axios.post('/ecommerce/product/categories/', data);
+        }
+
+        showToast('success', 'Success', `Category ${categoryForm.value.id ? 'updated' : 'created'} successfully`);
+        showCategoryDialog.value = false;
+        await fetchDependencies();
+    } catch (error) {
+        console.error('Error saving category:', error);
+        const errorMessage = error.response?.data?.message || 'Failed to save category';
+        showToast('error', 'Error', errorMessage);
+    } finally {
+        categorySubmitting.value = false;
+    }
+};
+
+// Brand Management
+const handleAddBrand = () => {
+    brandForm.value = { title: '' };
+    showBrandDialog.value = true;
+};
+
+const handleEditBrand = (brand) => {
+    brandForm.value = {
+        title: brand.title || '',
+        id: brand.id
+    };
+    showBrandDialog.value = true;
+};
+
+const submitBrand = async () => {
+    if (!brandForm.value.title) {
+        showToast('error', 'Validation Error', 'Brand name is required');
+        return;
+    }
+
+    brandSubmitting.value = true;
+    try {
+        const data = { title: brandForm.value.title };
+
+        if (brandForm.value.id) {
+            await axios.put(`/ecommerce/product/brands/${brandForm.value.id}/`, data);
+        } else {
+            await axios.post('/ecommerce/product/brands/', data);
+        }
+
+        showToast('success', 'Success', `Brand ${brandForm.value.id ? 'updated' : 'created'} successfully`);
+        showBrandDialog.value = false;
+        await fetchDependencies();
+    } catch (error) {
+        console.error('Error saving brand:', error);
+        const errorMessage = error.response?.data?.message || 'Failed to save brand';
+        showToast('error', 'Error', errorMessage);
+    } finally {
+        brandSubmitting.value = false;
+    }
+};
+
+// Model Management
+const handleAddModel = () => {
+    modelForm.value = { title: '' };
+    showModelDialog.value = true;
+};
+
+const handleEditModel = (model) => {
+    modelForm.value = {
+        title: model.title || '',
+        id: model.id
+    };
+    showModelDialog.value = true;
+};
+
+const submitModel = async () => {
+    if (!modelForm.value.title) {
+        showToast('error', 'Validation Error', 'Model name is required');
+        return;
+    }
+
+    modelSubmitting.value = true;
+    try {
+        const data = { title: modelForm.value.title };
+
+        if (modelForm.value.id) {
+            await axios.put(`/ecommerce/product/models/${modelForm.value.id}/`, data);
+        } else {
+            await axios.post('/ecommerce/product/models/', data);
+        }
+
+        showToast('success', 'Success', `Model ${modelForm.value.id ? 'updated' : 'created'} successfully`);
+        showModelDialog.value = false;
+        await fetchDependencies();
+    } catch (error) {
+        console.error('Error saving model:', error);
+        const errorMessage = error.response?.data?.message || 'Failed to save model';
+        showToast('error', 'Error', errorMessage);
+    } finally {
+        modelSubmitting.value = false;
+    }
+};
+
+// Lifecycle
+onMounted(async () => {
+    await fetchDependencies();
+    
+    if (props.editMode && props.product) {
+        if (typeof props.product === 'object' && props.product.title) {
+            // Full product object passed
+            form.value = {
+                title: props.product.title || '',
+                sku: props.product.sku || '',
+                serial: props.product.serial || '',
+                description: props.product.description || '',
+                category: props.product.category?.id || props.product.category || null,
+                brand: props.product.brand?.id || props.product.brand || null,
+                model: props.product.model?.id || props.product.model || null,
+                weight: props.product.weight || '',
+                dimentions: props.product.dimentions || '',
+                status: props.product.status || 'active',
+                is_featured: props.product.is_featured || false,
+                is_manufactured: props.product.is_manufactured || false,
+                product_type: props.product.product_type || 'goods',
+                default_price: props.product.default_price || 0.00,
+                seo_title: props.product.seo_title || '',
+                seo_description: props.product.seo_description || '',
+                seo_keywords: props.product.seo_keywords || ''
+            };
+            productImages.value = props.product.images || [];
+        } else {
+            // Product ID passed, fetch full details
+            const productId = typeof props.product === 'object' ? props.product.id : props.product;
+            await fetchProduct(productId);
         }
     }
-};
-
-const isFile = (obj) => {
-    return typeof File !== 'undefined' && obj instanceof File;
-};
-
-function getImageSrc(image) {
-    if (typeof window === 'undefined' || typeof URL === 'undefined') return '';
-
-    if (isFile(image)) {
-        return URL.createObjectURL(image);
-    }
-
-    return image.image;
-}
-const removeImage = (index) => {
-    productImages.value.splice(index, 1);
-};
-
-const showAddDialog = (type) => {
-    switch (type) {
-        case 'main':
-            showAddMainCategoryDialog.value = true;
-            break;
-        case 'category':
-            showAddCategoryDialog.value = true;
-            break;
-        case 'subcategory':
-            showAddSubcategoryDialog.value = true;
-            break;
-        case 'brand':
-            showAddBrandDialog.value = true;
-            break;
-        case 'model':
-            showAddModelDialog.value = true;
-            break;
-    }
-};
-
-const handleMainCategoryAdded = (newCategory) => {
-    mainCategories.value.push(newCategory);
-    product.value.maincategory = newCategory.id;
-    showAddMainCategoryDialog.value = false;
-};
-
-const handleCategoryAdded = (newCategory) => {
-    categories.value.push(newCategory);
-    product.value.category = newCategory.id;
-    showAddCategoryDialog.value = false;
-};
-
-const handleSubcategoryAdded = (newSubcategory) => {
-    subcategories.value.push(newSubcategory);
-    product.value.subcategory = newSubcategory.id;
-    showAddSubcategoryDialog.value = false;
-};
-
-const handleBrandAdded = (newBrand) => {
-    brands.value.push(newBrand);
-    product.value.brand = newBrand.id;
-    showAddBrandDialog.value = false;
-};
-
-const handleModelAdded = (newModel) => {
-    models.value.push(newModel);
-    product.value.model = newModel.id;
-    showAddModelDialog.value = false;
-};
-
-const showError = (message) => {
-    toast.add({
-        severity: 'error',
-        summary: 'Error',
-        detail: message,
-        life: 3000
-    });
-};
+});
 </script>
 
 <template>
-    <div class="container mx-auto px-4 py-6">
-        <Card>
-            <template #title>
-                {{ editMode ? 'Edit Product' : 'Add New Product' }}
-            </template>
-            <template #content>
-                <form @submit.prevent="submitForm">
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <!-- Basic Information -->
-                        <div class="space-y-4">
-                            <h3 class="text-lg font-semibold">Basic Information</h3>
+    <div class="product-form">
+        <div v-if="loading" class="flex justify-center items-center py-12">
+            <ProgressSpinner />
+        </div>
 
-                            <div class="field">
-                                <label for="title" class="block mb-2 font-medium">Product Title*</label>
-                                <InputText id="title" v-model="product.title" class="w-full" required />
-                            </div>
+        <div v-else class="space-y-6">
+            <!-- Basic Information -->
+            <div class="card p-6">
+                <h3 class="text-lg font-semibold mb-4">Basic Information</h3>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div class="col-span-2">
+                        <label class="block text-sm font-medium mb-2">Product/Service Title <span class="text-red-500">*</span></label>
+                        <InputText v-model="form.title" placeholder="Enter product/service title" class="w-full" />
+                    </div>
 
-                            <div class="field">
-                                <label for="sku" class="block mb-2 font-medium">SKU</label>
-                                <InputText id="sku" v-model="product.sku" class="w-full" />
-                            </div>
+                    <div>
+                        <label class="block text-sm font-medium mb-2">SKU</label>
+                        <InputText v-model="form.sku" placeholder="Stock Keeping Unit (optional)" class="w-full" />
+                    </div>
 
-                            <div class="field">
-                                <label for="serial" class="block mb-2 font-medium">Serial Number</label>
-                                <InputText id="serial" v-model="product.serial" class="w-full" />
-                            </div>
+                    <div>
+                        <label class="block text-sm font-medium mb-2">Serial Number</label>
+                        <InputText v-model="form.serial" placeholder="Serial number (optional)" class="w-full" />
+                    </div>
 
-                            <div class="field">
-                                <label for="description" class="block mb-2 font-medium">Description</label>
-                                <Textarea id="description" v-model="product.description" rows="3" class="w-full" />
-                            </div>
+                    <div class="col-span-2">
+                        <label class="block text-sm font-medium mb-2">Description</label>
+                        <Textarea v-model="form.description" rows="4" placeholder="Product description" class="w-full" />
+                    </div>
+                </div>
+            </div>
+
+            <!-- Classification -->
+            <div class="card p-6">
+                <h3 class="text-lg font-semibold mb-4">Classification</h3>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <div class="flex items-center justify-between mb-2">
+                            <label class="block text-sm font-medium">Category</label>
+                            <Button 
+                                v-if="hasPermission('add_category')"
+                                icon="pi pi-plus" 
+                                class="p-button-sm p-button-text"
+                                @click="handleAddCategory"
+                                v-tooltip="'Add New Category'"
+                            />
                         </div>
-
-                        <!-- Categories & Organization -->
-                        <div class="space-y-4">
-                            <h3 class="text-lg font-semibold">Categories & Organization</h3>
-
-                            <div class="field">
-                                <label for="mainCategory" class="block mb-2 font-medium">Main Category*</label>
-                                <div class="flex gap-2">
-                                    <Dropdown id="mainCategory" v-model="product.maincategory" :options="mainCategories" optionLabel="name" optionValue="id" placeholder="Select Main Category" class="flex-1" required />
-                                    <Button icon="pi pi-plus" class="p-button-rounded p-button-outlined" @click="showAddDialog('main')" />
+                        <Dropdown 
+                            v-model="form.category" 
+                            :options="categories" 
+                            optionLabel="name" 
+                            optionValue="id"
+                            placeholder="Select category" 
+                            class="w-full"
+                            :filter="true"
+                        >
+                            <template #option="slotProps">
+                                <div class="flex items-center justify-between w-full pr-2">
+                                    <span>{{ slotProps.option.name }}</span>
+                                    <Button 
+                                        v-if="hasPermission('change_category')"
+                                        icon="pi pi-pencil" 
+                                        class="p-button-sm p-button-text"
+                                        @click.stop="handleEditCategory(slotProps.option)"
+                                    />
                                 </div>
-                            </div>
+                            </template>
+                        </Dropdown>
+                    </div>
 
-                            <div class="field">
-                                <label for="category" class="block mb-2 font-medium">Category</label>
-                                <div class="flex gap-2">
-                                    <Dropdown id="category" v-model="product.category" :options="filteredCategories" optionLabel="name" optionValue="id" placeholder="Select Category" class="flex-1" :disabled="!product.maincategory" />
-                                    <Button icon="pi pi-plus" class="p-button-rounded p-button-outlined" @click="showAddDialog('category')" :disabled="!product.maincategory" />
-                                </div>
-                            </div>
-
-                            <div class="field">
-                                <label for="subcategory" class="block mb-2 font-medium">Subcategory</label>
-                                <div class="flex gap-2">
-                                    <Dropdown id="subcategory" v-model="product.subcategory" :options="filteredSubcategories" optionLabel="name" optionValue="id" placeholder="Select Subcategory" class="flex-1" :disabled="!product.category" />
-                                    <Button icon="pi pi-plus" class="p-button-rounded p-button-outlined" @click="showAddDialog('subcategory')" :disabled="!product.category" />
-                                </div>
-                            </div>
+                    <div>
+                        <div class="flex items-center justify-between mb-2">
+                            <label class="block text-sm font-medium">Brand</label>
+                            <Button 
+                                v-if="hasPermission('add_brand')"
+                                icon="pi pi-plus" 
+                                class="p-button-sm p-button-text"
+                                @click="handleAddBrand"
+                                v-tooltip="'Add New Brand'"
+                            />
                         </div>
-
-                        <!-- Brand & Model -->
-                        <div class="space-y-4">
-                            <h3 class="text-lg font-semibold">Brand & Model</h3>
-
-                            <div class="field">
-                                <label for="brand" class="block mb-2 font-medium">Brand</label>
-                                <div class="flex gap-2">
-                                    <Dropdown id="brand" v-model="product.brand" :options="brands" optionLabel="title" optionValue="id" placeholder="Select Brand" class="flex-1" />
-                                    <Button icon="pi pi-plus" class="p-button-rounded p-button-outlined" @click="showAddDialog('brand')" />
+                        <Dropdown 
+                            v-model="form.brand" 
+                            :options="brands" 
+                            optionLabel="title" 
+                            optionValue="id"
+                            placeholder="Select brand" 
+                            class="w-full"
+                            :filter="true"
+                        >
+                            <template #option="slotProps">
+                                <div class="flex items-center justify-between w-full pr-2">
+                                    <span>{{ slotProps.option.title }}</span>
+                                    <Button 
+                                        v-if="hasPermission('change_brand')"
+                                        icon="pi pi-pencil" 
+                                        class="p-button-sm p-button-text"
+                                        @click.stop="handleEditBrand(slotProps.option)"
+                                    />
                                 </div>
-                            </div>
+                            </template>
+                        </Dropdown>
+                    </div>
 
-                            <div class="field">
-                                <label for="model" class="block mb-2 font-medium">Model</label>
-                                <div class="flex gap-2">
-                                    <Dropdown id="model" v-model="product.model" :options="models" optionLabel="title" optionValue="id" placeholder="Select Model" class="flex-1" />
-                                    <Button icon="pi pi-plus" class="p-button-rounded p-button-outlined" @click="showAddDialog('model')" />
+                    <div>
+                        <div class="flex items-center justify-between mb-2">
+                            <label class="block text-sm font-medium">Model</label>
+                            <Button 
+                                v-if="hasPermission('add_model')"
+                                icon="pi pi-plus" 
+                                class="p-button-sm p-button-text"
+                                @click="handleAddModel"
+                                v-tooltip="'Add New Model'"
+                            />
+                        </div>
+                        <Dropdown 
+                            v-model="form.model" 
+                            :options="models" 
+                            optionLabel="title" 
+                            optionValue="id"
+                            placeholder="Select model" 
+                            class="w-full"
+                            :filter="true"
+                        >
+                            <template #option="slotProps">
+                                <div class="flex items-center justify-between w-full pr-2">
+                                    <span>{{ slotProps.option.title }}</span>
+                                    <Button 
+                                        v-if="hasPermission('change_model')"
+                                        icon="pi pi-pencil" 
+                                        class="p-button-sm p-button-text"
+                                        @click.stop="handleEditModel(slotProps.option)"
+                                    />
                                 </div>
-                            </div>
-                        </div>
+                            </template>
+                        </Dropdown>
+                    </div>
 
-                        <!-- Specifications -->
-                        <div class="space-y-4">
-                            <h3 class="text-lg font-semibold">Specifications</h3>
+                    <div>
+                        <label class="block text-sm font-medium mb-2">Product Type</label>
+                        <Dropdown 
+                            v-model="form.product_type" 
+                            :options="productTypeOptions" 
+                            optionLabel="label" 
+                            optionValue="value"
+                            placeholder="Select type" 
+                            class="w-full"
+                        />
+                    </div>
+                </div>
+            </div>
 
-                            <div class="field">
-                                <label for="weight" class="block mb-2 font-medium">Weight</label>
-                                <InputText id="weight" v-model="product.weight" class="w-full" />
-                            </div>
+            <!-- Pricing & Physical Details -->
+            <div class="card p-6">
+                <h3 class="text-lg font-semibold mb-4">Pricing & Physical Details</h3>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium mb-2">Default Price</label>
+                        <InputNumber 
+                            v-model="form.default_price" 
+                            mode="currency" 
+                            currency="KES" 
+                            locale="en-KE"
+                            placeholder="0.00" 
+                            class="w-full"
+                        />
+                    </div>
 
-                            <div class="field">
-                                <label for="dimensions" class="block mb-2 font-medium">Dimensions</label>
-                                <InputText id="dimensions" v-model="product.dimensions" class="w-full" />
-                            </div>
+                    <div>
+                        <label class="block text-sm font-medium mb-2">Weight</label>
+                        <InputText v-model="form.weight" placeholder="e.g., 2.5kg" class="w-full" />
+                    </div>
 
-                            <div class="field">
-                                <label for="status" class="block mb-2 font-medium">Status</label>
-                                <Dropdown id="status" v-model="product.status" :options="statusOptions" optionLabel="label" optionValue="value" class="w-full" />
-                            </div>
+                    <div>
+                        <label class="block text-sm font-medium mb-2">Dimensions</label>
+                        <InputText v-model="form.dimentions" placeholder="e.g., 10x20x30 cm" class="w-full" />
+                    </div>
 
-                            <div class="field flex items-center gap-3">
-                                <Checkbox id="featured" v-model="product.is_featured" :binary="true" />
-                                <label for="featured" class="font-medium">Featured Product</label>
-                            </div>
-                        </div>
+                    <div>
+                        <label class="block text-sm font-medium mb-2">Status</label>
+                        <Dropdown 
+                            v-model="form.status" 
+                            :options="statusOptions" 
+                            optionLabel="label" 
+                            optionValue="value"
+                            placeholder="Select status" 
+                            class="w-full"
+                        />
+                    </div>
+                </div>
 
-                        <!-- Images -->
-                        <div class="md:col-span-2 space-y-4">
-                            <h3 class="text-lg font-semibold">Product Images</h3>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+                    <div class="flex items-center">
+                        <Checkbox v-model="form.is_featured" inputId="is_featured" binary />
+                        <label for="is_featured" class="ml-2">Featured Product</label>
+                    </div>
 
-                            <FileUpload name="images[]" :multiple="true" accept="image/*" :maxFileSize="2000000" :customUpload="true" @select="onImageSelect" chooseLabel="Add Images">
-                                <template #empty>
-                                    <p>Drag and drop images here or click to browse</p>
-                                </template>
-                            </FileUpload>
+                    <div class="flex items-center">
+                        <Checkbox v-model="form.is_manufactured" inputId="is_manufactured" binary />
+                        <label for="is_manufactured" class="ml-2">Manufactured Product</label>
+                    </div>
+                </div>
+            </div>
 
-                            <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
-                                <div v-for="(image, index) in productImages" :key="index" class="relative group">
-                                    <img :src="isFile(image) ? getImageSrc(image) : image.image" :alt="`${product.title} - ${index}`" class="w-full h-32 object-cover rounded border" />
-                                    <Button icon="pi pi-times" class="absolute top-1 right-1 p-button-rounded p-button-danger p-button-sm opacity-0 group-hover:opacity-100 transition-opacity" @click="removeImage(index)" />
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- SEO -->
-                        <div class="md:col-span-2 space-y-4">
-                            <h3 class="text-lg font-semibold">SEO Information</h3>
-
-                            <div class="field">
-                                <label for="seoTitle" class="block mb-2 font-medium">SEO Title</label>
-                                <InputText id="seoTitle" v-model="product.seo_title" class="w-full" />
-                            </div>
-
-                            <div class="field">
-                                <label for="seoDescription" class="block mb-2 font-medium">SEO Description</label>
-                                <Textarea id="seoDescription" v-model="product.seo_description" rows="3" class="w-full" />
-                            </div>
-
-                            <div class="field">
-                                <label for="seoKeywords" class="block mb-2 font-medium">SEO Keywords</label>
-                                <InputText id="seoKeywords" v-model="product.seo_keywords" class="w-full" />
-                                <small class="text-gray-500">Separate keywords with commas</small>
-                            </div>
+            <!-- Product Images -->
+            <div class="card p-6">
+                <h3 class="text-lg font-semibold mb-4">Product Images</h3>
+                
+                <div class="space-y-4">
+                    <!-- Existing Images -->
+                    <div v-if="productImages.length > 0" class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                        <div v-for="(image, index) in productImages" :key="index" class="relative">
+                            <img :src="image.image" alt="Product" class="w-full h-32 object-cover rounded" />
+                            <Button 
+                                icon="pi pi-times" 
+                                class="p-button-rounded p-button-danger p-button-sm absolute top-2 right-2"
+                                @click="removeExistingImage(image.id)"
+                            />
                         </div>
                     </div>
 
-                    <div class="flex justify-end gap-3 mt-6">
-                        <Button label="Cancel" icon="pi pi-times" class="p-button-text" @click="$router.go(-1)" />
-                        <Button type="submit" :label="editMode ? 'Update Product' : 'Add Product'" icon="pi pi-check" :loading="loading" />
+                    <!-- New Images Preview -->
+                    <div v-if="newImages.length > 0" class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                        <div v-for="(image, index) in newImages" :key="`new-${index}`" class="relative">
+                            <img :src="URL.createObjectURL(image)" alt="New" class="w-full h-32 object-cover rounded" />
+                            <Button 
+                                icon="pi pi-times" 
+                                class="p-button-rounded p-button-danger p-button-sm absolute top-2 right-2"
+                                @click="removeNewImage(index)"
+                            />
+                        </div>
                     </div>
-                </form>
-            </template>
-        </Card>
 
-        <!-- Add Dependency Dialogs -->
-        <Dialog v-model:visible="showAddMainCategoryDialog" header="Add Main Category" :modal="true" :style="{ width: '50vw' }">
-            <AddCategoryForm type="main" @saved="handleMainCategoryAdded" @cancel="showAddMainCategoryDialog = false" />
-        </Dialog>
+                    <!-- Upload Button -->
+                    <div>
+                        <label class="cursor-pointer">
+                            <div class="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-primary">
+                                <i class="pi pi-cloud-upload text-4xl text-gray-400 mb-2"></i>
+                                <p class="text-sm text-gray-600">Click to upload images</p>
+                                <input 
+                                    type="file" 
+                                    multiple 
+                                    accept="image/*" 
+                                    class="hidden" 
+                                    @change="handleImageSelect"
+                                />
+                            </div>
+                        </label>
+                    </div>
+                </div>
+            </div>
 
-        <Dialog v-model:visible="showAddCategoryDialog" header="Add Category" :modal="true" :style="{ width: '50vw' }">
-            <AddCategoryForm type="category" :mainCategoryId="product.maincategory" @saved="handleCategoryAdded" @cancel="showAddCategoryDialog = false" />
-        </Dialog>
+            <!-- SEO (Optional) -->
+            <Accordion>
+                <AccordionTab header="SEO Settings (Optional)">
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-sm font-medium mb-2">SEO Title</label>
+                            <InputText v-model="form.seo_title" placeholder="SEO title for search engines" class="w-full" />
+                        </div>
 
-        <Dialog v-model:visible="showAddSubcategoryDialog" header="Add Subcategory" :modal="true" :style="{ width: '50vw' }">
-            <AddCategoryForm type="subcategory" :categoryId="product.category" @saved="handleSubcategoryAdded" @cancel="showAddSubcategoryDialog = false" />
-        </Dialog>
+                        <div>
+                            <label class="block text-sm font-medium mb-2">SEO Description</label>
+                            <Textarea v-model="form.seo_description" rows="3" placeholder="SEO description" class="w-full" />
+                        </div>
 
-        <Dialog v-model:visible="showAddBrandDialog" header="Add Brand" :modal="true" :style="{ width: '50vw' }">
-            <AddSimpleItemForm type="brand" @saved="handleBrandAdded" @cancel="showAddBrandDialog = false" />
-        </Dialog>
+                        <div>
+                            <label class="block text-sm font-medium mb-2">SEO Keywords</label>
+                            <InputText v-model="form.seo_keywords" placeholder="comma, separated, keywords" class="w-full" />
+                        </div>
+                    </div>
+                </AccordionTab>
+            </Accordion>
 
-        <Dialog v-model:visible="showAddModelDialog" header="Add Model" :modal="true" :style="{ width: '50vw' }">
-            <AddSimpleItemForm type="model" @saved="handleModelAdded" @cancel="showAddModelDialog = false" />
-        </Dialog>
+            <!-- Form Actions -->
+            <div class="flex justify-end gap-3 pt-4">
+                <Button label="Cancel" icon="pi pi-times" class="p-button-text" @click="cancel" :disabled="submitting" />
+                <Button 
+                    :label="submitLabel" 
+                    icon="pi pi-check" 
+                    @click="submitForm" 
+                    :loading="submitting"
+                />
+            </div>
+
+            <!-- Category Form Dialog -->
+            <Dialog 
+                v-model:visible="showCategoryDialog" 
+                header="Create New Category"
+                :modal="true" 
+                class="w-full md:w-1/2"
+            >
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium mb-2">Category Name <span class="text-red-500">*</span></label>
+                        <InputText v-model="categoryForm.name" placeholder="Enter category name" class="w-full" />
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium mb-2">Parent Category</label>
+                        <Dropdown 
+                            v-model="categoryForm.parent" 
+                            :options="categories" 
+                            optionLabel="name" 
+                            optionValue="id"
+                            placeholder="Select parent category (optional)" 
+                            class="w-full"
+                            :filter="true"
+                        />
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium mb-2">Status</label>
+                        <Dropdown 
+                            v-model="categoryForm.status" 
+                            :options="[
+                                { label: 'Active', value: 'active' },
+                                { label: 'Inactive', value: 'inactive' }
+                            ]" 
+                            optionLabel="label" 
+                            optionValue="value"
+                            placeholder="Select status" 
+                            class="w-full"
+                        />
+                    </div>
+
+                    <div class="flex justify-end gap-3 pt-4">
+                        <Button label="Cancel" icon="pi pi-times" class="p-button-text" @click="showCategoryDialog = false" :disabled="categorySubmitting" />
+                        <Button 
+                            label="Save" 
+                            icon="pi pi-check" 
+                            @click="submitCategory" 
+                            :loading="categorySubmitting"
+                        />
+                    </div>
+                </div>
+            </Dialog>
+
+            <!-- Brand Form Dialog -->
+            <Dialog 
+                v-model:visible="showBrandDialog" 
+                header="Create New Brand"
+                :modal="true" 
+                class="w-full md:w-1/2"
+            >
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium mb-2">Brand Name <span class="text-red-500">*</span></label>
+                        <InputText v-model="brandForm.title" placeholder="Enter brand name" class="w-full" />
+                    </div>
+
+                    <div class="flex justify-end gap-3 pt-4">
+                        <Button label="Cancel" icon="pi pi-times" class="p-button-text" @click="showBrandDialog = false" :disabled="brandSubmitting" />
+                        <Button 
+                            label="Save" 
+                            icon="pi pi-check" 
+                            @click="submitBrand" 
+                            :loading="brandSubmitting"
+                        />
+                    </div>
+                </div>
+            </Dialog>
+
+            <!-- Model Form Dialog -->
+            <Dialog 
+                v-model:visible="showModelDialog" 
+                header="Create New Model"
+                :modal="true" 
+                class="w-full md:w-1/2"
+            >
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium mb-2">Model Name <span class="text-red-500">*</span></label>
+                        <InputText v-model="modelForm.title" placeholder="Enter model name" class="w-full" />
+                    </div>
+
+                    <div class="flex justify-end gap-3 pt-4">
+                        <Button label="Cancel" icon="pi pi-times" class="p-button-text" @click="showModelDialog = false" :disabled="modelSubmitting" />
+                        <Button 
+                            label="Save" 
+                            icon="pi pi-check" 
+                            @click="submitModel" 
+                            :loading="modelSubmitting"
+                        />
+                    </div>
+                </div>
+            </Dialog>
+        </div>
     </div>
 </template>
 
 <style scoped>
-.field {
-    @apply mb-4;
+.product-form {
+    max-height: 70vh;
+    overflow-y: auto;
 }
 
-@media (max-width: 640px) {
-    .p-dialog {
-        width: 95vw !important;
-    }
+.card {
+    background: white;
+    border-radius: 8px;
+    border: 1px solid #e5e7eb;
 }
 </style>

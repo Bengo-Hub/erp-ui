@@ -1,5 +1,6 @@
 <script setup>
 import { useChartOptions } from '@/composables/useChartOptions';
+import { formatCurrency, safeNumber } from '@/utils/formatters';
 import { useDashboardState } from '@/composables/useDashboardState';
 import { usePermissions } from '@/composables/usePermissions';
 import { useToast } from '@/composables/useToast';
@@ -93,7 +94,7 @@ const processChartData = () => {
             datasets: [
                 {
                     label: 'Revenue',
-                    data: dashboardData.value.revenue_trends.map((item) => item.value),
+                    data: dashboardData.value.revenue_trends.map((item) => safeNumber(item.value, 0)),
                     borderColor: '#42A5F5',
                     backgroundColor: 'rgba(66, 165, 245, 0.1)',
                     tension: 0.4
@@ -109,7 +110,7 @@ const processChartData = () => {
             datasets: [
                 {
                     label: 'Profit',
-                    data: dashboardData.value.profit_trends.map((item) => item.value),
+                    data: dashboardData.value.profit_trends.map((item) => safeNumber(item.value, 0)),
                     borderColor: '#66BB6A',
                     backgroundColor: 'rgba(102, 187, 106, 0.1)',
                     tension: 0.4
@@ -125,7 +126,7 @@ const processChartData = () => {
             datasets: [
                 {
                     label: 'Orders',
-                    data: dashboardData.value.order_trends.map((item) => item.value),
+                    data: dashboardData.value.order_trends.map((item) => safeNumber(item.value, 0)),
                     borderColor: '#FFA726',
                     backgroundColor: 'rgba(255, 167, 38, 0.1)',
                     tension: 0.4
@@ -141,7 +142,7 @@ const processChartData = () => {
             datasets: [
                 {
                     label: 'Customers',
-                    data: dashboardData.value.customer_growth.map((item) => item.value),
+                    data: dashboardData.value.customer_growth.map((item) => safeNumber(item.value, 0)),
                     borderColor: '#EC407A',
                     backgroundColor: 'rgba(236, 64, 122, 0.1)',
                     tension: 0.4
@@ -214,7 +215,7 @@ onMounted(() => {
                     </template>
                     <template #content>
                         <div class="text-3xl font-bold">
-                            {{ new Intl.NumberFormat('en-KE', { style: 'currency', currency: 'KES' }).format(dashboardData.total_revenue) }}
+                            {{ formatCurrency(safeNumber(dashboardData.total_revenue, 0)) }}
                         </div>
                     </template>
                 </Card>
@@ -228,9 +229,9 @@ onMounted(() => {
                     </template>
                     <template #content>
                         <div class="text-3xl font-bold">
-                            {{ new Intl.NumberFormat('en-KE', { style: 'currency', currency: 'KES' }).format(dashboardData.net_profit) }}
+                            {{ formatCurrency(safeNumber(dashboardData.net_profit, 0)) }}
                         </div>
-                        <div class="text-sm opacity-75">Margin: {{ (dashboardData.profit_margin * 100).toFixed(1) }}%</div>
+                        <div class="text-sm opacity-75">Margin: {{ (Number.isFinite(Number(dashboardData.profit_margin)) ? (Number(dashboardData.profit_margin) * 100).toFixed(1) : '0.0') }}%</div>
                     </template>
                 </Card>
 
@@ -313,7 +314,7 @@ onMounted(() => {
                         </div>
                     </template>
                     <template #content>
-                        <div class="text-3xl font-bold">{{ dashboardData.customer_satisfaction.toFixed(1) }}/5.0</div>
+                        <div class="text-3xl font-bold">{{ safeNumber(dashboardData.customer_satisfaction, 0).toFixed(1) }}/5.0</div>
                     </template>
                 </Card>
             </div>

@@ -75,26 +75,26 @@
                                     <tr v-for="item in reportData.revenue" :key="item.id" class="border-b border-gray-200">
                                         <td class="py-3 px-4 pl-8">{{ item.description }}</td>
                                         <td class="text-right py-3 px-4">{{ formatCurrency(item.amount) }}</td>
-                                        <td class="text-right py-3 px-4">{{ ((item.amount / summary.totalRevenue) * 100).toFixed(1) }}%</td>
+                                        <td class="text-right py-3 px-4">{{ (summary.totalRevenue > 0 ? ((item.amount / summary.totalRevenue) * 100).toFixed(1) : '0.0') }}%</td>
                                     </tr>
 
                                     <!-- Expenses Section -->
                                     <tr class="bg-red-50 mt-4">
                                         <td class="py-3 px-4 font-bold">Expenses</td>
                                         <td class="text-right py-3 px-4 font-bold">{{ formatCurrency(summary.totalExpenses) }}</td>
-                                        <td class="text-right py-3 px-4 font-bold">{{ ((summary.totalExpenses / summary.totalRevenue) * 100).toFixed(1) }}%</td>
+                                        <td class="text-right py-3 px-4 font-bold">{{ (summary.totalRevenue > 0 ? ((summary.totalExpenses / summary.totalRevenue) * 100).toFixed(1) : '0.0') }}%</td>
                                     </tr>
                                     <tr v-for="item in reportData.expenses" :key="item.id" class="border-b border-gray-200">
                                         <td class="py-3 px-4 pl-8">{{ item.description }}</td>
                                         <td class="text-right py-3 px-4">{{ formatCurrency(item.amount) }}</td>
-                                        <td class="text-right py-3 px-4">{{ ((item.amount / summary.totalRevenue) * 100).toFixed(1) }}%</td>
+                                        <td class="text-right py-3 px-4">{{ (summary.totalRevenue > 0 ? ((item.amount / summary.totalRevenue) * 100).toFixed(1) : '0.0') }}%</td>
                                     </tr>
 
                                     <!-- Net Profit Section -->
                                     <tr :class="`font-bold text-lg ${summary.netProfit >= 0 ? 'bg-blue-50' : 'bg-red-100'}`">
                                         <td class="py-3 px-4">Net Profit</td>
                                         <td class="text-right py-3 px-4">{{ formatCurrency(summary.netProfit) }}</td>
-                                        <td class="text-right py-3 px-4">{{ ((summary.netProfit / summary.totalRevenue) * 100).toFixed(1) }}%</td>
+                                        <td class="text-right py-3 px-4">{{ (summary.totalRevenue > 0 ? ((summary.netProfit / summary.totalRevenue) * 100).toFixed(1) : '0.0') }}%</td>
                                     </tr>
                                 </tbody>
                             </table>

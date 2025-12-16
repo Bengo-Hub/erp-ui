@@ -1,9 +1,23 @@
 // formatters.js
-export function formatCurrency(amount) {
-    return new Intl.NumberFormat('en-US', {
-        style: 'currency',
-        currency: 'KES'
-    }).format(amount);
+export function formatCurrency(amount, currency = 'KES') {
+    // Ensure we always pass a finite number to Intl.NumberFormat
+    const num = Number(amount);
+    const value = Number.isFinite(num) ? num : 0;
+
+    try {
+        return new Intl.NumberFormat('en-KE', {
+            style: 'currency',
+            currency
+        }).format(value);
+    } catch (e) {
+        // Fallback formatting
+        return `${currency} ${value.toFixed(2)}`;
+    }
+}
+
+export function safeNumber(value, defaultValue = 0) {
+    const n = Number(value);
+    return Number.isFinite(n) ? n : defaultValue;
 }
 
 //format date

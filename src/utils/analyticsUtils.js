@@ -116,9 +116,13 @@ export const findMinMax = (values) => {
  * @returns {String} Formatted value
  */
 export const formatMetricValue = (value, type = 'decimal', decimals = 2) => {
-    if (value === null || value === undefined) return '0';
+    if (value === null || value === undefined) {
+        const zero = (0).toFixed(decimals);
+        return type === 'currency' ? new Intl.NumberFormat('en-KE', { style: 'currency', currency: 'KES', minimumFractionDigits: decimals, maximumFractionDigits: decimals }).format(Number(zero)) : zero;
+    }
 
-    const fixed = Number(value).toFixed(decimals);
+    const num = Number(value);
+    const fixed = Number.isFinite(num) ? num.toFixed(decimals) : (0).toFixed(decimals);
 
     switch (type) {
         case 'currency':
@@ -127,7 +131,7 @@ export const formatMetricValue = (value, type = 'decimal', decimals = 2) => {
                 currency: 'KES',
                 minimumFractionDigits: decimals,
                 maximumFractionDigits: decimals
-            }).format(fixed);
+            }).format(Number(fixed));
         case 'percentage':
             return `${fixed}%`;
         case 'integer':

@@ -5,7 +5,7 @@ import { computed } from 'vue';
 const props = defineProps({
     permission: {
         type: [String, Array, Object],
-        required: true
+        required: false
     },
     mode: {
         type: String,
@@ -28,6 +28,11 @@ const { hasPermission, hasAnyPermission, hasAllPermissions } = usePermissions();
 
 const hasAccess = computed(() => {
     const { permission, mode } = props;
+
+    // If no permission specified, allow access
+    if (!permission) {
+        return true;
+    }
 
     if (typeof permission === 'string') {
         return hasPermission(permission);

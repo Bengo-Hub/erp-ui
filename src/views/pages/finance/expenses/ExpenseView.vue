@@ -4,6 +4,7 @@ import EmailSendDialog from '@/components/finance/invoicing/EmailSendDialog.vue'
 import ApprovalDialog from '@/components/finance/shared/ApprovalDialog.vue';
 import DocumentStatusBadge from '@/components/finance/shared/DocumentStatusBadge.vue';
 import Spinner from '@/components/ui/Spinner.vue';
+import PermissionButton from '@/components/common/PermissionButton.vue';
 import { usePermissions } from '@/composables/usePermissions';
 import { useToast } from '@/composables/useToast';
 import { expenseService } from '@/services/finance/expenseService';
@@ -232,52 +233,58 @@ onMounted(() => {
                             Created {{ formatDate(expense.created_at) }}
                         </p>
                     </div>
-
                     <!-- Action Buttons -->
                     <div class="flex flex-wrap gap-2">
-                        <Button 
+                        <PermissionButton 
                             v-if="canApprove && expense.status === 'pending'"
+                            :permission="'approve_expense'"
                             label="Approve" 
                             icon="pi pi-check" 
                             @click="openApprovalDialog"
                             class="p-button-success"
                         />
-                        <Button 
+                        <PermissionButton 
                             v-if="canApprove && expense.status === 'pending'"
+                            :permission="'reject_expense'"
                             label="Reject" 
                             icon="pi pi-times" 
                             @click="openRejectionDialog"
                             class="p-button-danger"
                         />
-                        <Button 
+                        <PermissionButton 
                             v-if="['approved', 'paid'].includes(expense.status)"
+                            :permission="'send_expense_report'"
                             label="Send Report" 
                             icon="pi pi-send" 
                             @click="openSendDialog"
                             class="p-button-primary"
                         />
-                        <Button 
+                        <PermissionButton 
                             v-if="canRecordPayment"
+                            :permission="'record_expense_payment'"
                             label="Record Payment" 
                             icon="pi pi-money-bill" 
                             @click="openPaymentDialog"
                             class="p-button-success"
                         />
-                        <Button 
+                        <PermissionButton 
+                            :permission="'download_expense'"
                             label="Download PDF" 
                             icon="pi pi-file-pdf" 
                             @click="downloadPDF"
                             class="p-button-secondary"
                         />
-                        <Button 
+                        <PermissionButton 
                             v-if="canEdit"
+                            :permission="'change_expense'"
                             label="Edit" 
                             icon="pi pi-pencil" 
                             @click="editExpense"
                             class="p-button-secondary"
                         />
-                        <Button 
+                        <PermissionButton 
                             v-if="canDelete"
+                            :permission="'delete_expense'"
                             label="Delete" 
                             icon="pi pi-trash" 
                             @click="deleteExpense"

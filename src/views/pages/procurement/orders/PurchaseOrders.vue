@@ -2,6 +2,7 @@
 import PurchaseOrderDetail from '@/components/procurement/PurchaseOrderDetail.vue';
 import PurchaseOrderForm from '@/components/procurement/PurchaseOrderForm.vue';
 import ApprovalWorkflow from '@/components/shared/ApprovalWorkflow.vue';
+import PermissionButton from '@/components/common/PermissionButton.vue';
 import { procurementService } from '@/services/procurement/procurementService';
 import { formatCurrency, formatDate } from '@/utils/formatters';
 import { useConfirm } from 'primevue/useconfirm';
@@ -256,7 +257,7 @@ onMounted(() => {
             <div class="header-content">
                 <h1 class="page-title">Purchase Orders</h1>
                 <div class="header-actions">
-                    <Button label="New Purchase Order" icon="pi pi-plus" class="new-po-btn" @click="showCreateModal" />
+                    <PermissionButton label="New Purchase Order" icon="pi pi-plus" class="new-po-btn" :permission="'add_purchaseorder'" @click="showCreateModal" />
                 </div>
             </div>
 
@@ -335,11 +336,11 @@ onMounted(() => {
                 <Column header="Actions" :exportable="false">
                     <template #body="{ data }">
                         <div class="action-buttons">
-                            <Button icon="pi pi-eye" class="p-button-rounded p-button-text view-btn" v-tooltip.top="'View Details'" @click="viewOrderDetails(data.id)" />
+                            <PermissionButton icon="pi pi-eye" class="p-button-rounded p-button-text view-btn" :permission="'view_purchaseorder'" v-tooltip.top="'View Details'" @click="viewOrderDetails(data.id)" />
 
-                            <Button icon="pi pi-file-edit" class="p-button-rounded p-button-text edit-btn" v-tooltip.top="'Edit Order'" @click="editOrder(data.id)" :disabled="!isEditable(data.status)" />
+                            <PermissionButton icon="pi pi-file-edit" class="p-button-rounded p-button-text edit-btn" :permission="'change_purchaseorder'" v-tooltip.top="'Edit Order'" @click="editOrder(data.id)" :disabled="!isEditable(data.status)" />
 
-                            <Button icon="pi pi-trash" class="p-button-rounded p-button-text p-button-danger delete-btn" v-tooltip.top="'Delete Order'" @click="confirmDelete(data.id)" :disabled="!isDeletable(data.status)" />
+                            <PermissionButton icon="pi pi-trash" class="p-button-rounded p-button-text p-button-danger delete-btn" :permission="'delete_purchaseorder'" v-tooltip.top="'Delete Order'" @click="confirmDelete(data.id)" :disabled="!isDeletable(data.status)" />
                         </div>
                     </template>
                 </Column>
@@ -348,7 +349,7 @@ onMounted(() => {
                     <div class="empty-state">
                         <img src="@/assets/images/order/no-order.png" alt="No orders" class="empty-image" />
                         <p class="empty-message">No purchase orders found</p>
-                        <Button label="Create New Order" icon="pi pi-plus" class="empty-action-btn" @click="showCreateModal" />
+                        <PermissionButton label="Create New Order" icon="pi pi-plus" class="empty-action-btn" :permission="'add_purchaseorder'" @click="showCreateModal" />
                     </div>
                 </template>
             </DataTable>

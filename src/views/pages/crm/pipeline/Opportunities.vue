@@ -1,6 +1,6 @@
 <script setup>
 import { useToast } from '@/composables/useToast';
-import { CustomerService } from '@/services/ecommerce/customerService';
+import { customerService } from '@/services/crm/customerService';
 import { formatCurrency, formatDate } from '@/utils/formatters';
 import { onMounted, ref } from 'vue';
 

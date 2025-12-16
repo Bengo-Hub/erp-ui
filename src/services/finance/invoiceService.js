@@ -86,7 +86,7 @@ export const invoiceService = {
     async recordPayment(id, paymentData) {
         try {
             const response = await axios.post(`${INVOICING_BASE}/invoices/${id}/record-payment/`, paymentData);
-            return response.data;
+            return response.data.data || response.data;
         } catch (error) {
             return handleError(error);
         }
@@ -119,11 +119,20 @@ export const invoiceService = {
         }
     },
 
+    async approveInvoice(id) {
+        try {
+            const response = await axios.post(`${INVOICING_BASE}/invoices/${id}/approve/`);
+            return response.data;
+        } catch (error) {
+            return handleError(error);
+        }
+    },
+
     // Invoice Analytics
     async getInvoiceSummary(params = {}) {
         try {
             const response = await axios.get(`${INVOICING_BASE}/invoices/summary/`, { params });
-            return response.data;
+            return response.data.data || response.data;
         } catch (error) {
             return handleError(error);
         }
@@ -172,6 +181,72 @@ export const invoiceService = {
     async getPaidInvoices(params = {}) {
         return this.getInvoicesByStatus('paid', params);
     },
+
+    // PDF Methods
+    async getInvoicePDF(id, params = {}) {
+        try {
+            const response = await axios.get(`${INVOICING_BASE}/invoices/${id}/pdf/`, {
+                params: params,
+                responseType: 'blob'
+            });
+            return response.data;
+        } catch (error) {
+            return handleError(error);
+        }
+    },
+
+    async downloadInvoicePDF(id, params = {}) {
+        return this.getInvoicePDF(id, { ...params, download: true });
+    },
+
+    // Public/Shared Invoice Methods
+    async getPublicInvoice(id, token) {
+        try {
+            const response = await axios.get(`${INVOICING_BASE}/public/invoice/${id}/${token}/`);
+            return response.data.data || response.data;
+        } catch (error) {
+            return handleError(error);
+        }
+    },
+
+    async generateShareLink(id, options = {}) {
+        try {
+            const response = await axios.post(`${INVOICING_BASE}/invoices/${id}/generate-share-link/`, options);
+            return response.data.data || response.data;
+        } catch (error) {
+            return handleError(error);
+        }
+    },
+
+    async sendWithShareLink(id, emailData = {}) {
+        try {
+            const response = await axios.post(`${INVOICING_BASE}/invoices/${id}/send/`, {
+                ...emailData,
+                include_share_link: true
+            });
+            return response.data;
+        } catch (error) {
+            return handleError(error);
+        }
+    },
+
+    async sendWhatsApp(id, whatsappData) {
+        try {
+            const response = await axios.post(`${INVOICING_BASE}/invoices/${id}/send-whatsapp/`, whatsappData);
+            return response.data;
+        } catch (error) {
+            return handleError(error);
+        }
+    },
+
+    async getPaymentAccounts() {
+        try {
+            const response = await axios.get('/finance/accounts/paymentaccounts/');
+            return response.data;
+        } catch (error) {
+            return handleError(error);
+        }
+    }
 };
 
 export default invoiceService;

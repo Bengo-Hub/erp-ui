@@ -56,6 +56,27 @@ export const coreService = {
     getBranches(params = {}) {
         return axios.get(`${BUSINESS_BASE_URL}branches/`, { params });
     },
+    getBranch(id) {
+        return axios.get(`${BUSINESS_BASE_URL}branches/${id}/`);
+    },
+    createBranch(data) {
+        return axios.post(`${BUSINESS_BASE_URL}branches/`, data);
+    },
+    updateBranch(id, data) {
+        return axios.put(`${BUSINESS_BASE_URL}branches/${id}/`, data);
+    },
+    patchBranch(id, data) {
+        return axios.patch(`${BUSINESS_BASE_URL}branches/${id}/`, data);
+    },
+    deleteBranch(id) {
+        return axios.delete(`${BUSINESS_BASE_URL}branches/${id}/`);
+    },
+
+    // Addresses (wrapper for centralized addresses service)
+    getAddresses(params = {}) {
+        // Delegates to the centralized addresses endpoint used across the app
+        return axios.get(`/addresses/addresses/`, { params });
+    },
 
     // Regions Endpoints
     getRegions(params = {}) {

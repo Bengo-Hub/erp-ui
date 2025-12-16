@@ -147,7 +147,7 @@ export const financeRoutes = [
     {
         path: '/finance/invoices/:id/edit',
         name: 'finance-invoice-edit',
-        component: () => import('@/views/pages/finance/invoicing/InvoiceForm.vue'),
+        component: () => import('@/views/pages/finance/invoicing/InvoiceEditPage.vue'),
         meta: { requiresAuth: true, title: 'Edit Invoice', permission: 'change_billingdocument' }
     },
     // NEW: Quotation Management Routes
@@ -174,5 +174,19 @@ export const financeRoutes = [
         name: 'finance-quotation-edit',
         component: () => import('@/views/pages/finance/quotations/QuotationForm.vue'),
         meta: { requiresAuth: true, title: 'Edit Quotation', permission: 'change_billingdocument' }
+    },
+    // PUBLIC: Invoice View (for sharing with customers)
+    {
+        path: '/public/invoice/:id/:token',
+        name: 'public-invoice-view',
+        component: () => import('@/views/pages/public/PublicInvoiceView.vue'),
+        meta: { requiresAuth: false, title: 'View Invoice', layout: 'public' }
+    },
+    // PUBLIC: Quotation View
+    {
+        path: '/public/quotation/:id/:token',
+        name: 'public-quotation-view',
+        component: () => import('@/views/pages/public/PublicQuotationView.vue'),
+        meta: { requiresAuth: false, title: 'View Quotation', layout: 'public' }
     }
 ];

@@ -19,6 +19,11 @@ export const customerService = {
         return axios.get(`${CONTACTS_BASE}/`, { params });
     },
 
+    // Alias for backward compatibility with crmService
+    getContacts(params = {}) {
+        return this.getCustomers(params);
+    },
+
     getCustomersMedium() {
         // This method is used by existing components - keeping for backward compatibility
         return axios.get(`${CONTACTS_BASE}/`, { params: { limit: 100 } });
@@ -28,16 +33,36 @@ export const customerService = {
         return axios.post(`${CONTACTS_BASE}/`, data);
     },
 
+    // Alias for backward compatibility with crmService
+    createContact(data) {
+        return this.createCustomer(data);
+    },
+
     updateCustomer(id, data) {
         return axios.put(`${CONTACTS_BASE}/${id}/`, data);
+    },
+
+    // Alias for backward compatibility with crmService
+    updateContact(id, data) {
+        return this.updateCustomer(id, data);
     },
 
     deleteCustomer(id) {
         return axios.delete(`${CONTACTS_BASE}/${id}/`);
     },
 
+    // Alias for backward compatibility with crmService
+    deleteContact(id) {
+        return this.deleteCustomer(id);
+    },
+
     getCustomer(id) {
         return axios.get(`${CONTACTS_BASE}/${id}/`);
+    },
+
+    // Alias for backward compatibility with crmService
+    getContact(id) {
+        return this.getCustomer(id);
     },
 
     // ========================================

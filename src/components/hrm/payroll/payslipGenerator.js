@@ -1,4 +1,5 @@
 import logoImage from '@/assets/images/logos/logo.png';
+import { formatCurrency } from '@/utils/formatters';
 import { jsPDF } from 'jspdf';
 
 export const generatePayslip = async (payslips, toast = null, sendmail = false, companyName = 'Company') => {
@@ -487,12 +488,7 @@ export const emailPayslips = async (payslipData, toast) => {
         console.error('Error sending payslips:', error);
     }
 };
-export const formatCurrency = (amount) => {
-    return new Intl.NumberFormat('en-KE', {
-        style: 'currency',
-        currency: 'KES'
-    }).format(amount);
-};
+
 export const formattedMonthYear = (mydate) => {
     const date = new Date(mydate);
     return date.toLocaleDateString('en-KE', { year: 'numeric', month: 'long' });

@@ -4,6 +4,7 @@
  * Eliminates duplicate chart option setup and ensures UI consistency
  */
 
+import { formatCurrency, safeNumber } from '@/utils/formatters';
 import { computed } from 'vue';
 
 export const useChartOptions = () => {
@@ -55,10 +56,7 @@ export const useChartOptions = () => {
                 beginAtZero: true,
                 ticks: {
                     callback: function (value) {
-                        return new Intl.NumberFormat('en-KE', {
-                            style: 'currency',
-                            currency: 'KES'
-                        }).format(value);
+                        return formatCurrency(safeNumber(value, 0));
                     }
                 }
             }

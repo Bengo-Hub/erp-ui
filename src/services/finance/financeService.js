@@ -69,6 +69,9 @@ export const financeService = {
     deleteBillingDocument(id) {
         return axios.delete(`${FINANCE_BASE}/payment/billing-documents/${id}/`);
     },
+    getBillingDocumentPdf(id, params = {}) {
+        return axios.get(`${FINANCE_BASE}/payment/billing-documents/${id}/pdf/`, { params, responseType: 'blob' });
+    },
     submitToKRA(id, invoicePayload = null) {
         return axios.post(`${FINANCE_BASE}/payment/billing-documents/${id}/submit-kra/`, { invoice_payload: invoicePayload });
     },

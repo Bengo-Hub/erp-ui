@@ -1,7 +1,7 @@
 <script setup>
 import { useToast } from '@/composables/useToast';
 import { financeService } from '@/services/finance/financeService';
-import { formatCurrency } from '@/utils/formatters';
+import { formatCurrency, safeNumber } from '@/utils/formatters';
 import { onMounted, reactive, ref } from 'vue';
 
 const { showToast } = useToast();
@@ -90,12 +90,7 @@ const lineChartOptions = {
             beginAtZero: true,
             ticks: {
                 callback: function (value) {
-                    return new Intl.NumberFormat('en-KE', {
-                        style: 'currency',
-                        currency: 'KES',
-                        minimumFractionDigits: 0,
-                        maximumFractionDigits: 0
-                    }).format(value);
+                    return formatCurrency(safeNumber(value, 0));
                 }
             }
         }
@@ -125,12 +120,7 @@ const barChartOptions = {
             beginAtZero: true,
             ticks: {
                 callback: function (value) {
-                    return new Intl.NumberFormat('en-KE', {
-                        style: 'currency',
-                        currency: 'KES',
-                        minimumFractionDigits: 0,
-                        maximumFractionDigits: 0
-                    }).format(value);
+                    return formatCurrency(safeNumber(value, 0));
                 }
             }
         }

@@ -1,10 +1,21 @@
 <script setup>
 import Spinner from '@/components/ui/Spinner.vue';
+import ItemsTable from '@/components/shared/ItemsTable.vue';
+import ProductForm from '@/components/products/ProductForm.vue';
+import AddSupplier from '@/components/crm/AddSupplier.vue';
+import AddCustomer from '@/components/crm/AddCustomer.vue';
+import BranchForm from '@/components/branches/BranchForm.vue';
+import PermissionButton from '@/components/common/PermissionButton.vue';
 import { useToast } from '@/composables/useToast';
+import { useAddEditModal } from '@/composables/useAddEditModal';
 import { crmService } from '@/services/crm/crmService';
 import { ecommerceService } from '@/services/ecommerce/ecommerceService';
+import { productService } from '@/services/ecommerce/productService';
+import axios from '@/utils/axiosConfig';
 import { quotationService } from '@/services/finance/quotationService';
+import { procurementService } from '@/services/procurement/procurementService';
 import { coreService } from '@/services/shared/coreService';
+import { systemConfigService } from '@/services/shared/systemConfigService';
 import { formatCurrency } from '@/utils/formatters';
 import { useVuelidate } from '@vuelidate/core';
 import { minValue, required } from '@vuelidate/validators';
@@ -14,6 +25,25 @@ import { useRoute, useRouter } from 'vue-router';
 const router = useRouter();
 const route = useRoute();
 const { showToast } = useToast();
+
+// Customer dialog state
+const showCustomerDialog = ref(false);
+const customerEditMode = ref(false);
+const customerEditId = ref(null);
+
+const openAddCustomer = () => {
+    customerEditMode.value = false;
+    customerEditId.value = null;
+    showCustomerDialog.value = true;
+};
+
+const openEditCustomer = (id, data) => {
+    customerEditMode.value = true;
+    customerEditId.value = id;
+    showCustomerDialog.value = true;
+};
+
+// (handler implemented lower down with full behavior)
 
 // Check if edit mode
 const isEditMode = computed(() => !!route.params.id);
@@ -60,6 +90,91 @@ const products = ref([]);
 const filteredCustomers = ref([]);
 const filteredProducts = ref([]);
 
+// Dialog states for entity-specific forms
+const showProductDialog = ref(false);
+const showBranchDialog = ref(false);
+const productDialogForItems = ref(false);
+const productEditMode = ref(false);
+const productEditData = ref(null);
+
+// Product modal
+const productModal = useAddEditModal({
+  entityName: 'Product',
+  fields: [
+    { name: 'title', label: 'Product Name', type: 'text', required: true, placeholder: 'e.g. Office Desk' },
+    { name: 'sku', label: 'SKU/Code', type: 'text', required: false, placeholder: 'AUTO-GENERATED' },
+        { name: 'selling_price', label: 'Unit Price (Selling)', type: 'number', required: true, placeholder: '0.00' },
+        { name: 'buying_price', label: 'Buying Price (optional)', type: 'number', required: false, placeholder: '0.00' },
+    { name: 'description', label: 'Description', type: 'textarea', required: false, placeholder: 'Product details...' }
+  ],
+  onSubmit: async (data) => {
+        const response = await productService.createProduct(data);
+        const createdProduct = response.data;
+        // NOTE: Stock items should only be created on receipt of purchased goods.
+        // Creating a product here must NOT automatically create a stock entry —
+        // that behavior caused inventory to appear prematurely (e.g. when creating
+        // a product from a purchase order). Stock creation is now handled during
+        // the procurement receive workflow (server-side / on receipt).
+        await loadProducts();
+        showToast('success', 'Success', 'Product created successfully');
+        return response.data;
+  },
+  onUpdate: async (id, data) => {
+        if (data._isStock) {
+            const payload = {};
+            if (data.selling_price !== undefined) payload.selling_price = data.selling_price;
+            if (data.buying_price !== undefined) payload.buying_price = data.buying_price;
+            const response = await axios.put(`/ecommerce/stockinventory/stock/${id}/`, payload);
+            await loadProducts();
+            showToast('success', 'Success', 'Product stock updated successfully');
+            return response.data;
+        } else {
+            const response = await productService.updateProduct(id, data);
+            await loadProducts();
+            showToast('success', 'Success', 'Product updated successfully');
+            return response.data;
+        }
+  }
+});
+
+// Branch modal
+const branchModal = useAddEditModal({
+  entityName: 'Branch',
+  fields: [
+    { name: 'name', label: 'Branch Name', type: 'text', required: true, placeholder: 'e.g. Main Branch' },
+    { name: 'contact_number', label: 'Contact Number', type: 'text', required: true, placeholder: '+254712345678' }
+  ],
+  onSubmit: async (data) => {
+        if (!data.location) {
+            const biz = JSON.parse(sessionStorage.getItem('business') || '{}') || {}
+            if (biz && biz.location) data.location = biz.location.id || biz.location
+            else {
+                const locResp = await systemConfigService.getBusinessLocations({ business_name: biz.name || biz.business__name })
+                if (locResp && locResp.success && locResp.data && locResp.data.length > 0) data.location = locResp.data[0].id
+            }
+        }
+        const response = await coreService.createBranch(data);
+    await loadBranches();
+    form.branch = response.data.id;
+    showToast('success', 'Success', 'Branch created successfully');
+    return response.data;
+  }
+});
+
+const openEditProductModal = (product) => {
+    if (product && product.id) {
+        const isStock = product.selling_price !== undefined || product.buying_price !== undefined;
+        productModal.openEditModal(product.id, {
+            title: product.product?.title || product.title,
+            sku: product.product?.sku || product.sku,
+            selling_price: product.selling_price ?? product.product?.selling_price ?? null,
+            buying_price: product.buying_price ?? product.product?.buying_price ?? null,
+            description: product.product?.description || product.description,
+            _isStock: isStock
+        });
+    }
+};
+
 // Options
 const validityOptions = [
     { label: '7 Days', value: '7_days' },
@@ -94,7 +209,8 @@ const showCustomValidity = computed(() => form.validity_period === 'custom');
 // Methods
 const loadCustomers = async () => {
     try {
-        const response = await crmService.getContacts({ contact_type: 'Customer', page_size: 100 });
+        // Use plural contact_type to match backend expectations
+        const response = await crmService.getContacts({ contact_type: 'Customers', page_size: 100 });
         customers.value = (response.data?.results || response.data || []).map(c => ({
             ...c,
             displayName: c.business_name || `${c.user?.first_name || ''} ${c.user?.last_name || ''}`.trim()
@@ -153,6 +269,52 @@ const loadProducts = async () => {
         }
     }
 };
+
+// Handlers for saved events
+const handleCustomerSaved = async (saved) => {
+    try {
+        await loadCustomers();
+        const id = saved?.id || saved?.data?.id || saved?.contact?.id || saved?.contact_id;
+        if (id) form.customer = customers.value.find(c => c.id === id) || customers.value[0] || null;
+    } catch (e) {
+        console.error('Error handling saved customer:', e);
+    } finally {
+        showCustomerDialog.value = false;
+    }
+}
+
+const handleProductSaved = async (saved) => {
+    try {
+        await loadProducts();
+        if (productDialogForItems.value && saved) {
+            const product = saved?.product || saved || saved?.data || null;
+            if (product) {
+                const newItem = { product: product, quantity: 1, unit_price: parseFloat(product.selling_price || product.price || 0), description: product.description || '' };
+                form.items.push(newItem);
+                calculateTotals();
+            }
+        }
+    } catch (e) {
+        console.error('Error handling saved product:', e);
+    } finally {
+        productDialogForItems.value = false;
+        productEditMode.value = false;
+        productEditData.value = null;
+        showProductDialog.value = false;
+    }
+}
+
+const handleBranchSaved = async (saved) => {
+    try {
+        await loadBranches();
+        const id = saved?.id || saved?.data?.id;
+        if (id) form.branch = id;
+    } catch (e) {
+        console.error('Error handling saved branch:', e);
+    } finally {
+        showBranchDialog.value = false;
+    }
+}
 
 const searchCustomers = (event) => {
     const query = event.query.toLowerCase();
@@ -213,20 +375,6 @@ const loadCustomerAddresses = async (customerId) => {
     }
 };
 
-const addLineItem = () => {
-    form.items.push({
-        product: null,
-        name: '',
-        description: '',
-        quantity: 1,
-        unit_price: 0,
-        tax_rate: 0,
-        tax_amount: 0,
-        subtotal: 0,
-        total: 0
-    });
-};
-
 const removeLineItem = (index) => {
     form.items.splice(index, 1);
     calculateTotals();
@@ -282,8 +430,9 @@ const calculateLineItem = (item) => {
 };
 
 const calculateTotals = () => {
-    form.subtotal = form.items.reduce((sum, item) => sum + item.subtotal, 0);
-    form.tax_amount = form.items.reduce((sum, item) => sum + item.tax_amount, 0);
+    const itemsArray = Array.isArray(form.items) ? form.items : [];
+    form.subtotal = itemsArray.reduce((sum, item) => sum + (Number(item.subtotal) || 0), 0);
+    form.tax_amount = itemsArray.reduce((sum, item) => sum + (Number(item.tax_amount) || 0), 0);
     
     // Calculate discount
     if (form.discount_type === 'percentage') {
@@ -405,10 +554,6 @@ onMounted(async () => {
         loadProducts()
     ]);
     
-    if (form.items.length === 0) {
-        addLineItem();
-    }
-    
     if (isEditMode.value) {
         await loadQuotation(route.params.id);
     }
@@ -486,39 +631,63 @@ const loadQuotation = async (id) => {
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
                             <label class="block text-sm font-medium mb-2 required">Customer *</label>
-                            <AutoComplete 
-                                v-model="form.customer"
-                                :suggestions="filteredCustomers"
-                                @complete="searchCustomers"
-                                @item-select="onCustomerSelect"
-                                optionLabel="displayName"
-                                placeholder="Select or search customer..."
-                                class="w-full"
-                                :class="{ 'p-invalid': v$.customer.$error }"
-                            >
-                                <template #item="slotProps">
-                                    <div class="flex items-center gap-3">
-                                        <Avatar :label="slotProps.item.displayName[0]" shape="circle" />
-                                        <div>
-                                            <div class="font-medium">{{ slotProps.item.displayName }}</div>
-                                            <div class="text-sm text-surface-500">{{ slotProps.item.user?.email }}</div>
+                            <div class="flex gap-2">
+                                <AutoComplete 
+                                    v-model="form.customer"
+                                    :suggestions="filteredCustomers"
+                                    @complete="searchCustomers"
+                                    @item-select="onCustomerSelect"
+                                    optionLabel="displayName"
+                                    placeholder="Select or search customer..."
+                                    class="flex-1"
+                                    :class="{ 'p-invalid': v$.customer.$error }"
+                                >
+                                    <template #item="slotProps">
+                                        <div class="flex items-center gap-3">
+                                            <Avatar :label="slotProps.item.displayName[0]" shape="circle" />
+                                            <div>
+                                                <div class="font-medium">{{ slotProps.item.displayName }}</div>
+                                                <div class="text-sm text-surface-500">{{ slotProps.item.user?.email }}</div>
+                                            </div>
                                         </div>
-                                    </div>
-                                </template>
-                            </AutoComplete>
+                                    </template>
+                                </AutoComplete>
+                                <PermissionButton 
+                                    icon="pi pi-plus" 
+                                    @click="openAddCustomer" 
+                                    severity="success"
+                                    tooltip="Add new customer"
+                                />
+                                <PermissionButton 
+                                    v-if="form.customer"
+                                    icon="pi pi-pencil" 
+                                    @click="openEditCustomer(form.customer.id, form.customer)" 
+                                    severity="info"
+                                    tooltip="Edit customer"
+                                />
+                            </div>
                             <small v-if="v$.customer.$error" class="p-error">Customer is required</small>
                         </div>
 
                         <div>
                             <label class="block text-sm font-medium mb-2">Branch</label>
-                            <Dropdown 
-                                v-model="form.branch"
-                                :options="branches"
-                                optionLabel="name"
-                                optionValue="id"
-                                placeholder="Select branch"
-                                class="w-full"
-                            />
+                            <div class="flex gap-2">
+                                <Dropdown 
+                                    v-model="form.branch"
+                                    :options="branches"
+                                    optionLabel="name"
+                                    optionValue="id"
+                                    placeholder="Select branch"
+                                    class="flex-1"
+                                />
+                                <PermissionButton 
+                                    permission="add_branch"
+                                    icon="pi pi-plus" 
+                                    @click="branchModal.modal.isOpen.value = true" 
+                                    severity="success"
+                                    tooltip="Add new branch"
+                                />
+                            </div>
                         </div>
 
                         <div>
@@ -572,126 +741,18 @@ const loadQuotation = async (id) => {
 
                     <!-- Line Items Section -->
                     <div>
-                        <div class="flex justify-between items-center mb-4">
-                            <h3 class="text-lg font-semibold text-surface-900 dark:text-surface-0">Line Items</h3>
-                            <Button 
-                                icon="pi pi-plus" 
-                                label="Add Item" 
-                                class="p-button-sm p-button-outlined"
-                                @click="addLineItem"
-                            />
-                        </div>
-
-                        <DataTable 
-                            :value="form.items"
-                            responsiveLayout="scroll"
-                            class="p-datatable-sm"
-                            :rowHover="true"
-                        >
-                            <Column header="#" headerStyle="width: 50px">
-                                <template #body="{ index }">
-                                    <span class="font-mono text-surface-500">{{ index + 1 }}</span>
-                                </template>
-                            </Column>
-
-                            <Column header="Product/Service *" style="min-width: 250px">
-                                <template #body="{ data }">
-                                    <AutoComplete 
-                                        v-model="data.product"
-                                        :suggestions="filteredProducts"
-                                        @complete="searchProducts"
-                                        @item-select="onProductSelect(data)"
-                                        optionLabel="displayName"
-                                        placeholder="Type to search..."
-                                        class="w-full"
-                                    />
-                                </template>
-                            </Column>
-
-                            <Column header="Description" style="min-width: 200px">
-                                <template #body="{ data }">
-                                    <InputText 
-                                        v-model="data.name"
-                                        placeholder="Item name"
-                                        class="w-full mb-2"
-                                    />
-                                    <Textarea 
-                                        v-model="data.description"
-                                        rows="2"
-                                        placeholder="Description..."
-                                        class="w-full"
-                                    />
-                                </template>
-                            </Column>
-
-                            <Column header="Qty *" headerStyle="width: 100px">
-                                <template #body="{ data }">
-                                    <InputNumber 
-                                        v-model="data.quantity"
-                                        :min="1"
-                                        class="w-full"
-                                        @input="calculateLineItem(data)"
-                                    />
-                                </template>
-                            </Column>
-
-                            <Column header="Unit Price *" headerStyle="width: 120px">
-                                <template #body="{ data }">
-                                    <InputNumber 
-                                        v-model="data.unit_price"
-                                        mode="currency"
-                                        currency="KES"
-                                        locale="en-KE"
-                                        class="w-full"
-                                        @input="calculateLineItem(data)"
-                                    />
-                                </template>
-                            </Column>
-
-                            <Column header="Tax %" headerStyle="width: 100px">
-                                <template #body="{ data }">
-                                    <InputNumber 
-                                        v-model="data.tax_rate"
-                                        suffix="%"
-                                        :min="0"
-                                        :max="100"
-                                        class="w-full"
-                                        @input="calculateLineItem(data)"
-                                    />
-                                </template>
-                            </Column>
-
-                            <Column header="Amount" headerStyle="width: 120px">
-                                <template #body="{ data }">
-                                    <div class="text-right font-semibold">
-                                        {{ formatCurrency(data.total) }}
-                                    </div>
-                                </template>
-                            </Column>
-
-                            <Column headerStyle="width: 80px">
-                                <template #body="{ index }">
-                                    <Button 
-                                        icon="pi pi-trash" 
-                                        class="p-button-rounded p-button-text p-button-danger p-button-sm"
-                                        @click="removeLineItem(index)"
-                                        v-tooltip.top="'Remove'"
-                                    />
-                                </template>
-                            </Column>
-
-                            <template #empty>
-                                <div class="text-center py-6">
-                                    <p class="text-surface-600 dark:text-surface-400">No items added yet</p>
-                                    <Button 
-                                        label="Add First Item" 
-                                        icon="pi pi-plus" 
-                                        class="mt-3 p-button-sm p-button-outlined"
-                                        @click="addLineItem"
-                                    />
-                                </div>
-                            </template>
-                        </DataTable>
+                        <h3 class="text-lg font-semibold text-surface-900 dark:text-surface-0 mb-4">Line Items</h3>
+                        <ItemsTable 
+                            v-model:items="form.items"
+                            :available-products="products"
+                            :show-add-product="true"
+                            :show-edit-product="true"
+                            :show-tax-fields="true"
+                            :show-description="true"
+                            @add-product="() => { productDialogForItems.value = true; productEditMode.value = false; productEditData.value = null; showProductDialog.value = true }"
+                            @edit-product="(product, index) => { productEditMode.value = true; productEditData.value = product; showProductDialog.value = true }"
+                            @update:items="calculateTotals"
+                        />
                     </div>
 
                     <Divider />
@@ -815,6 +876,21 @@ const loadQuotation = async (id) => {
 
         <Spinner :isLoading="loading" title="Processing quotation..." />
     </div>
+
+    <!-- Customer Dialog (domain-specific AddCustomer for add/edit) -->
+    <Dialog v-model:visible="showCustomerDialog" header="Add / Edit Customer" :modal="true" :style="{ width: '700px' }">
+        <AddCustomer :id="customerEditId" :editmode="customerEditMode" @saved="handleCustomerSaved" />
+    </Dialog>
+
+    <!-- Product Dialog -->
+    <Dialog v-model:visible="showProductDialog" :header="productEditMode ? 'Edit Product' : 'Add Product'" :modal="true" :style="{ width: '900px' }">
+        <ProductForm :product="productEditData" :editMode="productEditMode" @saved="handleProductSaved" @fetch-products="loadProducts" />
+    </Dialog>
+
+    <!-- Branch Dialog -->
+    <Dialog v-model:visible="showBranchDialog" header="Add Branch" :modal="true" :style="{ width: '600px' }">
+        <BranchForm @saved="handleBranchSaved" />
+    </Dialog>
 </template>
 
 <style scoped>

@@ -1,9 +1,11 @@
 <script setup>
 import { useToast } from '@/composables/useToast';
 import { financeService } from '@/services/finance/financeService';
+import AccountForm from '@/components/finance/accounts/AccountForm.vue';
 import { getBusinessDetails } from '@/utils/businessBranding';
 import { formatCurrency } from '@/utils/formatters';
 import { computed, onMounted, reactive, ref, watch } from 'vue';
+import axios from '@/utils/axiosConfig';
 
 const props = defineProps({
     visible: {
@@ -24,6 +26,9 @@ const loading = ref(false);
 const accounts = ref([]);
 const businessDetails = ref(null);
 const activeTab = ref(0);
+const showAccountDialog = ref(false);
+const accountEditMode = ref(false);
+const accountEditData = ref(null);
 
 const voucherTypes = [
     { label: 'Payment Voucher', value: 'payment', icon: 'pi pi-credit-card', severity: 'success' },
@@ -76,12 +81,30 @@ const loadBusinessDetails = () => {
 // Load accounts for voucher items
 const loadAccounts = async () => {
     try {
-        const response = await financeService.getPaymentAccounts();
-        accounts.value = response.data.results || response.data || [];
+        const response = await axios.get('/finance/accounts/paymentaccounts/');
+        accounts.value = response.data?.results || response.data || [];
     } catch (error) {
         console.error('Error loading accounts:', error);
         showToast('error', 'Failed to load accounts');
     }
+};
+
+// Account management methods
+const handleAddAccount = () => {
+    accountEditMode.value = false;
+    accountEditData.value = null;
+    showAccountDialog.value = true;
+};
+
+const handleEditAccount = (account) => {
+    accountEditMode.value = true;
+    accountEditData.value = account;
+    showAccountDialog.value = true;
+};
+
+const handleAccountSaved = async (savedAccount) => {
+    showAccountDialog.value = false;
+    await loadAccounts();
 };
 
 // Initialize form
@@ -417,15 +440,39 @@ onMounted(() => {
                                             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                                                 <div class="space-y-2">
                                                     <label class="block text-sm font-medium text-gray-700">Account</label>
-                                                    <Dropdown 
-                                                        v-model="item.account" 
-                                                        :options="accounts" 
-                                                        optionLabel="name" 
-                                                        optionValue="id" 
-                                                        class="w-full" 
-                                                        placeholder="Select account"
-                                                        :showClear="true"
-                                                    />
+                                                    <div class="flex gap-2">
+                                                        <Dropdown 
+                                                            v-model="item.account" 
+                                                            :options="accounts" 
+                                                            optionLabel="name" 
+                                                            optionValue="id" 
+                                                            class="w-full" 
+                                                            placeholder="Select account"
+                                                            :showClear="true"
+                                                        >
+                                                            <template #option="slotProps">
+                                                                <div class="flex items-center justify-between w-full group">
+                                                                    <span>{{ slotProps.option.name }}</span>
+                                                                    <Button 
+                                                                        v-if="slotProps.option"
+                                                                        type="button"
+                                                                        icon="pi pi-pencil"
+                                                                        class="p-button-sm p-button-text opacity-0 group-hover:opacity-100 transition-opacity"
+                                                                        @click.stop="handleEditAccount(slotProps.option)"
+                                                                        text
+                                                                    />
+                                                                </div>
+                                                            </template>
+                                                        </Dropdown>
+                                                        <Button 
+                                                            type="button"
+                                                            icon="pi pi-plus"
+                                                            class="p-button-sm"
+                                                            severity="success"
+                                                            @click="handleAddAccount"
+                                                            v-tooltip.top="'Add new account'"
+                                                        />
+                                                    </div>
                                                 </div>
 
                                                 <div class="space-y-2">
@@ -744,6 +791,23 @@ onMounted(() => {
                 </div>
             </div>
         </template>
+    </Dialog>
+
+    <!-- Account Form Dialog -->
+    <Dialog 
+        v-model:visible="showAccountDialog"
+        :header="accountEditMode ? 'Edit Account' : 'Create New Account'"
+        modal
+        :style="{ width: '100%', maxWidth: '600px' }"
+        class="p-4"
+    >
+        <AccountForm 
+            v-if="showAccountDialog"
+            :account="accountEditData"
+            :isEdit="accountEditMode"
+            @saved="handleAccountSaved"
+            @cancel="showAccountDialog = false"
+        />
     </Dialog>
 </template>
 

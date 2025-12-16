@@ -26,9 +26,14 @@ export const dashboardService = {
             return response.data;
         } catch (error) {
             console.error('Error fetching executive dashboard data:', error);
-            // Return fallback data instead of throwing error
+            // Only use fallback for network errors; propagate server errors
+            if (error.response?.status >= 500) {
+                console.warn('Executive dashboard endpoint returned error - check backend logs');
+                throw error;
+            }
+            // Return fallback data for network/timeout issues
             const fallbackData = getExecutiveDashboardFallbackData(period);
-            console.log('Executive dashboard fallback data:', fallbackData);
+            console.log('Executive dashboard fallback data (network issue):', fallbackData);
             return fallbackData;
         }
     },
@@ -72,9 +77,14 @@ export const dashboardService = {
             return response.data;
         } catch (error) {
             console.error('Error fetching finance dashboard data:', error);
-            // Return fallback data instead of throwing error
+            // Only use fallback for network errors; propagate server errors
+            if (error.response?.status >= 500) {
+                console.warn('Finance dashboard endpoint returned error - check backend logs');
+                throw error;
+            }
+            // Return fallback data for network/timeout issues
             const fallbackData = getFinanceDashboardFallbackData(period);
-            console.log('Finance dashboard fallback data:', fallbackData);
+            console.log('Finance dashboard fallback data (network issue):', fallbackData);
             return fallbackData;
         }
     },

@@ -4,6 +4,7 @@ import { useDashboardState } from '@/composables/useDashboardState';
 import { useToast } from '@/composables/useToast';
 import { PERIOD_OPTIONS } from '@/utils/constants';
 import Chart from 'primevue/chart';
+import { formatCurrency, safeNumber } from '@/utils/formatters';
 import { onMounted, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
 
@@ -189,7 +190,7 @@ onMounted(() => {
                     </template>
                     <template #content>
                         <div class="text-3xl font-bold">
-                            {{ new Intl.NumberFormat('en-KE', { style: 'currency', currency: 'KES' }).format(dashboardData.total_stock_value) }}
+                            {{ formatCurrency(safeNumber(dashboardData.total_stock_value, 0)) }}
                         </div>
                     </template>
                 </Card>

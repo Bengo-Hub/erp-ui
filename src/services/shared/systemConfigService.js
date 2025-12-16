@@ -316,6 +316,16 @@ export const systemConfigService = {
         }
     },
 
+    async getBusinessLocations(params = {}) {
+        try {
+            const response = await axios.get(`business/locations/`, { params });
+            const data = response.data?.results ?? response.data ?? [];
+            return { success: true, data };
+        } catch (error) {
+            return handleError(error);
+        }
+    },
+
     async getBusinessBranchById(id) {
         try {
             const response = await axios.get(`business/business/branches/${id}/`);

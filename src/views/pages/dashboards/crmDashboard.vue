@@ -6,6 +6,7 @@ import { useToast } from '@/composables/useToast';
 import { dashboardService } from '@/services/shared/dashboardService';
 import { PERIOD_OPTIONS } from '@/utils/constants';
 import Chart from 'primevue/chart';
+import { formatCurrency, safeNumber } from '@/utils/formatters';
 import { onMounted, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
 
@@ -223,7 +224,7 @@ onMounted(() => {
                     </template>
                     <template #content>
                         <div class="text-3xl font-bold">
-                            {{ new Intl.NumberFormat('en-KE', { style: 'currency', currency: 'KES' }).format(dashboardData.pipeline_value) }}
+                            {{ formatCurrency(safeNumber(dashboardData.pipeline_value, 0)) }}
                         </div>
                     </template>
                 </Card>
@@ -240,7 +241,7 @@ onMounted(() => {
                     </template>
                     <template #content>
                         <div class="text-3xl font-bold">
-                            {{ (dashboardData.conversion_rate * 100).toFixed(1) }}%
+                            {{ (Number.isFinite(Number(dashboardData.conversion_rate)) ? (Number(dashboardData.conversion_rate) * 100).toFixed(1) : '0.0') }}%
                         </div>
                     </template>
                 </Card>
@@ -254,7 +255,7 @@ onMounted(() => {
                     </template>
                     <template #content>
                         <div class="text-3xl font-bold">
-                            {{ new Intl.NumberFormat('en-KE', { style: 'currency', currency: 'KES' }).format(dashboardData.average_deal_size) }}
+                            {{ formatCurrency(safeNumber(dashboardData.average_deal_size, 0)) }}
                         </div>
                     </template>
                 </Card>
@@ -319,12 +320,12 @@ onMounted(() => {
                         <Column field="deals_closed" header="Deals Closed" sortable></Column>
                         <Column field="revenue" header="Revenue" sortable>
                             <template #body="slotProps">
-                                {{ new Intl.NumberFormat('en-KE', { style: 'currency', currency: 'KES' }).format(slotProps.data.revenue) }}
+                                {{ formatCurrency(safeNumber(slotProps.data.revenue, 0)) }}
                             </template>
                         </Column>
                         <Column field="conversion_rate" header="Conversion %" sortable>
                             <template #body="slotProps">
-                                {{ (slotProps.data.conversion_rate * 100).toFixed(1) }}%
+                                {{ (Number.isFinite(Number(slotProps.data.conversion_rate)) ? (Number(slotProps.data.conversion_rate) * 100).toFixed(1) : '0.0') }}%
                             </template>
                         </Column>
                     </DataTable>

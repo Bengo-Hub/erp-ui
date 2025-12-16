@@ -192,7 +192,7 @@ const updateBreakdownChart = () => {
                         label: function (context) {
                             const value = context.parsed;
                             const total = context.dataset.data.reduce((a, b) => a + b, 0);
-                            const percentage = ((value / total) * 100).toFixed(1);
+                            const percentage = total > 0 ? ((value / total) * 100).toFixed(1) : '0.0';
                             return `${context.label}: ${formatCurrency(value)} (${percentage}%)`;
                         }
                     }

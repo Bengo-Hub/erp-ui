@@ -6,6 +6,7 @@ import { useToast } from '@/composables/useToast';
 import { dashboardService } from '@/services/shared/dashboardService';
 import { PERIOD_OPTIONS } from '@/utils/constants';
 import Chart from 'primevue/chart';
+import { formatCurrency, safeNumber } from '@/utils/formatters';
 import { onMounted, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
 
@@ -177,7 +178,7 @@ onMounted(() => {
                     </template>
                     <template #content>
                         <div class="text-3xl font-bold">
-                            {{ new Intl.NumberFormat('en-KE', { style: 'currency', currency: 'KES' }).format(dashboardData.total_spend) }}
+                            {{ formatCurrency(safeNumber(dashboardData.total_spend, 0)) }}
                         </div>
                     </template>
                 </Card>
@@ -255,7 +256,7 @@ onMounted(() => {
                         <Column field="name" header="Supplier Name" sortable></Column>
                         <Column field="total_spend" header="Total Spend" sortable>
                             <template #body="slotProps">
-                                {{ new Intl.NumberFormat('en-KE', { style: 'currency', currency: 'KES' }).format(slotProps.data.total_spend) }}
+                                {{ formatCurrency(safeNumber(slotProps.data.total_spend, 0)) }}
                             </template>
                         </Column>
                         <Column field="order_count" header="Orders" sortable></Column>
