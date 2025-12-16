@@ -204,6 +204,15 @@
                                 />
                                 <PermissionButton
                                     permission="change_customuser"
+                                    icon="pi pi-key"
+                                    rounded
+                                    text
+                                    severity="warning"
+                                    @click="openChangePasswordDialog(data)"
+                                    v-tooltip.top="'Change Password'"
+                                />
+                                <PermissionButton
+                                    permission="change_customuser"
                                     :icon="data.is_active ? 'pi pi-ban' : 'pi pi-check'"
                                     rounded
                                     text
@@ -492,6 +501,77 @@
                 />
             </template>
         </Dialog>
+
+        <!-- Change Password Dialog -->
+        <Dialog 
+            v-model:visible="changePasswordDialog"
+            header="Change User Password"
+            :modal="true"
+            :style="{ width: '400px' }"
+            @hide="resetChangePasswordForm"
+        >
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        User
+                    </label>
+                    <p class="text-gray-900 dark:text-gray-100 font-medium">
+                        {{ selectedUser?.first_name }} {{ selectedUser?.last_name }} ({{ selectedUser?.email }})
+                    </p>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        New Password
+                    </label>
+                    <Password 
+                        v-model="changePasswordForm.new_password"
+                        :toggleMask="true"
+                        placeholder="Enter new password"
+                        class="w-full"
+                        @change="validateAdminPasswordStrength"
+                    />
+                    <div v-if="adminPasswordStrength" class="mt-2">
+                        <div class="flex items-center gap-2">
+                            <div class="flex-1 h-2 bg-gray-300 rounded overflow-hidden">
+                                <div 
+                                    class="h-full transition-all"
+                                    :class="adminPasswordStrengthColor"
+                                    :style="{ width: adminPasswordStrengthPercent + '%' }"
+                                />
+                            </div>
+                            <span class="text-sm font-medium" :class="adminPasswordStrengthColor">
+                                {{ adminPasswordStrength }}
+                            </span>
+                        </div>
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        Confirm Password
+                    </label>
+                    <Password 
+                        v-model="changePasswordForm.new_password_confirm"
+                        :toggleMask="true"
+                        placeholder="Confirm new password"
+                        class="w-full"
+                        :feedback="false"
+                    />
+                    <p v-if="changePasswordForm.new_password !== changePasswordForm.new_password_confirm && changePasswordForm.new_password_confirm" 
+                        class="text-red-500 text-sm mt-1">
+                        Passwords do not match
+                    </p>
+                </div>
+            </div>
+            <template #footer>
+                <Button label="Cancel" severity="secondary" @click="changePasswordDialog = false" />
+                <Button 
+                    label="Change Password" 
+                    @click="adminChangePassword"
+                    :loading="changingAdminPassword"
+                    :disabled="!changePasswordForm.new_password || changePasswordForm.new_password !== changePasswordForm.new_password_confirm"
+                />
+            </template>
+        </Dialog>
     </div>
 </template>
 
@@ -523,8 +603,19 @@ const selectedUser = ref(null);
 const userDialog = ref(false);
 const deleteDialog = ref(false);
 const viewDialog = ref(false);
+const changePasswordDialog = ref(false);
 const editMode = ref(false);
 const submitted = ref(false);
+const changingAdminPassword = ref(false);
+
+// Password form
+const changePasswordForm = ref({
+    new_password: '',
+    new_password_confirm: ''
+});
+const adminPasswordStrength = ref('');
+const adminPasswordStrengthColor = ref('');
+const adminPasswordStrengthPercent = ref(0);
 
 // Form
 const userForm = ref({
@@ -762,6 +853,107 @@ const exportUsers = () => {
     window.URL.revokeObjectURL(url);
     
     showToast('success', 'Users exported successfully', 'Success');
+};
+
+const openChangePasswordDialog = (user) => {
+    selectedUser.value = user;
+    changePasswordForm.value = {
+        new_password: '',
+        new_password_confirm: ''
+    };
+    adminPasswordStrength.value = '';
+    adminPasswordStrengthColor.value = '';
+    adminPasswordStrengthPercent.value = 0;
+    changePasswordDialog.value = true;
+};
+
+const resetChangePasswordForm = () => {
+    changePasswordForm.value = {
+        new_password: '',
+        new_password_confirm: ''
+    };
+    adminPasswordStrength.value = '';
+    adminPasswordStrengthColor.value = '';
+    adminPasswordStrengthPercent.value = 0;
+};
+
+const validateAdminPasswordStrength = () => {
+    const password = changePasswordForm.value.new_password;
+    if (!password) {
+        adminPasswordStrength.value = '';
+        return;
+    }
+
+    let strength = 0;
+    let strengthText = '';
+    let color = '';
+
+    // Check length
+    if (password.length >= 8) strength++;
+    if (password.length >= 12) strength++;
+    
+    // Check for lowercase
+    if (/[a-z]/.test(password)) strength++;
+    
+    // Check for uppercase
+    if (/[A-Z]/.test(password)) strength++;
+    
+    // Check for numbers
+    if (/\d/.test(password)) strength++;
+    
+    // Check for special characters
+    if (/[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(password)) strength++;
+
+    if (strength <= 2) {
+        strengthText = 'Weak';
+        color = 'text-red-500';
+        adminPasswordStrengthPercent.value = 25;
+    } else if (strength <= 4) {
+        strengthText = 'Fair';
+        color = 'text-yellow-500';
+        adminPasswordStrengthPercent.value = 50;
+    } else if (strength <= 5) {
+        strengthText = 'Good';
+        color = 'text-blue-500';
+        adminPasswordStrengthPercent.value = 75;
+    } else {
+        strengthText = 'Strong';
+        color = 'text-green-500';
+        adminPasswordStrengthPercent.value = 100;
+    }
+
+    adminPasswordStrength.value = strengthText;
+    adminPasswordStrengthColor.value = color;
+};
+
+const adminChangePassword = async () => {
+    if (changePasswordForm.value.new_password !== changePasswordForm.value.new_password_confirm) {
+        showToast('error', 'Passwords do not match', 'Error');
+        return;
+    }
+
+    if (!changePasswordForm.value.new_password) {
+        showToast('error', 'Please enter a new password', 'Error');
+        return;
+    }
+
+    changingAdminPassword.value = true;
+    try {
+        // Admin can set password directly via PATCH (backend expects 'password' field)
+        await userManagementService.patchUser(selectedUser.value.id, {
+            password: changePasswordForm.value.new_password
+        });
+        showToast('success', 'Password changed successfully', 'Success');
+        changePasswordDialog.value = false;
+        resetChangePasswordForm();
+        await loadUsers();
+    } catch (error) {
+        console.error('Error changing password:', error);
+        const errorMsg = error.response?.data?.detail || error.response?.data?.error || error.response?.data?.password?.[0] || 'Failed to change password';
+        showToast('error', errorMsg, 'Error');
+    } finally {
+        changingAdminPassword.value = false;
+    }
 };
 
 onMounted(() => {

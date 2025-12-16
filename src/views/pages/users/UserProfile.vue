@@ -94,8 +94,16 @@
                                 <div class="w-full space-y-2">
                                     <Button
                                         icon="pi pi-key"
-                                        label="Reset Password"
+                                        label="Change Password"
                                         severity="warning"
+                                        outlined
+                                        class="w-full"
+                                        @click="showChangePasswordDialog = true"
+                                    />
+                                    <Button
+                                        icon="pi pi-envelope"
+                                        label="Reset Password"
+                                        severity="info"
                                         outlined
                                         class="w-full"
                                         @click="resetPassword"
@@ -321,6 +329,80 @@
         <div v-else class="flex items-center justify-center min-h-[400px]">
             <ProgressSpinner />
         </div>
+
+        <!-- Change Password Dialog -->
+        <Dialog 
+            v-model:visible="showChangePasswordDialog"
+            header="Change Password"
+            :modal="true"
+            :style="{ width: '400px' }"
+            @hide="resetPasswordForm"
+        >
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        Current Password
+                    </label>
+                    <Password 
+                        v-model="passwordForm.current_password"
+                        :toggleMask="true"
+                        placeholder="Enter current password"
+                        class="w-full"
+                    />
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        New Password
+                    </label>
+                    <Password 
+                        v-model="passwordForm.new_password"
+                        :toggleMask="true"
+                        placeholder="Enter new password"
+                        class="w-full"
+                        @change="validatePasswordStrength"
+                    />
+                    <div v-if="passwordStrength" class="mt-2">
+                        <div class="flex items-center gap-2">
+                            <div class="flex-1 h-2 bg-gray-300 rounded overflow-hidden">
+                                <div 
+                                    class="h-full transition-all"
+                                    :class="passwordStrengthColor"
+                                    :style="{ width: passwordStrengthPercent + '%' }"
+                                />
+                            </div>
+                            <span class="text-sm font-medium" :class="passwordStrengthColor">
+                                {{ passwordStrength }}
+                            </span>
+                        </div>
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        Confirm Password
+                    </label>
+                    <Password 
+                        v-model="passwordForm.new_password_confirm"
+                        :toggleMask="true"
+                        placeholder="Confirm new password"
+                        class="w-full"
+                        :feedback="false"
+                    />
+                    <p v-if="passwordForm.new_password !== passwordForm.new_password_confirm && passwordForm.new_password_confirm" 
+                        class="text-red-500 text-sm mt-1">
+                        Passwords do not match
+                    </p>
+                </div>
+            </div>
+            <template #footer>
+                <Button label="Cancel" severity="secondary" @click="showChangePasswordDialog = false" />
+                <Button 
+                    label="Change Password" 
+                    @click="changePassword"
+                    :loading="changingPassword"
+                    :disabled="!passwordForm.current_password || !passwordForm.new_password || passwordForm.new_password !== passwordForm.new_password_confirm"
+                />
+            </template>
+        </Dialog>
     </div>
 </template>
 
@@ -346,6 +428,16 @@ const editedUser = ref(null);
 const editMode = ref(false);
 const availableRoles = ref([]);
 const uploadingPic = ref(false);
+const showChangePasswordDialog = ref(false);
+const changingPassword = ref(false);
+const passwordForm = ref({
+    current_password: '',
+    new_password: '',
+    new_password_confirm: ''
+});
+const passwordStrength = ref('');
+const passwordStrengthColor = ref('');
+const passwordStrengthPercent = ref(0);
 
 const timezones = [
     'Africa/Nairobi',
@@ -462,6 +554,115 @@ const onPicUploader = async (event) => {
         showToast('error', 'Failed to upload profile photo', 'Error');
     } finally {
         uploadingPic.value = false;
+    }
+};
+
+const onPicUploader = async (event) => {
+    const file = (event?.files && event.files[0]) || null;
+    if (!file) return;
+    if (!file.type || !file.type.startsWith('image/')) {
+        showToast('warn', 'Please select a valid image file', 'Invalid file');
+        return;
+    }
+    uploadingPic.value = true;
+    try {
+        await userManagementService.uploadUserPic(user.value.id, file);
+        showToast('success', 'Profile photo updated', 'Success');
+        await loadUserData();
+    } catch (err) {
+        console.error('Error uploading profile photo:', err);
+        showToast('error', 'Failed to upload profile photo', 'Error');
+    } finally {
+        uploadingPic.value = false;
+    }
+};
+
+const validatePasswordStrength = () => {
+    const password = passwordForm.value.new_password;
+    if (!password) {
+        passwordStrength.value = '';
+        return;
+    }
+
+    let strength = 0;
+    let strengthText = '';
+    let color = '';
+
+    // Check length
+    if (password.length >= 8) strength++;
+    if (password.length >= 12) strength++;
+    
+    // Check for lowercase
+    if (/[a-z]/.test(password)) strength++;
+    
+    // Check for uppercase
+    if (/[A-Z]/.test(password)) strength++;
+    
+    // Check for numbers
+    if (/\d/.test(password)) strength++;
+    
+    // Check for special characters
+    if (/[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(password)) strength++;
+
+    if (strength <= 2) {
+        strengthText = 'Weak';
+        color = 'text-red-500';
+        passwordStrengthPercent.value = 25;
+    } else if (strength <= 4) {
+        strengthText = 'Fair';
+        color = 'text-yellow-500';
+        passwordStrengthPercent.value = 50;
+    } else if (strength <= 5) {
+        strengthText = 'Good';
+        color = 'text-blue-500';
+        passwordStrengthPercent.value = 75;
+    } else {
+        strengthText = 'Strong';
+        color = 'text-green-500';
+        passwordStrengthPercent.value = 100;
+    }
+
+    passwordStrength.value = strengthText;
+    passwordStrengthColor.value = color;
+};
+
+const resetPasswordForm = () => {
+    passwordForm.value = {
+        current_password: '',
+        new_password: '',
+        new_password_confirm: ''
+    };
+    passwordStrength.value = '';
+    passwordStrengthColor.value = '';
+    passwordStrengthPercent.value = 0;
+};
+
+const changePassword = async () => {
+    if (passwordForm.value.new_password !== passwordForm.value.new_password_confirm) {
+        showToast('error', 'Passwords do not match', 'Error');
+        return;
+    }
+
+    if (!passwordForm.value.current_password || !passwordForm.value.new_password) {
+        showToast('error', 'Please fill in all fields', 'Error');
+        return;
+    }
+
+    changingPassword.value = true;
+    try {
+        await userManagementService.changePassword({
+            old_password: passwordForm.value.current_password,
+            new_password: passwordForm.value.new_password
+        });
+        showToast('success', 'Password changed successfully', 'Success');
+        showChangePasswordDialog.value = false;
+        resetPasswordForm();
+    } catch (error) {
+        console.error('Error changing password:', error);
+        const errorMsg = error.response?.data?.detail || error.response?.data?.error || error.response?.data?.old_password?.[0] || 'Failed to change password';
+        showToast('error', errorMsg, 'Error');
+    } finally {
+        changingPassword.value = false;
     }
 };
 

@@ -116,7 +116,7 @@ export const userManagementService = {
     
     changePassword: async (data) => {
         try {
-            return await axios.post('/auth/change-password/', data);
+            return await axios.put('/auth/change-password/', data);
         } catch (error) {
             console.error('Failed to change password:', error);
             throw error;

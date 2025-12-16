@@ -107,20 +107,20 @@ const validateForm = () => {
 
 const prepareData = () => ({
     contact_id: contactId.value || '',
-    designation: designation,
+    designation: designation.value || '',
     customer_group: customer_group.value?.id || null,
     address: address.value?.id || null,
-    first_name: first_name.value || business,
-    last_name: last_name.value || business,
-    email: email,
-    landline: landline,
-    contact_type: contact_type,
-    account_type: account_type,
-    business: business,
-    tax_number: taxNumber,
-    credit_limit: creditLimit,
-    phone: phone_number,
-    alternative_contact: alternativeContact
+    first_name: first_name.value || business.value,
+    last_name: last_name.value || business.value,
+    email: email.value,
+    landline: landline.value || '',
+    contact_type: contact_type.value,
+    account_type: account_type.value,
+    business: business.value || '',
+    tax_number: taxNumber.value || '',
+    credit_limit: creditLimit.value || '',
+    phone: phone_number.value,
+    alternative_contact: alternativeContact.value || ''
 });
 
 const clearValues = () => {
