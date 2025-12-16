@@ -557,26 +557,6 @@ const onPicUploader = async (event) => {
     }
 };
 
-const onPicUploader = async (event) => {
-    const file = (event?.files && event.files[0]) || null;
-    if (!file) return;
-    if (!file.type || !file.type.startsWith('image/')) {
-        showToast('warn', 'Please select a valid image file', 'Invalid file');
-        return;
-    }
-    uploadingPic.value = true;
-    try {
-        await userManagementService.uploadUserPic(user.value.id, file);
-        showToast('success', 'Profile photo updated', 'Success');
-        await loadUserData();
-    } catch (err) {
-        console.error('Error uploading profile photo:', err);
-        showToast('error', 'Failed to upload profile photo', 'Error');
-    } finally {
-        uploadingPic.value = false;
-    }
-};
-
 const validatePasswordStrength = () => {
     const password = passwordForm.value.new_password;
     if (!password) {
