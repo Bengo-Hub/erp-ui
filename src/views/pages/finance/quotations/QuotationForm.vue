@@ -19,7 +19,7 @@ import { systemConfigService } from '@/services/shared/systemConfigService';
 import { formatCurrency } from '@/utils/formatters';
 import { useVuelidate } from '@vuelidate/core';
 import { minLength, required } from '@vuelidate/validators';
-import { computed, onMounted, reactive, ref } from 'vue';
+import { computed, onMounted, reactive, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 
 const router = useRouter();
@@ -68,6 +68,11 @@ const form = reactive({
     discount_amount: 0,
     shipping_cost: 0,
     total: 0
+    ,
+    rfq_number: '',
+    tax_mode: 'line_items',
+    tax_rate: 0,
+    tender_quotation_ref: ''
 });
 
 // Validation rules
@@ -90,6 +95,7 @@ const branches = ref([]);
 const products = ref([]);
 const filteredCustomers = ref([]);
 const filteredProducts = ref([]);
+const taxRates = ref([]);
 
 // Dialog states for entity-specific forms
 const showProductDialog = ref(false);
@@ -207,16 +213,11 @@ const discountTypeOptions = [
 
 // Computed
 const grandTotal = computed(() => {
-    let total = form.subtotal + form.tax_amount + form.shipping_cost;
-    
-    // Apply discount
-    if (form.discount_type === 'percentage') {
-        total -= (form.subtotal * form.discount_value) / 100;
-    } else {
-        total -= form.discount_value;
-    }
-    
-    return Math.max(0, total);
+    const subtotal = Number(form.subtotal) || 0;
+    const discountAmt = Number(form.discount_amount) || 0;
+    const shipping = Number(form.shipping_cost) || 0;
+    const tax = Number(form.tax_amount) || 0;
+    return Math.max(0, subtotal - discountAmt + shipping + tax);
 });
 
 const showCustomValidity = computed(() => form.validity_period === 'custom');
@@ -450,17 +451,42 @@ const calculateLineItem = (item) => {
 const calculateTotals = () => {
     const itemsArray = Array.isArray(form.items) ? form.items : [];
     form.subtotal = itemsArray.reduce((sum, item) => sum + (Number(item.subtotal) || 0), 0);
-    form.tax_amount = itemsArray.reduce((sum, item) => sum + (Number(item.tax_amount) || 0), 0);
-    
-    // Calculate discount
+    // Calculate discount amount first
     if (form.discount_type === 'percentage') {
         form.discount_amount = (form.subtotal * form.discount_value) / 100;
     } else {
-        form.discount_amount = form.discount_value;
+        form.discount_amount = Number(form.discount_value) || 0;
     }
-    
-    form.total = grandTotal.value;
+
+    // Calculate tax depending on selected mode
+    if (form.tax_mode === 'on_total') {
+        const rate = Number(form.tax_rate) || 0;
+        const taxableBase = Math.max(0, Number(form.subtotal) - Number(form.discount_amount) + Number(form.shipping_cost || 0));
+        form.tax_amount = (taxableBase * rate) / 100;
+        // Zero-out per-line tax amounts for clarity when using on-total taxes
+        itemsArray.forEach(it => { it.tax_amount = 0; it.total = it.subtotal; });
+    } else {
+        // Recompute per-line taxes from their tax_rate
+        itemsArray.forEach(it => {
+            it.tax_amount = (Number(it.subtotal) * (Number(it.tax_rate) || 0)) / 100;
+            it.total = Number(it.subtotal) + Number(it.tax_amount || 0);
+        });
+        form.tax_amount = itemsArray.reduce((sum, item) => sum + (Number(item.tax_amount) || 0), 0);
+    }
+
+    // Round values to 2 decimals
+    form.subtotal = Math.round(Number(form.subtotal) * 100) / 100;
+    form.discount_amount = Math.round(Number(form.discount_amount) * 100) / 100;
+    form.tax_amount = Math.round(Number(form.tax_amount) * 100) / 100;
+    form.total = Math.round((Number(grandTotal.value) || 0) * 100) / 100;
 };
+
+// Watch for changes to fields that affect totals so UI updates in real-time
+watch(() => form.tax_rate, () => calculateTotals());
+watch(() => form.tax_mode, () => calculateTotals());
+watch(() => form.discount_value, () => calculateTotals());
+watch(() => form.discount_type, () => calculateTotals());
+watch(() => form.shipping_cost, () => calculateTotals());
 
 const saveDraft = async () => {
     try {
@@ -552,6 +578,8 @@ const prepareQuotationData = () => {
         discount_value: form.discount_value,
         subtotal: form.subtotal,
         tax_amount: form.tax_amount,
+        tax_mode: form.tax_mode,
+        tax_rate: form.tax_rate,
         discount_amount: form.discount_amount,
         shipping_cost: form.shipping_cost,
         total: form.total,
@@ -568,6 +596,9 @@ const prepareQuotationData = () => {
             total: item.total,
             product_id: item.product?.id
         }))
+        ,
+        rfq_number: form.rfq_number,
+        tender_quotation_ref: form.tender_quotation_ref
     };
 };
 
@@ -577,18 +608,60 @@ const cancel = () => {
     }
 };
 
+// Load tax rates and helpers
+const loadTaxRates = async () => {
+    try {
+        const response = await coreService.getTaxRates({ page_size: 100 });
+        const list = response.data?.results || response.data || [];
+        taxRates.value = Array.isArray(list) ? list.map(t => ({ id: t.id, label: t.tax_name || t.name || t.tax || t.code || `Tax ${t.id}`, rate: parseFloat(t.percentage || t.tax_rate || 0) })) : [];
+        // If editing existing doc and tax_rate matches one of the rates, set the id
+        if (form.tax_rate) {
+            const m = taxRates.value.find(x => Number(x.rate) === Number(form.tax_rate));
+            if (m) form.tax_rate_id = m.id;
+        }
+    } catch (error) {
+        console.error('Error loading tax rates:', error);
+        taxRates.value = [];
+    }
+};
+
+const taxOptions = computed(() => {
+    const opts = taxRates.value.map(t => ({ label: `${t.label} (${t.rate}%)`, value: t.id }));
+    opts.push({ label: 'Custom / Other', value: 'custom' });
+    return opts;
+});
+
+const onTaxSelect = (val) => {
+    if (val === 'custom' || !val) {
+        // keep existing form.tax_rate for manual entry
+        return;
+    }
+    const picked = taxRates.value.find(t => t.id === val);
+    if (picked) {
+        form.tax_rate = Number(picked.rate);
+    }
+};
+
 // Lifecycle
 onMounted(async () => {
     await Promise.all([
         loadCustomers(),
         loadBranches(),
-        loadProducts()
+        loadProducts(),
+        loadTaxRates()
     ]);
+
+    // If we already have a tax_rate set (e.g., when editing), attempt to set the matching tax_rate_id
+    if (form.tax_rate) {
+        const match = taxRates.value.find(t => Number(t.rate) === Number(form.tax_rate));
+        if (match) form.tax_rate_id = match.id;
+    }
     
     if (isEditMode.value) {
         await loadQuotation(route.params.id);
     }
 });
+
 
 const loadQuotation = async (id) => {
     try {
@@ -609,6 +682,10 @@ const loadQuotation = async (id) => {
         form.shipping_address = quotation.shipping_address;
         form.billing_address = quotation.billing_address;
         form.shipping_cost = quotation.shipping_cost;
+        form.tax_mode = quotation.tax_mode || 'line_items';
+        form.tax_rate = quotation.tax_rate || 0;
+        form.rfq_number = quotation.rfq_number || '';
+        form.tender_quotation_ref = quotation.tender_quotation_ref || '';
         
         // Map incoming order items to form.items. Backend returns order items with
         // GenericForeignKey fields: content_type and object_id (object_id is the product id)
@@ -723,6 +800,16 @@ const loadQuotation = async (id) => {
                             </div>
                         </div>
 
+                                <div>
+                                    <label class="block text-sm font-medium mb-2">RFQ Number</label>
+                                    <InputText v-model="form.rfq_number" placeholder="Optional RFQ reference" class="w-full" />
+                                </div>
+
+                                <div>
+                                    <label class="block text-sm font-medium mb-2">Tender/Quotation Ref</label>
+                                    <InputText v-model="form.tender_quotation_ref" placeholder="Tender or quotation reference" class="w-full" />
+                                </div>
+
                         <div>
                             <label class="block text-sm font-medium mb-2 required">Quotation Date *</label>
                             <Calendar 
@@ -826,6 +913,15 @@ const loadQuotation = async (id) => {
                                         <div class="flex justify-between">
                                             <span class="text-surface-700 dark:text-surface-300">Tax:</span>
                                             <span class="font-semibold">{{ formatCurrency(form.tax_amount) }}</span>
+                                        </div>
+
+                                        <div class="flex items-center gap-2">
+                                            <Dropdown v-model="form.tax_mode" :options="[{ label: 'Per line items', value: 'line_items' }, { label: 'On final amount', value: 'on_total' }]" optionLabel="label" optionValue="value" class="w-36" @change="calculateTotals" />
+                                            <div v-if="form.tax_mode === 'on_total'" class="flex items-center gap-2">
+                                                <Dropdown v-model="form.tax_rate_id" :options="taxOptions" optionLabel="label" optionValue="value" class="w-48" @change="val => { onTaxSelect(val); calculateTotals(); }" />
+                                                <InputNumber v-if="form.tax_rate_id === 'custom' || taxRates.length === 0" v-model="form.tax_rate" suffix="%" :min="0" :max="100" class="w-24" @input="calculateTotals" />
+                                                <small v-else class="text-sm">Rate: {{ form.tax_rate }}%</small>
+                                            </div>
                                         </div>
                                         
                                         <div class="space-y-2">
