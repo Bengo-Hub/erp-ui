@@ -19,7 +19,7 @@ import { formatCurrency } from '@/utils/formatters';
 import axios from '@/utils/axiosConfig';
 import { useVuelidate } from '@vuelidate/core';
 import { minLength, required } from '@vuelidate/validators';
-import { computed, onMounted, reactive, ref } from 'vue';
+import { computed, onMounted, reactive, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 
 const router = useRouter();
@@ -44,6 +44,9 @@ const form = reactive({
     billing_address: null,
     subtotal: 0,
     tax_amount: 0,
+    tax_mode: 'line_items',
+    tax_rate: 0,
+    tax_rate_id: null,
     discount_amount: 0,
     shipping_cost: 0,
     total: 0
@@ -278,9 +281,30 @@ const loadProducts = async () => {
 const loadTaxRates = async () => {
     try {
         const response = await coreService.getTaxRates();
-        taxRates.value = response.data?.results || response.data || [];
+        const list = response.data?.results || response.data || [];
+        taxRates.value = Array.isArray(list) ? list.map(t => ({ id: t.id, label: t.tax_name || t.name || t.tax || t.code || `Tax ${t.id}`, rate: parseFloat(t.percentage || t.tax_rate || 0) })) : [];
+        if (form.tax_rate) {
+            const m = taxRates.value.find(x => Number(x.rate) === Number(form.tax_rate));
+            if (m) form.tax_rate_id = m.id;
+        }
     } catch (error) {
         console.error('Error loading tax rates:', error);
+    }
+};
+
+const taxOptions = computed(() => {
+    const opts = taxRates.value.map(t => ({ label: `${t.label} (${t.rate}%)`, value: t.id }));
+    opts.push({ label: 'Custom / Other', value: 'custom' });
+    return opts;
+});
+
+const onTaxSelect = (val) => {
+    if (val === 'custom' || !val) {
+        return;
+    }
+    const picked = taxRates.value.find(t => t.id === val);
+    if (picked) {
+        form.tax_rate = Number(picked.rate);
     }
 };
 
@@ -492,14 +516,44 @@ const calculateTotals = () => {
     // Sum all items - guard if items is not an array
     const itemsArray = Array.isArray(form.items) ? form.items : [];
     form.subtotal = itemsArray.reduce((sum, item) => sum + (Number(item.subtotal) || 0), 0);
-    form.tax_amount = itemsArray.reduce((sum, item) => sum + (Number(item.tax_amount) || 0), 0);
-    form.total = form.subtotal + form.tax_amount - (Number(form.discount_amount) || 0) + (Number(form.shipping_cost) || 0);
-    
-    // Round all totals to 2 decimal places to prevent backend validation errors
+    // Calculate discount amount (discount_amount may be pre-filled)
+    if (form.discount_type === 'percentage') {
+        form.discount_amount = (form.subtotal * form.discount_value) / 100;
+    } else {
+        form.discount_amount = Number(form.discount_amount) || 0;
+    }
+
+    // Tax calculation
+    if (form.tax_mode === 'on_total') {
+        const rate = Number(form.tax_rate) || 0;
+        const taxableBase = Math.max(0, Number(form.subtotal) - Number(form.discount_amount) + Number(form.shipping_cost || 0));
+        form.tax_amount = (taxableBase * rate) / 100;
+        itemsArray.forEach(it => { it.tax_amount = 0; it.total = it.subtotal; });
+    } else {
+        // per-line taxes
+        itemsArray.forEach(it => {
+            it.tax_amount = (Number(it.subtotal) * (Number(it.tax_rate) || 0)) / 100;
+            it.total = Number(it.subtotal) + Number(it.tax_amount || 0);
+        });
+        form.tax_amount = itemsArray.reduce((sum, item) => sum + (Number(item.tax_amount) || 0), 0);
+    }
+
+    // Compute total
+    form.total = Number(form.subtotal) - Number(form.discount_amount) + Number(form.shipping_cost || 0) + Number(form.tax_amount || 0);
+
+    // Round values
     form.subtotal = Math.round(form.subtotal * 100) / 100;
     form.tax_amount = Math.round(form.tax_amount * 100) / 100;
-    form.total = Math.round(form.total * 100) / 100;
+    form.discount_amount = Math.round((Number(form.discount_amount) || 0) * 100) / 100;
+    form.total = Math.round((Number(form.total) || 0) * 100) / 100;
 };
+
+// Ensure UI updates live when tax/discount inputs change
+watch(() => form.tax_rate, () => calculateTotals());
+watch(() => form.tax_mode, () => calculateTotals());
+watch(() => form.discount_value, () => calculateTotals());
+watch(() => form.discount_type, () => calculateTotals());
+watch(() => form.shipping_cost, () => calculateTotals());
 
 const applyDiscount = () => {
     calculateTotals();
@@ -624,6 +678,8 @@ const prepareInvoiceData = (status) => {
         total: round2(grandTotal.value),
         shipping_address: form.shipping_address,
         billing_address: form.billing_address,
+        tax_mode: form.tax_mode,
+        tax_rate: form.tax_rate,
         items: form.items.map(item => ({
             name: item.name,
             description: item.description,
@@ -678,6 +734,8 @@ const loadInvoice = async (id) => {
         form.billing_address = invoice.billing_address;
         form.discount_amount = invoice.discount_amount;
         form.shipping_cost = invoice.shipping_cost;
+        form.tax_mode = invoice.tax_mode || 'line_items';
+        form.tax_rate = invoice.tax_rate || 0;
         
         // Load items
         form.items = (invoice.items || []).map(item => ({
@@ -916,6 +974,11 @@ const loadInvoice = async (id) => {
                                         <div class="flex justify-between">
                                             <span class="text-surface-700 dark:text-surface-300">Tax:</span>
                                             <span class="font-semibold">{{ formatCurrency(form.tax_amount) }}</span>
+                                        </div>
+
+                                        <div class="flex items-center gap-2">
+                                            <Dropdown v-model="form.tax_mode" :options="[{ label: 'Per line items', value: 'line_items' }, { label: 'On final amount', value: 'on_total' }]" optionLabel="label" optionValue="value" class="w-36" @change="calculateTotals" />
+                                            <InputNumber v-if="form.tax_mode === 'on_total'" v-model="form.tax_rate" suffix="%" :min="0" :max="100" class="w-24" @input="calculateTotals" />
                                         </div>
                                         
                                         <div class="flex justify-between items-center">

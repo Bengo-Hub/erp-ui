@@ -1,5 +1,5 @@
 <script setup>
-import { reactive, ref, computed, onMounted } from 'vue';
+import { reactive, ref, computed, onMounted, watch } from 'vue';
 import { useVuelidate } from '@vuelidate/core';
 import { required } from '@vuelidate/validators';
 import { useToast } from 'primevue/usetoast';
@@ -30,6 +30,7 @@ const form = reactive({
     expected_delivery: null,
     approved_budget: 0,
     tax_rate: 0,
+    tax_mode: 'on_total',
     discount: 0,
     requisition_reference: null,
     items: []
@@ -111,6 +112,11 @@ const requisitionModal = useAddEditModal({
 
 const breadcrumbHome = { icon: 'pi pi-home', to: '/' };
 const breadcrumbItems = ref([{ label: 'Procurement', to: '/procurement' }, { label: 'Purchase Orders', to: '/procurement/purchase-orders' }, { label: 'Create New' }]);
+
+// Computed financials for UI
+const poSubtotal = computed(() => calculateSubtotal());
+const poTax = computed(() => calculateTax());
+const poGrandTotal = computed(() => calculateGrandTotal());
 
 // Computed
 const rowClass = (data) => {
@@ -216,6 +222,43 @@ const calculateSubtotal = () => {
     }, 0);
 };
 
+const calculateTax = () => {
+    const subtotal = calculateSubtotal();
+    const discountAmount = ((Number(form.discount) || 0) / 100) * subtotal;
+    if (form.tax_mode === 'on_total') {
+        const rate = Number(form.tax_rate) || 0;
+        const taxableBase = Math.max(0, subtotal - discountAmount);
+        return Math.round(((taxableBase * rate) / 100) * 100) / 100;
+    }
+    // Per-line tax not currently exposed on PO line items; default to 0 when not on_total
+    return 0;
+};
+
+const calculateGrandTotal = () => {
+    const subtotal = calculateSubtotal();
+    const tax = calculateTax();
+    const discountAmount = ((Number(form.discount) || 0) / 100) * subtotal;
+    return Math.round((Math.max(0, subtotal - discountAmount) + tax) * 100) / 100;
+};
+
+// Watch tax and discount fields to update computed totals immediately
+watch(() => form.tax_rate, () => {
+    form.tax_amount = calculateTax();
+    form.grand_total = calculateGrandTotal();
+});
+watch(() => form.tax_mode, () => {
+    form.tax_amount = calculateTax();
+    form.grand_total = calculateGrandTotal();
+});
+watch(() => form.discount, () => {
+    form.tax_amount = calculateTax();
+    form.grand_total = calculateGrandTotal();
+});
+watch(() => form.items, () => {
+    form.tax_amount = calculateTax();
+    form.grand_total = calculateGrandTotal();
+}, { deep: true });
+
 const handleError = (error) => {
     toast.add({
         severity: 'error',
@@ -228,6 +271,10 @@ const handleError = (error) => {
 const saveDraft = async () => {
     try {
         isSubmitting.value = true;
+        // Ensure financial totals are up-to-date
+        form.tax_amount = calculateTax();
+        form.grand_total = calculateGrandTotal();
+
         await procurementService.savePurchaseOrderDraft({
             ...form,
             status: 'draft',
@@ -266,6 +313,10 @@ const submitOrder = async () => {
 
     try {
         isSubmitting.value = true;
+        // Ensure financials are computed before submit
+        form.tax_amount = calculateTax();
+        form.grand_total = calculateGrandTotal();
+
         const orderData = {
             ...form,
             status: 'submitted',
@@ -392,8 +443,11 @@ onMounted(() => {
                         </div>
 
                         <div class="field-group">
-                            <label for="taxRate" class="field-label">Tax Rate (%)</label>
-                            <InputNumber id="taxRate" v-model="form.tax_rate" suffix="%" :min="0" :max="30" class="modern-inputnumber" />
+                            <label for="taxRate" class="field-label">Tax Mode & Rate</label>
+                            <div class="flex gap-2 items-center">
+                                <Dropdown v-model="form.tax_mode" :options="[{ label: 'On final amount', value: 'on_total' }, { label: 'Per line items', value: 'line_items' }]" optionLabel="label" optionValue="value" class="w-44" @change="() => { form.tax_amount = calculateTax(); }" />
+                                <InputNumber id="taxRate" v-model="form.tax_rate" suffix="%" :min="0" :max="30" class="modern-inputnumber w-24" @input="() => { form.tax_amount = calculateTax(); }" />
+                            </div>
                         </div>
 
                         <div class="field-group">
