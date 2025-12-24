@@ -24,6 +24,8 @@ const form = ref({
     email: '',
     phone: '',
     business_name: '',
+    director_first_name: '',
+    director_last_name: '',
     contact_type: 'Customers',
     account_type: 'Individual',
     designation: 'Mr',
@@ -68,8 +70,11 @@ const customersDisplayName = computed(() => {
 const fetchCustomers = async () => {
     loading.value = true;
     try {
-        const response = await customerService.getCustomers({ limit: 1000 });
-        customers.value = response.results || response || [];
+        const response = await customerService.getCustomers({ 
+            contact_type: 'Customers',
+            limit: 1000 
+        });
+        customers.value = response.data?.results || response.data || [];
     } catch (error) {
         console.error('Error fetching customers:', error);
         showToast('error', 'Failed to load customers');
@@ -88,6 +93,8 @@ const openCreate = () => {
         email: '',
         phone: '',
         business_name: '',
+        director_first_name: '',
+        director_last_name: '',
         contact_type: 'Customers',
         account_type: 'Individual',
         designation: 'Mr',
@@ -105,11 +112,14 @@ const editCustomer = (customer) => {
         email: customer.user?.email || '',
         phone: customer.user?.phone || '',
         business_name: customer.business_name || '',
+        director_first_name: customer.director_first_name || '',
+        director_last_name: customer.director_last_name || '',
         contact_type: customer.contact_type || 'Customers',
         account_type: customer.account_type || 'Individual',
         designation: customer.designation || 'Mr',
         credit_limit: customer.credit_limit || 0
     };
+    // Open dialog after form is populated
     showDialog.value = true;
 };
 
@@ -121,6 +131,8 @@ const closeDialog = () => {
         email: '',
         phone: '',
         business_name: '',
+        director_first_name: '',
+        director_last_name: '',
         contact_type: 'Customers',
         account_type: 'Individual',
         designation: 'Mr',
@@ -129,26 +141,71 @@ const closeDialog = () => {
 };
 
 const saveCustomer = async () => {
-    if (!form.value.first_name || !form.value.last_name || !form.value.email) {
-        showToast('warn', 'Please fill in all required fields');
+    // Validate email (required for all)
+    if (!form.value.email) {
+        showToast('warn', 'Please enter Email (required field)');
         return;
+    }
+
+    // Validate account type specific fields
+    if (form.value.account_type === 'Business') {
+        if (!form.value.business_name || !form.value.business_name.trim()) {
+            showToast('warn', 'Please enter Business Name (required for Business accounts)');
+            return;
+        }
     }
 
     saving.value = true;
     try {
+        // Prepare data based on account type for backend expectations
+        const dataToSend = {
+            designation: (form.value.designation || '').toString().trim() || 'Mr',
+            contact_type: form.value.contact_type || 'Customers',
+            account_type: form.value.account_type || 'Individual',
+            tax_number: (form.value.tax_number || '').toString().trim() || null,
+            credit_limit: form.value.credit_limit ?? null,
+            phone: (form.value.phone || '').toString().trim(),
+            alternative_contact: (form.value.alternative_contact || '').toString().trim() || null,
+            landline: (form.value.landline || '').toString().trim() || null,
+            email: (form.value.email || '').toString().trim()
+        };
+
+        // Only send contact_id on create; it's immutable on updates
+        if (!isEditing.value) {
+            dataToSend.contact_id = form.value.contact_id || '';
+        }
+
+        if (form.value.account_type === 'Business') {
+            // Backend expects 'business' string, not 'business_name'
+            dataToSend.business = (form.value.business_name || '').toString().trim();
+            dataToSend.director_first_name = (form.value.director_first_name || '').toString().trim();
+            dataToSend.director_last_name = (form.value.director_last_name || '').toString().trim();
+            // Do not send first/last name for business
+        } else {
+            // Individual account
+            dataToSend.first_name = (form.value.first_name || '').toString().trim();
+            dataToSend.last_name = (form.value.last_name || '').toString().trim();
+        }
+
+        // Optional: customer_group id if present in the form in future
+        if (form.value.customer_group && typeof form.value.customer_group === 'number') {
+            dataToSend.customer_group = form.value.customer_group;
+        }
+
         if (isEditing.value) {
-            await customerService.updateCustomer(selectedCustomerId.value, form.value);
+            await customerService.updateCustomer(selectedCustomerId.value, dataToSend);
             showToast('success', 'Customer updated successfully');
         } else {
-            await customerService.createCustomer(form.value);
+            await customerService.createCustomer(dataToSend);
             showToast('success', 'Customer created successfully');
         }
 
         closeDialog();
         await fetchCustomers();
     } catch (error) {
-        console.error('Error saving customer:', error);
-        showToast('error', 'Failed to save customer');
+        const backendMsg = error?.response?.data?.message || error?.response?.data?.error_id || error.message;
+        console.error('Error saving customer:', error?.response?.data || error);
+        showToast('error', `Failed to save customer: ${backendMsg}`);
     } finally {
         saving.value = false;
     }
@@ -225,8 +282,17 @@ onMounted(fetchCustomers);
                                     <i class="pi pi-user text-blue-500 text-sm"></i>
                                 </div>
                                 <div>
-                                    <div class="font-medium">{{ slotProps.data.user?.first_name }} {{ slotProps.data.user?.last_name }}</div>
-                                    <div class="text-sm text-muted-color">{{ slotProps.data.business_name || 'N/A' }}</div>
+                                    <!-- Show business name for Business accounts, first/last name for Individual -->
+                                    <div class="font-medium" v-if="slotProps.data.account_type === 'Business'">
+                                        {{ slotProps.data.business_name || 'Business Account' }}
+                                    </div>
+                                    <div class="font-medium" v-else>
+                                        {{ slotProps.data.user?.first_name }} {{ slotProps.data.user?.last_name }}
+                                    </div>
+                                    <!-- Show director name or subsidiary info if available -->
+                                    <div class="text-sm text-muted-color" v-if="slotProps.data.account_type === 'Business' && slotProps.data.director_first_name">
+                                        Dir: {{ slotProps.data.director_first_name }} {{ slotProps.data.director_last_name }}
+                                    </div>
                                 </div>
                             </div>
                         </template>
@@ -271,8 +337,8 @@ onMounted(fetchCustomers);
                     <Column header="Actions" :exportable="false" style="min-width: 8rem">
                         <template #body="slotProps">
                             <div class="flex gap-2">
-                                <Button v-if="hasPermission('change_customergroup')" icon="pi pi-pencil" size="small" severity="secondary" @click="editCustomer(slotProps.data)" class="p-button-text" />
-                                <Button v-if="hasPermission('delete_customergroup')" icon="pi pi-trash" size="small" severity="danger" @click="deleteCustomer(slotProps.data.id)" class="p-button-text" />
+                                <Button v-if="hasPermission('change_customergroup')" icon="pi pi-pencil" size="small" severity="secondary" @click="editCustomer(slotProps.data)" class="p-button-text" v-tooltip.top="'Edit'" />
+                                <Button v-if="hasPermission('delete_customergroup')" icon="pi pi-trash" size="small" severity="danger" @click="deleteCustomer(slotProps.data.id)" class="p-button-text" v-tooltip.top="'Delete'" />
                             </div>
                         </template>
                     </Column>
@@ -283,20 +349,52 @@ onMounted(fetchCustomers);
         <!-- Create/Edit Customer Dialog -->
         <Dialog v-model:visible="showDialog" :header="isEditing ? 'Edit Customer' : 'Create Customer'" :modal="true" :style="{ width: '45rem' }" :closable="false">
             <div class="space-y-4">
+                <!-- Account Type Selection First -->
                 <div class="grid grid-cols-2 gap-4">
                     <div>
-                        <label class="block mb-2 font-medium">First Name *</label>
+                        <label class="block mb-2 font-medium">Contact Type</label>
+                        <Dropdown v-model="form.contact_type" :options="contactTypeOptions" optionLabel="label" optionValue="value" placeholder="Select contact type" class="w-full" />
+                    </div>
+                    <div>
+                        <label class="block mb-2 font-medium">Account Type</label>
+                        <Dropdown v-model="form.account_type" :options="accountTypeOptions" optionLabel="label" optionValue="value" placeholder="Select account type" class="w-full" />
+                    </div>
+                </div>
+
+                <!-- Individual Account Fields -->
+                <div v-if="form.account_type === 'Individual'" class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block mb-2 font-medium">First Name</label>
                         <InputText v-model="form.first_name" class="w-full" placeholder="Enter first name" />
                     </div>
                     <div>
-                        <label class="block mb-2 font-medium">Last Name *</label>
+                        <label class="block mb-2 font-medium">Last Name</label>
                         <InputText v-model="form.last_name" class="w-full" placeholder="Enter last name" />
                     </div>
                 </div>
 
+                <!-- Business Account Fields -->
+                <div v-if="form.account_type === 'Business'">
+                    <div class="mb-4">
+                        <label class="block mb-2 font-medium">Business Name <span class="text-red-500">*</span></label>
+                        <InputText v-model="form.business_name" class="w-full" placeholder="Enter business name" />
+                    </div>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="block mb-2 font-medium">Managing Director First Name</label>
+                            <InputText v-model="form.director_first_name" class="w-full" placeholder="Leave empty if not available" />
+                        </div>
+                        <div>
+                            <label class="block mb-2 font-medium">Managing Director Last Name</label>
+                            <InputText v-model="form.director_last_name" class="w-full" placeholder="Leave empty if not available" />
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Common Fields -->
                 <div class="grid grid-cols-2 gap-4">
                     <div>
-                        <label class="block mb-2 font-medium">Email *</label>
+                        <label class="block mb-2 font-medium">Email <span class="text-red-500">*</span></label>
                         <InputText v-model="form.email" type="email" class="w-full" placeholder="Enter email" />
                     </div>
                     <div>
@@ -307,29 +405,13 @@ onMounted(fetchCustomers);
 
                 <div class="grid grid-cols-2 gap-4">
                     <div>
-                        <label class="block mb-2 font-medium">Business Name</label>
-                        <InputText v-model="form.business_name" class="w-full" placeholder="Enter business name" />
-                    </div>
-                    <div>
                         <label class="block mb-2 font-medium">Designation</label>
-                        <Dropdown v-model="form.designation" :options="designationOptions" placeholder="Select designation" class="w-full" />
-                    </div>
-                </div>
-
-                <div class="grid grid-cols-2 gap-4">
-                    <div>
-                        <label class="block mb-2 font-medium">Contact Type</label>
-                        <Dropdown v-model="form.contact_type" :options="contactTypeOptions" placeholder="Select contact type" class="w-full" />
+                        <Dropdown v-model="form.designation" :options="designationOptions" optionLabel="label" optionValue="value" placeholder="Select designation" class="w-full" />
                     </div>
                     <div>
-                        <label class="block mb-2 font-medium">Account Type</label>
-                        <Dropdown v-model="form.account_type" :options="accountTypeOptions" placeholder="Select account type" class="w-full" />
+                        <label class="block mb-2 font-medium">Credit Limit</label>
+                        <InputText v-model="form.credit_limit" type="number" class="w-full" placeholder="0.00" step="0.01" />
                     </div>
-                </div>
-
-                <div>
-                    <label class="block mb-2 font-medium">Credit Limit</label>
-                    <InputText v-model="form.credit_limit" type="number" class="w-full" placeholder="0.00" step="0.01" />
                 </div>
             </div>
 

@@ -66,6 +66,30 @@ export const customerService = {
     },
 
     // ========================================
+    // CUSTOMER GROUPS MANAGEMENT
+    // ========================================
+
+    getCustomerGroups(params = {}) {
+        return axios.get(`${API_URL}/customer_groups/`, { params });
+    },
+
+    getCustomerGroup(id) {
+        return axios.get(`${API_URL}/customer_groups/${id}/`);
+    },
+
+    createCustomerGroup(data) {
+        return axios.post(`${API_URL}/customer_groups/`, data);
+    },
+
+    updateCustomerGroup(id, data) {
+        return axios.patch(`${API_URL}/customer_groups/${id}/`, data);
+    },
+
+    deleteCustomerGroup(id) {
+        return axios.delete(`${API_URL}/customer_groups/${id}/`);
+    },
+
+    // ========================================
     // LEADS MANAGEMENT
     // ========================================
 

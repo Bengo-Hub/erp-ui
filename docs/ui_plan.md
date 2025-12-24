@@ -1,9 +1,31 @@
 # BengoERP UI - Feature Plan & Implementation Status
 
-**Last Updated:** October 23, 2025  
+**Last Updated:** December 19, 2025  
 **Overall Completion:** 87%  
 **Production Ready:** Core Modules Yes, Full Reports Coverage In Progress  
-**Reports Module Status:** 25% (HRM Priority, Finance/Ecommerce planned)
+**Modern Stack Migration:** In Progress 🏗️
+
+---
+
+## MODERN STACK MIGRATION (NEW - Dec 2025)
+
+### Overview
+To align with the BengoBox ecosystem standards, the ERP UI is migrating from a legacy Vite/Vue setup to a modern Next.js 15+ architecture. This ensures better performance, SEO, and seamless integration with the central SSO hub.
+
+### Target Technology Stack
+- **Framework**: Next.js 15 (App Router) with React 19
+- **Language**: TypeScript
+- **Styling**: Tailwind CSS + Shadcn UI
+- **State Management**: Zustand (Global State) + TanStack Query (Server State)
+- **API Client**: Axios with interceptors for auth handling.
+- **PWA**: `@ducanh2912/next-pwa` for service worker and manifest management.
+- **Authentication**: SSO via `auth-ui` (OIDC/OAuth2)
+
+### Migration Strategy
+1. **SSO Integration**: Replace local auth with OIDC redirects to `auth-ui`.
+2. **Module-by-Module Refactor**: Migrate core modules (HRM, Finance, Ecommerce) to Next.js pages.
+3. **Shared Components**: Leverage Shadcn UI for consistent look and feel across all BengoBox services.
+4. **Mobile-First Design**: Ensure all ERP dashboards are fully responsive and PWA-ready.
 
 ---
 

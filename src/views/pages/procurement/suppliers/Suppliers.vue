@@ -1,215 +1,192 @@
 <script setup>
-import ReportHeader from '@/components/report/header.vue';
 import AddSupplier from '@/components/crm/AddSupplier.vue';
-import Spinner from '@/components/ui/Spinner.vue';
 import { useToast } from '@/composables/useToast';
 import { procurementService } from '@/services/procurement/procurementService';
+import { formatCurrency, formatDate } from '@/utils/formatters';
 import { computed, onMounted, ref } from 'vue';
 
 const { showToast } = useToast();
 
 // Reactive state
-const title = ref('Suppliers');
-const items = ref([{ text: `USER: ${JSON.parse(sessionStorage.user).username}` }, { text: 'Suppliers', active: true }]);
-const modaltitle = ref('Add Supplier');
-const editmode = ref(false);
-const first_name = ref('Jane');
-const last_name = ref('Doe');
-const phone_number = ref('07000002');
-const address = ref('');
-const email = ref('jane@doe.com');
-const gender = ref('Other');
-const account_type = ref('Individual');
-const customer_group = ref(null);
+const suppliers = ref([]);
+const loading = ref(false);
+const showDialog = ref(false);
+const isEditing = ref(false);
+const selectedSupplierId = ref(null);
+const editingContactData = ref({});
 const business = ref(JSON.parse(sessionStorage.getItem('business')));
-const contactId = ref(null);
-const taxNumber = ref('N/A');
-const alternativeContact = ref('07000003');
-const landline = ref('N/A');
-const creditLimit = ref(null);
-const designation = ref('Mr');
-const contact_type = ref('Suppliers');
-const orderData = ref([]);
-const currentPage = ref(1);
-const perPage = ref(10);
-const pageOptions = ref([1, 10, 25, 50, 100, 500, 1000, 1500, 2000]);
-const filter = ref(null);
-const filterOn = ref([]);
-const sortBy = ref('id');
-const sortDesc = ref(false);
-const isLoading = ref(false);
-const spinner_title = ref('Loading data...');
-const showme = ref(false);
-const myid = ref(null);
-const myindex = ref(null);
-const showAddSupplierModal = ref(false);
 
-// Fields for the table
-const fields = ref([
-    { key: 'contact_id', label: 'Contact ID', sortable: true },
-    { key: 'business.name', label: 'Business Name', sortable: true },
-    { key: 'name', label: 'Name', sortable: true },
-    { key: 'user.email', label: 'Email', sortable: true },
-    { key: 'tax_number', label: 'Tax Number', sortable: true },
-    { key: 'credit_limit', label: 'Credit Limit', sortable: true },
-    { key: 'account_balance', label: 'Account Balance', sortable: true },
-    { key: 'advance_balance', label: 'Advance Balance', sortable: true },
-    { key: 'added_on', label: 'Added On', sortable: true },
-    { key: 'customer_group.group_name', label: 'Customer Group', sortable: true },
-    { key: 'addresses', label: 'Address', sortable: true },
-    { key: 'user.phone', label: 'Mobile', sortable: true },
-    { key: 'action', label: 'Action' }
-]);
+// Filter data
+const filters = ref({ global: null });
+
+// Options for dropdowns
+const contactTypeOptions = [
+    { label: 'Suppliers', value: 'Suppliers' },
+    { label: 'Customers & Suppliers', value: 'Customers & Suppliers' }
+];
+
+const accountTypeOptions = [
+    { label: 'Individual', value: 'Individual' },
+    { label: 'Business', value: 'Business' }
+];
+
+const designationOptions = [
+    { label: 'Mr', value: 'Mr' },
+    { label: 'Mrs', value: 'Mrs' },
+    { label: 'Ms', value: 'Ms' },
+    { label: 'Dr', value: 'Dr' },
+    { label: 'Prof', value: 'Prof' },
+    { label: 'Other', value: 'Other' }
+];
 
 // Computed properties
-const rows = computed(() => orderData.value.length);
+const transformedSuppliers = computed(() => {
+    return suppliers.value.map(supplier => ({
+        ...supplier,
+        display_name: supplier.business_name || `${supplier.user?.first_name || ''} ${supplier.user?.last_name || ''}`.trim() || supplier.user?.email || 'Unknown',
+        phone: supplier.user?.phone || supplier.phone || 'N/A',
+        email: supplier.user?.email || 'N/A',
+        account_balance: supplier.accounts?.[0]?.account_balance || '0.00',
+        advance_balance: supplier.accounts?.[0]?.advance_balance || '0.00'
+    }));
+});
 
 // Methods
-const updatearray = async () => {
-    isLoading.value = true;
+const fetchSuppliers = async () => {
+    loading.value = true;
     try {
         const response = await procurementService.getSuppliers({
             branch_code: business.value.branch_code,
-            contact_type: 'Suppliers',
-            limit: perPage.value,
-            offset: (currentPage.value - 1) * perPage.value
+            contact_type: 'Suppliers'
         });
-        orderData.value = response.data.results;
+        suppliers.value = response.data.results || response.data || [];
     } catch (error) {
-        showToast('error', 'Error', error.message);
+        showToast('error', 'Error', 'Failed to load suppliers: ' + error.message);
     } finally {
-        isLoading.value = false;
+        loading.value = false;
     }
 };
 
-const printpdf = () => {
-    showme.value = true;
+const openCreate = () => {
+    isEditing.value = false;
+    editingContactData.value = {
+        contact_type: 'Suppliers',
+        account_type: 'Individual'
+    };
+    showDialog.value = true;
 };
 
-const getrpt = () => {
-    const d = new Date();
-    const filename = `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}-${d.getHours()}-${d.getMinutes()}-${d.getSeconds()}-${d.getMilliseconds()}`;
-    const data = orderData.value.map((row) => ({
-        'Contact Id': row.contact_id,
-        Name: `${row.user.first_name} ${row.user.last_name}`
-    }));
-    const csvRows = [];
-    const headers = Object.keys(data[0]);
-    csvRows.push(headers.join(','));
-    for (const row of data) {
-        const values = headers.map((header) => `"${('' + row[header]).replace(/"/g, '\\"')}"`);
-        csvRows.push(values.join(','));
-    }
-    const csvData = csvRows.join('\n');
-    const blob = new Blob([csvData], { type: 'text/csv' });
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.setAttribute('hidden', '');
-    a.setAttribute('href', url);
-    a.setAttribute('download', `${title.value}${filename}.csv`);
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
+const editSupplier = (supplier) => {
+    isEditing.value = true;
+    selectedSupplierId.value = supplier.id;
+    editingContactData.value = {
+        contact_id: supplier.contact_id,
+        designation: supplier.designation,
+        customer_group: supplier.customer_group,
+        first_name: supplier.user?.first_name || '',
+        last_name: supplier.user?.last_name || '',
+        landline: supplier.landline,
+        contact_type: supplier.contact_type,
+        account_type: supplier.account_type,
+        business_name: supplier.business_name,
+        tax_number: supplier.tax_number,
+        credit_limit: supplier.credit_limit,
+        phone: supplier.user?.phone || '',
+        alternative_contact: supplier.alternative_contact,
+        director_first_name: supplier.director_first_name,
+        director_last_name: supplier.director_last_name,
+        email: supplier.user?.email || ''
+    };
+    showDialog.value = true;
 };
 
-const onFiltered = (filteredItems) => {
-    currentPage.value = 1;
+const closeDialog = () => {
+    showDialog.value = false;
+    editingContactData.value = {};
+    isEditing.value = false;
+    selectedSupplierId.value = null;
 };
 
-const openModal = () => {
-    showAddSupplierModal.value = true;
+const onSupplierSaved = () => {
+    closeDialog();
+    fetchSuppliers();
 };
 
-const edit = (data) => {
-    modaltitle.value = 'Update Customer';
-    myid.value = data.item.id;
-    editmode.value = true;
-    myindex.value = data.index;
-    contactId.value = data.item.contact_id;
-    designation.value = data.item.designation;
-    customer_group.value = data.item.customer_group;
-    address.value = null;
-    first_name.value = data.item.user.first_name;
-    last_name.value = data.item.user.last_name;
-    landline.value = data.item.landline;
-    contact_type.value = data.item.contact_type;
-    account_type.value = data.item.account_type;
-    business.value = data.item.business.name;
-    taxNumber.value = data.item.tax_number;
-    creditLimit.value = data.item.credit_limit;
-    phone_number.value = data.item.user.phone;
-    alternativeContact.value = data.item.alternative_contact;
-};
-
-const deleterec = async (index, id) => {
-    const name = orderData.value[index].user.first_name;
+const deleteSupplier = async (supplier) => {
     try {
-        await procurementService.deleteSupplier(id);
-        orderData.value.splice(index, 1);
-        showToast('success', 'Deleted', `${name} has been deleted.`);
+        await procurementService.deleteSupplier(supplier.id);
+        showToast('success', 'Success', 'Supplier deleted successfully');
+        await fetchSuppliers();
     } catch (error) {
-        showToast('error', 'Error', error.message);
+        showToast('error', 'Error', 'Failed to delete supplier: ' + error.message);
     }
 };
 
 // Lifecycle hooks
 onMounted(() => {
-    updatearray();
+    fetchSuppliers();
 });
 </script>
 
 <template>
-    <div class="p-2">
-        <Spinner :isLoading="isLoading" :title="spinner_title" />
-        <div class="card shadow-md">
-            <div class="card-body">
-                <div class="flex justify-between mb-4">
-                    <Button label="Export to CSV" icon="pi pi-file-export" class="p-button-success" @click="getrpt" />
-                    <Button label="Print PDF" icon="pi pi-file-pdf" class="p-button-success" @click="printpdf" />
-                    <Button label="Add Supplier" icon="pi pi-plus" class="p-button-success" @click="openModal" />
-                </div>
-                <div class="card">
-                    <div class="card-body bg-gray-100">
-                        <div class="flex justify-between mb-4">
-                            <div class="flex items-center">
-                                <label class="mr-2">Show</label>
-                                <Dropdown v-model="perPage" :options="pageOptions" @change="updatearray" />
-                                <label class="ml-2">entries</label>
+    <div class="p-4">
+        <div class="card">
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-xl font-bold">Suppliers</h2>
+                <Button label="Add Supplier" icon="pi pi-plus" @click="openCreate" class="p-button-success" />
+            </div>
+
+            <DataTable :value="transformedSuppliers" :loading="loading" paginator :rows="10" :currentPage="0" responsiveLayout="scroll">
+                <Column field="display_name" header="Name" sortable>
+                    <template #body="slotProps">
+                        <div>
+                            <!-- Show business name for Business accounts, first/last name for Individual -->
+                            <div class="font-medium" v-if="slotProps.data.account_type === 'Business'">
+                                {{ slotProps.data.business_name || 'Business Supplier' }}
                             </div>
-                            <div class="flex items-center">
-                                <label class="mr-2">Search:</label>
-                                <InputText v-model="filter" placeholder="Search..." class="w-48" />
+                            <div class="font-medium" v-else>
+                                {{ slotProps.data.user?.first_name }} {{ slotProps.data.user?.last_name }}
+                            </div>
+                            <!-- Show director name or subsidiary info if available -->
+                            <div class="text-sm text-gray-500" v-if="slotProps.data.account_type === 'Business' && slotProps.data.director_first_name">
+                                Dir: {{ slotProps.data.director_first_name }} {{ slotProps.data.director_last_name }}
                             </div>
                         </div>
-                        <DataTable :value="orderData" :rows="perPage" :paginator="true" :currentPage="currentPage" :sortField="sortBy" :sortOrder="sortDesc ? -1 : 1" :filters="filter" @filter="onFiltered">
-                            <Column v-for="field in fields" :key="field.key" :field="field.key" :header="field.label" :sortable="field.sortable" />
-                            <Column header="Action">
-                                <template #body="data">
-                                    <Dropdown
-                                        :model="data"
-                                        :options="[
-                                            { label: 'Pay', command: () => $router.push({ name: 'update-profile', params: { email: data.item.user.email } }) },
-                                            { label: 'View', command: () => $router.push({ name: 'update-profile', params: { email: data.item.user.email } }) },
-                                            { label: 'Edit', command: () => edit(data) },
-                                            { label: 'Deactivate', command: () => deleterec(data.index, data.item.id) },
-                                            { separator: true },
-                                            { label: 'Ledger', command: () => $router.push({ name: 'update-profile', params: { email: data.item.user.email } }) },
-                                            { label: 'Sales', command: () => $router.push({ name: 'update-profile', params: { email: data.item.user.email } }) },
-                                            { label: 'Documents & Notes', command: () => $router.push({ name: 'update-profile', params: { email: data.item.user.email } }) }
-                                        ]"
-                                    />
-                                </template>
-                            </Column>
-                        </DataTable>
-                    </div>
-                </div>
-            </div>
+                    </template>
+                </Column>
+                <Column field="user.email" header="Email" sortable>
+                    <template #body="slotProps">
+                        {{ slotProps.data.user?.email || 'N/A' }}
+                    </template>
+                </Column>
+                <Column field="phone" header="Phone" sortable>
+                    <template #body="slotProps">
+                        {{ slotProps.data.user?.phone || 'N/A' }}
+                    </template>
+                </Column>
+                <Column field="account_balance" header="Account Balance">
+                    <template #body="slotProps">
+                        {{ slotProps.data.account_balance }}
+                    </template>
+                </Column>
+                <Column field="advance_balance" header="Advance Balance">
+                    <template #body="slotProps">
+                        {{ slotProps.data.advance_balance }}
+                    </template>
+                </Column>
+                <Column header="Actions" :exportable="false" style="min-width: 8rem">
+                    <template #body="slotProps">
+                        <div class="flex gap-2">
+                            <Button icon="pi pi-pencil" size="small" severity="secondary" @click="editSupplier(slotProps.data)" class="p-button-text" v-tooltip.top="'Edit'" />
+                            <Button icon="pi pi-trash" size="small" severity="danger" @click="deleteSupplier(slotProps.data)" class="p-button-text" v-tooltip.top="'Delete'" />
+                        </div>
+                    </template>
+                </Column>
+            </DataTable>
         </div>
-        <Dialog v-model:visible="showme" header="Print PDF" :style="{ width: '40vw' }" :modal="true">
-            <ReportHeader :title="title" :orderData="orderData" :headers="headers" :uniqueCars="uniqueCars" v-if="showme" />
-        </Dialog>
-        <Dialog v-model:visible="showAddSupplierModal" :header="modaltitle" :style="{ width: '50vw' }" :modal="true">
-            <AddSupplier :id="myid" :myindex="myindex" :editmode="editmode" :modaltitle="modaltitle" />
+
+        <Dialog v-model:visible="showDialog" :header="isEditing ? 'Edit Supplier' : 'Add Supplier'" :modal="true" :style="{ width: '50vw' }" @hide="closeDialog">
+            <AddSupplier :editmode="isEditing" :prefilledData="editingContactData" :id="selectedSupplierId" @saved="onSupplierSaved" />
         </Dialog>
     </div>
 </template>

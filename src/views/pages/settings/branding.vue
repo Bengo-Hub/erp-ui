@@ -48,9 +48,9 @@ const fetchBrandingSettings = async () => {
                 secondary_color: data.secondary_color || '#10B981',
                 text_color: data.text_color || '#1F2937',
                 background_color: data.background_color || '#FFFFFF',
-                logo_url: data.logo_url || '',
+                logo_url: data.logo_full_url || data.logo_url || '',
                 favicon_url: data.favicon_url || '',
-                watermark_url: data.watermark_url || '',
+                watermark_url: data.watermark_full_url || data.watermark_url || '',
                 app_name: data.app_name || 'BengoERP',
                 tagline: data.tagline || '',
                 footer_text: data.footer_text || '',
@@ -59,8 +59,8 @@ const fetchBrandingSettings = async () => {
                 menu_mode: data.menu_mode || 'static'
             });
             
-            if (data.logo_url) logoPreview.value = data.logo_url;
-            if (data.watermark_url) watermarkPreview.value = data.watermark_url;
+            if (data.logo_full_url || data.logo_url) logoPreview.value = data.logo_full_url || data.logo_url;
+            if (data.watermark_full_url || data.watermark_url) watermarkPreview.value = data.watermark_full_url || data.watermark_url;
         }
         
         // Also load from business if available

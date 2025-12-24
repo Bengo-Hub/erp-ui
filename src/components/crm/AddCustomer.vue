@@ -36,9 +36,19 @@ const spinner_title = ref('Saving...');
 const showAdvanced = ref(false);
 const addresses = ref([]);
 const customer_groups = ref([]);
-const contact_types = ref(['Customers', 'Customers & Suppliers']);
-const account_types = ref(['Individual', 'Business']);
-const genders = ref(['Male', 'Female', 'Other']);
+const contact_types = ref([
+    { label: 'Customers', value: 'Customers' },
+    { label: 'Customers & Suppliers', value: 'Customers & Suppliers' }
+]);
+const account_types = ref([
+    { label: 'Individual', value: 'Individual' },
+    { label: 'Business', value: 'Business' }
+]);
+const genders = ref([
+    { label: 'Male', value: 'Male' },
+    { label: 'Female', value: 'Female' },
+    { label: 'Other', value: 'Other' }
+]);
 
 onMounted(async () => {
     await updateArray();
@@ -105,23 +115,40 @@ const validateForm = () => {
     return true;
 };
 
-const prepareData = () => ({
-    contact_id: contactId.value || '',
-    designation: designation.value || '',
-    customer_group: customer_group.value?.id || null,
-    address: address.value?.id || null,
-    first_name: first_name.value || business.value,
-    last_name: last_name.value || business.value,
-    email: email.value,
-    landline: landline.value || '',
-    contact_type: contact_type.value,
-    account_type: account_type.value,
-    business: business.value || '',
-    tax_number: taxNumber.value || '',
-    credit_limit: creditLimit.value || '',
-    phone: phone_number.value,
-    alternative_contact: alternativeContact.value || ''
-});
+const prepareData = () => {
+    const data = {
+        designation: designation.value || 'Mr',
+        customer_group: customer_group.value || null,
+        address: address.value?.id || null,
+        email: email.value,
+        landline: landline.value || '',
+        contact_type: contact_type.value || 'Customers',
+        account_type: account_type.value || 'Individual',
+        tax_number: taxNumber.value || '',
+        credit_limit: creditLimit.value || '',
+        phone: phone_number.value,
+        alternative_contact: alternativeContact.value || ''
+    };
+
+    // Only send contact_id on create; it's immutable on updates
+    if (!props.prefilledData) {
+        data.contact_id = contactId.value || '';
+    }
+
+    if (account_type.value === 'Business') {
+        // For Business: send business name and director details
+        data.business = business.value || '';
+        data.director_first_name = first_name.value || '';
+        data.director_last_name = last_name.value || '';
+        // Do not send first_name/last_name for business
+    } else {
+        // For Individual: send first and last name
+        data.first_name = first_name.value || '';
+        data.last_name = last_name.value || '';
+    }
+
+    return data;
+};
 
 const clearValues = () => {
     first_name.value = '';
@@ -142,11 +169,11 @@ const toggleAdvanced = () => {
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 <div>
                     <label for="contact_type">Contact Type</label>
-                    <Dropdown v-model="contact_type" :options="contact_types" placeholder="Select Contact Type" />
+                    <Dropdown v-model="contact_type" :options="contact_types" optionLabel="label" optionValue="value" placeholder="Select Contact Type" />
                 </div>
                 <div v-if="contact_type === 'Customers'">
                     <label for="customer_group">Customer Group</label>
-                    <Dropdown v-model="customer_group" :options="customer_groups" optionLabel="group_name" placeholder="Select Customer Group" />
+                    <Dropdown v-model="customer_group" :options="customer_groups" optionLabel="group_name" optionValue="id" placeholder="Select Customer Group" />
                 </div>
                 <div>
                     <label for="contactId">Contact ID</label>
@@ -190,7 +217,7 @@ const toggleAdvanced = () => {
                 </div>
                 <div>
                     <label for="account_type">Account Type</label>
-                    <Dropdown v-model="account_type" :options="['Individual', 'Business']" placeholder="Select Account Type" />
+                    <Dropdown v-model="account_type" :options="account_types" optionLabel="label" optionValue="value" placeholder="Select Account Type" />
                 </div>
                 <div class="mt-4">
                     <Button label="Additional Information" class="p-button-text" @click="toggleAdvanced" />
