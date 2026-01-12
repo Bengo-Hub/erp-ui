@@ -3,7 +3,7 @@ import { ref, reactive, computed, onMounted } from 'vue';
 import { useToast } from 'primevue/usetoast';
 import moment from 'moment';
 import Receipt from '@/views/pages/ecommerce/pos/printReceipt.vue';
-import { POSService } from '@/services/ecommerce/posService';
+import { posService } from '@/services/ecommerce/posService';
 const toast = useToast();
 
 // Props

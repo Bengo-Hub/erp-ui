@@ -12,50 +12,30 @@ const activeTab = ref(0);
 const settingsVisible = ref(false);
 const apiEndpoint = ref(import.meta.env.VITE_API_BASE_URL || '');
 
-// Category data
-const mainCategories = ref([]);
+// Category data - unified categories with tree hierarchy
 const categories = ref([]);
-const subcategories = ref([]);
 const brands = ref([]);
 const models = ref([]);
 
 // Fetch all data on mount
 onMounted(async () => {
-    await Promise.all([fetchMainCategories(), fetchCategories(), fetchSubcategories(), fetchBrands(), fetchModels()]);
+    await Promise.all([fetchCategories(), fetchBrands(), fetchModels()]);
 });
 
 // Fetch functions
-const fetchMainCategories = async () => {
-    try {
-        const response = await ecommerceService.getMainCategories();
-        mainCategories.value = response.data.results;
-    } catch (error) {
-        showError('Failed to fetch main categories');
-    }
-};
-
 const fetchCategories = async () => {
     try {
         const response = await ecommerceService.getCategories();
-        categories.value = response.data.results;
+        categories.value = response.data?.results || response.data || [];
     } catch (error) {
         showError('Failed to fetch categories');
-    }
-};
-
-const fetchSubcategories = async () => {
-    try {
-        const response = await ecommerceService.getSubcategories();
-        subcategories.value = response.data.results;
-    } catch (error) {
-        showError('Failed to fetch subcategories');
     }
 };
 
 const fetchBrands = async () => {
     try {
         const response = await ecommerceService.getBrands();
-        brands.value = response.data.results;
+        brands.value = response.data?.results || response.data || [];
     } catch (error) {
         showError('Failed to fetch brands');
     }
@@ -64,28 +44,13 @@ const fetchBrands = async () => {
 const fetchModels = async () => {
     try {
         const response = await ecommerceService.getModels();
-        models.value = response.data.results;
+        models.value = response.data?.results || response.data || [];
     } catch (error) {
         showError('Failed to fetch models');
     }
 };
 
-// Save handlers
-const handleSaveMainCategory = async (categoryData) => {
-    try {
-        if (categoryData.id) {
-            await ecommerceService.updateMainCategory(categoryData.id, categoryData);
-            toast.add({ severity: 'success', summary: 'Success', detail: 'Main category updated', life: 3000 });
-        } else {
-            await ecommerceService.createMainCategory(categoryData);
-            toast.add({ severity: 'success', summary: 'Success', detail: 'Main category created', life: 3000 });
-        }
-        await fetchMainCategories();
-    } catch (error) {
-        showError('Failed to save main category');
-    }
-};
-
+// Category save handler - unified for all category levels
 const handleSaveCategory = async (categoryData) => {
     try {
         if (categoryData.id) {
@@ -101,18 +66,14 @@ const handleSaveCategory = async (categoryData) => {
     }
 };
 
-const handleSaveSubcategory = async (categoryData) => {
+// Category delete handler
+const handleDeleteCategory = async (id) => {
     try {
-        if (categoryData.id) {
-            await ecommerceService.updateSubcategory(categoryData.id, categoryData);
-            toast.add({ severity: 'success', summary: 'Success', detail: 'Subcategory updated', life: 3000 });
-        } else {
-            await ecommerceService.createSubcategory(categoryData);
-            toast.add({ severity: 'success', summary: 'Success', detail: 'Subcategory created', life: 3000 });
-        }
-        await fetchSubcategories();
+        await ecommerceService.deleteCategory(id);
+        toast.add({ severity: 'success', summary: 'Success', detail: 'Category deleted', life: 3000 });
+        await fetchCategories();
     } catch (error) {
-        showError('Failed to save subcategory');
+        showError('Failed to delete category');
     }
 };
 
@@ -146,37 +107,6 @@ const handleSaveModel = async (modelData) => {
     }
 };
 
-// Delete handlers
-const handleDeleteMainCategory = async (id) => {
-    try {
-        await ecommerceService.deleteMainCategory(id);
-        toast.add({ severity: 'success', summary: 'Success', detail: 'Main category deleted', life: 3000 });
-        await fetchMainCategories();
-    } catch (error) {
-        showError('Failed to delete main category');
-    }
-};
-
-const handleDeleteCategory = async (id) => {
-    try {
-        await ecommerceService.deleteCategory(id);
-        toast.add({ severity: 'success', summary: 'Success', detail: 'Category deleted', life: 3000 });
-        await fetchCategories();
-    } catch (error) {
-        showError('Failed to delete category');
-    }
-};
-
-const handleDeleteSubcategory = async (id) => {
-    try {
-        await ecommerceService.deleteSubcategory(id);
-        toast.add({ severity: 'success', summary: 'Success', detail: 'Subcategory deleted', life: 3000 });
-        await fetchSubcategories();
-    } catch (error) {
-        showError('Failed to delete subcategory');
-    }
-};
-
 const handleDeleteBrand = async (id) => {
     try {
         await ecommerceService.deleteBrand(id);
@@ -203,7 +133,6 @@ const toggleSettings = () => {
 };
 
 const saveSettings = () => {
-    // Save settings logic here
     settingsVisible.value = false;
     toast.add({ severity: 'success', summary: 'Success', detail: 'Settings saved', life: 3000 });
 };
@@ -225,14 +154,19 @@ const showError = (message) => {
             </template>
             <template #content>
                 <TabView v-model:activeIndex="activeTab">
-                    <TabPanel header="Main Categories">
-                        <CategoryManager type="main" :items="mainCategories" @save="handleSaveMainCategory" @delete="handleDeleteMainCategory" />
-                    </TabPanel>
                     <TabPanel header="Categories">
-                        <CategoryManager type="category" :items="categories" @save="handleSaveCategory" @delete="handleDeleteCategory" />
-                    </TabPanel>
-                    <TabPanel header="Subcategories">
-                        <CategoryManager type="subcategory" :items="subcategories" @save="handleSaveSubcategory" @delete="handleDeleteSubcategory" />
+                        <div class="mb-4 p-3 bg-blue-50 rounded-lg">
+                            <div class="flex items-center gap-2 text-blue-700">
+                                <i class="pi pi-info-circle"></i>
+                                <span class="text-sm">Categories support unlimited nesting. Create root categories or assign a parent to create subcategories.</span>
+                            </div>
+                        </div>
+                        <CategoryManager
+                            type="category"
+                            :items="categories"
+                            @save="handleSaveCategory"
+                            @delete="handleDeleteCategory"
+                        />
                     </TabPanel>
                     <TabPanel header="Brands">
                         <SimpleItemManager title="Brand" :items="brands" @save="handleSaveBrand" @delete="handleDeleteBrand" />

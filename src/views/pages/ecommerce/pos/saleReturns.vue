@@ -1,6 +1,6 @@
 <script setup>
 import AcceptReturn from '@/components/pos/AcceptSaleReturn.vue';
-import { POSService } from '@/services/ecommerce/posService';
+import { posService } from '@/services/ecommerce/posService';
 import Receipt from '@/views/pages/ecommerce/pos/printReceipt.vue';
 import moment from 'moment';
 import { useConfirm } from 'primevue/useconfirm';

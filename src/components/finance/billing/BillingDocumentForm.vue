@@ -1,7 +1,6 @@
 <script setup>
 import { useToast } from '@/composables/useToast';
 import { financeService } from '@/services/finance/financeService';
-import { coreService } from '@/services/shared/coreService';
 import { getBusinessDetails } from '@/utils/businessBranding';
 import { formatCurrency } from '@/utils/formatters';
 import { computed, onMounted, reactive, ref, watch } from 'vue';
@@ -79,7 +78,7 @@ const loadBusinessDetails = () => {
 // Load tax rates for billing items
 const loadTaxRates = async () => {
     try {
-        const response = await coreService.getTaxRates({ page_size: 100 });
+        const response = await financeService.getTaxRates({ page_size: 100 });
         const data = response.data || response;
         const list = data?.results || data || [];
         taxRates.value = Array.isArray(list) ? list.map(t => ({ id: t.id, name: t.tax_name || t.name, rate: parseFloat(t.percentage || t.tax_rate || 0) })) : [];

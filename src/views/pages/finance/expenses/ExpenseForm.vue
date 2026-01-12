@@ -9,7 +9,8 @@ import { useAddEditModal } from '@/composables/useAddEditModal';
 import { PAYMENT_METHODS } from '@/constants/finance/paymentMethods';
 import { userManagementService } from '@/services/auth/userManagementService';
 import { crmService } from '@/services/crm/crmService';
-import { expenseCategoryService, expenseService, paymentAccountService } from '@/services/finance/expenseService';
+import { expenseCategoryService, expenseService } from '@/services/finance/expenseService';
+import { financeService } from '@/services/finance/financeService';
 import { procurementService } from '@/services/procurement/procurementService';
 import { formatCurrency } from '@/utils/formatters';
 import { useVuelidate } from '@vuelidate/core';
@@ -81,6 +82,13 @@ const showAccountDialog = ref(false);
 const accountEditMode = ref(false);
 const accountEditData = ref(null);
 
+// Category Dialog state
+const showCategoryDialog = ref(false);
+const categoryForm = ref({
+    name: '',
+    description: ''
+});
+
 const openAddContact = () => {
     contactEditMode.value = false;
     contactEditId.value = null;
@@ -119,6 +127,38 @@ const handleSupplierSaved = async (saved) => {
     showContactDialog.value = false;
     if (saved && saved.id) {
         form.expense_for_contact = saved;
+    }
+};
+
+const openAddCategory = () => {
+    categoryForm.value = { name: '', description: '' };
+    showCategoryDialog.value = true;
+};
+
+const closeCategoryDialog = () => {
+    showCategoryDialog.value = false;
+    categoryForm.value = { name: '', description: '' };
+};
+
+const saveCategory = async () => {
+    if (!categoryForm.value.name.trim()) {
+        showToast('error', 'Error', 'Category name is required');
+        return;
+    }
+
+    try {
+        const response = await expenseCategoryService.create(categoryForm.value);
+        const newCategory = response.data || response;
+        showToast('success', 'Success', 'Expense category created successfully!');
+        closeCategoryDialog();
+        await loadCategories();
+        // Auto-select the newly created category
+        if (newCategory && newCategory.id) {
+            form.category = categories.value.find(c => c.id === newCategory.id) || newCategory;
+        }
+    } catch (error) {
+        console.error('Error saving expense category:', error);
+        showToast('error', 'Error', 'Failed to save expense category');
     }
 };
 
@@ -167,7 +207,7 @@ const loadContacts = async () => {
 
 const loadPaymentAccounts = async () => {
     try {
-        const response = await paymentAccountService.getAll({ page_size: 100 });
+        const response = await financeService.getPaymentAccounts({ page_size: 100 });
         const data = response.data || response;
         paymentAccounts.value = data?.results || data || [];
         console.log('✅ Payment accounts loaded:', paymentAccounts.value.length);
@@ -418,14 +458,23 @@ const loadExpense = async (id) => {
                         <!-- Category -->
                         <div>
                             <label class="block text-sm font-medium mb-2">Category *</label>
-                            <Dropdown 
-                                v-model="form.category"
-                                :options="categories"
-                                optionLabel="name"
-                                placeholder="Select category"
-                                class="w-full"
-                                :class="{ 'p-invalid': v$.category.$error }"
-                            />
+                            <div class="flex gap-2">
+                                <Dropdown
+                                    v-model="form.category"
+                                    :options="categories"
+                                    optionLabel="name"
+                                    placeholder="Select category"
+                                    class="flex-1"
+                                    :class="{ 'p-invalid': v$.category.$error }"
+                                    filter
+                                />
+                                <Button
+                                    icon="pi pi-plus"
+                                    class="p-button-success"
+                                    @click="openAddCategory"
+                                    v-tooltip.top="'Add new category'"
+                                />
+                            </div>
                             <small v-if="v$.category.$error" class="p-error">Category is required</small>
                         </div>
 
@@ -465,16 +514,16 @@ const loadExpense = async (id) => {
                         <div>
                             <label class="block text-sm font-medium mb-2">Payment Account</label>
                             <div class="flex gap-2">
-                                <Dropdown 
+                                <Dropdown
                                     v-model="form.payment_account"
                                     :options="paymentAccounts"
-                                    optionLabel="account_name"
+                                    optionLabel="name"
                                     placeholder="Select account"
                                     class="w-full"
                                 >
                                     <template #option="slotProps">
                                         <div class="flex items-center justify-between w-full group">
-                                            <span>{{ slotProps.option.account_name }}</span>
+                                            <span>{{ slotProps.option.name }}</span>
                                             <Button 
                                                 v-if="slotProps.option"
                                                 type="button"
@@ -689,20 +738,71 @@ const loadExpense = async (id) => {
     </Dialog>
 
     <!-- Account Dialog -->
-    <Dialog 
+    <Dialog
         v-model:visible="showAccountDialog"
         :header="accountEditMode ? 'Edit Account' : 'Create New Account'"
         modal
         :style="{ width: '100%', maxWidth: '600px' }"
         class="p-4"
     >
-        <AccountForm 
+        <AccountForm
             v-if="showAccountDialog"
             :account="accountEditData"
             :isEdit="accountEditMode"
             @saved="handleAccountSaved"
             @cancel="showAccountDialog = false"
         />
+    </Dialog>
+
+    <!-- Expense Category Dialog -->
+    <Dialog
+        v-model:visible="showCategoryDialog"
+        header="Add New Expense Category"
+        modal
+        :style="{ width: '100%', maxWidth: '500px' }"
+        :closable="true"
+        @hide="closeCategoryDialog"
+    >
+        <div class="space-y-4">
+            <div class="field">
+                <label for="categoryName" class="block text-sm font-medium text-gray-700 mb-2">
+                    Category Name <span class="text-red-500">*</span>
+                </label>
+                <InputText
+                    id="categoryName"
+                    v-model="categoryForm.name"
+                    placeholder="Enter category name"
+                    class="w-full"
+                    :class="{ 'p-invalid': !categoryForm.name.trim() && categoryForm.name !== '' }"
+                />
+            </div>
+
+            <div class="field">
+                <label for="categoryDescription" class="block text-sm font-medium text-gray-700 mb-2">
+                    Description
+                </label>
+                <Textarea
+                    id="categoryDescription"
+                    v-model="categoryForm.description"
+                    placeholder="Enter category description (optional)"
+                    class="w-full"
+                    rows="3"
+                />
+            </div>
+        </div>
+
+        <template #footer>
+            <div class="flex justify-end gap-2">
+                <Button label="Cancel" class="p-button-text" @click="closeCategoryDialog" />
+                <Button
+                    label="Save Category"
+                    icon="pi pi-check"
+                    class="p-button-success"
+                    @click="saveCategory"
+                    :disabled="!categoryForm.name.trim()"
+                />
+            </div>
+        </template>
     </Dialog>
 </template>
 

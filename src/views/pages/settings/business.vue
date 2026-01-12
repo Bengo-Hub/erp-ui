@@ -2,7 +2,7 @@
 import { useToast } from '@/composables/useToast';
 import { systemConfigService } from '@/services/shared/systemConfigService';
 import { useConfirm } from 'primevue/useconfirm';
-import { onMounted, ref } from 'vue';
+import { computed, onMounted, ref } from 'vue';
 
 const { showToast } = useToast();
 const confirm = useConfirm();
@@ -40,44 +40,33 @@ const editingBranch = ref(false);
 const savingBranch = ref(false);
 const loadingBranches = ref(false);
 
-// Tax rates
-const taxRates = ref([]);
-const tax = ref({});
-const taxDialog = ref(false);
-const editingTax = ref(false);
-const savingTax = ref(false);
-const loadingTaxRates = ref(false);
-
-// Prefix settings
+// Prefix settings with all document types matching backend
 const prefixSettings = ref({
+    id: null,
     purchase: 'P',
-    purchase_order: 'PO',
+    purchase_order: 'LSO',
     purchase_return: 'PRT',
     purchase_requisition: 'PRQ',
-    stock_transfer: 'ST',
+    stock_transfer: 'STR',
+    stock_adjustment: 'ADJ',
     sale_return: 'SR',
+    invoice: 'INV',
+    quotation: 'QOT',
+    credit_note: 'CRN',
+    debit_note: 'DBN',
+    delivery_note: 'POD',
     expense: 'EP',
-    business_branch: 'BR'
+    business_location: 'BL'
 });
 const originalPrefixSettings = ref({});
 const savingPrefixSettings = ref(false);
+const loadingPrefixSettings = ref(false);
+
+// Document Sequences
+const documentSequences = ref([]);
+const loadingSequences = ref(false);
 
 // Dropdown options
-const months = [
-    { name: 'January', code: 'Jan' },
-    { name: 'February', code: 'Feb' },
-    { name: 'March', code: 'March' },
-    { name: 'April', code: 'Apr' },
-    { name: 'May', code: 'May' },
-    { name: 'June', code: 'Jun' },
-    { name: 'July', code: 'Jul' },
-    { name: 'August', code: 'Aug' },
-    { name: 'September', code: 'Sept' },
-    { name: 'October', code: 'Oct' },
-    { name: 'November', code: 'Nov' },
-    { name: 'December', code: 'Dec' }
-];
-
 const accountingMethods = [
     { name: 'First In First Out (FIFO)', code: 'FIFO' },
     { name: 'Last In Last Out (LIFO)', code: 'LIFO' },
@@ -85,18 +74,58 @@ const accountingMethods = [
 ];
 
 const industryOptions = [
-    'Retail', 'Manufacturing', 'Services', 'Technology', 'Healthcare', 
+    'Retail', 'Manufacturing', 'Services', 'Technology', 'Healthcare',
     'Education', 'Construction', 'Agriculture', 'Transportation', 'Other'
 ];
 
-// Logo handling removed - now in Look & Feel settings
+// Grouped prefix settings for display
+const prefixGroups = computed(() => [
+    {
+        title: 'Finance Documents',
+        icon: 'pi pi-file',
+        fields: [
+            { key: 'invoice', label: 'Invoice', placeholder: 'INV' },
+            { key: 'quotation', label: 'Quotation', placeholder: 'QOT' },
+            { key: 'credit_note', label: 'Credit Note', placeholder: 'CRN' },
+            { key: 'debit_note', label: 'Debit Note', placeholder: 'DBN' },
+            { key: 'delivery_note', label: 'Delivery Note', placeholder: 'POD' },
+            { key: 'expense', label: 'Expense', placeholder: 'EP' }
+        ]
+    },
+    {
+        title: 'Procurement',
+        icon: 'pi pi-shopping-cart',
+        fields: [
+            { key: 'purchase', label: 'Purchase', placeholder: 'P' },
+            { key: 'purchase_order', label: 'Purchase Order', placeholder: 'LSO' },
+            { key: 'purchase_return', label: 'Purchase Return', placeholder: 'PRT' },
+            { key: 'purchase_requisition', label: 'Purchase Requisition', placeholder: 'PRQ' }
+        ]
+    },
+    {
+        title: 'Inventory',
+        icon: 'pi pi-box',
+        fields: [
+            { key: 'stock_transfer', label: 'Stock Transfer', placeholder: 'STR' },
+            { key: 'stock_adjustment', label: 'Stock Adjustment', placeholder: 'ADJ' },
+            { key: 'sale_return', label: 'Sale Return', placeholder: 'SR' }
+        ]
+    },
+    {
+        title: 'Other',
+        icon: 'pi pi-cog',
+        fields: [
+            { key: 'business_location', label: 'Business Location', placeholder: 'BL' }
+        ]
+    }
+]);
 
 // Load data on component mount
 onMounted(async () => {
     await loadBusinessDetails();
     await loadBranches();
-    await loadTaxRates();
     await loadPrefixSettings();
+    await loadDocumentSequences();
 });
 
 // Business Details Methods
@@ -106,7 +135,6 @@ async function loadBusinessDetails() {
         if (response.success) {
             let data = response.data.results;
             if (data) {
-                console.log(data);
                 businessDetails.value = data[0];
                 branches.value = businessDetails.value.branches;
             }
@@ -116,8 +144,6 @@ async function loadBusinessDetails() {
             if (businessDetails.value.start_date) {
                 businessDetails.value.start_date = new Date(businessDetails.value.start_date);
             }
-
-            // Logo loading removed - now in Look & Feel settings
         }
     } catch (error) {
         showToast('error', 'Error', 'Failed to load business details', 3000);
@@ -145,8 +171,6 @@ async function saveBusinessDetails() {
 function resetBusinessDetails() {
     businessDetails.value = JSON.parse(JSON.stringify(originalBusinessDetails.value));
 }
-
-// Logo and watermark functions removed - now in Look & Feel settings
 
 // Branch Methods
 function openBranchDialog() {
@@ -229,144 +253,71 @@ async function deleteBranch(id) {
     }
 }
 
-// Tax Methods
-async function loadTaxRates() {
-    loadingTaxRates.value = true;
-    try {
-        const response = await systemConfigService.getTaxSettings();
-
-        if (response.success) {
-            taxRates.value = response.data;
-        }
-    } catch (error) {
-        showToast('error', 'Error', 'Failed to load tax rates', 3000);
-        console.error('Error loading tax rates:', error);
-    } finally {
-        loadingTaxRates.value = false;
-    }
-}
-
-function getTaxSeverity(percentage) {
-    if (percentage < 5) return 'success';
-    if (percentage < 15) return 'info';
-    if (percentage < 25) return 'warning';
-    return 'danger';
-}
-
-function openTaxDialog() {
-    tax.value = {
-        tax_name: '',
-        tax_number: '',
-        percentage: 0
-    };
-    editingTax.value = false;
-    taxDialog.value = true;
-}
-
-function editTax(data) {
-    tax.value = { ...data };
-    editingTax.value = true;
-    taxDialog.value = true;
-}
-
-function closeTaxDialog() {
-    taxDialog.value = false;
-}
-
-async function saveTax() {
-    savingTax.value = true;
-    try {
-        let response;
-
-        if (editingTax.value) {
-            response = await systemConfigService.updateTaxSetting(tax.value.id, tax.value);
-        } else {
-            response = await systemConfigService.createTaxSetting(tax.value);
-        }
-
-        if (response.success) {
-            showToast('success', 'Success', `Tax rate ${editingTax.value ? 'updated' : 'created'} successfully`, 3000);
-
-            taxDialog.value = false;
-            await loadTaxRates();
-        }
-    } catch (error) {
-        showToast('error', 'Error', `Failed to ${editingTax.value ? 'update' : 'create'} tax rate`, 3000);
-        console.error(`Error ${editingTax.value ? 'updating' : 'creating'} tax rate:`, error);
-    } finally {
-        savingTax.value = false;
-    }
-}
-
-function confirmDeleteTax(data) {
-    confirm.require({
-        message: `Are you sure you want to delete the tax rate "${data.tax_name}"?`,
-        header: 'Confirmation',
-        icon: 'pi pi-exclamation-triangle',
-        accept: () => {
-            deleteTax(data.id);
-        }
-    });
-}
-
-async function deleteTax(id) {
-    try {
-        const response = await systemConfigService.deleteTaxSetting(id);
-
-        if (response.success) {
-            showToast('success', 'Success', 'Tax rate deleted successfully', 3000);
-
-            loadTaxRates();
-        }
-    } catch (error) {
-        showToast('error', 'Error', 'Failed to delete tax rate', 3000);
-        console.error('Error deleting tax rate:', error);
-    }
-}
-
 // Prefix Settings Methods
 async function loadPrefixSettings() {
+    loadingPrefixSettings.value = true;
     try {
         const response = await systemConfigService.getPrefixSettings();
 
-        if (response.success) {
-            prefixSettings.value = response.data;
+        if (response.success && response.data) {
+            prefixSettings.value = { ...prefixSettings.value, ...response.data };
+            originalPrefixSettings.value = JSON.parse(JSON.stringify(prefixSettings.value));
         }
     } catch (error) {
         showToast('error', 'Error', 'Failed to load prefix settings', 3000);
         console.error('Error loading prefix settings:', error);
+    } finally {
+        loadingPrefixSettings.value = false;
     }
 }
 
 async function savePrefixSettings() {
+    savingPrefixSettings.value = true;
     try {
-        const response = await systemConfigService.createPrefixSettings(prefixSettings.value);
+        let response;
+        if (prefixSettings.value.id) {
+            response = await systemConfigService.updatePrefixSettings(prefixSettings.value.id, prefixSettings.value);
+        } else {
+            response = await systemConfigService.createPrefixSettings(prefixSettings.value);
+        }
 
         if (response.success) {
             showToast('success', 'Success', 'Prefix settings updated successfully', 3000);
+            originalPrefixSettings.value = JSON.parse(JSON.stringify(prefixSettings.value));
+            if (response.data?.id) {
+                prefixSettings.value.id = response.data.id;
+            }
+            // Refresh sequences to show updated prefixes
+            await loadDocumentSequences();
         }
     } catch (error) {
         showToast('error', 'Error', 'Failed to update prefix settings', 3000);
         console.error('Error updating prefix settings:', error);
+    } finally {
+        savingPrefixSettings.value = false;
     }
 }
 
 function resetPrefixSettings() {
-    // Reset to default prefix settings
-    prefixSettings.value = {
-        sales_prefix: 'SL',
-        purchase_prefix: 'PO',
-        invoice_prefix: 'INV',
-        receipt_prefix: 'RCP',
-        quotation_prefix: 'QT',
-        employee_prefix: 'EMP',
-        customer_prefix: 'CUST',
-        supplier_prefix: 'SUPP',
-        product_prefix: 'PRD'
-    };
+    prefixSettings.value = JSON.parse(JSON.stringify(originalPrefixSettings.value));
 }
 
-// Removed: Branding settings now centralized in Look & Feel page
+// Document Sequences Methods
+async function loadDocumentSequences() {
+    loadingSequences.value = true;
+    try {
+        const response = await systemConfigService.getDocumentSequencesSummary();
+
+        if (response.success) {
+            documentSequences.value = response.data || [];
+        }
+    } catch (error) {
+        console.error('Error loading document sequences:', error);
+        // Not showing error toast as this is optional data
+    } finally {
+        loadingSequences.value = false;
+    }
+}
 
 async function loadBranches() {
     try {
@@ -382,364 +333,313 @@ async function loadBranches() {
         loadingBranches.value = false;
     }
 }
+
+// Helper for sequence badge color
+function getSequenceSeverity(docType) {
+    const severityMap = {
+        invoice: 'info',
+        quotation: 'secondary',
+        credit_note: 'warning',
+        debit_note: 'danger',
+        delivery_note: 'success',
+        expense: 'contrast',
+        purchase_order: 'info',
+        purchase: 'secondary',
+        stock_transfer: 'warning',
+        stock_adjustment: 'danger',
+        sale_return: 'success',
+        purchase_return: 'contrast'
+    };
+    return severityMap[docType] || 'secondary';
+}
 </script>
 
 <template>
-    <div class="grid">
-        <div class="col-12">
-            <div class="card p-4">
-                <Breadcrumb :home="home" :model="items" />
-                <Divider />
-                <div class="flex align-items-center justify-content-between mb-4">
-                    <div>
-                        <h5 class="text-2xl font-bold">Business Settings</h5>
-                        <p class="text-gray-600">Configure your business details and preferences</p>
-                    </div>
+    <div class="business-settings-page">
+        <div class="card">
+            <Breadcrumb :home="home" :model="items" class="mb-4" />
+
+            <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
+                <div>
+                    <h1 class="text-2xl md:text-3xl font-bold text-surface-900 dark:text-surface-0 m-0">Business Settings</h1>
+                    <p class="text-surface-600 dark:text-surface-400 mt-1 m-0">Configure your business details and document settings</p>
                 </div>
+            </div>
 
-                <TabView class="custom-tabview">
-                    <!-- Basic Information Tab -->
-                    <TabPanel header="Business Details">
+            <TabView class="custom-tabview">
+                <!-- Basic Information Tab -->
+                <TabPanel header="Business Details">
+                    <div class="p-4">
                         <form @submit.prevent="saveBusinessDetails" class="p-fluid">
-                            <div class="grid">
-                                <div class="col-12 md:col-6">
-                                    <div class="field">
-                                        <label for="name" class="font-medium">Business Name <span class="text-red-500">*</span></label>
-                                        <InputText id="name" v-model="businessDetails.name" class="w-full" placeholder="Enter business name" required />
-                                        <small class="text-gray-500">Your official business name</small>
-                                    </div>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div class="field">
+                                    <label for="name" class="font-semibold text-surface-700 dark:text-surface-200 mb-2 block">Business Name <span class="text-red-500">*</span></label>
+                                    <InputText id="name" v-model="businessDetails.name" class="w-full" placeholder="Enter business name" required />
+                                    <small class="text-surface-500">Your official business name</small>
                                 </div>
 
-                                <div class="col-12 md:col-6">
-                                    <div class="field">
-                                        <label for="start_date" class="font-medium">Start Date <span class="text-red-500">*</span></label>
-                                        <Calendar id="start_date" v-model="businessDetails.start_date" dateFormat="yy-mm-dd" class="w-full" placeholder="Select start date" :showIcon="true" required />
-                                        <small class="text-gray-500">When your business was established</small>
-                                    </div>
+                                <div class="field">
+                                    <label for="start_date" class="font-semibold text-surface-700 dark:text-surface-200 mb-2 block">Start Date <span class="text-red-500">*</span></label>
+                                    <DatePicker id="start_date" v-model="businessDetails.start_date" dateFormat="yy-mm-dd" class="w-full" placeholder="Select start date" showIcon required />
+                                    <small class="text-surface-500">When your business was established</small>
                                 </div>
 
-                                <!-- Currency, Timezone, Financial Year moved to Currency & Time settings -->
-
-                                <div class="col-12 md:col-6">
-                                    <div class="field">
-                                        <label for="stock_accounting_method" class="font-medium">Inventory Method <span class="text-red-500">*</span></label>
-                                        <Dropdown id="stock_accounting_method" v-model="businessDetails.stock_accounting_method" :options="accountingMethods" optionLabel="name" optionValue="code" placeholder="Select Method" class="w-full" required />
-                                        <small class="text-gray-500">How inventory costs are calculated</small>
-                                    </div>
+                                <div class="field">
+                                    <label for="stock_accounting_method" class="font-semibold text-surface-700 dark:text-surface-200 mb-2 block">Inventory Method <span class="text-red-500">*</span></label>
+                                    <Select id="stock_accounting_method" v-model="businessDetails.stock_accounting_method" :options="accountingMethods" optionLabel="name" optionValue="code" placeholder="Select Method" class="w-full" required />
+                                    <small class="text-surface-500">How inventory costs are calculated</small>
                                 </div>
 
-                                <div class="col-12 md:col-6">
-                                    <div class="field">
-                                        <label for="industry" class="font-medium">Industry</label>
-                                        <Dropdown id="industry" v-model="businessDetails.industry" :options="industryOptions" placeholder="Select Industry" class="w-full" editable />
-                                        <small class="text-gray-500">Your business industry/sector</small>
-                                    </div>
+                                <div class="field">
+                                    <label for="industry" class="font-semibold text-surface-700 dark:text-surface-200 mb-2 block">Industry</label>
+                                    <Select id="industry" v-model="businessDetails.industry" :options="industryOptions" placeholder="Select Industry" class="w-full" editable />
+                                    <small class="text-surface-500">Your business industry/sector</small>
                                 </div>
 
-                                <div class="col-12 md:col-6">
-                                    <div class="field">
-                                        <label for="tax_id" class="font-medium">Tax ID / PIN</label>
-                                        <InputText id="tax_id" v-model="businessDetails.tax_id" class="w-full" placeholder="Enter Tax ID" />
-                                        <small class="text-gray-500">Business tax identification number</small>
-                                    </div>
+                                <div class="field">
+                                    <label for="tax_id" class="font-semibold text-surface-700 dark:text-surface-200 mb-2 block">Tax ID / PIN</label>
+                                    <InputText id="tax_id" v-model="businessDetails.tax_id" class="w-full" placeholder="Enter Tax ID" />
+                                    <small class="text-surface-500">Business tax identification number</small>
                                 </div>
 
-                                <div class="col-12 md:col-6">
-                                    <div class="field">
-                                        <label for="registration_number" class="font-medium">Registration Number</label>
-                                        <InputText id="registration_number" v-model="businessDetails.registration_number" class="w-full" placeholder="Enter Registration No." />
-                                        <small class="text-gray-500">Business registration number</small>
-                                    </div>
+                                <div class="field">
+                                    <label for="registration_number" class="font-semibold text-surface-700 dark:text-surface-200 mb-2 block">Registration Number</label>
+                                    <InputText id="registration_number" v-model="businessDetails.registration_number" class="w-full" placeholder="Enter Registration No." />
+                                    <small class="text-surface-500">Business registration number</small>
                                 </div>
 
-                                <div class="col-12 md:col-6">
-                                    <div class="field">
-                                        <label for="phone" class="font-medium">Business Phone</label>
-                                        <InputText id="phone" v-model="businessDetails.phone" class="w-full" placeholder="Enter phone number" />
-                                    </div>
+                                <div class="field">
+                                    <label for="phone" class="font-semibold text-surface-700 dark:text-surface-200 mb-2 block">Business Phone</label>
+                                    <InputText id="phone" v-model="businessDetails.phone" class="w-full" placeholder="Enter phone number" />
                                 </div>
 
-                                <div class="col-12 md:col-6">
-                                    <div class="field">
-                                        <label for="email" class="font-medium">Business Email</label>
-                                        <InputText id="email" v-model="businessDetails.email" type="email" class="w-full" placeholder="Enter email address" />
-                                    </div>
+                                <div class="field">
+                                    <label for="email" class="font-semibold text-surface-700 dark:text-surface-200 mb-2 block">Business Email</label>
+                                    <InputText id="email" v-model="businessDetails.email" type="email" class="w-full" placeholder="Enter email address" />
                                 </div>
 
-                                <div class="col-12 md:col-6">
-                                    <div class="field">
-                                        <label for="website" class="font-medium">Website</label>
-                                        <InputText id="website" v-model="businessDetails.website" class="w-full" placeholder="https://example.com" />
-                                    </div>
+                                <div class="field">
+                                    <label for="website" class="font-semibold text-surface-700 dark:text-surface-200 mb-2 block">Website</label>
+                                    <InputText id="website" v-model="businessDetails.website" class="w-full" placeholder="https://example.com" />
                                 </div>
 
-                                <div class="col-12 md:col-6">
-                                    <div class="field">
-                                        <label for="address" class="font-medium">Physical Address</label>
-                                        <Textarea id="address" v-model="businessDetails.address" rows="2" class="w-full" placeholder="Enter business address" />
-                                    </div>
+                                <div class="field">
+                                    <label for="transaction_edit_days" class="font-semibold text-surface-700 dark:text-surface-200 mb-2 block">Edit Window (Days) <span class="text-red-500">*</span></label>
+                                    <InputNumber id="transaction_edit_days" v-model="businessDetails.transaction_edit_days" class="w-full" :min="1" :max="365" required />
+                                    <small class="text-surface-500">How long transactions can be edited</small>
                                 </div>
 
-                                <div class="col-12 md:col-6">
-                                    <div class="field">
-                                        <label for="transaction_edit_days" class="font-medium">Edit Window (Days) <span class="text-red-500">*</span></label>
-                                        <InputNumber id="transaction_edit_days" v-model="businessDetails.transaction_edit_days" class="w-full" :min="1" :max="365" required />
-                                        <small class="text-gray-500">How long transactions can be edited</small>
-                                    </div>
+                                <div class="field">
+                                    <label for="default_profit_margin" class="font-semibold text-surface-700 dark:text-surface-200 mb-2 block">Default Margin (%) <span class="text-red-500">*</span></label>
+                                    <InputNumber id="default_profit_margin" v-model="businessDetails.default_profit_margin" class="w-full" mode="decimal" :min="0" :max="100" :minFractionDigits="2" :maxFractionDigits="2" suffix="%" required />
+                                    <small class="text-surface-500">Default profit margin for products</small>
                                 </div>
 
-                                <div class="col-12 md:col-6">
-                                    <div class="field">
-                                        <label for="default_profit_margin" class="font-medium">Default Margin (%) <span class="text-red-500">*</span></label>
-                                        <InputNumber id="default_profit_margin" v-model="businessDetails.default_profit_margin" class="w-full" mode="decimal" :min="0" :max="100" :minFractionDigits="2" :maxFractionDigits="2" suffix="%" required />
-                                        <small class="text-gray-500">Default profit margin for products</small>
-                                    </div>
+                                <div class="field md:col-span-2">
+                                    <label for="address" class="font-semibold text-surface-700 dark:text-surface-200 mb-2 block">Physical Address</label>
+                                    <Textarea id="address" v-model="businessDetails.address" rows="3" class="w-full" placeholder="Enter business address" />
                                 </div>
+                            </div>
 
-                                <!-- Logo uploads moved to Look & Feel settings -->
-
-                                <div class="col-12">
-                                    <div class="flex justify-content-end gap-3 mt-4">
-                                        <Button type="button" label="Cancel" severity="secondary" outlined @click="resetBusinessDetails" />
-                                        <Button type="submit" label="Save Changes" icon="pi pi-check" :loading="savingBusinessDetails" />
-                                    </div>
-                                </div>
+                            <div class="flex flex-col sm:flex-row justify-end gap-3 mt-6 pt-4 border-t border-surface-200 dark:border-surface-700">
+                                <Button type="button" label="Cancel" severity="secondary" outlined @click="resetBusinessDetails" class="w-full sm:w-auto" />
+                                <Button type="submit" label="Save Changes" icon="pi pi-check" :loading="savingBusinessDetails" class="w-full sm:w-auto" />
                             </div>
                         </form>
-                    </TabPanel>
+                    </div>
+                </TabPanel>
 
-                    <!-- Branches Tab -->
-                    <TabPanel header="Business Branches">
-                        <div class="card">
-                            <div class="flex flex-column md:flex-row justify-content-between align-items-start md:align-items-center mb-5 gap-3">
-                                <div>
-                                    <h6 class="text-xl font-semibold m-0">Manage Branches</h6>
-                                    <p class="text-gray-600 m-0">Add and manage your business branches</p>
-                                </div>
-                                <Button label="Add Branch" icon="pi pi-plus" @click="openBranchDialog()" class="w-full md:w-auto" />
+                <!-- Branches Tab -->
+                <TabPanel header="Branches">
+                    <div class="p-4">
+                        <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
+                            <div>
+                                <h2 class="text-xl font-semibold m-0 text-surface-900 dark:text-surface-0">Manage Branches</h2>
+                                <p class="text-surface-600 dark:text-surface-400 m-0 mt-1">Add and manage your business branches</p>
                             </div>
+                            <Button label="Add Branch" icon="pi pi-plus" @click="openBranchDialog()" class="w-full md:w-auto" />
+                        </div>
 
-                            <DataTable
-                                :value="branches"
-                                :paginator="true"
-                                :rows="10"
-                                :rowsPerPageOptions="[5, 10, 25, 50]"
-                                paginatorTemplate="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink CurrentPageReport RowsPerPageDropdown"
-                                currentPageReportTemplate="Showing {first} to {last} of {totalRecords} branches"
-                                responsiveLayout="scroll"
-                                stripedRows
-                                class="p-datatable-sm"
-                                :loading="loadingBranches"
-                            >
-                                <Column field="name" header="Branch Name" :sortable="true">
-                                    <template #body="{ data }">
-                                        <span class="font-medium">{{ data.name }}</span>
-                                        <Tag v-if="data.is_main_branch" value="Main" severity="info" class="ml-2" />
-                                    </template>
-                                </Column>
-                                <Column field="branch_code" header="Branch Code" :sortable="true"></Column>
-                                <Column field="location.city" header="City" :sortable="true"></Column>
-                                <Column field="location.contact_number" header="Contact"></Column>
-                                <Column field="location.email" header="Email"></Column>
-                                <Column header="Actions" :exportable="false" style="min-width: 8rem">
-                                    <template #body="{ data }">
-                                        <div class="flex gap-2">
-                                            <Button icon="pi pi-pencil" outlined rounded severity="secondary" @click="editBranch(data)" v-tooltip.top="'Edit'" />
-                                            <Button icon="pi pi-trash" outlined rounded severity="danger" @click="confirmDeleteBranch(data)" v-tooltip.top="'Delete'" />
-                                        </div>
-                                    </template>
-                                </Column>
-                                <template #empty>
-                                    <div class="text-center py-4">
-                                        <i class="pi pi-building text-4xl text-gray-400 mb-2"></i>
-                                        <p class="text-gray-600">No branches found</p>
-                                        <Button label="Add First Branch" icon="pi pi-plus" @click="openBranchDialog()" class="mt-3" />
+                        <DataTable
+                            :value="branches"
+                            :paginator="true"
+                            :rows="10"
+                            :rowsPerPageOptions="[5, 10, 25, 50]"
+                            paginatorTemplate="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink CurrentPageReport RowsPerPageDropdown"
+                            currentPageReportTemplate="Showing {first} to {last} of {totalRecords} branches"
+                            responsiveLayout="scroll"
+                            stripedRows
+                            class="p-datatable-sm"
+                            :loading="loadingBranches"
+                        >
+                            <Column field="name" header="Branch Name" :sortable="true">
+                                <template #body="{ data }">
+                                    <span class="font-medium">{{ data.name }}</span>
+                                    <Tag v-if="data.is_main_branch" value="Main" severity="info" class="ml-2" />
+                                </template>
+                            </Column>
+                            <Column field="branch_code" header="Branch Code" :sortable="true"></Column>
+                            <Column field="location.city" header="City" :sortable="true"></Column>
+                            <Column field="location.contact_number" header="Contact" class="hidden md:table-cell"></Column>
+                            <Column field="location.email" header="Email" class="hidden lg:table-cell"></Column>
+                            <Column header="Actions" :exportable="false" style="min-width: 8rem">
+                                <template #body="{ data }">
+                                    <div class="flex gap-2">
+                                        <Button icon="pi pi-pencil" outlined rounded severity="secondary" @click="editBranch(data)" v-tooltip.top="'Edit'" />
+                                        <Button icon="pi pi-trash" outlined rounded severity="danger" @click="confirmDeleteBranch(data)" v-tooltip.top="'Delete'" />
                                     </div>
                                 </template>
-                            </DataTable>
-                        </div>
-                    </TabPanel>
+                            </Column>
+                            <template #empty>
+                                <div class="text-center py-8">
+                                    <i class="pi pi-building text-4xl text-surface-400 mb-3 block"></i>
+                                    <p class="text-surface-600 dark:text-surface-400 mb-4">No branches found</p>
+                                    <Button label="Add First Branch" icon="pi pi-plus" @click="openBranchDialog()" />
+                                </div>
+                            </template>
+                        </DataTable>
+                    </div>
+                </TabPanel>
 
-                    <!-- Tax Settings Tab -->
-                    <TabPanel header="Tax Settings">
-                        <div class="card">
-                            <div class="flex flex-column md:flex-row justify-content-between align-items-start md:align-items-center mb-5 gap-3">
+                <!-- Document Sequences Tab -->
+                <TabPanel header="Document Sequences">
+                    <div class="p-4">
+                        <div class="mb-6">
+                            <h2 class="text-xl font-semibold m-0 text-surface-900 dark:text-surface-0">Document Number Sequences</h2>
+                            <p class="text-surface-600 dark:text-surface-400 m-0 mt-1">View current document number sequences and next numbers</p>
+                        </div>
+
+                        <div v-if="loadingSequences" class="flex justify-center py-8">
+                            <ProgressSpinner style="width: 50px; height: 50px" strokeWidth="4" />
+                        </div>
+
+                        <div v-else-if="documentSequences.length === 0" class="text-center py-8">
+                            <i class="pi pi-list text-4xl text-surface-400 mb-3 block"></i>
+                            <p class="text-surface-600 dark:text-surface-400">No document sequences found. Sequences are created automatically when documents are generated.</p>
+                        </div>
+
+                        <div v-else class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                            <div v-for="seq in documentSequences" :key="seq.document_type"
+                                 class="bg-surface-50 dark:bg-surface-800 rounded-lg p-4 border border-surface-200 dark:border-surface-700 hover:shadow-md transition-shadow">
+                                <div class="flex items-center justify-between mb-3">
+                                    <span class="font-semibold text-surface-700 dark:text-surface-200">{{ seq.document_type_display }}</span>
+                                    <Tag :value="seq.prefix" :severity="getSequenceSeverity(seq.document_type)" />
+                                </div>
+                                <div class="space-y-2">
+                                    <div class="flex justify-between text-sm">
+                                        <span class="text-surface-500">Current:</span>
+                                        <span class="font-mono font-medium text-surface-700 dark:text-surface-200">{{ seq.current_sequence.toString().padStart(4, '0') }}</span>
+                                    </div>
+                                    <div class="flex justify-between text-sm">
+                                        <span class="text-surface-500">Next Number:</span>
+                                        <span class="font-mono font-medium text-primary">{{ seq.next_number }}</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="mt-6 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
+                            <div class="flex gap-3">
+                                <i class="pi pi-info-circle text-blue-500 mt-0.5"></i>
                                 <div>
-                                    <h6 class="text-xl font-semibold m-0">Tax Rates</h6>
-                                    <p class="text-gray-600 m-0">Configure your tax rates and VAT settings</p>
+                                    <p class="text-sm text-blue-700 dark:text-blue-300 m-0">
+                                        Document numbers follow the format: <strong class="font-mono">PREFIX0000-DDMMYY</strong>
+                                    </p>
+                                    <p class="text-sm text-blue-600 dark:text-blue-400 m-0 mt-1">
+                                        Example: INV0033-150126 (Invoice #33 on Jan 15, 2026)
+                                    </p>
                                 </div>
-                                <Button label="Add Tax Rate" icon="pi pi-plus" @click="openTaxDialog()" class="w-full md:w-auto" />
                             </div>
-
-                            <DataTable
-                                :value="taxRates"
-                                :paginator="true"
-                                :rows="10"
-                                paginatorTemplate="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink CurrentPageReport RowsPerPageDropdown"
-                                currentPageReportTemplate="Showing {first} to {last} of {totalRecords} tax rates"
-                                responsiveLayout="scroll"
-                                stripedRows
-                                class="p-datatable-sm"
-                                :loading="loadingTaxRates"
-                            >
-                                <Column field="tax_name" header="Name" :sortable="true"></Column>
-                                <Column field="tax_number" header="Tax Number" :sortable="true"></Column>
-                                <Column field="percentage" header="Rate" :sortable="true">
-                                    <template #body="{ data }">
-                                        <Tag :value="data.percentage + '%'" :severity="getTaxSeverity(data.percentage)" />
-                                    </template>
-                                </Column>
-                                <Column header="Actions" :exportable="false" style="min-width: 8rem">
-                                    <template #body="{ data }">
-                                        <div class="flex gap-2">
-                                            <Button icon="pi pi-pencil" outlined rounded severity="secondary" @click="editTax(data)" v-tooltip.top="'Edit'" />
-                                            <Button icon="pi pi-trash" outlined rounded severity="danger" @click="confirmDeleteTax(data)" v-tooltip.top="'Delete'" />
-                                        </div>
-                                    </template>
-                                </Column>
-                                <template #empty>
-                                    <div class="text-center py-4">
-                                        <i class="pi pi-percentage text-4xl text-gray-400 mb-2"></i>
-                                        <p class="text-gray-600">No tax rates configured</p>
-                                        <Button label="Add First Tax Rate" icon="pi pi-plus" @click="openTaxDialog()" class="mt-3" />
-                                    </div>
-                                </template>
-                            </DataTable>
                         </div>
-                    </TabPanel>
+                    </div>
+                </TabPanel>
 
-                    <!-- Prefix Settings Tab -->
-                    <TabPanel header="Prefix Settings">
-                        <div class="card">
-                            <div class="mb-5">
-                                <h6 class="text-xl font-semibold m-0">Document Prefixes</h6>
-                                <p class="text-gray-600 m-0">Configure prefixes for your business documents</p>
-                            </div>
+                <!-- Prefix Settings Tab -->
+                <TabPanel header="Prefix Settings">
+                    <div class="p-4">
+                        <div class="mb-6">
+                            <h2 class="text-xl font-semibold m-0 text-surface-900 dark:text-surface-0">Document Prefixes</h2>
+                            <p class="text-surface-600 dark:text-surface-400 m-0 mt-1">Configure prefixes for your business documents (max 5 characters)</p>
+                        </div>
 
-                            <form @submit.prevent="savePrefixSettings" class="p-fluid">
-                                <div class="grid">
-                                    <div class="col-12 md:col-6 lg:col-4 xl:col-3">
-                                        <div class="field">
-                                            <label for="purchase" class="font-medium">Purchase</label>
-                                            <InputText id="purchase" v-model="prefixSettings.purchase" maxlength="5" class="w-full" placeholder="P" />
-                                        </div>
-                                    </div>
-                                    <div class="col-12 md:col-6 lg:col-4 xl:col-3">
-                                        <div class="field">
-                                            <label for="purchase_order" class="font-medium">Purchase Order</label>
-                                            <InputText id="purchase_order" v-model="prefixSettings.purchase_order" maxlength="5" class="w-full" placeholder="PO" />
-                                        </div>
-                                    </div>
-                                    <div class="col-12 md:col-6 lg:col-4 xl:col-3">
-                                        <div class="field">
-                                            <label for="purchase_return" class="font-medium">Purchase Return</label>
-                                            <InputText id="purchase_return" v-model="prefixSettings.purchase_return" maxlength="5" class="w-full" placeholder="PR" />
-                                        </div>
-                                    </div>
-                                    <div class="col-12 md:col-6 lg:col-4 xl:col-3">
-                                        <div class="field">
-                                            <label for="purchase_requisition" class="font-medium">Purchase Requisition</label>
-                                            <InputText id="purchase_requisition" v-model="prefixSettings.purchase_requisition" maxlength="5" class="w-full" placeholder="PRQ" />
-                                        </div>
-                                    </div>
-                                    <div class="col-12 md:col-6 lg:col-4 xl:col-3">
-                                        <div class="field">
-                                            <label for="stock_transfer" class="font-medium">Stock Transfer</label>
-                                            <InputText id="stock_transfer" v-model="prefixSettings.stock_transfer" maxlength="5" class="w-full" placeholder="ST" />
-                                        </div>
-                                    </div>
-                                    <div class="col-12 md:col-6 lg:col-4 xl:col-3">
-                                        <div class="field">
-                                            <label for="sale_return" class="font-medium">Sale Return</label>
-                                            <InputText id="sale_return" v-model="prefixSettings.sale_return" maxlength="5" class="w-full" placeholder="SR" />
-                                        </div>
-                                    </div>
-                                    <div class="col-12 md:col-6 lg:col-4 xl:col-3">
-                                        <div class="field">
-                                            <label for="expense" class="font-medium">Expense</label>
-                                            <InputText id="expense" v-model="prefixSettings.expense" maxlength="5" class="w-full" placeholder="EXP" />
-                                        </div>
-                                    </div>
-                                    <div class="col-12 md:col-6 lg:col-4 xl:col-3">
-                                        <div class="field">
-                                            <label for="business_branch" class="font-medium">Branch</label>
-                                            <InputText id="business_branch" v-model="prefixSettings.business_branch" maxlength="5" class="w-full" placeholder="BR" />
-                                        </div>
-                                    </div>
-                                    <div class="col-12">
-                                        <div class="flex justify-content-end gap-3 mt-4">
-                                            <Button type="button" label="Reset Defaults" severity="secondary" outlined @click="resetPrefixSettings" />
-                                            <Button type="submit" label="Save Prefixes" icon="pi pi-check" :loading="savingPrefixSettings" />
-                                        </div>
+                        <div v-if="loadingPrefixSettings" class="flex justify-center py-8">
+                            <ProgressSpinner style="width: 50px; height: 50px" strokeWidth="4" />
+                        </div>
+
+                        <form v-else @submit.prevent="savePrefixSettings" class="p-fluid">
+                            <div v-for="group in prefixGroups" :key="group.title" class="mb-8">
+                                <div class="flex items-center gap-2 mb-4">
+                                    <i :class="[group.icon, 'text-lg text-primary']"></i>
+                                    <h3 class="text-lg font-semibold m-0 text-surface-800 dark:text-surface-100">{{ group.title }}</h3>
+                                </div>
+
+                                <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
+                                    <div v-for="field in group.fields" :key="field.key" class="field">
+                                        <label :for="field.key" class="text-sm font-medium text-surface-600 dark:text-surface-300 mb-2 block">{{ field.label }}</label>
+                                        <InputText
+                                            :id="field.key"
+                                            v-model="prefixSettings[field.key]"
+                                            maxlength="5"
+                                            class="w-full font-mono text-center uppercase"
+                                            :placeholder="field.placeholder"
+                                            @input="prefixSettings[field.key] = ($event.target.value || '').toUpperCase()"
+                                        />
                                     </div>
                                 </div>
-                            </form>
-                        </div>
-                    </TabPanel>
+                            </div>
 
-                    <!-- Branding removed - now in Look & Feel settings -->
-                </TabView>
-            </div>
+                            <div class="flex flex-col sm:flex-row justify-end gap-3 mt-6 pt-4 border-t border-surface-200 dark:border-surface-700">
+                                <Button type="button" label="Reset" severity="secondary" outlined @click="resetPrefixSettings" class="w-full sm:w-auto" />
+                                <Button type="submit" label="Save Prefixes" icon="pi pi-check" :loading="savingPrefixSettings" class="w-full sm:w-auto" />
+                            </div>
+                        </form>
+                    </div>
+                </TabPanel>
+            </TabView>
         </div>
 
         <!-- Business Branch Dialog -->
-        <Dialog v-model:visible="branchDialog" :style="{ width: '450px' }" :header="editingBranch ? 'Edit Branch' : 'Add Branch'" :modal="true" class="p-fluid" :draggable="false">
-            <div class="field">
-                <label for="branch_name" class="font-medium">Branch Name <span class="text-red-500">*</span></label>
-                <InputText id="branch_name" v-model="branch.name" class="w-full" placeholder="e.g. Main Branch" required autofocus />
-            </div>
-            <div class="field">
-                <label for="branch_code" class="font-medium">Branch Code <span class="text-red-500">*</span></label>
-                <InputText id="branch_code" v-model="branch.branch_code" class="w-full" placeholder="e.g. MB00100" required />
-            </div>
-            <div class="field">
-                <label for="city" class="font-medium">City <span class="text-red-500">*</span></label>
-                <InputText id="city" v-model="branch.location.city" class="w-full" placeholder="e.g. Nairobi" required />
-            </div>
-            <div class="field">
-                <label for="zip_code" class="font-medium">Zip Code</label>
-                <InputText id="zip_code" v-model="branch.location.zip_code" class="w-full" placeholder="e.g. 00100" />
-            </div>
-            <div class="field">
-                <label for="address" class="font-medium">Address</label>
-                <Textarea id="address" v-model="branch.location.address" rows="3" class="w-full" placeholder="Full physical address" />
-            </div>
-            <div class="field">
-                <label for="contact_number" class="font-medium">Contact Number</label>
-                <InputText id="contact_number" v-model="branch.location.contact_number" class="w-full" placeholder="e.g. +254712345678" />
-            </div>
-            <div class="field">
-                <label for="email" class="font-medium">Email</label>
-                <InputText id="email" v-model="branch.location.email" class="w-full" placeholder="e.g. info@branch.com" />
-            </div>
-            <div class="field-checkbox mt-4">
-                <Checkbox id="is_main_branch" v-model="branch.is_main_branch" binary :disabled="branch.is_main_branch && editingBranch" />
-                <label for="is_main_branch" class="font-medium">Set as Main Branch</label>
-                <small v-if="branch.is_main_branch && editingBranch" class="block text-gray-500 ml-5">This is already your main branch</small>
-            </div>
-            <template #footer>
-                <Button label="Cancel" icon="pi pi-times" severity="secondary" outlined @click="closeBranchDialog" />
-                <Button label="Save" icon="pi pi-check" @click="saveBranch" :loading="savingBranch" />
-            </template>
-        </Dialog>
-
-        <!-- Tax Rate Dialog -->
-        <Dialog v-model:visible="taxDialog" :style="{ width: '450px' }" :header="editingTax ? 'Edit Tax Rate' : 'Add Tax Rate'" :modal="true" class="p-fluid" :draggable="false">
-            <div class="field">
-                <label for="tax_name" class="font-medium">Tax Name <span class="text-red-500">*</span></label>
-                <InputText id="tax_name" v-model="tax.tax_name" class="w-full" placeholder="e.g. VAT" required autofocus />
-            </div>
-            <div class="field">
-                <label for="tax_number" class="font-medium">Tax Number</label>
-                <InputText id="tax_number" v-model="tax.tax_number" class="w-full" placeholder="e.g. P123456789" />
-            </div>
-            <div class="field">
-                <label for="percentage" class="font-medium">Rate (%) <span class="text-red-500">*</span></label>
-                <InputNumber id="percentage" v-model="tax.percentage" class="w-full" mode="decimal" :min="0" :max="100" :minFractionDigits="2" :maxFractionDigits="2" suffix="%" placeholder="e.g. 16.00" required />
+        <Dialog v-model:visible="branchDialog" :style="{ width: '500px' }" :header="editingBranch ? 'Edit Branch' : 'Add Branch'" :modal="true" class="p-fluid" :draggable="false">
+            <div class="grid grid-cols-1 gap-4">
+                <div class="field">
+                    <label for="branch_name" class="font-semibold mb-2 block">Branch Name <span class="text-red-500">*</span></label>
+                    <InputText id="branch_name" v-model="branch.name" class="w-full" placeholder="e.g. Main Branch" required autofocus />
+                </div>
+                <div class="field">
+                    <label for="branch_code" class="font-semibold mb-2 block">Branch Code <span class="text-red-500">*</span></label>
+                    <InputText id="branch_code" v-model="branch.branch_code" class="w-full" placeholder="e.g. MB00100" required />
+                </div>
+                <div class="field">
+                    <label for="city" class="font-semibold mb-2 block">City <span class="text-red-500">*</span></label>
+                    <InputText id="city" v-model="branch.location.city" class="w-full" placeholder="e.g. Nairobi" required />
+                </div>
+                <div class="field">
+                    <label for="zip_code" class="font-semibold mb-2 block">Zip Code</label>
+                    <InputText id="zip_code" v-model="branch.location.zip_code" class="w-full" placeholder="e.g. 00100" />
+                </div>
+                <div class="field">
+                    <label for="address" class="font-semibold mb-2 block">Address</label>
+                    <Textarea id="address" v-model="branch.location.address" rows="2" class="w-full" placeholder="Full physical address" />
+                </div>
+                <div class="field">
+                    <label for="contact_number" class="font-semibold mb-2 block">Contact Number</label>
+                    <InputText id="contact_number" v-model="branch.location.contact_number" class="w-full" placeholder="e.g. +254712345678" />
+                </div>
+                <div class="field">
+                    <label for="branch_email" class="font-semibold mb-2 block">Email</label>
+                    <InputText id="branch_email" v-model="branch.location.email" class="w-full" placeholder="e.g. info@branch.com" />
+                </div>
+                <div class="flex items-center gap-2 mt-2">
+                    <Checkbox id="is_main_branch" v-model="branch.is_main_branch" binary :disabled="branch.is_main_branch && editingBranch" />
+                    <label for="is_main_branch" class="font-medium cursor-pointer">Set as Main Branch</label>
+                </div>
+                <small v-if="branch.is_main_branch && editingBranch" class="text-surface-500 ml-6">This is already your main branch</small>
             </div>
             <template #footer>
-                <Button label="Cancel" icon="pi pi-times" severity="secondary" outlined @click="closeTaxDialog" />
-                <Button label="Save" icon="pi pi-check" @click="saveTax" :loading="savingTax" />
+                <div class="flex gap-2 justify-end">
+                    <Button label="Cancel" icon="pi pi-times" severity="secondary" outlined @click="closeBranchDialog" />
+                    <Button label="Save" icon="pi pi-check" @click="saveBranch" :loading="savingBranch" />
+                </div>
             </template>
         </Dialog>
 
@@ -750,39 +650,29 @@ async function loadBranches() {
 </template>
 
 <style scoped>
-.card {
-    padding: 1.5rem;
+.business-settings-page {
+    padding: 1rem;
+}
+
+@media (max-width: 768px) {
+    .business-settings-page {
+        padding: 0.5rem;
+    }
 }
 
 :deep(.p-tabview-panels) {
-    padding: 1.5rem 0 0 0;
+    padding: 0;
 }
 
-.logo-preview img {
-    max-width: 100%;
-    height: auto;
-    max-height: 100px;
+:deep(.p-tabview-nav) {
+    flex-wrap: wrap;
 }
 
-.p-field-checkbox {
-    margin-bottom: 1rem;
+.field {
+    margin-bottom: 0;
 }
 
-.color-preview-item {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-}
-
-.color-box {
-    width: 40px;
-    height: 40px;
-    border-radius: 50%;
-    margin-bottom: 0.5rem;
-}
-
-.color-label {
-    font-size: 0.8rem;
-    text-align: center;
+.space-y-2 > * + * {
+    margin-top: 0.5rem;
 }
 </style>

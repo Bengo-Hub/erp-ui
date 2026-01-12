@@ -1,6 +1,6 @@
 <script setup>
 import Spinner from '@/components/ui/Spinner.vue';
-import { POSService } from '@/services/ecommerce/posService';
+import { posService } from '@/services/ecommerce/posService';
 import { formatCurrency, formatDate } from '@/utils/formatters';
 import { useToast } from 'primevue/usetoast';
 import { computed, onMounted, ref } from 'vue';

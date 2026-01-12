@@ -237,15 +237,6 @@ export const invoiceService = {
         } catch (error) {
             return handleError(error);
         }
-    },
-
-    async getPaymentAccounts() {
-        try {
-            const response = await axios.get('/finance/accounts/paymentaccounts/');
-            return response.data;
-        } catch (error) {
-            return handleError(error);
-        }
     }
 };
 

@@ -1,6 +1,6 @@
 <script setup>
 import { formatCurrency } from '@/components/hrm/payroll/payslipGenerator';
-import { POSService } from '@/services/ecommerce/posService';
+import { posService } from '@/services/ecommerce/posService';
 import { coreService } from '@/services/shared/coreService';
 import Receipt from '@/views/pages/ecommerce/pos/printReceipt.vue';
 import { useToast } from 'primevue/usetoast';

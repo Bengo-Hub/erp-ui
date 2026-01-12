@@ -2,8 +2,7 @@
 import { computed, ref, onMounted, watch } from 'vue';
 import { formatCurrency } from '@/utils/formatters';
 import TaxForm from '@/components/finance/taxes/TaxForm.vue';
-import axios from '@/utils/axiosConfig';
-import { coreService } from '@/services/shared/coreService';
+import { financeService } from '@/services/finance/financeService';
 
 const props = defineProps({
   items: {
@@ -126,8 +125,8 @@ const FINANCE_BASE_URL = '/finance';
 const loadTaxes = async () => {
   try {
     taxLoading.value = true;
-    // Use business tax rates endpoint (returns paginated list)
-    const response = await coreService.getTaxRates({ page_size: 100 });
+    // Use finance tax rates endpoint (returns paginated list)
+    const response = await financeService.getTaxRates({ page_size: 100 });
     const data = response.data || response;
     const list = data?.results || data || [];
     // Normalize to { id, name, percentage }

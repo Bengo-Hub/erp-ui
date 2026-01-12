@@ -3,7 +3,7 @@ import { ref, computed, onMounted, onBeforeUnmount, watch } from 'vue';
 import { useToast } from 'primevue/usetoast';
 
 // Import services
-import { POSService } from '@/services/ecommerce/posService';
+import { posService } from '@/services/ecommerce/posService';
 
 const toast = useToast();
 

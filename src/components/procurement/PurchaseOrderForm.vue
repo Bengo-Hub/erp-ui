@@ -5,6 +5,7 @@ import { required } from '@vuelidate/validators';
 import { useToast } from 'primevue/usetoast';
 import { procurementService } from '@/services/procurement/procurementService';
 import { productService } from '@/services/ecommerce/productService';
+import { ecommerceService } from '@/services/ecommerce/ecommerceService';
 import { formatCurrency } from '@/utils/formatters';
 import PDFPreview from '@/components/shared/PDFPreview.vue';
 import AddSupplier from '@/components/crm/AddSupplier.vue';
@@ -25,6 +26,7 @@ const emit = defineEmits(['close', 'submitted', 'saved']);
 const form = reactive({
     supplier: null,
     requisition: null,
+    order_type: 'purchase_order', // Required by BaseOrder model
     terms: 'Net 30 days payment terms. Delivery must be completed by specified date.',
     delivery_instructions: 'Delivery Expected with the purchase order',
     expected_delivery: null,
@@ -54,9 +56,13 @@ const toast = useToast();
 const suppliers = ref([]);
 const requisitions = ref([]);
 const requisitionItems = ref([]);
+const products = ref([]);
 const selectedRequisition = ref(null);
 const isSubmitting = ref(false);
 const itemsValidated = ref(false);
+const productDialogForItems = ref(false);
+const productEditMode = ref(false);
+const productEditData = ref(null);
 
 // PDF Preview state
 const showPDFModal = ref(false);
@@ -146,6 +152,35 @@ const loadRequisitions = async (id) => {
     }
 };
 
+const loadProducts = async () => {
+    try {
+        // Use lightweight search endpoint for better performance
+        const response = await ecommerceService.searchProductsLite({ search: '' });
+        const payload = response.data || response || {};
+        let data = payload.data ?? payload.results ?? payload;
+
+        // If data itself has results (nested), unwrap
+        if (data && data.results && Array.isArray(data.results)) {
+            data = data.results;
+        }
+
+        products.value = Array.isArray(data) ? data : [];
+        console.log('✅ Products loaded for PO:', products.value.length);
+    } catch (error) {
+        console.error('❌ Error loading products:', error);
+        // Fallback to regular endpoint if lite endpoint fails
+        try {
+            const response = await ecommerceService.getProducts({ page_size: 100 });
+            const results = response.data?.results || response.data || [];
+            products.value = Array.isArray(results) ? results : [];
+            console.log('✅ Products loaded (fallback):', products.value.length);
+        } catch (fallbackError) {
+            console.error('❌ Error in fallback product load:', fallbackError);
+            products.value = [];
+        }
+    }
+};
+
 // Handlers for saved events
 const handleSupplierSaved = async (saved) => {
     try {
@@ -161,10 +196,49 @@ const handleSupplierSaved = async (saved) => {
 
 const handleProductSaved = async (saved) => {
     try {
-        // No immediate action required; product list consumers will refresh when needed
+        await loadProducts();
+
+        // If this product was created from the ItemsTable "Add product" flow, add it as a new line
+        const product = saved?.product || saved || saved?.data || null;
+        if (productDialogForItems.value && product) {
+            const prodId = product.id || product.product_id || null;
+            // Use buying_price for PO (purchase price)
+            const unitPriceVal = parseFloat(product.buying_price || product.selling_price || 0);
+            if (prodId) {
+                const existing = form.items.find(i => {
+                    const id = (i.product && (i.product.id || i.product.product_id)) || (i.stockItem && i.stockItem.id) || null;
+                    return id === prodId;
+                });
+                if (existing) {
+                    existing.quantity = (Number(existing.quantity) || 0) + 1;
+                    existing.unitPrice = parseFloat(existing.unitPrice || unitPriceVal || 0);
+                } else {
+                    const newItem = {
+                        product: product,
+                        stockItem: product,
+                        quantity: 1,
+                        unitPrice: unitPriceVal,
+                        description: product.description || ''
+                    };
+                    form.items.push(newItem);
+                }
+            } else {
+                const newItem = {
+                    product: product,
+                    stockItem: product,
+                    quantity: 1,
+                    unitPrice: parseFloat(product.buying_price || product.selling_price || 0),
+                    description: product.description || ''
+                };
+                form.items.push(newItem);
+            }
+        }
     } catch (e) {
         console.error('Error handling saved product:', e);
     } finally {
+        productDialogForItems.value = false;
+        productEditMode.value = false;
+        productEditData.value = null;
         showProductDialog.value = false;
     }
 }
@@ -181,6 +255,19 @@ const handleRequisitionSaved = async (saved) => {
     }
 }
 
+const handleAddProduct = () => {
+    productDialogForItems.value = true;
+    productEditMode.value = false;
+    productEditData.value = null;
+    showProductDialog.value = true;
+};
+
+const handleEditProduct = (product, index) => {
+    productEditMode.value = true;
+    productEditData.value = product;
+    showProductDialog.value = true;
+};
+
 const setRequisitionItems = () => {
     try {
         if (!selectedRequisition.value) {
@@ -192,14 +279,56 @@ const setRequisitionItems = () => {
         const req = selectedRequisition.value;
         form.requisition_reference = req.reference_number;
 
-        // Safely map requisition items (stock_item can be null for non-inventory types)
+        // Safely map requisition items - handle different data structures
         requisitionItems.value = (req.items || []).map((item) => {
+            // stock_item may be nested object or just an ID
             const stockItem = item.stock_item || {};
+            // Get product info from stock_item.product or stock_item directly
+            const product = stockItem.product || stockItem;
+
+            // Extract title/name for display
+            const name = item.name || product.title || product.name || stockItem.title || stockItem.name || 'Unknown Item';
+            const description = item.description || product.description || stockItem.description || '';
+            const sku = product.sku || stockItem.sku || '';
+
+            // Create displayName for ItemsTable compatibility
+            const displayName = sku ? `${name} (${sku})` : name;
+
+            // Get prices - check multiple possible field names
+            const buyingPrice = parseFloat(
+                item.unit_price ||
+                stockItem.buying_price ||
+                product.buying_price ||
+                stockItem.selling_price ||
+                product.selling_price ||
+                0
+            );
+
+            // Build product object with displayName for ItemsTable
+            const productWithDisplayName = product.id ? {
+                ...product,
+                title: name,
+                displayName: displayName
+            } : (stockItem.id ? {
+                ...stockItem,
+                title: name,
+                displayName: displayName
+            } : null);
+
             return {
-                stockItem,
-                quantity: item.quantity ?? 0,
-                unitPrice: stockItem.buying_price ?? 0,
-                urgent: !!item.urgent
+                // For ItemsTable compatibility - include displayName
+                product: productWithDisplayName,
+                stockItem: stockItem.id ? { ...stockItem, displayName } : stockItem,
+                // Core fields
+                name: name,
+                displayName: displayName,
+                description: description,
+                quantity: item.quantity ?? 1,
+                unit_price: buyingPrice,
+                unitPrice: buyingPrice,
+                // Additional metadata
+                urgent: !!item.urgent,
+                requisition_item_id: item.id
             };
         });
 
@@ -277,9 +406,10 @@ const saveDraft = async () => {
 
         await procurementService.savePurchaseOrderDraft({
             ...form,
+            order_type: 'purchase_order',
             status: 'draft',
-            requisition: selectedRequisition.value.id,
-            supplier: form.supplier.id,
+            requisition: selectedRequisition.value?.id || null,
+            supplier: form.supplier?.id || form.supplier,
             expected_delivery: form.expected_delivery ? form.expected_delivery.toISOString().split('T')[0] : null
         });
         toast.add({
@@ -319,12 +449,13 @@ const submitOrder = async () => {
 
         const orderData = {
             ...form,
+            order_type: 'purchase_order',
             status: 'submitted',
-            requisition: selectedRequisition.value.id,
-            supplier: form.supplier.id,
+            requisition: selectedRequisition.value?.id || null,
+            supplier: form.supplier?.id || form.supplier,
             expected_delivery: form.expected_delivery ? form.expected_delivery.toISOString().split('T')[0] : null
         };
-        
+
         const response = await procurementService.createPurchaseOrder(orderData);
         const orderId = response.data.id;
         
@@ -356,9 +487,12 @@ const submitOrder = async () => {
     }
 };
 
-onMounted(() => {
-    loadSuppliers();
-    loadRequisitions();
+onMounted(async () => {
+    await Promise.all([
+        loadSuppliers(),
+        loadRequisitions(),
+        loadProducts()
+    ]);
 
     // If editing an existing order, populate the form
     if (props.order) {
@@ -373,111 +507,263 @@ onMounted(() => {
 </script>
 
 <template>
-    <div class="po-form-container">
-        <div class="form-card">
-            <form @submit.prevent="submitOrder" class="grid gap-6">
-                <!-- Header Section -->
-                <div class="form-section">
-                    <div class="section-header">
-                        <span class="section-number">1</span>
-                        <h2 class="section-title">Order Information</h2>
+    <div class="po-form-page">
+        <!-- Modern Sticky Header -->
+        <div class="form-header sticky top-0 z-50 bg-white dark:bg-surface-900 border-b border-surface-200 dark:border-surface-700 shadow-sm">
+            <div class="max-w-7xl mx-auto px-6 py-4">
+                <div class="flex justify-between items-center">
+                    <div class="flex items-center gap-4">
+                        <Button
+                            icon="pi pi-arrow-left"
+                            class="p-button-text p-button-rounded"
+                            @click="$emit('close')"
+                            v-tooltip.bottom="'Back'"
+                        />
+                        <div>
+                            <h1 class="text-2xl font-bold text-surface-900 dark:text-surface-0 flex items-center gap-2">
+                                <i class="pi pi-shopping-cart text-primary"></i>
+                                {{ props.order ? 'Edit Purchase Order' : 'Create Purchase Order' }}
+                            </h1>
+                            <p class="text-surface-600 dark:text-surface-400 text-sm mt-1">
+                                Fill in supplier and order details below
+                            </p>
+                        </div>
                     </div>
+                    <div class="flex gap-2">
+                        <Button
+                            label="Save Draft"
+                            icon="pi pi-save"
+                            @click="saveDraft"
+                            class="p-button-secondary"
+                            :loading="isSubmitting"
+                        />
+                        <Button
+                            label="Submit for Approval"
+                            icon="pi pi-send"
+                            @click="submitOrder"
+                            class="p-button-primary"
+                            :loading="isSubmitting"
+                        />
+                    </div>
+                </div>
+            </div>
+        </div>
 
-                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                        <div class="field-group">
-                            <label for="supplier" class="field-label"> Supplier <span class="required-indicator">*</span> </label>
-                            <div class="flex gap-2">
-                                <Dropdown id="supplier" v-model="form.supplier" :options="suppliers" optionLabel="name" placeholder="Select supplier" :class="{ 'p-invalid': v$.supplier.$error }" class="modern-dropdown flex-1" filter showClear>
-                                    <template #option="slotProps">
-                                        <div class="supplier-option">
-                                            <span>{{ slotProps.option.name }}</span>
-                                            <small class="text-gray-500">{{ slotProps.option.contact_id }}</small>
+        <!-- Main Content -->
+        <div class="max-w-7xl mx-auto px-6 py-6">
+            <Card class="po-card">
+                <template #content>
+                    <div class="space-y-6">
+                        <!-- Supplier & Basic Info -->
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-sm font-medium mb-2 required">Supplier *</label>
+                                <div class="flex gap-2">
+                                    <Dropdown
+                                        v-model="form.supplier"
+                                        :options="suppliers"
+                                        optionLabel="name"
+                                        placeholder="Select or search supplier..."
+                                        class="flex-1"
+                                        :class="{ 'p-invalid': v$.supplier.$error }"
+                                        filter
+                                        showClear
+                                    >
+                                        <template #option="slotProps">
+                                            <div class="flex items-center gap-3">
+                                                <Avatar :label="(slotProps.option.name || 'S')[0]" shape="circle" />
+                                                <div>
+                                                    <div class="font-medium">{{ slotProps.option.name }}</div>
+                                                    <div class="text-sm text-surface-500">{{ slotProps.option.contact_id }}</div>
+                                                </div>
+                                            </div>
+                                        </template>
+                                    </Dropdown>
+                                    <Button
+                                        icon="pi pi-plus"
+                                        @click="showSupplierDialog = true"
+                                        severity="success"
+                                        v-tooltip.top="'Add new supplier'"
+                                    />
+                                </div>
+                                <small v-if="v$.supplier.$error" class="p-error">Supplier is required</small>
+                            </div>
+
+                            <div>
+                                <label class="block text-sm font-medium mb-2">Requisition Reference</label>
+                                <div class="flex gap-2">
+                                    <Dropdown
+                                        v-model="selectedRequisition"
+                                        :options="requisitions"
+                                        optionLabel="reference_number"
+                                        placeholder="Link to requisition (optional)"
+                                        class="flex-1"
+                                        @change="setRequisitionItems()"
+                                        filter
+                                        showClear
+                                    >
+                                        <template #option="slotProps">
+                                            <div class="flex flex-col">
+                                                <span class="font-medium">{{ slotProps.option.reference_number }}</span>
+                                                <small class="text-surface-500">{{ slotProps.option.purpose?.substring(0, 40) }}...</small>
+                                            </div>
+                                        </template>
+                                    </Dropdown>
+                                    <Button
+                                        icon="pi pi-plus"
+                                        @click="showRequisitionDialog = true"
+                                        severity="success"
+                                        v-tooltip.top="'Create new requisition'"
+                                    />
+                                </div>
+                            </div>
+
+                            <div>
+                                <label class="block text-sm font-medium mb-2">Expected Delivery Date</label>
+                                <Calendar
+                                    v-model="form.expected_delivery"
+                                    dateFormat="dd/mm/yy"
+                                    :showIcon="true"
+                                    :minDate="new Date()"
+                                    placeholder="Select delivery date"
+                                    class="w-full"
+                                />
+                            </div>
+
+                            <div>
+                                <label class="block text-sm font-medium mb-2 required">Approved Budget *</label>
+                                <InputNumber
+                                    v-model="form.approved_budget"
+                                    mode="currency"
+                                    currency="KES"
+                                    locale="en-KE"
+                                    :min="0"
+                                    class="w-full"
+                                    :class="{ 'p-invalid': v$.approved_budget.$error }"
+                                />
+                                <small v-if="v$.approved_budget.$error" class="p-error">Approved budget is required</small>
+                            </div>
+                        </div>
+
+                        <Divider />
+
+                        <!-- Line Items Section -->
+                        <div>
+                            <h3 class="text-lg font-semibold text-surface-900 dark:text-surface-0 mb-4">Order Items</h3>
+                            <div class="overflow-x-auto">
+                                <ItemsTable
+                                    v-model:items="form.items"
+                                    :available-products="products"
+                                    :show-add-product="true"
+                                    :show-edit-product="true"
+                                    :show-tax-fields="true"
+                                    :show-description="true"
+                                    @add-product="handleAddProduct"
+                                    @edit-product="handleEditProduct"
+                                />
+                            </div>
+                        </div>
+
+                        <Divider />
+
+                        <!-- Totals and Terms Section -->
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div class="space-y-4">
+                                <div>
+                                    <label class="block text-sm font-medium mb-2">Payment Terms</label>
+                                    <Textarea
+                                        v-model="form.terms"
+                                        rows="3"
+                                        class="w-full"
+                                        placeholder="Enter payment terms..."
+                                    />
+                                </div>
+
+                                <div>
+                                    <label class="block text-sm font-medium mb-2">Delivery Instructions</label>
+                                    <Textarea
+                                        v-model="form.delivery_instructions"
+                                        rows="3"
+                                        class="w-full"
+                                        placeholder="Enter delivery instructions..."
+                                    />
+                                </div>
+                            </div>
+
+                            <div>
+                                <Card class="bg-surface-50 dark:bg-surface-800">
+                                    <template #content>
+                                        <div class="space-y-3">
+                                            <div class="flex justify-between">
+                                                <span class="text-surface-700 dark:text-surface-300">Subtotal:</span>
+                                                <span class="font-semibold">{{ formatCurrency(poSubtotal) }}</span>
+                                            </div>
+
+                                            <div class="flex justify-between items-center">
+                                                <span class="text-surface-700 dark:text-surface-300">Tax:</span>
+                                                <span class="font-semibold">{{ formatCurrency(poTax) }}</span>
+                                            </div>
+
+                                            <div class="flex items-center gap-2">
+                                                <Dropdown
+                                                    v-model="form.tax_mode"
+                                                    :options="[{ label: 'Per line items', value: 'line_items' }, { label: 'On final amount', value: 'on_total' }]"
+                                                    optionLabel="label"
+                                                    optionValue="value"
+                                                    class="w-36"
+                                                />
+                                                <InputNumber
+                                                    v-if="form.tax_mode === 'on_total'"
+                                                    v-model="form.tax_rate"
+                                                    suffix="%"
+                                                    :min="0"
+                                                    :max="100"
+                                                    class="w-24"
+                                                />
+                                            </div>
+
+                                            <div class="flex justify-between items-center">
+                                                <span class="text-surface-700 dark:text-surface-300">Discount:</span>
+                                                <InputNumber
+                                                    v-model="form.discount"
+                                                    suffix="%"
+                                                    :min="0"
+                                                    :max="100"
+                                                    class="w-24"
+                                                />
+                                            </div>
+
+                                            <Divider />
+
+                                            <div class="flex justify-between items-center">
+                                                <span class="text-xl font-bold text-surface-900 dark:text-surface-0">Total:</span>
+                                                <span class="text-2xl font-bold text-primary">{{ formatCurrency(poGrandTotal) }}</span>
+                                            </div>
+
+                                            <div class="flex justify-between items-center text-sm">
+                                                <span class="text-surface-600">Approved Budget:</span>
+                                                <span :class="poGrandTotal > form.approved_budget ? 'text-red-500 font-semibold' : 'text-green-600'">
+                                                    {{ formatCurrency(form.approved_budget) }}
+                                                </span>
+                                            </div>
+                                            <small v-if="poGrandTotal > form.approved_budget" class="text-red-500 block">
+                                                <i class="pi pi-exclamation-triangle mr-1"></i>
+                                                Order total exceeds approved budget
+                                            </small>
                                         </div>
                                     </template>
-                                </Dropdown>
-                                <Button icon="pi pi-plus" @click="showSupplierDialog = true" class="p-button-success" v-tooltip.top="'Add new supplier'" />
-                            </div>
-                            <small class="error-message" v-if="v$.supplier.$error"> Please select a supplier </small>
-                        </div>
+                                </Card>
 
-                        <div class="field-group">
-                            <label for="deliveryDate" class="field-label">Delivery Date</label>
-                            <Calendar id="deliveryDate" v-model="form.expected_delivery" dateFormat="yy-mm-dd" showIcon :minDate="new Date()" placeholder="Select date" class="modern-calendar" />
-                        </div>
-
-                        <div class="field-group">
-                            <label for="reference" class="field-label">Requisition Reference</label>
-                            <div class="flex gap-2">
-                                <Dropdown id="reference" v-model="selectedRequisition" :options="requisitions" optionLabel="reference_number" placeholder="Select requisition" class="modern-dropdown flex-1" @change="setRequisitionItems()" />
-                                <Button icon="pi pi-plus" @click="requisitionModal.modal.isOpen.value = true" class="p-button-success" v-tooltip.top="'Create new requisition'" />
+                                <!-- Mobile action bar -->
+                                <div class="fixed bottom-0 left-0 right-0 bg-white dark:bg-surface-900 border-t p-3 flex gap-3 justify-end md:hidden z-50">
+                                    <Button label="Save Draft" icon="pi pi-save" class="p-button-secondary" @click="saveDraft" :loading="isSubmitting" />
+                                    <Button label="Submit" icon="pi pi-send" class="p-button-primary" @click="submitOrder" :loading="isSubmitting" />
+                                </div>
                             </div>
                         </div>
                     </div>
-                </div>
-
-                <!-- Terms & Conditions -->
-                <div class="form-section">
-                    <div class="section-header">
-                        <span class="section-number">2</span>
-                        <h2 class="section-title">Terms & Conditions</h2>
-                    </div>
-
-                    <div class="field-group">
-                        <label for="terms" class="field-label">Standard Terms</label>
-                        <Textarea id="terms" v-model="form.terms" rows="4" autoResize placeholder="Payment terms, delivery instructions, etc." class="modern-textarea" />
-                    </div>
-                </div>
-
-                <!-- Financial Details -->
-                <div class="form-section">
-                    <div class="section-header">
-                        <span class="section-number">3</span>
-                        <h2 class="section-title">Financial Details</h2>
-                    </div>
-
-                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                        <div class="field-group">
-                            <label for="approvedBudget" class="field-label"> Approved Budget <span class="required-indicator">*</span> </label>
-                            <InputNumber id="approvedBudget" v-model="form.approved_budget" mode="currency" currency="KES" locale="en-US" :min="0" :class="{ 'p-invalid': v$.approved_budget.$error }" class="modern-inputnumber" />
-                            <small class="error-message" v-if="v$.approved_budget.$error"> Please enter a valid budget amount </small>
-                        </div>
-
-                        <div class="field-group">
-                            <label for="taxRate" class="field-label">Tax Mode & Rate</label>
-                            <div class="flex gap-2 items-center">
-                                <Dropdown v-model="form.tax_mode" :options="[{ label: 'On final amount', value: 'on_total' }, { label: 'Per line items', value: 'line_items' }]" optionLabel="label" optionValue="value" class="w-44" @change="() => { form.tax_amount = calculateTax(); }" />
-                                <InputNumber id="taxRate" v-model="form.tax_rate" suffix="%" :min="0" :max="30" class="modern-inputnumber w-24" @input="() => { form.tax_amount = calculateTax(); }" />
-                            </div>
-                        </div>
-
-                        <div class="field-group">
-                            <label for="discount" class="field-label">Discount (%)</label>
-                            <InputNumber id="discount" v-model="form.discount" suffix="%" :min="0" :max="100" class="modern-inputnumber" />
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Order Items -->
-                <div class="form-section">
-                    <div class="section-header">
-                        <span class="section-number">4</span>
-                        <h2 class="section-title">Order Items</h2>
-                    </div>
-
-                    <ItemsTable 
-                        v-model:items="form.items"
-                        :available-products="requisitionItems"
-                        :show-add-product="false"
-                    />
-                </div>
-
-                <!-- Form Actions -->
-                <div class="form-actions">
-                    <Button label="Cancel" class="cancel-btn" @click="$emit('close')" />
-                    <Button label="Save Draft" severity="secondary" class="save-draft-btn" @click="saveDraft" />
-                    <Button type="submit" label="Submit for Approval" class="submit-btn" :loading="isSubmitting" />
-                </div>
-            </form>
+                </template>
+            </Card>
         </div>
     </div>
 
@@ -495,8 +781,16 @@ onMounted(() => {
     </Dialog>
 
     <!-- Product Dialog -->
-    <Dialog v-model:visible="showProductDialog" header="Add Product" :modal="true" :style="{ width: '900px' }">
-        <ProductForm @saved="handleProductSaved" @fetch-products="loadProducts" />
+    <Dialog v-model:visible="showProductDialog" :modal="true" :style="{ width: '95%', maxWidth: '1000px' }" :dismissableMask="true">
+        <template #header>
+            <h3 class="text-xl font-semibold">{{ productEditMode ? 'Edit Product' : 'Add Product' }}</h3>
+        </template>
+        <ProductForm
+            :product="productEditData"
+            :editMode="productEditMode"
+            @saved="handleProductSaved"
+            @fetch-products="loadProducts"
+        />
     </Dialog>
 
     <!-- Requisition Dialog -->
@@ -506,253 +800,61 @@ onMounted(() => {
 </template>
 
 <style scoped>
-.po-form-container {
-    max-width: 1200px;
-    margin: 0 auto;
-    padding: 1rem;
+.po-form-page {
+    min-height: 100vh;
+    background-color: #f8fafc;
 }
 
 .form-header {
-    margin-bottom: 2rem;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
 }
 
-.form-title {
-    font-size: 1.75rem;
-    font-weight: 600;
-    color: var(--primary-color);
-    margin-bottom: 0.5rem;
-}
-
-.form-card {
-    background: white;
+.po-card {
     border-radius: 12px;
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
-    padding: 2rem;
+    padding: 1rem;
 }
 
-.form-section {
-    margin-bottom: 2rem;
+.po-card :deep(.p-card) {
+    background: var(--surface-card);
 }
 
-.section-header {
-    display: flex;
-    align-items: center;
-    margin-bottom: 1.5rem;
-    padding-bottom: 0.75rem;
-    border-bottom: 1px solid var(--surface-border);
+.required::after {
+    content: ' *';
+    color: #ef4444;
 }
 
-.section-number {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 28px;
-    height: 28px;
-    background-color: var(--primary-color);
-    color: white;
-    border-radius: 50%;
-    font-weight: 600;
-    margin-right: 1rem;
+.space-y-6 > * + * {
+    margin-top: 1.5rem;
 }
 
-.section-title {
-    font-size: 1.25rem;
-    font-weight: 600;
-    color: var(--text-color);
-    margin: 0;
-}
-
-.field-group {
-    margin-bottom: 1rem;
-}
-
-.field-label {
-    display: block;
-    font-weight: 500;
-    margin-bottom: 0.5rem;
-    color: var(--text-color);
-}
-
-.required-indicator {
-    color: var(--red-500);
-}
-
-.modern-dropdown,
-.modern-calendar,
-.modern-input,
-.modern-textarea,
-.modern-inputnumber {
-    width: 100%;
-    border: 1px solid var(--surface-border);
-    border-radius: 8px;
-    transition: border-color 0.2s;
-}
-
-.modern-dropdown:hover,
-.modern-calendar:hover,
-.modern-input:hover,
-.modern-textarea:hover,
-.modern-inputnumber:hover {
-    border-color: var(--primary-color);
-}
-
-.modern-dropdown:focus,
-.modern-calendar:focus,
-.modern-input:focus,
-.modern-textarea:focus,
-.modern-inputnumber:focus {
-    outline: none;
-    border-color: var(--primary-color);
-    box-shadow: 0 0 0 2px var(--primary-color-light);
-}
-
-.modern-textarea {
-    padding: 0.75rem;
-}
-
-.items-table-container {
+.space-y-4 > * + * {
     margin-top: 1rem;
 }
 
-.modern-datatable {
-    border: 1px solid var(--surface-border);
-    border-radius: 8px;
-    overflow: hidden;
-}
-
-:deep(.modern-datatable .p-datatable-thead > tr > th) {
-    background: var(--surface-ground);
-    color: var(--text-color);
-    font-weight: 600;
-}
-
-:deep(.modern-datatable .p-datatable-tbody > tr) {
-    transition: background-color 0.2s;
-}
-
-:deep(.modern-datatable .p-datatable-tbody > tr:hover) {
-    background-color: var(--surface-hover) !important;
-}
-
-:deep(.urgent-row) {
-    background-color: var(--orange-50) !important;
-}
-
-:deep(.urgent-row:hover) {
-    background-color: var(--orange-100) !important;
-}
-
-.compact-dropdown,
-.compact-inputnumber {
-    width: 100%;
-}
-
-.delete-btn {
-    width: 2.5rem;
-    height: 2.5rem;
-    border-radius: 50%;
-}
-
-.add-item-btn {
-    background: var(--primary-color);
-    border: none;
-}
-
-.add-item-btn:hover {
-    background: var(--primary-color-dark) !important;
-}
-
-.total-summary {
-    display: flex;
-    align-items: center;
-    gap: 1rem;
-    font-weight: 600;
-}
-
-.total-label {
-    color: var(--text-color-secondary);
-}
-
-.total-amount {
-    color: var(--primary-color);
-    font-size: 1.1rem;
-}
-
-.form-actions {
-    display: flex;
-    justify-content: flex-end;
-    gap: 1rem;
-    margin-top: 2rem;
-    padding-top: 1.5rem;
-    border-top: 1px solid var(--surface-border);
-}
-
-.cancel-btn {
-    background: transparent;
-    color: var(--primary-color);
-    border: 1px solid var(--primary-color);
-}
-
-.save-draft-btn {
-    background: var(--surface-ground);
-    color: var(--text-color);
-    border: 1px solid var(--surface-border);
-}
-
-.submit-btn {
-    background: var(--primary-color);
-    border: none;
-}
-
-.submit-btn:hover {
-    background: var(--primary-color-dark) !important;
-}
-
-.error-message {
-    color: var(--red-500);
-    font-size: 0.875rem;
-    margin-top: 0.25rem;
-    display: block;
-}
-
-.p-invalid {
-    border-color: var(--red-500) !important;
-}
-
-.p-invalid:focus {
-    box-shadow: 0 0 0 2px var(--red-200) !important;
-}
-
-.supplier-option,
-.item-option {
-    display: flex;
-    flex-direction: column;
-}
-
-.supplier-option small,
-.item-option small {
-    font-size: 0.75rem;
-    margin-top: 0.25rem;
+.space-y-3 > * + * {
+    margin-top: 0.75rem;
 }
 
 @media (max-width: 768px) {
-    .form-card {
-        padding: 1rem;
+    .form-header .flex {
+        flex-direction: column;
+        gap: 1rem;
     }
 
-    .section-header {
-        margin-bottom: 1rem;
-    }
-
-    .form-actions {
-        flex-direction: column-reverse;
-        gap: 0.5rem;
-    }
-
-    .cancel-btn,
-    .save-draft-btn,
-    .submit-btn {
+    .form-header .flex > div:last-child {
         width: 100%;
     }
+}
+
+/* Dark mode */
+@media (prefers-color-scheme: dark) {
+    .po-form-page {
+        background-color: #1e293b;
+    }
+}
+
+/* Improve ItemsTable responsiveness */
+.po-card .overflow-x-auto {
+    overflow-x: auto;
 }
 </style>

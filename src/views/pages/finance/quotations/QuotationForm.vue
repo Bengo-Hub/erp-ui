@@ -15,6 +15,7 @@ import axios from '@/utils/axiosConfig';
 import { quotationService } from '@/services/finance/quotationService';
 import { procurementService } from '@/services/procurement/procurementService';
 import { coreService } from '@/services/shared/coreService';
+import { financeService } from '@/services/finance/financeService';
 import { systemConfigService } from '@/services/shared/systemConfigService';
 import { formatCurrency } from '@/utils/formatters';
 import { useVuelidate } from '@vuelidate/core';
@@ -594,7 +595,8 @@ const prepareQuotationData = () => {
             tax_amount: item.tax_amount,
             subtotal: item.subtotal,
             total: item.total,
-            product_id: item.product?.id
+            // Extract product_id from nested structure or direct id
+            product_id: item.product?.product?.id || item.product?.id || item.product?.pk
         }))
         ,
         rfq_number: form.rfq_number,
@@ -611,7 +613,7 @@ const cancel = () => {
 // Load tax rates and helpers
 const loadTaxRates = async () => {
     try {
-        const response = await coreService.getTaxRates({ page_size: 100 });
+        const response = await financeService.getTaxRates({ page_size: 100 });
         const list = response.data?.results || response.data || [];
         taxRates.value = Array.isArray(list) ? list.map(t => ({ id: t.id, label: t.tax_name || t.name || t.tax || t.code || `Tax ${t.id}`, rate: parseFloat(t.percentage || t.tax_rate || 0) })) : [];
         // If editing existing doc and tax_rate matches one of the rates, set the id
@@ -689,17 +691,28 @@ const loadQuotation = async (id) => {
         
         // Map incoming order items to form.items. Backend returns order items with
         // GenericForeignKey fields: content_type and object_id (object_id is the product id)
-        form.items = (quotation.items || []).map(item => ({
-            product: item.object_id ? products.value.find(p => p.id === item.object_id) : null,
-            name: item.name || item.product_title || '',
-            description: item.description || '',
-            quantity: item.quantity || 1,
-            unit_price: parseFloat(item.unit_price || item.unit_price || item.unit_price || 0),
-            tax_rate: parseFloat(item.tax_rate || 0),
-            tax_amount: parseFloat(item.tax_amount || 0),
-            subtotal: parseFloat(item.subtotal || item.total || 0),
-            total: parseFloat(item.total || 0)
-        }));
+        // Also handle product_id for new billing documents
+        form.items = (quotation.items || []).map(item => {
+            const productId = item.object_id || item.product_id;
+            let matchedProduct = null;
+            if (productId) {
+                matchedProduct = products.value.find(p => {
+                    const pId = p?.product?.id || p?.id || p?.pk;
+                    return pId === productId;
+                });
+            }
+            return {
+                product: matchedProduct,
+                name: item.name || item.product_title || '',
+                description: item.description || '',
+                quantity: item.quantity || 1,
+                unit_price: parseFloat(item.unit_price || 0),
+                tax_rate: parseFloat(item.tax_rate || 0),
+                tax_amount: parseFloat(item.tax_amount || 0),
+                subtotal: parseFloat(item.subtotal || item.total || 0),
+                total: parseFloat(item.total || 0)
+            };
+        });
         
         calculateTotals();
     } catch (error) {

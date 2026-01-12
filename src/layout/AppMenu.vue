@@ -1097,12 +1097,6 @@ const originalModel = ref([
                 to: '/settings/branding'
             },
             {
-                label: 'Taxes',
-                icon: 'pi pi-fw pi-percentage',
-                permission: 'view_taxrates',
-                to: '/settings/finance/taxes'
-            },
-            {
                 label: 'System Settings',
                 icon: 'pi pi-fw pi-cog',
                 permission: 'view_approvalworkflow',

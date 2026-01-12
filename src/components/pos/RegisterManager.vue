@@ -1,5 +1,5 @@
 <script setup>
-import { POSService } from '@/services/ecommerce/posService';
+import { posService } from '@/services/ecommerce/posService';
 import { formatCurrency } from '@/utils/formatters';
 import { useToast } from 'primevue/usetoast';
 import { computed, onMounted, ref } from 'vue';

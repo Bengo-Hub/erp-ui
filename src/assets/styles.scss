@@ -3,3 +3,26 @@
 @import 'primeicons/primeicons.css';
 @import '@/assets/demo/demo.scss';
 
+/* Global dropdown item styles - prevent stretching with long text */
+.p-dropdown-panel .p-dropdown-items .p-dropdown-item {
+  white-space: normal;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+  max-width: 100%;
+}
+
+.p-dropdown-panel {
+  max-width: min(500px, 90vw);
+}
+
+.p-autocomplete-panel .p-autocomplete-items .p-autocomplete-item {
+  white-space: normal;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+  max-width: 100%;
+}
+
+.p-autocomplete-panel {
+  max-width: min(500px, 90vw);
+}
+

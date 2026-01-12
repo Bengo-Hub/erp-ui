@@ -1,5 +1,5 @@
 <script setup>
-import { POSService } from '@/services/ecommerce/posService';
+import { posService } from '@/services/ecommerce/posService';
 import { formatCurrency, formatDate } from '@/utils/formatters';
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';

@@ -1,5 +1,5 @@
 <script setup>
-import { POSService } from '@/services/ecommerce/posService';
+import { posService } from '@/services/ecommerce/posService';
 import Receipt from '@/views/pages/ecommerce/pos/printReceipt.vue';
 import { useToast } from 'primevue/usetoast';
 import { computed, onMounted, ref } from 'vue';

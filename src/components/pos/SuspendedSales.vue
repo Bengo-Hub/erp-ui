@@ -1,7 +1,7 @@
 <script setup>
 import { formatCurrency } from '@/components/hrm/payroll/payslipGenerator';
 import Spinner from '@/components/ui/Spinner.vue';
-import { POSService } from '@/services/ecommerce/posService';
+import { posService } from '@/services/ecommerce/posService';
 import moment from 'moment';
 import { useConfirm } from 'primevue/useconfirm';
 import { useToast } from 'primevue/usetoast';

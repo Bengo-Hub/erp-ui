@@ -1,6 +1,6 @@
 <script setup>
 import { coreService } from '@/services/shared/coreService';
-import { POSService } from '@/services/ecommerce/posService';
+import { posService } from '@/services/ecommerce/posService';
 import { procurementService } from '@/services/procurement/procurementService';
 import { useVuelidate } from '@vuelidate/core';
 import { required, requiredIf } from '@vuelidate/validators';

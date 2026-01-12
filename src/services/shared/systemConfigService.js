@@ -281,7 +281,7 @@ export const systemConfigService = {
     // Business Settings
     async getBusinessSettings() {
         try {
-            const response = await axios.get(`business/business/business/`);
+            const response = await axios.get(`business/settings/`);
             return {
                 success: true,
                 data: response.data
@@ -293,7 +293,7 @@ export const systemConfigService = {
 
     async updateBusinessSettings(data) {
         try {
-            const response = await axios.patch(`business/business/business/${data.id}/`, data);
+            const response = await axios.patch(`business/settings/${data.id}/`, data);
             return {
                 success: true,
                 data: response.data
@@ -306,7 +306,7 @@ export const systemConfigService = {
     // Business Branches
     async getBusinessBranches(params = {}) {
         try {
-            const response = await axios.get(`business/business/branches/`, { params });
+            const response = await axios.get(`business/branches/`, { params });
             return {
                 success: true,
                 data: response.data
@@ -328,7 +328,7 @@ export const systemConfigService = {
 
     async getBusinessBranchById(id) {
         try {
-            const response = await axios.get(`business/business/branches/${id}/`);
+            const response = await axios.get(`business/branches/${id}/`);
             return {
                 success: true,
                 data: response.data
@@ -340,7 +340,7 @@ export const systemConfigService = {
 
     async createBusinessBranch(data) {
         try {
-            const response = await axios.post(`business/business/branches/`, data);
+            const response = await axios.post(`business/branches/`, data);
             return {
                 success: true,
                 data: response.data
@@ -352,7 +352,7 @@ export const systemConfigService = {
 
     async updateBusinessBranch(id, data) {
         try {
-            const response = await axios.patch(`business/business/branches/${id}/`, data);
+            const response = await axios.patch(`business/branches/${id}/`, data);
             return {
                 success: true,
                 data: response.data
@@ -364,7 +364,7 @@ export const systemConfigService = {
 
     async deleteBusinessBranch(id) {
         try {
-            const response = await axios.delete(`business/business/branches/${id}/`);
+            const response = await axios.delete(`business/branches/${id}/`);
             return {
                 success: true,
                 data: response.data
@@ -378,10 +378,12 @@ export const systemConfigService = {
     // Prefix Settings
     async getPrefixSettings() {
         try {
-            const response = await axios.get(`business/business/prefix-settings/`);
+            const response = await axios.get(`business/prefix-settings/`);
+            // Handle both array response and paginated response
+            const data = response.data?.results?.[0] || response.data?.[0] || response.data || {};
             return {
                 success: true,
-                data: response.data
+                data
             };
         } catch (error) {
             return handleError(error);
@@ -389,7 +391,7 @@ export const systemConfigService = {
     },
     async createPrefixSettings(data) {
         try {
-            const response = await axios.post(`business/business/prefix-settings/`, data);
+            const response = await axios.post(`business/prefix-settings/`, data);
             return {
                 success: true,
                 data: response.data
@@ -398,9 +400,9 @@ export const systemConfigService = {
             return handleError(error);
         }
     },
-    async updatePrefixSettings(data) {
+    async updatePrefixSettings(id, data) {
         try {
-            const response = await axios.patch(`business/business/prefix-settings/`, data);
+            const response = await axios.patch(`business/prefix-settings/${id}/`, data);
             return {
                 success: true,
                 data: response.data
@@ -410,38 +412,25 @@ export const systemConfigService = {
         }
     },
 
-    // Tax Configuration
-    async getTaxSettings() {
+    // Document Sequences
+    async getDocumentSequences() {
         try {
-            const response = await axios.get(`business/business/tax-rates/`);
-            return response.data;
+            const response = await axios.get(`business/document-sequences/`);
+            return {
+                success: true,
+                data: response.data?.results || response.data || []
+            };
         } catch (error) {
             return handleError(error);
         }
     },
-
-    async updateTaxSetting(id, data) {
+    async getDocumentSequencesSummary() {
         try {
-            const response = await axios.patch(`business/business/tax-rates/${id}/`, data);
-            return response.data;
-        } catch (error) {
-            return handleError(error);
-        }
-    },
-
-    async createTaxSetting(data) {
-        try {
-            const response = await axios.post(`business/business/tax-rates/`, data);
-            return response.data;
-        } catch (error) {
-            return handleError(error);
-        }
-    },
-
-    async deleteTaxSetting(id) {
-        try {
-            const response = await axios.delete(`business/business/tax-rates/${id}/`);
-            return response.data;
+            const response = await axios.get(`business/document-sequences/summary/`);
+            return {
+                success: true,
+                data: response.data || []
+            };
         } catch (error) {
             return handleError(error);
         }

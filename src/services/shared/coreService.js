@@ -8,25 +8,6 @@ export const coreService = {
     getBanners(params = {}) {
         return axios.get(`${CRM_BASE_URL}/campaigns/active_banners/`, { params });
     },
-    //tax rates
-    getTaxRates(params = {}) {
-        return axios.get(`${BUSINESS_BASE_URL}tax-rates/`, { params });
-    },
-    getTaxRate(id) {
-        return axios.get(`${BUSINESS_BASE_URL}tax-rates/${id}/`);
-    },
-    createTaxRate(data) {
-        return axios.post(`${BUSINESS_BASE_URL}tax-rates/`, data);
-    },
-    updateTaxRate(id, data) {
-        return axios.put(`${BUSINESS_BASE_URL}tax-rates/${id}/`, data);
-    },
-    patchTaxRate(id, data) {
-        return axios.patch(`${BUSINESS_BASE_URL}tax-rates/${id}/`, data);
-    },
-    deleteTaxRate(id) {
-        return axios.delete(`${BUSINESS_BASE_URL}tax-rates/${id}/`);
-    },
     // Email Configs Endpoints
     getEmailConfigs(params = {}) {
         return axios.get(`${CORE_BASE_URL}emailconfigs/`, { params });

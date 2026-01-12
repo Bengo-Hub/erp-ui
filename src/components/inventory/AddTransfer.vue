@@ -1,7 +1,7 @@
 <script setup>
 import { coreService } from '@/services/shared/coreService';
 import { inventoryService } from '@/services/ecommerce/inventoryService';
-import { POSService } from '@/services/ecommerce/posService';
+import { posService } from '@/services/ecommerce/posService';
 import { formatCurrency } from '@/utils/formatters.js';
 import { useToast } from 'primevue/usetoast';
 import { computed, onMounted, reactive, ref } from 'vue';

@@ -38,6 +38,11 @@ const form = ref({
     is_manufactured: false,
     product_type: 'goods',
     unit_price: 0.00,
+    buying_price: 0.00,
+    selling_price: 0.00,
+    quantity: 0,
+    stock_level: 0,
+    reorder_level: 0,
     seo_title: '',
     seo_description: '',
     seo_keywords: ''
@@ -134,6 +139,11 @@ const fetchProduct = async (id) => {
             is_manufactured: product.is_manufactured || false,
             product_type: product.product_type || 'goods',
             unit_price: product.default_price || product.unit_price || 0.00,
+            buying_price: product.buying_price || 0.00,
+            selling_price: product.selling_price || 0.00,
+            quantity: product.quantity || 0,
+            stock_level: product.stock_level || product.stock?.quantity || 0,
+            reorder_level: product.reorder_level || product.stock?.reorder_level || 0,
             seo_title: product.seo_title || '',
             seo_description: product.seo_description || '',
             seo_keywords: product.seo_keywords || ''
@@ -200,6 +210,25 @@ const submitForm = async () => {
         // Backward compatibility: ensure backend receives default_price
         if (form.value.unit_price !== undefined && form.value.unit_price !== null) {
             formData.append('default_price', form.value.unit_price);
+        }
+
+        // For goods, send buying/selling price and quantity for stock entry
+        if (form.value.product_type === 'goods') {
+            if (form.value.buying_price !== undefined && form.value.buying_price !== null) {
+                formData.append('buying_price', form.value.buying_price);
+            }
+            if (form.value.selling_price !== undefined && form.value.selling_price !== null) {
+                formData.append('selling_price', form.value.selling_price);
+            }
+            if (form.value.quantity !== undefined && form.value.quantity !== null) {
+                formData.append('quantity', form.value.quantity);
+            }
+            if (form.value.stock_level !== undefined && form.value.stock_level !== null) {
+                formData.append('stock_level', form.value.stock_level);
+            }
+            if (form.value.reorder_level !== undefined && form.value.reorder_level !== null) {
+                formData.append('reorder_level', form.value.reorder_level);
+            }
         }
 
         // Append new images
@@ -371,37 +400,75 @@ const submitModel = async () => {
     }
 };
 
+// Helper to populate form from product data
+const populateFormFromProduct = (product) => {
+    if (!product) return;
+
+    // Unwrap if nested in data property
+    const prod = product.data || product;
+
+    form.value = {
+        title: prod.title || prod.name || '',
+        sku: prod.sku || '',
+        serial: prod.serial || '',
+        description: prod.description || '',
+        category: prod.category?.id || prod.category || null,
+        brand: prod.brand?.id || prod.brand || null,
+        model: prod.model?.id || prod.model || null,
+        weight: prod.weight || '',
+        dimentions: prod.dimentions || prod.dimensions || '',
+        status: prod.status || 'active',
+        is_featured: prod.is_featured || false,
+        is_manufactured: prod.is_manufactured || false,
+        product_type: prod.product_type || 'goods',
+        unit_price: parseFloat(prod.default_price || prod.unit_price || 0),
+        buying_price: parseFloat(prod.buying_price || 0),
+        selling_price: parseFloat(prod.selling_price || 0),
+        quantity: parseInt(prod.quantity || 0),
+        stock_level: parseInt(prod.stock_level || prod.stock?.quantity || 0),
+        reorder_level: parseInt(prod.reorder_level || prod.stock?.reorder_level || 0),
+        seo_title: prod.seo_title || '',
+        seo_description: prod.seo_description || '',
+        seo_keywords: prod.seo_keywords || ''
+    };
+    productImages.value = prod.images || [];
+
+    console.log('✅ ProductForm populated:', form.value);
+};
+
+// Watch for product prop changes (handles dialog reuse)
+watch(() => props.product, async (newProduct) => {
+    if (props.editMode && newProduct) {
+        const hasProductData = typeof newProduct === 'object' && (newProduct.title || newProduct.name || newProduct.data?.title);
+        if (hasProductData) {
+            populateFormFromProduct(newProduct);
+        } else {
+            const productId = typeof newProduct === 'object' ? (newProduct.id || newProduct.product_id) : newProduct;
+            if (productId) {
+                await fetchProduct(productId);
+            }
+        }
+    }
+}, { immediate: false });
+
 // Lifecycle
 onMounted(async () => {
     await fetchDependencies();
-    
+
     if (props.editMode && props.product) {
-        if (typeof props.product === 'object' && props.product.title) {
-            // Full product object passed
-            form.value = {
-                title: props.product.title || '',
-                sku: props.product.sku || '',
-                serial: props.product.serial || '',
-                description: props.product.description || '',
-                category: props.product.category?.id || props.product.category || null,
-                brand: props.product.brand?.id || props.product.brand || null,
-                model: props.product.model?.id || props.product.model || null,
-                weight: props.product.weight || '',
-                dimentions: props.product.dimentions || '',
-                status: props.product.status || 'active',
-                is_featured: props.product.is_featured || false,
-                is_manufactured: props.product.is_manufactured || false,
-                product_type: props.product.product_type || 'goods',
-                    unit_price: props.product.unit_price || props.product.default_price || 0.00,
-                seo_title: props.product.seo_title || '',
-                seo_description: props.product.seo_description || '',
-                seo_keywords: props.product.seo_keywords || ''
-            };
-            productImages.value = props.product.images || [];
+        // Check if we have a full product object or just an ID
+        const productData = props.product;
+        const hasProductData = typeof productData === 'object' && (productData.title || productData.name || productData.data?.title);
+
+        if (hasProductData) {
+            // Full product object passed (possibly nested in .data)
+            populateFormFromProduct(productData);
         } else {
             // Product ID passed, fetch full details
-            const productId = typeof props.product === 'object' ? props.product.id : props.product;
-            await fetchProduct(productId);
+            const productId = typeof productData === 'object' ? (productData.id || productData.product_id) : productData;
+            if (productId) {
+                await fetchProduct(productId);
+            }
         }
     }
 });
@@ -579,38 +646,103 @@ onMounted(async () => {
             <!-- Pricing & Physical Details -->
             <div class="card p-6">
                 <h3 class="text-lg font-semibold mb-4">Pricing & Physical Details</h3>
-                
+
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                        <label class="block text-sm font-medium mb-2">Unit Price</label>
-                        <InputNumber 
-                            v-model="form.unit_price" 
-                            mode="currency" 
-                            currency="KES" 
+                    <!-- For Services: only show default/unit price -->
+                    <div v-if="form.product_type === 'service'">
+                        <label class="block text-sm font-medium mb-2">Default Price <span class="text-red-500">*</span></label>
+                        <InputNumber
+                            v-model="form.unit_price"
+                            mode="currency"
+                            currency="KES"
                             locale="en-KE"
-                            placeholder="0.00" 
+                            placeholder="0.00"
                             class="w-full"
                         />
+                        <small class="text-gray-500">This is the price charged when billing for this service</small>
                     </div>
 
-                    <div v-if="form.product_type !== 'service'">
+                    <!-- For Goods: show buying price, selling price, and quantity -->
+                    <div v-if="form.product_type === 'goods'">
+                        <label class="block text-sm font-medium mb-2">Buying Price <span class="text-red-500">*</span></label>
+                        <InputNumber
+                            v-model="form.buying_price"
+                            mode="currency"
+                            currency="KES"
+                            locale="en-KE"
+                            placeholder="0.00"
+                            class="w-full"
+                        />
+                        <small class="text-gray-500">Cost price / Purchase price</small>
+                    </div>
+
+                    <div v-if="form.product_type === 'goods'">
+                        <label class="block text-sm font-medium mb-2">Selling Price <span class="text-red-500">*</span></label>
+                        <InputNumber
+                            v-model="form.selling_price"
+                            mode="currency"
+                            currency="KES"
+                            locale="en-KE"
+                            placeholder="0.00"
+                            class="w-full"
+                        />
+                        <small class="text-gray-500">Retail price / Sale price</small>
+                    </div>
+
+                    <div v-if="form.product_type === 'goods'">
+                        <label class="block text-sm font-medium mb-2">Initial Quantity</label>
+                        <InputNumber
+                            v-model="form.quantity"
+                            :min="0"
+                            placeholder="0"
+                            class="w-full"
+                            showButtons
+                        />
+                        <small class="text-gray-500">Opening stock quantity</small>
+                    </div>
+
+                    <div v-if="form.product_type === 'goods'">
+                        <label class="block text-sm font-medium mb-2">Stock Level</label>
+                        <InputNumber
+                            v-model="form.stock_level"
+                            :min="0"
+                            placeholder="0"
+                            class="w-full"
+                            showButtons
+                        />
+                        <small class="text-gray-500">Current stock level (auto-managed)</small>
+                    </div>
+
+                    <div v-if="form.product_type === 'goods'">
+                        <label class="block text-sm font-medium mb-2">Reorder Level</label>
+                        <InputNumber
+                            v-model="form.reorder_level"
+                            :min="0"
+                            placeholder="0"
+                            class="w-full"
+                            showButtons
+                        />
+                        <small class="text-gray-500">Alert when stock falls below this level</small>
+                    </div>
+
+                    <div v-if="form.product_type === 'goods'">
                         <label class="block text-sm font-medium mb-2">Weight</label>
                         <InputText v-model="form.weight" placeholder="e.g., 2.5kg" class="w-full" />
                     </div>
 
-                    <div v-if="form.product_type !== 'service'">
+                    <div v-if="form.product_type === 'goods'">
                         <label class="block text-sm font-medium mb-2">Dimensions</label>
                         <InputText v-model="form.dimentions" placeholder="e.g., 10x20x30 cm" class="w-full" />
                     </div>
 
                     <div>
                         <label class="block text-sm font-medium mb-2">Status</label>
-                        <Dropdown 
-                            v-model="form.status" 
-                            :options="statusOptions" 
-                            optionLabel="label" 
+                        <Dropdown
+                            v-model="form.status"
+                            :options="statusOptions"
+                            optionLabel="label"
                             optionValue="value"
-                            placeholder="Select status" 
+                            placeholder="Select status"
                             class="w-full"
                         />
                     </div>

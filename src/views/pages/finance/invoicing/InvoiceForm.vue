@@ -14,6 +14,7 @@ import { productService } from '@/services/ecommerce/productService';
 import { invoiceService } from '@/services/finance/invoiceService';
 import { procurementService } from '@/services/procurement/procurementService';
 import { coreService } from '@/services/shared/coreService';
+import { financeService } from '@/services/finance/financeService';
 import { systemConfigService } from '@/services/shared/systemConfigService';
 import { formatCurrency } from '@/utils/formatters';
 import axios from '@/utils/axiosConfig';
@@ -280,7 +281,7 @@ const loadProducts = async () => {
 
 const loadTaxRates = async () => {
     try {
-        const response = await coreService.getTaxRates();
+        const response = await financeService.getTaxRates();
         const list = response.data?.results || response.data || [];
         taxRates.value = Array.isArray(list) ? list.map(t => ({ id: t.id, label: t.tax_name || t.name || t.tax || t.code || `Tax ${t.id}`, rate: parseFloat(t.percentage || t.tax_rate || 0) })) : [];
         if (form.tax_rate) {
@@ -689,7 +690,8 @@ const prepareInvoiceData = (status) => {
             tax_amount: round2(item.tax_amount),
             subtotal: round2(item.subtotal),
             total: round2(item.total),
-            product_id: item.product?.id
+            // Extract product_id from nested structure or direct id
+            product_id: item.product?.product?.id || item.product?.id || item.product?.pk
         }))
     };
 };
@@ -737,18 +739,28 @@ const loadInvoice = async (id) => {
         form.tax_mode = invoice.tax_mode || 'line_items';
         form.tax_rate = invoice.tax_rate || 0;
         
-        // Load items
-        form.items = (invoice.items || []).map(item => ({
-            product: item.product_id ? products.value.find(p => p.id === item.product_id) : null,
-            name: item.name,
-            description: item.description,
-            quantity: item.quantity,
-            unit_price: item.unit_price,
-            tax_rate: item.tax_rate,
-            tax_amount: item.tax_amount,
-            subtotal: item.subtotal,
-            total: item.total
-        }));
+        // Load items - match product_id against both direct products and nested product structures
+        form.items = (invoice.items || []).map(item => {
+            let matchedProduct = null;
+            if (item.product_id) {
+                // Try to find product - check both direct id and nested product.id
+                matchedProduct = products.value.find(p => {
+                    const productId = p?.product?.id || p?.id || p?.pk;
+                    return productId === item.product_id;
+                });
+            }
+            return {
+                product: matchedProduct,
+                name: item.name,
+                description: item.description,
+                quantity: item.quantity,
+                unit_price: item.unit_price,
+                tax_rate: item.tax_rate,
+                tax_amount: item.tax_amount,
+                subtotal: item.subtotal,
+                total: item.total
+            };
+        });
         
         calculateTotals();
     } catch (error) {

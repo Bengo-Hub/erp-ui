@@ -22,9 +22,13 @@ export const ecommerceService = {
         return axios.delete(`${API_URL}/cart/cart/clear/`);
     },
 
-    // Categories
-    getMainCategories(params = {}) {
+    // Categories - unified hierarchical category management
+    getCategories(params = {}) {
         return axios.get(`${API_URL}/product/categories/`, { params });
+    },
+    getMainCategories(params = {}) {
+        // Get root categories (no parent)
+        return axios.get(`${API_URL}/product/categories/`, { params: { level: 0, ...params } });
     },
     getSubCategories(parentId, params = {}) {
         return axios.get(`${API_URL}/product/categories/`, {
@@ -33,6 +37,21 @@ export const ecommerceService = {
     },
     getCategoryById(id) {
         return axios.get(`${API_URL}/product/categories/${id}/`);
+    },
+    createCategory(data) {
+        return axios.post(`${API_URL}/product/categories/`, data);
+    },
+    updateCategory(id, data) {
+        return axios.patch(`${API_URL}/product/categories/${id}/`, data);
+    },
+    deleteCategory(id) {
+        return axios.delete(`${API_URL}/product/categories/${id}/`);
+    },
+    getCategoryChildren(id) {
+        return axios.get(`${API_URL}/product/categories/${id}/children/`);
+    },
+    getCategoryAncestors(id) {
+        return axios.get(`${API_URL}/product/categories/${id}/ancestors/`);
     },
 
     // Products
@@ -199,5 +218,83 @@ export const ecommerceService = {
         return axios.get(`${API_URL}/product/categories/`, {
             params: { popular: true, ...params }
         });
+    },
+
+    // Product CRUD operations
+    getAllProductsById(id) {
+        return axios.get(`${API_URL}/product/products-crud/${id}/`);
+    },
+    deleteProduct(id) {
+        return axios.delete(`${API_URL}/product/products-crud/${id}/`);
+    },
+    createProduct(data) {
+        return axios.post(`${API_URL}/product/products-crud/`, data, { headers: { 'Content-Type': 'multipart/form-data' } });
+    },
+    updateProduct(id, data) {
+        return axios.put(`${API_URL}/product/products-crud/${id}/`, data, { headers: { 'Content-Type': 'multipart/form-data' } });
+    },
+
+    // Subcategories (for legacy compatibility - uses unified categories with parent filter)
+    getSubcategories(params = {}) {
+        // Return categories that have a parent (i.e., subcategories)
+        return axios.get(`${API_URL}/product/categories/`, {
+            params: { has_parent: true, ...params }
+        });
+    },
+
+    // Main Category CRUD (root categories with no parent)
+    createMainCategory(data) {
+        // Ensure no parent is set for main categories
+        return axios.post(`${API_URL}/product/categories/`, { ...data, parent: null });
+    },
+    updateMainCategory(id, data) {
+        return axios.patch(`${API_URL}/product/categories/${id}/`, { ...data, parent: null });
+    },
+    deleteMainCategory(id) {
+        return axios.delete(`${API_URL}/product/categories/${id}/`);
+    },
+
+    // Subcategory CRUD (categories with a parent)
+    createSubcategory(data) {
+        return axios.post(`${API_URL}/product/categories/`, data);
+    },
+    updateSubcategory(id, data) {
+        return axios.patch(`${API_URL}/product/categories/${id}/`, data);
+    },
+    deleteSubcategory(id) {
+        return axios.delete(`${API_URL}/product/categories/${id}/`);
+    },
+
+    // Brands and Models
+    getBrands(params = {}) {
+        return axios.get(`${API_URL}/product/brands/`, { params });
+    },
+    getBrandById(id) {
+        return axios.get(`${API_URL}/product/brands/${id}/`);
+    },
+    createBrand(data) {
+        return axios.post(`${API_URL}/product/brands/`, data);
+    },
+    updateBrand(id, data) {
+        return axios.patch(`${API_URL}/product/brands/${id}/`, data);
+    },
+    deleteBrand(id) {
+        return axios.delete(`${API_URL}/product/brands/${id}/`);
+    },
+
+    getModels(params = {}) {
+        return axios.get(`${API_URL}/product/models/`, { params });
+    },
+    getModelById(id) {
+        return axios.get(`${API_URL}/product/models/${id}/`);
+    },
+    createModel(data) {
+        return axios.post(`${API_URL}/product/models/`, data);
+    },
+    updateModel(id, data) {
+        return axios.patch(`${API_URL}/product/models/${id}/`, data);
+    },
+    deleteModel(id) {
+        return axios.delete(`${API_URL}/product/models/${id}/`);
     }
 };

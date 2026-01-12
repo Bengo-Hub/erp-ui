@@ -14,7 +14,6 @@ export const expenseService = {
     update: (id, data, config = {}) => axios.put(`${FINANCE_BASE_URL}/expenses/${id}/`, data, config),
     patch: (id, data) => axios.patch(`${FINANCE_BASE_URL}/expenses/${id}/`, data),
     delete: (id) => axios.delete(`${FINANCE_BASE_URL}/expenses/${id}/`),
-
     // Expense actions
     getExpenseSummary: (params = {}) => axios.get(`${FINANCE_BASE_URL}/expenses/summary/`, { params }),
     recordPayment: (id, data) => axios.post(`${FINANCE_BASE_URL}/expenses/${id}/record-payment/`, data),
@@ -37,14 +36,6 @@ export const expenseCategoryService = {
     create: (data) => axios.post(`${FINANCE_BASE_URL}/expensecategories/`, data),
     update: (id, data) => axios.patch(`${FINANCE_BASE_URL}/expensecategories/${id}/`, data),
     delete: (id) => axios.delete(`${FINANCE_BASE_URL}/expensecategories/${id}/`)
-};
-
-export const paymentAccountService = {
-    getAll: (params) => axios.get(`${FINANCE_BASE_URL}/accounts/payment-accounts/`, { params }),
-    getById: (id) => axios.get(`${FINANCE_BASE_URL}/accounts/payment-accounts/${id}/`),
-    create: (data) => axios.post(`${FINANCE_BASE_URL}/accounts/payment-accounts/`, data),
-    update: (id, data) => axios.patch(`${FINANCE_BASE_URL}/accounts/payment-accounts/${id}/`, data),
-    delete: (id) => axios.delete(`${FINANCE_BASE_URL}/accounts/payment-accounts/${id}/`)
 };
 
 // Default export for backward compatibility
