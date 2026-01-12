@@ -7,6 +7,7 @@ import PermissionButton from '@/components/common/PermissionButton.vue';
 import { usePermissions } from '@/composables/usePermissions';
 import { useToast } from '@/composables/useToast';
 import { invoiceService } from '@/services/finance/invoiceService';
+import { creditNoteService, debitNoteService, deliveryNoteService } from '@/services/finance/billingDocumentsService';
 import { formatCurrency, formatDate } from '@/utils/formatters';
 import { computed, onMounted, onUnmounted, ref } from 'vue';
 import PDFPreview from '@/components/shared/PDFPreview.vue';
@@ -71,12 +72,13 @@ const selectedForBulk = ref(false);
 // Menu for overflow actions (three dots)
 const actionMenu = ref(null);
 const actionMenuItems = () => [
+    { label: 'Create Credit Note', icon: 'pi pi-minus-circle', command: () => createCreditNote() },
     { label: 'Create Debit Note', icon: 'pi pi-plus-circle', command: () => createDebitNote() },
+    { label: 'Create Delivery Note', icon: 'pi pi-truck', command: () => createDeliveryNote() },
+    { separator: true },
     { label: 'Clone', icon: 'pi pi-copy', command: () => cloneInvoice() },
     { label: 'Void', icon: 'pi pi-ban', command: () => voidInvoice(), disabled: !canVoid.value },
-    { label: 'Delete', icon: 'pi pi-trash', command: () => deleteInvoice(), disabled: !canDelete.value },
-    { separator: true },
-    { label: 'Invoice Preferences', icon: 'pi pi-cog', command: () => showToast('info','Info','Invoice Preferences not implemented'), class: 'menu-invoice-preferences' }
+    { label: 'Delete', icon: 'pi pi-trash', command: () => deleteInvoice(), disabled: !canDelete.value }
 ];
 
 const openSendDialog = () => showSendDialog.value = true;
@@ -96,12 +98,54 @@ const approveInvoice = async () => {
     }
 };
 
-const createDebitNote = () => {
-    // If the create invoice route supports a document type param, navigate there; otherwise show a message
+const createCreditNote = async () => {
+    if (!confirm(`Create a credit note from invoice ${invoice.value.invoice_number}?`)) return;
+
+    actionLoading.value = true;
     try {
-        router.push({ name: 'finance-invoice-create', query: { document_type: 'debit_note', copy_from: invoice.value?.id } });
-    } catch (e) {
-        showToast('info', 'Info', 'Create Debit Note not implemented');
+        const response = await creditNoteService.createFromInvoice(invoice.value.id);
+        const creditNote = response.data || response;
+        showToast('success', 'Success', 'Credit note created successfully');
+        router.push(`/finance/credit-notes/${creditNote.id}`);
+    } catch (error) {
+        console.error('Error creating credit note:', error);
+        showToast('error', 'Error', 'Failed to create credit note');
+    } finally {
+        actionLoading.value = false;
+    }
+};
+
+const createDebitNote = async () => {
+    if (!confirm(`Create a debit note from invoice ${invoice.value.invoice_number}?`)) return;
+
+    actionLoading.value = true;
+    try {
+        const response = await debitNoteService.createFromInvoice(invoice.value.id);
+        const debitNote = response.data || response;
+        showToast('success', 'Success', 'Debit note created successfully');
+        router.push(`/finance/debit-notes/${debitNote.id}`);
+    } catch (error) {
+        console.error('Error creating debit note:', error);
+        showToast('error', 'Error', 'Failed to create debit note');
+    } finally {
+        actionLoading.value = false;
+    }
+};
+
+const createDeliveryNote = async () => {
+    if (!confirm(`Create a delivery note from invoice ${invoice.value.invoice_number}?`)) return;
+
+    actionLoading.value = true;
+    try {
+        const response = await deliveryNoteService.createFromInvoice(invoice.value.id);
+        const deliveryNote = response.data || response;
+        showToast('success', 'Success', 'Delivery note created successfully');
+        router.push(`/finance/delivery-notes/${deliveryNote.id}`);
+    } catch (error) {
+        console.error('Error creating delivery note:', error);
+        showToast('error', 'Error', 'Failed to create delivery note');
+    } finally {
+        actionLoading.value = false;
     }
 };
 

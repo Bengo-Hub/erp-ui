@@ -181,6 +181,106 @@ export const financeRoutes = [
         component: () => import('@/views/pages/finance/quotations/QuotationForm.vue'),
         meta: { requiresAuth: true, title: 'Edit Quotation', permission: 'change_billingdocument' }
     },
+    // NEW: Delivery Notes Management Routes
+    {
+        path: '/finance/delivery-notes',
+        name: 'finance-delivery-notes',
+        component: () => import('@/views/pages/finance/invoicing/DeliveryNotes.vue'),
+        meta: { requiresAuth: true, title: 'Delivery Notes', permission: 'view_deliverynote' }
+    },
+    {
+        path: '/finance/delivery-notes/create',
+        name: 'finance-delivery-note-create',
+        component: () => import('@/views/pages/finance/invoicing/DeliveryNoteForm.vue'),
+        meta: { requiresAuth: true, title: 'Create Delivery Note', permission: 'add_deliverynote' }
+    },
+    {
+        path: '/finance/delivery-notes/:id',
+        name: 'finance-delivery-note-view',
+        component: () => import('@/views/pages/finance/invoicing/DeliveryNoteView.vue'),
+        meta: { requiresAuth: true, title: 'View Delivery Note', permission: 'view_deliverynote' }
+    },
+    {
+        path: '/finance/delivery-notes/:id/edit',
+        name: 'finance-delivery-note-edit',
+        component: () => import('@/views/pages/finance/invoicing/DeliveryNoteForm.vue'),
+        meta: { requiresAuth: true, title: 'Edit Delivery Note', permission: 'change_deliverynote' }
+    },
+    // NEW: Credit Notes Management Routes
+    {
+        path: '/finance/credit-notes',
+        name: 'finance-credit-notes',
+        component: () => import('@/views/pages/finance/invoicing/CreditNotes.vue'),
+        meta: { requiresAuth: true, title: 'Credit Notes', permission: 'view_creditnote' }
+    },
+    {
+        path: '/finance/credit-notes/create',
+        name: 'finance-credit-note-create',
+        component: () => import('@/views/pages/finance/invoicing/CreditNoteForm.vue'),
+        meta: { requiresAuth: true, title: 'Create Credit Note', permission: 'add_creditnote' }
+    },
+    {
+        path: '/finance/credit-notes/:id',
+        name: 'finance-credit-note-view',
+        component: () => import('@/views/pages/finance/invoicing/CreditNoteView.vue'),
+        meta: { requiresAuth: true, title: 'View Credit Note', permission: 'view_creditnote' }
+    },
+    {
+        path: '/finance/credit-notes/:id/edit',
+        name: 'finance-credit-note-edit',
+        component: () => import('@/views/pages/finance/invoicing/CreditNoteForm.vue'),
+        meta: { requiresAuth: true, title: 'Edit Credit Note', permission: 'change_creditnote' }
+    },
+    // NEW: Debit Notes Management Routes
+    {
+        path: '/finance/debit-notes',
+        name: 'finance-debit-notes',
+        component: () => import('@/views/pages/finance/invoicing/DebitNotes.vue'),
+        meta: { requiresAuth: true, title: 'Debit Notes', permission: 'view_debitnote' }
+    },
+    {
+        path: '/finance/debit-notes/create',
+        name: 'finance-debit-note-create',
+        component: () => import('@/views/pages/finance/invoicing/DebitNoteForm.vue'),
+        meta: { requiresAuth: true, title: 'Create Debit Note', permission: 'add_debitnote' }
+    },
+    {
+        path: '/finance/debit-notes/:id',
+        name: 'finance-debit-note-view',
+        component: () => import('@/views/pages/finance/invoicing/DebitNoteView.vue'),
+        meta: { requiresAuth: true, title: 'View Debit Note', permission: 'view_debitnote' }
+    },
+    {
+        path: '/finance/debit-notes/:id/edit',
+        name: 'finance-debit-note-edit',
+        component: () => import('@/views/pages/finance/invoicing/DebitNoteForm.vue'),
+        meta: { requiresAuth: true, title: 'Edit Debit Note', permission: 'change_debitnote' }
+    },
+    // NEW: Proforma Invoices Management Routes
+    {
+        path: '/finance/proforma-invoices',
+        name: 'finance-proforma-invoices',
+        component: () => import('@/views/pages/finance/invoicing/ProformaInvoices.vue'),
+        meta: { requiresAuth: true, title: 'Proforma Invoices', permission: 'view_proformainvoice' }
+    },
+    {
+        path: '/finance/proforma-invoices/create',
+        name: 'finance-proforma-invoice-create',
+        component: () => import('@/views/pages/finance/invoicing/ProformaInvoiceForm.vue'),
+        meta: { requiresAuth: true, title: 'Create Proforma Invoice', permission: 'add_proformainvoice' }
+    },
+    {
+        path: '/finance/proforma-invoices/:id',
+        name: 'finance-proforma-invoice-view',
+        component: () => import('@/views/pages/finance/invoicing/ProformaInvoiceView.vue'),
+        meta: { requiresAuth: true, title: 'View Proforma Invoice', permission: 'view_proformainvoice' }
+    },
+    {
+        path: '/finance/proforma-invoices/:id/edit',
+        name: 'finance-proforma-invoice-edit',
+        component: () => import('@/views/pages/finance/invoicing/ProformaInvoiceForm.vue'),
+        meta: { requiresAuth: true, title: 'Edit Proforma Invoice', permission: 'change_proformainvoice' }
+    },
     // PUBLIC: Invoice View (for sharing with customers)
     {
         path: '/public/invoice/:id/:token',

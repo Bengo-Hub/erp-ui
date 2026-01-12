@@ -12,7 +12,7 @@ const props = defineProps({
     },
     documentType: {
         type: String,
-        default: 'invoice', // 'invoice', 'quotation', 'expense', 'credit_note', 'debit_note'
+        default: 'invoice', // 'invoice', 'quotation', 'expense', 'credit_note', 'debit_note', 'delivery_note', 'proforma'
     },
     showIcon: {
         type: Boolean,
@@ -61,6 +61,22 @@ const statusConfigs = {
         issued: { severity: 'info', icon: 'pi-send', label: 'Issued' },
         applied: { severity: 'success', icon: 'pi-check-circle', label: 'Applied' },
         void: { severity: 'secondary', icon: 'pi-ban', label: 'Void' }
+    },
+    delivery_note: {
+        draft: { severity: 'secondary', icon: 'pi-file-edit', label: 'Draft' },
+        pending: { severity: 'warning', icon: 'pi-clock', label: 'Pending' },
+        in_transit: { severity: 'info', icon: 'pi-truck', label: 'In Transit' },
+        delivered: { severity: 'success', icon: 'pi-check-circle', label: 'Delivered' },
+        partially_delivered: { severity: 'warning', icon: 'pi-exclamation-circle', label: 'Partially Delivered' },
+        cancelled: { severity: 'secondary', icon: 'pi-ban', label: 'Cancelled' }
+    },
+    proforma: {
+        draft: { severity: 'secondary', icon: 'pi-file-edit', label: 'Draft' },
+        sent: { severity: 'info', icon: 'pi-send', label: 'Sent' },
+        accepted: { severity: 'success', icon: 'pi-check', label: 'Accepted' },
+        converted: { severity: 'success', icon: 'pi-arrow-right', label: 'Converted' },
+        expired: { severity: 'danger', icon: 'pi-clock', label: 'Expired' },
+        cancelled: { severity: 'secondary', icon: 'pi-ban', label: 'Cancelled' }
     }
 };
 
