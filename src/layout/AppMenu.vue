@@ -503,6 +503,30 @@ const originalModel = ref([
                         permission: 'view_billingdocument'
                     },
                     {
+                        label: 'Proforma Invoices',
+                        icon: 'pi pi-file-pdf',
+                        to: '/finance/proforma-invoices',
+                        permission: 'view_billingdocument'
+                    },
+                    {
+                        label: 'Credit Notes',
+                        icon: 'pi pi-minus-circle',
+                        to: '/finance/credit-notes',
+                        permission: 'view_billingdocument'
+                    },
+                    {
+                        label: 'Debit Notes',
+                        icon: 'pi pi-plus-circle',
+                        to: '/finance/debit-notes',
+                        permission: 'view_billingdocument'
+                    },
+                    {
+                        label: 'Delivery Notes',
+                        icon: 'pi pi-truck',
+                        to: '/finance/delivery-notes',
+                        permission: 'view_billingdocument'
+                    },
+                    {
                         label: 'Accounts',
                         icon: 'pi pi-wallet',
                         to: '/finance/accounts',
@@ -513,12 +537,6 @@ const originalModel = ref([
                         icon: 'pi pi-file-edit',
                         to: '/finance/vouchers',
                         permission: 'view_voucher'
-                    },
-                    {
-                        label: 'Billing Documents',
-                        icon: 'pi pi-file-text',
-                        to: '/finance/billing',
-                        permission: 'view_billingdocument'
                     }
                 ]
             },
