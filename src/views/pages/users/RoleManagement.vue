@@ -122,30 +122,78 @@
                     <small v-if="submitted && !roleForm.name" class="text-red-500">Role name is required</small>
                 </div>
 
-                <!-- Permission Selection -->
-                <div>
+                <!-- Permission Selection with Search and Module Filter -->
+                <div class="space-y-3">
                     <label class="block text-sm font-medium mb-2">Permissions</label>
-                    <MultiSelect
-                        v-model="roleForm.permissions"
-                        :options="allPermissions"
-                        optionLabel="name"
-                        optionValue="id"
-                        placeholder="Select permissions"
-                        class="w-full"
-                        filter
-                        display="chip"
-                        :maxSelectedLabels="5"
-                    >
-                        <template #option="{ option }">
-                            <div class="flex items-center gap-2">
-                                <i :class="getPermissionIcon(option.codename)" class="text-sm"></i>
-                                <div>
-                                    <div class="font-medium">{{ option.name }}</div>
-                                    <div class="text-xs text-gray-500">{{ option.codename }}</div>
+
+                    <!-- Search and Module Filter -->
+                    <div class="flex gap-2">
+                        <InputText
+                            v-model="permissionSearch"
+                            placeholder="Search permissions..."
+                            class="flex-1"
+                            @input="debouncedFilterPermissions"
+                        />
+                        <Dropdown
+                            v-model="selectedModule"
+                            :options="moduleOptions"
+                            optionLabel="label"
+                            optionValue="value"
+                            placeholder="All modules"
+                            class="w-48"
+                            @change="filterPermissions"
+                            showClear
+                        />
+                    </div>
+
+                    <!-- Permissions List with Virtual Scroll -->
+                    <div class="border rounded-lg max-h-64 overflow-y-auto bg-white dark:bg-gray-800">
+                        <div v-if="loadingPermissions" class="flex items-center justify-center p-8">
+                            <i class="pi pi-spin pi-spinner text-2xl text-primary-500"></i>
+                            <span class="ml-2">Loading permissions...</span>
+                        </div>
+                        <div v-else-if="filteredPermissions.length === 0" class="text-center p-4 text-gray-500">
+                            No permissions found
+                        </div>
+                        <div v-else class="divide-y divide-gray-100 dark:divide-gray-700">
+                            <label
+                                v-for="permission in filteredPermissions"
+                                :key="permission.id"
+                                class="flex items-center gap-3 p-3 hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer"
+                            >
+                                <Checkbox
+                                    :model-value="roleForm.permissions.includes(permission.id)"
+                                    :binary="true"
+                                    @update:model-value="(checked) => togglePermission(permission.id, checked)"
+                                />
+                                <i :class="getPermissionIcon(permission.codename)" class="text-sm text-primary-500"></i>
+                                <div class="flex-1 min-w-0">
+                                    <div class="font-medium text-gray-900 dark:text-gray-100 truncate">{{ permission.name }}</div>
+                                    <div class="text-xs text-gray-500 truncate">{{ permission.codename }}</div>
                                 </div>
-                            </div>
-                        </template>
-                    </MultiSelect>
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- Quick Actions -->
+                    <div class="flex gap-2 text-sm">
+                        <Button
+                            label="Select All Visible"
+                            icon="pi pi-check-square"
+                            size="small"
+                            severity="secondary"
+                            text
+                            @click="selectAllVisible"
+                        />
+                        <Button
+                            label="Clear All"
+                            icon="pi pi-times"
+                            size="small"
+                            severity="secondary"
+                            text
+                            @click="clearAllPermissions"
+                        />
+                    </div>
                 </div>
 
                 <!-- Permission Categories (grouped view) -->
@@ -294,7 +342,7 @@
 import PermissionButton from '@/components/common/PermissionButton.vue';
 import { useToast } from '@/composables/useToast';
 import { userManagementService } from '@/services/auth/userManagementService';
-import { computed, onMounted, ref } from 'vue';
+import { computed, onMounted, ref, watch } from 'vue';
 
 const { showToast } = useToast();
 
@@ -302,10 +350,39 @@ const { showToast } = useToast();
 const loading = ref(false);
 const saving = ref(false);
 const deleting = ref(false);
+const loadingPermissions = ref(false);
 const roles = ref([]);
 const users = ref([]);
 const allPermissions = ref([]);
+const filteredPermissions = ref([]);
 const selectedRole = ref(null);
+
+// Permission filtering
+const permissionSearch = ref('');
+const selectedModule = ref(null);
+let filterDebounceTimer = null;
+
+// Module options for filtering (derived from permissions)
+const moduleOptions = computed(() => {
+    const modules = new Set();
+    allPermissions.value.forEach(p => {
+        // Extract module from codename (e.g., "add_user" -> content_type app_label)
+        // Or use content_type if available
+        const parts = p.codename?.split('_') || [];
+        if (parts.length > 1) {
+            // Get app from content type if available, otherwise infer
+            const app = p.content_type?.app_label || parts.slice(1).join('_');
+            if (app) modules.add(app);
+        }
+    });
+    return [
+        { label: 'All Modules', value: null },
+        ...Array.from(modules).sort().map(m => ({
+            label: m.charAt(0).toUpperCase() + m.slice(1).replace(/_/g, ' '),
+            value: m
+        }))
+    ];
+});
 
 // Dialogs
 const roleDialog = ref(false);
@@ -320,26 +397,91 @@ const roleForm = ref({
     permissions: []
 });
 
+// Permission filtering methods
+const filterPermissions = () => {
+    const search = permissionSearch.value.toLowerCase().trim();
+    const module = selectedModule.value;
+
+    filteredPermissions.value = allPermissions.value.filter(p => {
+        // Search filter
+        const matchesSearch = !search ||
+            p.name?.toLowerCase().includes(search) ||
+            p.codename?.toLowerCase().includes(search);
+
+        // Module filter
+        const matchesModule = !module ||
+            p.content_type?.app_label === module ||
+            p.codename?.includes(module);
+
+        return matchesSearch && matchesModule;
+    });
+};
+
+const debouncedFilterPermissions = () => {
+    clearTimeout(filterDebounceTimer);
+    filterDebounceTimer = setTimeout(filterPermissions, 200);
+};
+
+// Permission toggle methods
+const togglePermission = (permissionId, checked) => {
+    if (checked) {
+        if (!roleForm.value.permissions.includes(permissionId)) {
+            roleForm.value.permissions.push(permissionId);
+        }
+    } else {
+        const idx = roleForm.value.permissions.indexOf(permissionId);
+        if (idx > -1) {
+            roleForm.value.permissions.splice(idx, 1);
+        }
+    }
+};
+
+const selectAllVisible = () => {
+    filteredPermissions.value.forEach(p => {
+        if (!roleForm.value.permissions.includes(p.id)) {
+            roleForm.value.permissions.push(p.id);
+        }
+    });
+};
+
+const clearAllPermissions = () => {
+    roleForm.value.permissions = [];
+};
+
 // Methods
 const loadRoles = async () => {
     loading.value = true;
     try {
-        const [rolesRes, permissionsRes, usersRes] = await Promise.all([
+        const [rolesRes, usersRes] = await Promise.all([
             userManagementService.getRoles(),
-            userManagementService.getPermissions(),
             userManagementService.getUsers()
         ]);
 
         roles.value = rolesRes.data?.results || rolesRes.data || [];
-        allPermissions.value = permissionsRes.data?.results || permissionsRes.data || [];
         users.value = usersRes.data?.results || usersRes.data || [];
-        
+
         showToast('success', 'Roles loaded successfully', 'Success');
     } catch (error) {
         console.error('Error loading roles:', error);
         showToast('error', 'Failed to load roles', 'Error');
     } finally {
         loading.value = false;
+    }
+};
+
+// Load permissions separately with pagination support
+const loadPermissions = async () => {
+    loadingPermissions.value = true;
+    try {
+        // Use getAllPermissions to fetch all pages
+        const permissionsRes = await userManagementService.getAllPermissions();
+        allPermissions.value = permissionsRes.data || [];
+        filterPermissions();
+    } catch (error) {
+        console.error('Error loading permissions:', error);
+        showToast('error', 'Failed to load permissions', 'Error');
+    } finally {
+        loadingPermissions.value = false;
     }
 };
 
@@ -452,6 +594,7 @@ const getPermissionName = (permissionId) => {
 
 onMounted(() => {
     loadRoles();
+    loadPermissions();
 });
 </script>
 

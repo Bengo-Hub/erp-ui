@@ -34,7 +34,16 @@ const props = defineProps({
     type: Boolean,
     default: false
   },
-  // show editable description column
+  // Currency for price display and InputNumber
+  currency: {
+    type: String,
+    default: 'KES'
+  },
+  // Locale for number formatting
+  locale: {
+    type: String,
+    default: 'en-KE'
+  }
 });
 
 const emit = defineEmits(['update:items', 'add-product', 'edit-product']);
@@ -312,15 +321,15 @@ const onTaxSaved = async (newTax) => {
 
       <Column header="Unit Price *" :headerStyle="showTaxFields ? 'width: 120px' : 'width: 25%'">
         <template #body="{ data }">
-          <InputNumber 
+          <InputNumber
             :model-value="getUnitPrice(data)"
             @update:model-value="setUnitPrice(data, $event)"
-            mode="currency" 
-            currency="KES" 
-            locale="en-KE" 
+            mode="currency"
+            :currency="currency"
+            :locale="locale"
             :readonly="readonly"
-            :min="0.01" 
-            class="compact-inputnumber w-full" 
+            :min="0.01"
+            class="compact-inputnumber w-full"
           />
         </template>
       </Column>
@@ -371,7 +380,7 @@ const onTaxSaved = async (newTax) => {
       <Column header="Amount" :headerStyle="showTaxFields ? 'width: 120px' : 'width: 15%'">
         <template #body="{ data }">
           <div class="text-right font-semibold">
-            {{ formatCurrency((data.quantity || 0) * (getUnitPrice(data) || 0)) }}
+            {{ formatCurrency((data.quantity || 0) * (getUnitPrice(data) || 0), currency) }}
           </div>
         </template>
       </Column>
@@ -416,7 +425,7 @@ const onTaxSaved = async (newTax) => {
       
       <div class="total-summary">
         <span class="total-label">Subtotal:</span>
-        <span class="total-amount">{{ formatCurrency(calculateSubtotal()) }}</span>
+        <span class="total-amount">{{ formatCurrency(calculateSubtotal(), currency) }}</span>
       </div>
     </div>
   </div>

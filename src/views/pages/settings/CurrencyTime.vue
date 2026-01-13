@@ -268,108 +268,7 @@ onMounted(async () => {
         </div>
 
         <div v-else class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <!-- Left Column: Regional Settings -->
-            <div class="space-y-6">
-                <div class="p-4 border rounded-lg bg-surface-50 dark:bg-surface-800">
-                    <h3 class="text-lg font-semibold mb-4 flex items-center gap-2">
-                        <i class="pi pi-globe"></i>
-                        Regional Settings
-                    </h3>
-
-                    <!-- Timezone -->
-                    <div class="mb-4">
-                        <label for="timezone" class="block font-semibold text-surface-900 dark:text-surface-0 mb-2">
-                            Time Zone
-                        </label>
-                        <Dropdown
-                            id="timezone"
-                            v-model="settings.timezone"
-                            :options="timezoneOptions"
-                            optionLabel="label"
-                            optionValue="value"
-                            class="w-full"
-                            filter
-                        />
-                    </div>
-
-                    <!-- Date Format -->
-                    <div class="mb-4">
-                        <label for="date_format" class="block font-semibold text-surface-900 dark:text-surface-0 mb-2">
-                            Date Format
-                        </label>
-                        <Dropdown
-                            id="date_format"
-                            v-model="settings.date_format"
-                            :options="dateFormatOptions"
-                            optionLabel="label"
-                            optionValue="value"
-                            class="w-full"
-                        />
-                    </div>
-
-                    <!-- Financial Year End -->
-                    <div class="mb-4">
-                        <label for="financial_year" class="block font-semibold text-surface-900 dark:text-surface-0 mb-2">
-                            Financial Year Ends
-                        </label>
-                        <InputText
-                            id="financial_year"
-                            v-model="settings.financial_year_end"
-                            class="w-full"
-                            placeholder="e.g., December 31"
-                        />
-                    </div>
-
-                    <!-- Currency -->
-                    <div class="mb-4">
-                        <label for="currency" class="block font-semibold text-surface-900 dark:text-surface-0 mb-2">
-                            Default Currency
-                        </label>
-                        <Dropdown
-                            id="currency"
-                            v-model="settings.currency"
-                            :options="currencyOptions"
-                            optionLabel="label"
-                            optionValue="value"
-                            class="w-full"
-                            filter
-                            @change="onCurrencyChange"
-                        />
-                    </div>
-
-                    <!-- Currency Symbol -->
-                    <div class="mb-4">
-                        <label for="currency_symbol" class="block font-semibold text-surface-900 dark:text-surface-0 mb-2">
-                            Currency Symbol
-                        </label>
-                        <InputText
-                            id="currency_symbol"
-                            v-model="settings.currency_symbol"
-                            class="w-full"
-                            placeholder="e.g., KES, $, £"
-                        />
-                    </div>
-
-                    <div class="flex justify-end gap-3">
-                        <Button
-                            label="Reset"
-                            icon="pi pi-refresh"
-                            outlined
-                            @click="fetchSettings"
-                            :disabled="saving"
-                        />
-                        <Button
-                            label="Save Settings"
-                            icon="pi pi-check"
-                            severity="success"
-                            @click="saveSettings"
-                            :loading="saving"
-                        />
-                    </div>
-                </div>
-            </div>
-
-            <!-- Right Column: Exchange Rate API -->
+         <!-- Left Column: Exchange Rate API -->
             <div class="space-y-6">
                 <!-- API Status Card -->
                 <div class="p-4 border rounded-lg bg-surface-50 dark:bg-surface-800">
@@ -557,6 +456,107 @@ onMounted(async () => {
                     </div>
                 </div>
             </div>
+            <!-- Right Column: Regional Settings -->
+            <div class="space-y-6">
+                <div class="p-4 border rounded-lg bg-surface-50 dark:bg-surface-800">
+                    <h3 class="text-lg font-semibold mb-4 flex items-center gap-2">
+                        <i class="pi pi-globe"></i>
+                        Regional Settings
+                    </h3>
+
+                    <!-- Timezone -->
+                    <div class="mb-4">
+                        <label for="timezone" class="block font-semibold text-surface-900 dark:text-surface-0 mb-2">
+                            Time Zone
+                        </label>
+                        <Dropdown
+                            id="timezone"
+                            v-model="settings.timezone"
+                            :options="timezoneOptions"
+                            optionLabel="label"
+                            optionValue="value"
+                            class="w-full"
+                            filter
+                        />
+                    </div>
+
+                    <!-- Date Format -->
+                    <div class="mb-4">
+                        <label for="date_format" class="block font-semibold text-surface-900 dark:text-surface-0 mb-2">
+                            Date Format
+                        </label>
+                        <Dropdown
+                            id="date_format"
+                            v-model="settings.date_format"
+                            :options="dateFormatOptions"
+                            optionLabel="label"
+                            optionValue="value"
+                            class="w-full"
+                        />
+                    </div>
+
+                    <!-- Financial Year End -->
+                    <div class="mb-4">
+                        <label for="financial_year" class="block font-semibold text-surface-900 dark:text-surface-0 mb-2">
+                            Financial Year Ends
+                        </label>
+                        <InputText
+                            id="financial_year"
+                            v-model="settings.financial_year_end"
+                            class="w-full"
+                            placeholder="e.g., December 31"
+                        />
+                    </div>
+
+                    <!-- Currency -->
+                    <div class="mb-4">
+                        <label for="currency" class="block font-semibold text-surface-900 dark:text-surface-0 mb-2">
+                            Default Currency
+                        </label>
+                        <Dropdown
+                            id="currency"
+                            v-model="settings.currency"
+                            :options="currencyOptions"
+                            optionLabel="label"
+                            optionValue="value"
+                            class="w-full"
+                            filter
+                            @change="onCurrencyChange"
+                        />
+                    </div>
+
+                    <!-- Currency Symbol -->
+                    <div class="mb-4">
+                        <label for="currency_symbol" class="block font-semibold text-surface-900 dark:text-surface-0 mb-2">
+                            Currency Symbol
+                        </label>
+                        <InputText
+                            id="currency_symbol"
+                            v-model="settings.currency_symbol"
+                            class="w-full"
+                            placeholder="e.g., KES, $, £"
+                        />
+                    </div>
+
+                    <div class="flex justify-end gap-3">
+                        <Button
+                            label="Reset"
+                            icon="pi pi-refresh"
+                            outlined
+                            @click="fetchSettings"
+                            :disabled="saving"
+                        />
+                        <Button
+                            label="Save Settings"
+                            icon="pi pi-check"
+                            severity="success"
+                            @click="saveSettings"
+                            :loading="saving"
+                        />
+                    </div>
+                </div>
+            </div>
+           
         </div>
     </div>
 </template>

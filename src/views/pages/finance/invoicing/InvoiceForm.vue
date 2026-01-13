@@ -28,7 +28,11 @@ import { useRoute, useRouter } from 'vue-router';
 const router = useRouter();
 const route = useRoute();
 const { showToast } = useToast();
-const { initialize: initCurrencies } = useCurrency();
+const { initialize: initCurrencies, convertBillingItems, getExchangeRate, formatAmount } = useCurrency();
+
+// Currency conversion state
+const isConverting = ref(false);
+const previousCurrency = ref('KES');
 
 // Check if edit mode
 const isEditMode = computed(() => !!route.params.id);
@@ -562,6 +566,47 @@ watch(() => form.discount_value, () => calculateTotals());
 watch(() => form.discount_type, () => calculateTotals());
 watch(() => form.shipping_cost, () => calculateTotals());
 
+// Currency change handler - convert all item prices when currency changes
+const handleCurrencyChange = async (newCurrency) => {
+    const oldCurrency = previousCurrency.value;
+
+    if (oldCurrency === newCurrency || form.items.length === 0) {
+        previousCurrency.value = newCurrency;
+        return;
+    }
+
+    isConverting.value = true;
+    try {
+        // Convert all item prices
+        const convertedItems = await convertBillingItems(form.items, oldCurrency, newCurrency);
+        form.items = convertedItems;
+
+        // Get and store the exchange rate
+        const rate = await getExchangeRate(oldCurrency, newCurrency);
+        if (rate) {
+            form.exchange_rate = rate;
+        }
+
+        // Recalculate totals with new prices
+        calculateTotals();
+
+        previousCurrency.value = newCurrency;
+        showToast('info', 'Currency Converted', `Prices converted from ${oldCurrency} to ${newCurrency}`);
+    } catch (error) {
+        console.error('Error converting currency:', error);
+        showToast('warn', 'Conversion Warning', 'Could not convert prices. Please update manually.');
+    } finally {
+        isConverting.value = false;
+    }
+};
+
+// Watch for currency changes
+watch(() => form.currency, (newCurrency, oldCurrency) => {
+    if (newCurrency && oldCurrency && newCurrency !== oldCurrency) {
+        handleCurrencyChange(newCurrency);
+    }
+});
+
 const applyDiscount = () => {
     calculateTotals();
 };
@@ -750,6 +795,12 @@ const loadInvoice = async (id) => {
         form.tax_rate = invoice.tax_rate || 0;
         form.currency = invoice.currency || 'KES';
         form.exchange_rate = invoice.exchange_rate || 1.0;
+
+        // Set previous currency to match loaded invoice (prevents conversion on load)
+        previousCurrency.value = form.currency;
+
+        // Clear items first to prevent duplication, then load from invoice
+        form.items = [];
 
         // Load items - match product_id against both direct products and nested product structures
         form.items = (invoice.items || []).map(item => {
@@ -954,13 +1005,14 @@ const loadInvoice = async (id) => {
                     <div>
                         <h3 class="text-lg font-semibold text-surface-900 dark:text-surface-0 mb-4">Line Items</h3>
                         <div class="overflow-x-auto">
-                        <ItemsTable 
+                        <ItemsTable
                             v-model:items="form.items"
                             :available-products="products"
                             :show-add-product="true"
                             :show-edit-product="true"
                             :show-tax-fields="true"
                             :show-description="true"
+                            :currency="form.currency"
                             @add-product="handleAddProduct"
                             @edit-product="handleEditProduct"
                             @update:items="calculateTotals"

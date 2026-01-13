@@ -6,8 +6,9 @@ import { useToast } from 'primevue/usetoast';
 import { procurementService } from '@/services/procurement/procurementService';
 import { productService } from '@/services/ecommerce/productService';
 import { ecommerceService } from '@/services/ecommerce/ecommerceService';
-import { formatCurrency } from '@/utils/formatters';
+import { useCurrency } from '@/composables/useCurrency';
 import PDFPreview from '@/components/shared/PDFPreview.vue';
+import CurrencySelector from '@/components/shared/CurrencySelector.vue';
 import AddSupplier from '@/components/crm/AddSupplier.vue';
 import ProductForm from '@/components/products/ProductForm.vue';
 import RequisitionForm from '@/components/procurement/RequisitionForm.vue';
@@ -23,17 +24,33 @@ const props = defineProps({
 
 const emit = defineEmits(['close', 'submitted', 'saved']);
 
+// Currency composable
+const {
+    initialize: initCurrencies,
+    formatAmount,
+    convertBillingItems,
+    getExchangeRate,
+    isInitialized: currencyInitialized
+} = useCurrency();
+
 const form = reactive({
     supplier: null,
     requisition: null,
-    order_type: 'purchase_order', // Required by BaseOrder model
+    order_type: 'purchase_order',
     terms: 'Net 30 days payment terms. Delivery must be completed by specified date.',
     delivery_instructions: 'Delivery Expected with the purchase order',
     expected_delivery: null,
     approved_budget: 0,
+    currency: 'KES',
+    exchange_rate: 1,
+    // Unified financial fields
+    subtotal: 0,
     tax_rate: 0,
     tax_mode: 'on_total',
-    discount: 0,
+    tax_amount: 0,
+    discount_percent: 0,
+    discount_amount: 0,
+    total: 0,
     requisition_reference: null,
     items: []
 });
@@ -63,6 +80,10 @@ const itemsValidated = ref(false);
 const productDialogForItems = ref(false);
 const productEditMode = ref(false);
 const productEditData = ref(null);
+
+// Currency conversion state
+const isConverting = ref(false);
+const previousCurrency = ref('KES');
 
 // PDF Preview state
 const showPDFModal = ref(false);
@@ -116,18 +137,47 @@ const requisitionModal = useAddEditModal({
   }
 });
 
-const breadcrumbHome = { icon: 'pi pi-home', to: '/' };
-const breadcrumbItems = ref([{ label: 'Procurement', to: '/procurement' }, { label: 'Purchase Orders', to: '/procurement/purchase-orders' }, { label: 'Create New' }]);
+// Unified computed financials
+const poSubtotal = computed(() => {
+    return form.items.reduce((total, item) => {
+        const qty = Number(item.quantity) || 0;
+        const price = Number(item.unitPrice || item.unit_price) || 0;
+        return total + (qty * price);
+    }, 0);
+});
 
-// Computed financials for UI
-const poSubtotal = computed(() => calculateSubtotal());
-const poTax = computed(() => calculateTax());
-const poGrandTotal = computed(() => calculateGrandTotal());
+const poDiscountAmount = computed(() => {
+    const percent = Number(form.discount_percent) || 0;
+    return Math.round(((poSubtotal.value * percent) / 100) * 100) / 100;
+});
 
-// Computed
-const rowClass = (data) => {
-    return data.urgent ? 'urgent-row' : '';
-};
+const poTaxableAmount = computed(() => {
+    return Math.max(0, poSubtotal.value - poDiscountAmount.value);
+});
+
+const poTaxAmount = computed(() => {
+    if (form.tax_mode === 'on_total') {
+        const rate = Number(form.tax_rate) || 0;
+        return Math.round(((poTaxableAmount.value * rate) / 100) * 100) / 100;
+    }
+    // Per-line tax - sum from items if they have individual tax
+    return form.items.reduce((total, item) => {
+        const itemSubtotal = (Number(item.quantity) || 0) * (Number(item.unitPrice || item.unit_price) || 0);
+        const itemTaxRate = Number(item.tax_rate) || 0;
+        return total + ((itemSubtotal * itemTaxRate) / 100);
+    }, 0);
+});
+
+const poGrandTotal = computed(() => {
+    return Math.round((poTaxableAmount.value + poTaxAmount.value) * 100) / 100;
+});
+
+const budgetStatus = computed(() => {
+    if (form.approved_budget <= 0) return 'neutral';
+    if (poGrandTotal.value > form.approved_budget) return 'over';
+    if (poGrandTotal.value > form.approved_budget * 0.9) return 'warning';
+    return 'ok';
+});
 
 // Methods
 const loadSuppliers = async () => {
@@ -154,32 +204,86 @@ const loadRequisitions = async (id) => {
 
 const loadProducts = async () => {
     try {
-        // Use lightweight search endpoint for better performance
         const response = await ecommerceService.searchProductsLite({ search: '' });
         const payload = response.data || response || {};
         let data = payload.data ?? payload.results ?? payload;
 
-        // If data itself has results (nested), unwrap
         if (data && data.results && Array.isArray(data.results)) {
             data = data.results;
         }
 
         products.value = Array.isArray(data) ? data : [];
-        console.log('✅ Products loaded for PO:', products.value.length);
     } catch (error) {
-        console.error('❌ Error loading products:', error);
-        // Fallback to regular endpoint if lite endpoint fails
+        console.error('Error loading products:', error);
         try {
             const response = await ecommerceService.getProducts({ page_size: 100 });
             const results = response.data?.results || response.data || [];
             products.value = Array.isArray(results) ? results : [];
-            console.log('✅ Products loaded (fallback):', products.value.length);
         } catch (fallbackError) {
-            console.error('❌ Error in fallback product load:', fallbackError);
+            console.error('Error in fallback product load:', fallbackError);
             products.value = [];
         }
     }
 };
+
+// Currency change handler with conversion
+const handleCurrencyChange = async (newCurrency) => {
+    const oldCurrency = previousCurrency.value;
+
+    if (oldCurrency === newCurrency || form.items.length === 0) {
+        previousCurrency.value = newCurrency;
+        return;
+    }
+
+    isConverting.value = true;
+    try {
+        // Get exchange rate and convert items
+        const rate = await getExchangeRate(oldCurrency, newCurrency);
+        if (rate && rate > 0) {
+            // Convert all item prices
+            form.items = form.items.map(item => ({
+                ...item,
+                unitPrice: Number.isFinite(Number(item.unitPrice))
+                    ? Math.round(Number(item.unitPrice) * rate * 100) / 100
+                    : item.unitPrice,
+                unit_price: Number.isFinite(Number(item.unit_price))
+                    ? Math.round(Number(item.unit_price) * rate * 100) / 100
+                    : item.unit_price
+            }));
+
+            // Convert approved budget
+            if (form.approved_budget > 0) {
+                form.approved_budget = Math.round(form.approved_budget * rate * 100) / 100;
+            }
+
+            form.exchange_rate = rate;
+            toast.add({
+                severity: 'info',
+                summary: 'Currency Converted',
+                detail: `Prices converted from ${oldCurrency} to ${newCurrency}`,
+                life: 3000
+            });
+        }
+        previousCurrency.value = newCurrency;
+    } catch (error) {
+        console.error('Error converting currency:', error);
+        toast.add({
+            severity: 'warn',
+            summary: 'Conversion Failed',
+            detail: 'Could not convert prices. Please update manually.',
+            life: 5000
+        });
+    } finally {
+        isConverting.value = false;
+    }
+};
+
+// Watch currency changes
+watch(() => form.currency, (newCurrency, oldCurrency) => {
+    if (newCurrency && oldCurrency && newCurrency !== oldCurrency) {
+        handleCurrencyChange(newCurrency);
+    }
+});
 
 // Handlers for saved events
 const handleSupplierSaved = async (saved) => {
@@ -198,11 +302,9 @@ const handleProductSaved = async (saved) => {
     try {
         await loadProducts();
 
-        // If this product was created from the ItemsTable "Add product" flow, add it as a new line
         const product = saved?.product || saved || saved?.data || null;
         if (productDialogForItems.value && product) {
             const prodId = product.id || product.product_id || null;
-            // Use buying_price for PO (purchase price)
             const unitPriceVal = parseFloat(product.buying_price || product.selling_price || 0);
             if (prodId) {
                 const existing = form.items.find(i => {
@@ -279,22 +381,16 @@ const setRequisitionItems = () => {
         const req = selectedRequisition.value;
         form.requisition_reference = req.reference_number;
 
-        // Safely map requisition items - handle different data structures
         requisitionItems.value = (req.items || []).map((item) => {
-            // stock_item may be nested object or just an ID
             const stockItem = item.stock_item || {};
-            // Get product info from stock_item.product or stock_item directly
             const product = stockItem.product || stockItem;
 
-            // Extract title/name for display
             const name = item.name || product.title || product.name || stockItem.title || stockItem.name || 'Unknown Item';
             const description = item.description || product.description || stockItem.description || '';
             const sku = product.sku || stockItem.sku || '';
 
-            // Create displayName for ItemsTable compatibility
             const displayName = sku ? `${name} (${sku})` : name;
 
-            // Get prices - check multiple possible field names
             const buyingPrice = parseFloat(
                 item.unit_price ||
                 stockItem.buying_price ||
@@ -304,7 +400,6 @@ const setRequisitionItems = () => {
                 0
             );
 
-            // Build product object with displayName for ItemsTable
             const productWithDisplayName = product.id ? {
                 ...product,
                 title: name,
@@ -316,17 +411,14 @@ const setRequisitionItems = () => {
             } : null);
 
             return {
-                // For ItemsTable compatibility - include displayName
                 product: productWithDisplayName,
                 stockItem: stockItem.id ? { ...stockItem, displayName } : stockItem,
-                // Core fields
                 name: name,
                 displayName: displayName,
                 description: description,
                 quantity: item.quantity ?? 1,
                 unit_price: buyingPrice,
                 unitPrice: buyingPrice,
-                // Additional metadata
                 urgent: !!item.urgent,
                 requisition_item_id: item.id
             };
@@ -337,56 +429,13 @@ const setRequisitionItems = () => {
         // If approvals are present and any is approved, derive approved budget from subtotal
         const hasApproved = (req.approvals || []).some((approval) => approval.status === 'approved');
         if (hasApproved) {
-            form.approved_budget = calculateSubtotal();
+            form.approved_budget = poSubtotal.value;
         }
     } catch (error) {
         console.error(error);
         handleError(error);
     }
 };
-
-const calculateSubtotal = () => {
-    return form.items.reduce((total, item) => {
-        return total + item.quantity * (item.unitPrice || 0);
-    }, 0);
-};
-
-const calculateTax = () => {
-    const subtotal = calculateSubtotal();
-    const discountAmount = ((Number(form.discount) || 0) / 100) * subtotal;
-    if (form.tax_mode === 'on_total') {
-        const rate = Number(form.tax_rate) || 0;
-        const taxableBase = Math.max(0, subtotal - discountAmount);
-        return Math.round(((taxableBase * rate) / 100) * 100) / 100;
-    }
-    // Per-line tax not currently exposed on PO line items; default to 0 when not on_total
-    return 0;
-};
-
-const calculateGrandTotal = () => {
-    const subtotal = calculateSubtotal();
-    const tax = calculateTax();
-    const discountAmount = ((Number(form.discount) || 0) / 100) * subtotal;
-    return Math.round((Math.max(0, subtotal - discountAmount) + tax) * 100) / 100;
-};
-
-// Watch tax and discount fields to update computed totals immediately
-watch(() => form.tax_rate, () => {
-    form.tax_amount = calculateTax();
-    form.grand_total = calculateGrandTotal();
-});
-watch(() => form.tax_mode, () => {
-    form.tax_amount = calculateTax();
-    form.grand_total = calculateGrandTotal();
-});
-watch(() => form.discount, () => {
-    form.tax_amount = calculateTax();
-    form.grand_total = calculateGrandTotal();
-});
-watch(() => form.items, () => {
-    form.tax_amount = calculateTax();
-    form.grand_total = calculateGrandTotal();
-}, { deep: true });
 
 const handleError = (error) => {
     toast.add({
@@ -397,21 +446,28 @@ const handleError = (error) => {
     });
 };
 
+const buildOrderPayload = (status) => {
+    return {
+        ...form,
+        order_type: 'purchase_order',
+        status: status,
+        requisition: selectedRequisition.value?.id || null,
+        supplier: form.supplier?.id || form.supplier,
+        expected_delivery: form.expected_delivery ? form.expected_delivery.toISOString().split('T')[0] : null,
+        // Financial fields
+        subtotal: poSubtotal.value,
+        tax_amount: poTaxAmount.value,
+        discount_amount: poDiscountAmount.value,
+        total: poGrandTotal.value,
+        currency: form.currency,
+        exchange_rate: form.exchange_rate
+    };
+};
+
 const saveDraft = async () => {
     try {
         isSubmitting.value = true;
-        // Ensure financial totals are up-to-date
-        form.tax_amount = calculateTax();
-        form.grand_total = calculateGrandTotal();
-
-        await procurementService.savePurchaseOrderDraft({
-            ...form,
-            order_type: 'purchase_order',
-            status: 'draft',
-            requisition: selectedRequisition.value?.id || null,
-            supplier: form.supplier?.id || form.supplier,
-            expected_delivery: form.expected_delivery ? form.expected_delivery.toISOString().split('T')[0] : null
-        });
+        await procurementService.savePurchaseOrderDraft(buildOrderPayload('draft'));
         toast.add({
             severity: 'success',
             summary: 'Success',
@@ -443,40 +499,27 @@ const submitOrder = async () => {
 
     try {
         isSubmitting.value = true;
-        // Ensure financials are computed before submit
-        form.tax_amount = calculateTax();
-        form.grand_total = calculateGrandTotal();
 
-        const orderData = {
-            ...form,
-            order_type: 'purchase_order',
-            status: 'submitted',
-            requisition: selectedRequisition.value?.id || null,
-            supplier: form.supplier?.id || form.supplier,
-            expected_delivery: form.expected_delivery ? form.expected_delivery.toISOString().split('T')[0] : null
-        };
-
-        const response = await procurementService.createPurchaseOrder(orderData);
+        const response = await procurementService.createPurchaseOrder(buildOrderPayload('submitted'));
         const orderId = response.data.id;
-        
+
         toast.add({
             severity: 'success',
             summary: 'Success',
             detail: 'Purchase order submitted successfully',
             life: 3000
         });
-        
+
         // Fetch PDF for preview
         try {
             const pdfResponse = await procurementService.getPurchaseOrderPDF(orderId);
-            // pdfResponse should be a Blob
             pdfBlob.value = pdfResponse;
             pdfFilename.value = `LPO-${response.data.order_number}.pdf`;
             showPDFModal.value = true;
         } catch (pdfError) {
             console.warn('Could not generate PDF preview:', pdfError);
         }
-        
+
         emit('saved');
         emit('submitted');
     } catch (error) {
@@ -491,50 +534,60 @@ onMounted(async () => {
     await Promise.all([
         loadSuppliers(),
         loadRequisitions(),
-        loadProducts()
+        loadProducts(),
+        initCurrencies()
     ]);
 
     // If editing an existing order, populate the form
     if (props.order) {
-        // Populate form with order data
         Object.keys(props.order).forEach((key) => {
             if (key in form) {
                 form[key] = props.order[key];
             }
         });
+        previousCurrency.value = props.order.currency || 'KES';
     }
 });
 </script>
 
 <template>
-    <div class="po-form-page">
-        <!-- Modern Sticky Header -->
-        <div class="form-header sticky top-0 z-50 bg-white dark:bg-surface-900 border-b border-surface-200 dark:border-surface-700 shadow-sm">
-            <div class="max-w-7xl mx-auto px-6 py-4">
-                <div class="flex justify-between items-center">
+    <div class="po-form-container min-h-screen bg-gradient-to-br from-surface-50 to-surface-100 dark:from-surface-900 dark:to-surface-800">
+        <!-- Modern Header -->
+        <header class="sticky top-0 z-50 backdrop-blur-lg bg-white/90 dark:bg-surface-900/90 border-b border-surface-200 dark:border-surface-700">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 py-4">
                     <div class="flex items-center gap-4">
                         <Button
                             icon="pi pi-arrow-left"
-                            class="p-button-text p-button-rounded"
+                            class="p-button-text p-button-rounded p-button-secondary"
                             @click="$emit('close')"
                             v-tooltip.bottom="'Back'"
                         />
                         <div>
-                            <h1 class="text-2xl font-bold text-surface-900 dark:text-surface-0 flex items-center gap-2">
-                                <i class="pi pi-shopping-cart text-primary"></i>
-                                {{ props.order ? 'Edit Purchase Order' : 'Create Purchase Order' }}
+                            <h1 class="text-xl sm:text-2xl font-bold text-surface-900 dark:text-surface-0 flex items-center gap-2">
+                                <span class="bg-primary/10 text-primary p-2 rounded-lg">
+                                    <i class="pi pi-shopping-cart text-lg"></i>
+                                </span>
+                                {{ props.order ? 'Edit Purchase Order' : 'New Purchase Order' }}
                             </h1>
-                            <p class="text-surface-600 dark:text-surface-400 text-sm mt-1">
-                                Fill in supplier and order details below
+                            <p class="text-surface-500 dark:text-surface-400 text-sm mt-1 hidden sm:block">
+                                Create and submit orders to suppliers
                             </p>
                         </div>
                     </div>
-                    <div class="flex gap-2">
+
+                    <!-- Desktop Actions -->
+                    <div class="hidden sm:flex items-center gap-3">
+                        <CurrencySelector
+                            v-model="form.currency"
+                            :disabled="isConverting"
+                            size="normal"
+                        />
                         <Button
                             label="Save Draft"
                             icon="pi pi-save"
                             @click="saveDraft"
-                            class="p-button-secondary"
+                            class="p-button-outlined"
                             :loading="isSubmitting"
                         />
                         <Button
@@ -547,223 +600,401 @@ onMounted(async () => {
                     </div>
                 </div>
             </div>
-        </div>
+        </header>
 
         <!-- Main Content -->
-        <div class="max-w-7xl mx-auto px-6 py-6">
-            <Card class="po-card">
-                <template #content>
-                    <div class="space-y-6">
-                        <!-- Supplier & Basic Info -->
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div>
-                                <label class="block text-sm font-medium mb-2 required">Supplier *</label>
-                                <div class="flex gap-2">
-                                    <Dropdown
-                                        v-model="form.supplier"
-                                        :options="suppliers"
-                                        optionLabel="name"
-                                        placeholder="Select or search supplier..."
-                                        class="flex-1"
-                                        :class="{ 'p-invalid': v$.supplier.$error }"
-                                        filter
-                                        showClear
-                                    >
-                                        <template #option="slotProps">
-                                            <div class="flex items-center gap-3">
-                                                <Avatar :label="(slotProps.option.name || 'S')[0]" shape="circle" />
-                                                <div>
-                                                    <div class="font-medium">{{ slotProps.option.name }}</div>
-                                                    <div class="text-sm text-surface-500">{{ slotProps.option.contact_id }}</div>
+        <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 pb-24 sm:pb-6">
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <!-- Left Column - Form Fields -->
+                <div class="lg:col-span-2 space-y-6">
+                    <!-- Supplier & Requisition Card -->
+                    <Card class="shadow-sm border-0">
+                        <template #title>
+                            <div class="flex items-center gap-2 text-lg font-semibold">
+                                <i class="pi pi-user text-primary"></i>
+                                Supplier & Reference
+                            </div>
+                        </template>
+                        <template #content>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+                                <div class="field">
+                                    <label class="block text-sm font-medium text-surface-700 dark:text-surface-300 mb-2">
+                                        Supplier <span class="text-red-500">*</span>
+                                    </label>
+                                    <div class="flex gap-2">
+                                        <Dropdown
+                                            v-model="form.supplier"
+                                            :options="suppliers"
+                                            optionLabel="name"
+                                            placeholder="Search suppliers..."
+                                            class="flex-1"
+                                            :class="{ 'p-invalid': v$.supplier.$error }"
+                                            filter
+                                            showClear
+                                        >
+                                            <template #option="slotProps">
+                                                <div class="flex items-center gap-3 py-1">
+                                                    <Avatar
+                                                        :label="(slotProps.option.name || 'S')[0].toUpperCase()"
+                                                        shape="circle"
+                                                        class="bg-primary/10 text-primary"
+                                                    />
+                                                    <div>
+                                                        <div class="font-medium text-surface-900 dark:text-surface-0">
+                                                            {{ slotProps.option.name }}
+                                                        </div>
+                                                        <div class="text-xs text-surface-500">
+                                                            {{ slotProps.option.contact_id }}
+                                                        </div>
+                                                    </div>
                                                 </div>
-                                            </div>
-                                        </template>
-                                    </Dropdown>
-                                    <Button
-                                        icon="pi pi-plus"
-                                        @click="showSupplierDialog = true"
-                                        severity="success"
-                                        v-tooltip.top="'Add new supplier'"
+                                            </template>
+                                        </Dropdown>
+                                        <Button
+                                            icon="pi pi-plus"
+                                            @click="showSupplierDialog = true"
+                                            severity="success"
+                                            class="p-button-outlined"
+                                            v-tooltip.top="'Add new supplier'"
+                                        />
+                                    </div>
+                                    <small v-if="v$.supplier.$error" class="text-red-500 mt-1 block">
+                                        Supplier is required
+                                    </small>
+                                </div>
+
+                                <div class="field">
+                                    <label class="block text-sm font-medium text-surface-700 dark:text-surface-300 mb-2">
+                                        Requisition Reference
+                                    </label>
+                                    <div class="flex gap-2">
+                                        <Dropdown
+                                            v-model="selectedRequisition"
+                                            :options="requisitions"
+                                            optionLabel="reference_number"
+                                            placeholder="Link to requisition (optional)"
+                                            class="flex-1"
+                                            @change="setRequisitionItems()"
+                                            filter
+                                            showClear
+                                        >
+                                            <template #option="slotProps">
+                                                <div class="py-1">
+                                                    <div class="font-medium">{{ slotProps.option.reference_number }}</div>
+                                                    <div class="text-xs text-surface-500 truncate max-w-xs">
+                                                        {{ slotProps.option.purpose?.substring(0, 50) }}...
+                                                    </div>
+                                                </div>
+                                            </template>
+                                        </Dropdown>
+                                        <Button
+                                            icon="pi pi-plus"
+                                            @click="showRequisitionDialog = true"
+                                            severity="success"
+                                            class="p-button-outlined"
+                                            v-tooltip.top="'Create requisition'"
+                                        />
+                                    </div>
+                                </div>
+
+                                <div class="field">
+                                    <label class="block text-sm font-medium text-surface-700 dark:text-surface-300 mb-2">
+                                        Expected Delivery
+                                    </label>
+                                    <Calendar
+                                        v-model="form.expected_delivery"
+                                        dateFormat="dd M yy"
+                                        :showIcon="true"
+                                        :minDate="new Date()"
+                                        placeholder="Select date"
+                                        class="w-full"
+                                        iconDisplay="input"
                                     />
                                 </div>
-                                <small v-if="v$.supplier.$error" class="p-error">Supplier is required</small>
-                            </div>
 
-                            <div>
-                                <label class="block text-sm font-medium mb-2">Requisition Reference</label>
-                                <div class="flex gap-2">
-                                    <Dropdown
-                                        v-model="selectedRequisition"
-                                        :options="requisitions"
-                                        optionLabel="reference_number"
-                                        placeholder="Link to requisition (optional)"
-                                        class="flex-1"
-                                        @change="setRequisitionItems()"
-                                        filter
-                                        showClear
-                                    >
-                                        <template #option="slotProps">
-                                            <div class="flex flex-col">
-                                                <span class="font-medium">{{ slotProps.option.reference_number }}</span>
-                                                <small class="text-surface-500">{{ slotProps.option.purpose?.substring(0, 40) }}...</small>
-                                            </div>
-                                        </template>
-                                    </Dropdown>
-                                    <Button
-                                        icon="pi pi-plus"
-                                        @click="showRequisitionDialog = true"
-                                        severity="success"
-                                        v-tooltip.top="'Create new requisition'"
-                                    />
+                                <div class="field">
+                                    <label class="block text-sm font-medium text-surface-700 dark:text-surface-300 mb-2">
+                                        Approved Budget <span class="text-red-500">*</span>
+                                    </label>
+                                    <div class="p-inputgroup">
+                                        <span class="p-inputgroup-addon bg-surface-100 dark:bg-surface-700 font-semibold">
+                                            {{ form.currency }}
+                                        </span>
+                                        <InputNumber
+                                            v-model="form.approved_budget"
+                                            :minFractionDigits="2"
+                                            :maxFractionDigits="2"
+                                            :min="0"
+                                            class="w-full"
+                                            :class="{ 'p-invalid': v$.approved_budget.$error }"
+                                        />
+                                    </div>
+                                    <small v-if="v$.approved_budget.$error" class="text-red-500 mt-1 block">
+                                        Approved budget is required
+                                    </small>
                                 </div>
                             </div>
+                        </template>
+                    </Card>
 
-                            <div>
-                                <label class="block text-sm font-medium mb-2">Expected Delivery Date</label>
-                                <Calendar
-                                    v-model="form.expected_delivery"
-                                    dateFormat="dd/mm/yy"
-                                    :showIcon="true"
-                                    :minDate="new Date()"
-                                    placeholder="Select delivery date"
-                                    class="w-full"
-                                />
+                    <!-- Items Card -->
+                    <Card class="shadow-sm border-0">
+                        <template #title>
+                            <div class="flex items-center justify-between">
+                                <div class="flex items-center gap-2 text-lg font-semibold">
+                                    <i class="pi pi-list text-primary"></i>
+                                    Order Items
+                                </div>
+                                <Tag v-if="form.items.length > 0" severity="info" :value="`${form.items.length} item(s)`" />
                             </div>
-
-                            <div>
-                                <label class="block text-sm font-medium mb-2 required">Approved Budget *</label>
-                                <InputNumber
-                                    v-model="form.approved_budget"
-                                    mode="currency"
-                                    currency="KES"
-                                    locale="en-KE"
-                                    :min="0"
-                                    class="w-full"
-                                    :class="{ 'p-invalid': v$.approved_budget.$error }"
-                                />
-                                <small v-if="v$.approved_budget.$error" class="p-error">Approved budget is required</small>
-                            </div>
-                        </div>
-
-                        <Divider />
-
-                        <!-- Line Items Section -->
-                        <div>
-                            <h3 class="text-lg font-semibold text-surface-900 dark:text-surface-0 mb-4">Order Items</h3>
-                            <div class="overflow-x-auto">
+                        </template>
+                        <template #content>
+                            <div class="overflow-x-auto -mx-4 px-4">
                                 <ItemsTable
                                     v-model:items="form.items"
                                     :available-products="products"
                                     :show-add-product="true"
                                     :show-edit-product="true"
-                                    :show-tax-fields="true"
+                                    :show-tax-fields="form.tax_mode === 'line_items'"
                                     :show-description="true"
                                     @add-product="handleAddProduct"
                                     @edit-product="handleEditProduct"
                                 />
                             </div>
-                        </div>
+                        </template>
+                    </Card>
 
-                        <Divider />
-
-                        <!-- Totals and Terms Section -->
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            <div class="space-y-4">
-                                <div>
-                                    <label class="block text-sm font-medium mb-2">Payment Terms</label>
+                    <!-- Terms Card -->
+                    <Card class="shadow-sm border-0">
+                        <template #title>
+                            <div class="flex items-center gap-2 text-lg font-semibold">
+                                <i class="pi pi-file-edit text-primary"></i>
+                                Terms & Instructions
+                            </div>
+                        </template>
+                        <template #content>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+                                <div class="field">
+                                    <label class="block text-sm font-medium text-surface-700 dark:text-surface-300 mb-2">
+                                        Payment Terms
+                                    </label>
                                     <Textarea
                                         v-model="form.terms"
                                         rows="3"
                                         class="w-full"
                                         placeholder="Enter payment terms..."
+                                        autoResize
                                     />
                                 </div>
 
-                                <div>
-                                    <label class="block text-sm font-medium mb-2">Delivery Instructions</label>
+                                <div class="field">
+                                    <label class="block text-sm font-medium text-surface-700 dark:text-surface-300 mb-2">
+                                        Delivery Instructions
+                                    </label>
                                     <Textarea
                                         v-model="form.delivery_instructions"
                                         rows="3"
                                         class="w-full"
                                         placeholder="Enter delivery instructions..."
+                                        autoResize
                                     />
                                 </div>
                             </div>
+                        </template>
+                    </Card>
+                </div>
 
-                            <div>
-                                <Card class="bg-surface-50 dark:bg-surface-800">
-                                    <template #content>
-                                        <div class="space-y-3">
-                                            <div class="flex justify-between">
-                                                <span class="text-surface-700 dark:text-surface-300">Subtotal:</span>
-                                                <span class="font-semibold">{{ formatCurrency(poSubtotal) }}</span>
-                                            </div>
+                <!-- Right Column - Summary -->
+                <div class="lg:col-span-1">
+                    <div class="sticky top-24 space-y-4">
+                        <!-- Order Summary Card -->
+                        <Card class="shadow-sm border-0 bg-gradient-to-br from-surface-0 to-surface-50 dark:from-surface-800 dark:to-surface-900">
+                            <template #title>
+                                <div class="flex items-center gap-2 text-lg font-semibold">
+                                    <i class="pi pi-calculator text-primary"></i>
+                                    Order Summary
+                                </div>
+                            </template>
+                            <template #content>
+                                <div class="space-y-4">
+                                    <!-- Currency Info -->
+                                    <div class="flex items-center justify-between p-3 bg-surface-100 dark:bg-surface-700 rounded-lg">
+                                        <span class="text-sm text-surface-600 dark:text-surface-300">Currency</span>
+                                        <div class="flex items-center gap-2">
+                                            <CurrencySelector
+                                                v-model="form.currency"
+                                                :disabled="isConverting"
+                                                size="small"
+                                            />
+                                            <i v-if="isConverting" class="pi pi-spin pi-spinner text-primary"></i>
+                                        </div>
+                                    </div>
 
-                                            <div class="flex justify-between items-center">
-                                                <span class="text-surface-700 dark:text-surface-300">Tax:</span>
-                                                <span class="font-semibold">{{ formatCurrency(poTax) }}</span>
-                                            </div>
+                                    <!-- Subtotal -->
+                                    <div class="flex justify-between items-center">
+                                        <span class="text-surface-600 dark:text-surface-300">Subtotal</span>
+                                        <span class="font-semibold text-surface-900 dark:text-surface-0">
+                                            {{ formatAmount(poSubtotal, form.currency) }}
+                                        </span>
+                                    </div>
 
+                                    <!-- Discount -->
+                                    <div class="flex justify-between items-center gap-3">
+                                        <span class="text-surface-600 dark:text-surface-300">Discount</span>
+                                        <div class="flex items-center gap-2">
+                                            <InputNumber
+                                                v-model="form.discount_percent"
+                                                suffix="%"
+                                                :min="0"
+                                                :max="100"
+                                                class="w-20"
+                                                inputClass="text-right text-sm p-2"
+                                            />
+                                            <span class="text-red-500 font-medium min-w-24 text-right">
+                                                -{{ formatAmount(poDiscountAmount, form.currency) }}
+                                            </span>
+                                        </div>
+                                    </div>
+
+                                    <!-- Tax -->
+                                    <div class="space-y-2">
+                                        <div class="flex justify-between items-center gap-3">
+                                            <span class="text-surface-600 dark:text-surface-300">Tax</span>
                                             <div class="flex items-center gap-2">
                                                 <Dropdown
                                                     v-model="form.tax_mode"
-                                                    :options="[{ label: 'Per line items', value: 'line_items' }, { label: 'On final amount', value: 'on_total' }]"
+                                                    :options="[
+                                                        { label: 'On total', value: 'on_total' },
+                                                        { label: 'Per item', value: 'line_items' }
+                                                    ]"
                                                     optionLabel="label"
                                                     optionValue="value"
-                                                    class="w-36"
+                                                    class="w-28"
                                                 />
+                                            </div>
+                                        </div>
+                                        <div v-if="form.tax_mode === 'on_total'" class="flex justify-between items-center gap-3">
+                                            <span class="text-sm text-surface-500">Rate</span>
+                                            <div class="flex items-center gap-2">
                                                 <InputNumber
-                                                    v-if="form.tax_mode === 'on_total'"
                                                     v-model="form.tax_rate"
                                                     suffix="%"
                                                     :min="0"
                                                     :max="100"
-                                                    class="w-24"
+                                                    class="w-20"
+                                                    inputClass="text-right text-sm p-2"
                                                 />
-                                            </div>
-
-                                            <div class="flex justify-between items-center">
-                                                <span class="text-surface-700 dark:text-surface-300">Discount:</span>
-                                                <InputNumber
-                                                    v-model="form.discount"
-                                                    suffix="%"
-                                                    :min="0"
-                                                    :max="100"
-                                                    class="w-24"
-                                                />
-                                            </div>
-
-                                            <Divider />
-
-                                            <div class="flex justify-between items-center">
-                                                <span class="text-xl font-bold text-surface-900 dark:text-surface-0">Total:</span>
-                                                <span class="text-2xl font-bold text-primary">{{ formatCurrency(poGrandTotal) }}</span>
-                                            </div>
-
-                                            <div class="flex justify-between items-center text-sm">
-                                                <span class="text-surface-600">Approved Budget:</span>
-                                                <span :class="poGrandTotal > form.approved_budget ? 'text-red-500 font-semibold' : 'text-green-600'">
-                                                    {{ formatCurrency(form.approved_budget) }}
+                                                <span class="font-medium min-w-24 text-right text-surface-700 dark:text-surface-200">
+                                                    +{{ formatAmount(poTaxAmount, form.currency) }}
                                                 </span>
                                             </div>
-                                            <small v-if="poGrandTotal > form.approved_budget" class="text-red-500 block">
-                                                <i class="pi pi-exclamation-triangle mr-1"></i>
-                                                Order total exceeds approved budget
-                                            </small>
                                         </div>
-                                    </template>
-                                </Card>
+                                        <div v-else class="flex justify-between items-center">
+                                            <span class="text-sm text-surface-500">Item taxes</span>
+                                            <span class="font-medium text-surface-700 dark:text-surface-200">
+                                                +{{ formatAmount(poTaxAmount, form.currency) }}
+                                            </span>
+                                        </div>
+                                    </div>
 
-                                <!-- Mobile action bar -->
-                                <div class="fixed bottom-0 left-0 right-0 bg-white dark:bg-surface-900 border-t p-3 flex gap-3 justify-end md:hidden z-50">
-                                    <Button label="Save Draft" icon="pi pi-save" class="p-button-secondary" @click="saveDraft" :loading="isSubmitting" />
-                                    <Button label="Submit" icon="pi pi-send" class="p-button-primary" @click="submitOrder" :loading="isSubmitting" />
+                                    <Divider class="my-4" />
+
+                                    <!-- Grand Total -->
+                                    <div class="flex justify-between items-center">
+                                        <span class="text-lg font-bold text-surface-900 dark:text-surface-0">Total</span>
+                                        <span class="text-2xl font-bold text-primary">
+                                            {{ formatAmount(poGrandTotal, form.currency) }}
+                                        </span>
+                                    </div>
+
+                                    <!-- Budget Comparison -->
+                                    <div
+                                        class="p-3 rounded-lg flex items-center justify-between"
+                                        :class="{
+                                            'bg-green-50 dark:bg-green-900/20': budgetStatus === 'ok',
+                                            'bg-yellow-50 dark:bg-yellow-900/20': budgetStatus === 'warning',
+                                            'bg-red-50 dark:bg-red-900/20': budgetStatus === 'over',
+                                            'bg-surface-100 dark:bg-surface-700': budgetStatus === 'neutral'
+                                        }"
+                                    >
+                                        <div class="flex items-center gap-2">
+                                            <i
+                                                :class="{
+                                                    'pi pi-check-circle text-green-500': budgetStatus === 'ok',
+                                                    'pi pi-exclamation-triangle text-yellow-500': budgetStatus === 'warning',
+                                                    'pi pi-times-circle text-red-500': budgetStatus === 'over',
+                                                    'pi pi-info-circle text-surface-400': budgetStatus === 'neutral'
+                                                }"
+                                            ></i>
+                                            <span class="text-sm text-surface-600 dark:text-surface-300">Budget</span>
+                                        </div>
+                                        <span
+                                            class="font-semibold"
+                                            :class="{
+                                                'text-green-600': budgetStatus === 'ok',
+                                                'text-yellow-600': budgetStatus === 'warning',
+                                                'text-red-600': budgetStatus === 'over',
+                                                'text-surface-500': budgetStatus === 'neutral'
+                                            }"
+                                        >
+                                            {{ formatAmount(form.approved_budget, form.currency) }}
+                                        </span>
+                                    </div>
+
+                                    <Message
+                                        v-if="budgetStatus === 'over'"
+                                        severity="error"
+                                        :closable="false"
+                                        class="text-sm"
+                                    >
+                                        Order exceeds approved budget by
+                                        {{ formatAmount(poGrandTotal - form.approved_budget, form.currency) }}
+                                    </Message>
                                 </div>
-                            </div>
+                            </template>
+                        </Card>
+
+                        <!-- Quick Actions (Desktop) -->
+                        <div class="hidden lg:block space-y-2">
+                            <Button
+                                label="Save Draft"
+                                icon="pi pi-save"
+                                @click="saveDraft"
+                                class="w-full p-button-outlined"
+                                :loading="isSubmitting"
+                            />
+                            <Button
+                                label="Submit for Approval"
+                                icon="pi pi-send"
+                                @click="submitOrder"
+                                class="w-full p-button-primary"
+                                :loading="isSubmitting"
+                            />
                         </div>
                     </div>
-                </template>
-            </Card>
+                </div>
+            </div>
+        </main>
+
+        <!-- Mobile Action Bar -->
+        <div class="fixed bottom-0 left-0 right-0 bg-white dark:bg-surface-900 border-t border-surface-200 dark:border-surface-700 p-4 flex gap-3 sm:hidden z-50 shadow-lg">
+            <div class="flex items-center gap-2 mr-auto">
+                <CurrencySelector v-model="form.currency" :disabled="isConverting" size="small" />
+            </div>
+            <Button
+                icon="pi pi-save"
+                @click="saveDraft"
+                class="p-button-outlined"
+                :loading="isSubmitting"
+                v-tooltip.top="'Save Draft'"
+            />
+            <Button
+                label="Submit"
+                icon="pi pi-send"
+                @click="submitOrder"
+                class="p-button-primary flex-1"
+                :loading="isSubmitting"
+            />
         </div>
     </div>
 
@@ -776,12 +1007,24 @@ onMounted(async () => {
     />
 
     <!-- Supplier Dialog -->
-    <Dialog v-model:visible="showSupplierDialog" header="Add Supplier" :modal="true" :style="{ width: '700px' }">
+    <Dialog
+        v-model:visible="showSupplierDialog"
+        header="Add Supplier"
+        :modal="true"
+        :style="{ width: '90vw', maxWidth: '700px' }"
+        :breakpoints="{ '640px': '95vw' }"
+    >
         <AddSupplier contact_type="Suppliers" @saved="handleSupplierSaved" />
     </Dialog>
 
     <!-- Product Dialog -->
-    <Dialog v-model:visible="showProductDialog" :modal="true" :style="{ width: '95%', maxWidth: '1000px' }" :dismissableMask="true">
+    <Dialog
+        v-model:visible="showProductDialog"
+        :modal="true"
+        :style="{ width: '95vw', maxWidth: '1000px' }"
+        :dismissableMask="true"
+        :breakpoints="{ '640px': '98vw' }"
+    >
         <template #header>
             <h3 class="text-xl font-semibold">{{ productEditMode ? 'Edit Product' : 'Add Product' }}</h3>
         </template>
@@ -794,67 +1037,86 @@ onMounted(async () => {
     </Dialog>
 
     <!-- Requisition Dialog -->
-    <Dialog v-model:visible="showRequisitionDialog" header="Add Requisition" :modal="true" :style="{ width: '800px' }">
+    <Dialog
+        v-model:visible="showRequisitionDialog"
+        header="New Requisition"
+        :modal="true"
+        :style="{ width: '90vw', maxWidth: '800px' }"
+        :breakpoints="{ '640px': '95vw' }"
+    >
         <RequisitionForm @saved="handleRequisitionSaved" />
     </Dialog>
 </template>
 
 <style scoped>
-.po-form-page {
+.po-form-container {
     min-height: 100vh;
-    background-color: #f8fafc;
 }
 
-.form-header {
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+/* Smooth transitions */
+.field {
+    transition: all 0.2s ease;
 }
 
-.po-card {
+/* Input group styling */
+:deep(.p-inputgroup-addon) {
+    min-width: 60px;
+    justify-content: center;
+}
+
+/* Card enhancements */
+:deep(.p-card) {
     border-radius: 12px;
-    padding: 1rem;
+    overflow: hidden;
 }
 
-.po-card :deep(.p-card) {
-    background: var(--surface-card);
+:deep(.p-card-title) {
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid var(--surface-200);
+    margin-bottom: 1rem;
 }
 
-.required::after {
-    content: ' *';
-    color: #ef4444;
+/* Better dropdown styling */
+:deep(.p-dropdown) {
+    border-radius: 8px;
 }
 
-.space-y-6 > * + * {
-    margin-top: 1.5rem;
+:deep(.p-dropdown:not(.p-disabled):hover) {
+    border-color: var(--primary-color);
 }
 
-.space-y-4 > * + * {
-    margin-top: 1rem;
+/* Input number in summary */
+:deep(.p-inputnumber.w-20 input),
+:deep(.p-inputnumber.w-24 input) {
+    padding: 0.5rem;
+    text-align: right;
 }
 
-.space-y-3 > * + * {
-    margin-top: 0.75rem;
-}
-
-@media (max-width: 768px) {
-    .form-header .flex {
-        flex-direction: column;
-        gap: 1rem;
+/* Mobile optimizations */
+@media (max-width: 640px) {
+    .po-form-container {
+        padding-bottom: 100px;
     }
 
-    .form-header .flex > div:last-child {
-        width: 100%;
+    :deep(.p-card-body) {
+        padding: 1rem;
     }
 }
 
-/* Dark mode */
+/* Dark mode adjustments */
 @media (prefers-color-scheme: dark) {
-    .po-form-page {
-        background-color: #1e293b;
+    :deep(.p-card-title) {
+        border-bottom-color: var(--surface-700);
     }
 }
 
-/* Improve ItemsTable responsiveness */
-.po-card .overflow-x-auto {
-    overflow-x: auto;
+/* Animations */
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.po-form-container > main > div > div {
+    animation: fadeIn 0.3s ease-out;
 }
 </style>

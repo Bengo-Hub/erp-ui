@@ -188,11 +188,54 @@ export const userManagementService = {
     },
 
     // Permission Management
-    getPermissions: async () => {
+    /**
+     * Get permissions with pagination and filtering
+     * @param {Object} params - Query parameters
+     * @param {number} params.page - Page number (default 1)
+     * @param {number} params.page_size - Items per page (default 100, max 500)
+     * @param {string} params.search - Search term for name/codename
+     * @param {string} params.module - Filter by module/app label
+     * @returns {Promise} - Paginated permissions response
+     */
+    getPermissions: async (params = {}) => {
         try {
-            return await axios.get('/auth/permissions/');
+            return await axios.get('/auth/permissions/', { params });
         } catch (error) {
             console.error('Failed to fetch permissions:', error);
+            throw error;
+        }
+    },
+
+    /**
+     * Get all permissions (for backwards compatibility with role editing)
+     * Fetches all pages and combines results
+     * @param {string} search - Optional search filter
+     * @returns {Promise} - All permissions
+     */
+    getAllPermissions: async (search = '') => {
+        try {
+            const allPermissions = [];
+            let page = 1;
+            let hasMore = true;
+
+            while (hasMore) {
+                const response = await axios.get('/auth/permissions/', {
+                    params: { page, page_size: 500, search }
+                });
+                const data = response.data;
+                const results = data.results || data || [];
+                allPermissions.push(...results);
+
+                hasMore = data.next === true || (data.page < data.total_pages);
+                page++;
+
+                // Safety limit to prevent infinite loops
+                if (page > 20) break;
+            }
+
+            return { data: allPermissions };
+        } catch (error) {
+            console.error('Failed to fetch all permissions:', error);
             throw error;
         }
     },

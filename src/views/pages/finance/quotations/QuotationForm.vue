@@ -18,6 +18,7 @@ import { coreService } from '@/services/shared/coreService';
 import { financeService } from '@/services/finance/financeService';
 import { systemConfigService } from '@/services/shared/systemConfigService';
 import { formatCurrency } from '@/utils/formatters';
+import { useCurrency } from '@/composables/useCurrency';
 import { useVuelidate } from '@vuelidate/core';
 import { minLength, required } from '@vuelidate/validators';
 import { computed, onMounted, reactive, ref, watch } from 'vue';
@@ -26,6 +27,11 @@ import { useRoute, useRouter } from 'vue-router';
 const router = useRouter();
 const route = useRoute();
 const { showToast } = useToast();
+const { initialize: initCurrencies, convertBillingItems, getExchangeRate, formatAmount } = useCurrency();
+
+// Currency conversion state
+const isConverting = ref(false);
+const previousCurrency = ref('KES');
 
 // Customer dialog state
 const showCustomerDialog = ref(false);
@@ -73,7 +79,10 @@ const form = reactive({
     rfq_number: '',
     tax_mode: 'line_items',
     tax_rate: 0,
-    tender_quotation_ref: ''
+    tender_quotation_ref: '',
+    // Currency support
+    currency: 'KES',
+    exchange_rate: 1.0
 });
 
 // Validation rules
@@ -489,6 +498,47 @@ watch(() => form.discount_value, () => calculateTotals());
 watch(() => form.discount_type, () => calculateTotals());
 watch(() => form.shipping_cost, () => calculateTotals());
 
+// Currency change handler - convert all item prices when currency changes
+const handleCurrencyChange = async (newCurrency) => {
+    const oldCurrency = previousCurrency.value;
+
+    if (oldCurrency === newCurrency || form.items.length === 0) {
+        previousCurrency.value = newCurrency;
+        return;
+    }
+
+    isConverting.value = true;
+    try {
+        // Convert all item prices
+        const convertedItems = await convertBillingItems(form.items, oldCurrency, newCurrency);
+        form.items = convertedItems;
+
+        // Get and store the exchange rate
+        const rate = await getExchangeRate(oldCurrency, newCurrency);
+        if (rate) {
+            form.exchange_rate = rate;
+        }
+
+        // Recalculate totals with new prices
+        calculateTotals();
+
+        previousCurrency.value = newCurrency;
+        showToast('info', 'Currency Converted', `Prices converted from ${oldCurrency} to ${newCurrency}`);
+    } catch (error) {
+        console.error('Error converting currency:', error);
+        showToast('warn', 'Conversion Warning', 'Could not convert prices. Please update manually.');
+    } finally {
+        isConverting.value = false;
+    }
+};
+
+// Watch for currency changes
+watch(() => form.currency, (newCurrency, oldCurrency) => {
+    if (newCurrency && oldCurrency && newCurrency !== oldCurrency) {
+        handleCurrencyChange(newCurrency);
+    }
+});
+
 const saveDraft = async () => {
     try {
         loading.value = true;
@@ -650,7 +700,8 @@ onMounted(async () => {
         loadCustomers(),
         loadBranches(),
         loadProducts(),
-        loadTaxRates()
+        loadTaxRates(),
+        initCurrencies()
     ]);
 
     // If we already have a tax_rate set (e.g., when editing), attempt to set the matching tax_rate_id
@@ -658,7 +709,7 @@ onMounted(async () => {
         const match = taxRates.value.find(t => Number(t.rate) === Number(form.tax_rate));
         if (match) form.tax_rate_id = match.id;
     }
-    
+
     if (isEditMode.value) {
         await loadQuotation(route.params.id);
     }
@@ -688,7 +739,15 @@ const loadQuotation = async (id) => {
         form.tax_rate = quotation.tax_rate || 0;
         form.rfq_number = quotation.rfq_number || '';
         form.tender_quotation_ref = quotation.tender_quotation_ref || '';
-        
+        form.currency = quotation.currency || 'KES';
+        form.exchange_rate = quotation.exchange_rate || 1.0;
+
+        // Set previous currency to match loaded quotation (prevents conversion on load)
+        previousCurrency.value = form.currency;
+
+        // Clear items first to prevent duplication
+        form.items = [];
+
         // Map incoming order items to form.items. Backend returns order items with
         // GenericForeignKey fields: content_type and object_id (object_id is the product id)
         // Also handle product_id for new billing documents
@@ -875,13 +934,14 @@ const loadQuotation = async (id) => {
                     <!-- Line Items Section -->
                     <div>
                         <h3 class="text-lg font-semibold text-surface-900 dark:text-surface-0 mb-4">Line Items</h3>
-                        <ItemsTable 
+                        <ItemsTable
                             v-model:items="form.items"
                             :available-products="products"
                             :show-add-product="true"
                             :show-edit-product="true"
                             :show-tax-fields="true"
                             :show-description="true"
+                            :currency="form.currency"
                             @add-product="handleAddProductClick"
                             @edit-product="handleEditProductClick"
                             @update:items="calculateTotals"
