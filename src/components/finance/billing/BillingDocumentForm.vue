@@ -1,10 +1,12 @@
 <script setup>
 import { useToast } from '@/composables/useToast';
+import { useCurrency } from '@/composables/useCurrency';
 import { financeService } from '@/services/finance/financeService';
 import { getBusinessDetails } from '@/utils/businessBranding';
 import { formatCurrency } from '@/utils/formatters';
 import { computed, onMounted, reactive, ref, watch } from 'vue';
 import PDFPreview from '@/components/shared/PDFPreview.vue';
+import CurrencySelector from '@/components/shared/CurrencySelector.vue';
 
 const props = defineProps({
     visible: {
@@ -20,8 +22,11 @@ const props = defineProps({
 const emit = defineEmits(['update:visible', 'saved']);
 
 const { showToast } = useToast();
+const { initialize: initCurrencies, formatAmount, convertBillingItems } = useCurrency();
 
 const loading = ref(false);
+const isConverting = ref(false);
+const previousCurrency = ref('KES');
 const taxRates = ref([]);
 const businessDetails = ref(null);
 const activeTab = ref(0);
@@ -224,13 +229,54 @@ const previewDocument = async (id = null) => {
     }
 };
 
+// Handle currency change - convert all item prices
+const handleCurrencyChange = async (newCurrency) => {
+    const oldCurrency = previousCurrency.value;
+
+    if (oldCurrency === newCurrency || form.items.length === 0) {
+        previousCurrency.value = newCurrency;
+        return;
+    }
+
+    isConverting.value = true;
+    try {
+        // Convert all billing items to the new currency
+        const convertedItems = await convertBillingItems(form.items, oldCurrency, newCurrency);
+        form.items = convertedItems;
+        previousCurrency.value = newCurrency;
+        showToast('info', `Prices converted from ${oldCurrency} to ${newCurrency}`);
+    } catch (error) {
+        console.error('Error converting currency:', error);
+        showToast('error', 'Failed to convert prices. Please update manually.');
+    } finally {
+        isConverting.value = false;
+    }
+};
+
+// Watch for currency changes
+watch(
+    () => form.template_settings.currency,
+    (newCurrency, oldCurrency) => {
+        if (newCurrency && oldCurrency && newCurrency !== oldCurrency) {
+            handleCurrencyChange(newCurrency);
+        }
+    }
+);
+
 // Watch for document changes
-watch(() => props.document, initForm, { immediate: true });
+watch(() => props.document, () => {
+    initForm();
+    // Set previous currency when document is loaded
+    previousCurrency.value = form.template_settings.currency || 'KES';
+}, { immediate: true });
 
 // Load data when component mounts
 onMounted(() => {
     loadBusinessDetails();
     loadTaxRates();
+    initCurrencies();
+    // Initialize previous currency
+    previousCurrency.value = form.template_settings.currency || 'KES';
 });
 </script>
 
@@ -274,7 +320,15 @@ onMounted(() => {
                                     <Dropdown v-model="form.status" :options="documentStatuses" optionLabel="label" optionValue="value" class="w-full" placeholder="Select status" />
                                 </div>
 
-                                <div class="space-y-2 md:col-span-3">
+                                <div class="space-y-2">
+                                    <label class="block text-sm font-medium text-gray-700">Currency</label>
+                                    <div class="flex items-center gap-2">
+                                        <CurrencySelector v-model="form.template_settings.currency" size="large" :disabled="isConverting" />
+                                        <i v-if="isConverting" class="pi pi-spin pi-spinner text-blue-500"></i>
+                                    </div>
+                                </div>
+
+                                <div class="space-y-2 md:col-span-2">
                                     <label class="block text-sm font-medium text-gray-700">Description</label>
                                     <Textarea v-model="form.description" class="w-full" rows="2" placeholder="Enter document description" />
                                 </div>
@@ -335,15 +389,15 @@ onMounted(() => {
                                         <div class="w-64 space-y-2">
                                             <div class="flex justify-between">
                                                 <span class="font-medium">Subtotal:</span>
-                                                <span>{{ formatCurrency(calculateSubtotal()) }}</span>
+                                                <span>{{ formatCurrency(calculateSubtotal(), form.template_settings.currency) }}</span>
                                             </div>
                                             <div class="flex justify-between">
                                                 <span class="font-medium">Tax Total:</span>
-                                                <span>{{ formatCurrency(calculateTaxTotal()) }}</span>
+                                                <span>{{ formatCurrency(calculateTaxTotal(), form.template_settings.currency) }}</span>
                                             </div>
                                             <div class="flex justify-between text-lg font-bold border-t pt-2">
                                                 <span>Total:</span>
-                                                <span>{{ formatCurrency(calculateTotal()) }}</span>
+                                                <span>{{ formatCurrency(calculateTotal(), form.template_settings.currency) }}</span>
                                             </div>
                                         </div>
                                     </div>

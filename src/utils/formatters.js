@@ -1,18 +1,125 @@
 // formatters.js
-export function formatCurrency(amount, currency = 'KES') {
-    // Ensure we always pass a finite number to Intl.NumberFormat
+
+// Currency symbol map for client-side formatting
+const CURRENCY_SYMBOLS = {
+    KES: 'KSh',
+    USD: '$',
+    EUR: '€',
+    GBP: '£',
+    UGX: 'USh',
+    TZS: 'TSh',
+    ZAR: 'R',
+    NGN: '₦',
+    GHS: 'GH₵',
+    RWF: 'FRw',
+    ETB: 'Br',
+    AED: 'د.إ',
+    INR: '₹',
+    CNY: '¥',
+    JPY: '¥'
+};
+
+// Decimal places per currency (0 for whole-number currencies)
+const CURRENCY_DECIMALS = {
+    KES: 2,
+    USD: 2,
+    EUR: 2,
+    GBP: 2,
+    UGX: 0,
+    TZS: 0,
+    ZAR: 2,
+    NGN: 2,
+    GHS: 2,
+    RWF: 0,
+    ETB: 2,
+    AED: 2,
+    INR: 2,
+    CNY: 2,
+    JPY: 0
+};
+
+/**
+ * Format amount with currency symbol
+ * @param {number|string} amount - The amount to format
+ * @param {string} currency - ISO 4217 currency code (default: KES)
+ * @param {Object} options - Additional options
+ * @param {boolean} options.showSymbol - Whether to show currency symbol (default: true)
+ * @param {boolean} options.showCode - Whether to show currency code (default: false)
+ * @returns {string} Formatted currency string
+ */
+export function formatCurrency(amount, currency = 'KES', options = {}) {
+    const { showSymbol = true, showCode = false } = options;
+
+    // Ensure we always pass a finite number
     const num = Number(amount);
     const value = Number.isFinite(num) ? num : 0;
+    const code = currency?.toUpperCase() || 'KES';
+    const decimals = CURRENCY_DECIMALS[code] ?? 2;
 
     try {
-        return new Intl.NumberFormat('en-KE', {
-            style: 'currency',
-            currency
+        // Use Intl.NumberFormat for proper locale formatting
+        const formatted = new Intl.NumberFormat('en-KE', {
+            minimumFractionDigits: decimals,
+            maximumFractionDigits: decimals
         }).format(value);
-    } catch (e) {
+
+        const symbol = CURRENCY_SYMBOLS[code] || code;
+
+        if (!showSymbol && !showCode) {
+            return formatted;
+        }
+
+        // Symbol placement: $, £, € before, others after with space
+        if (['USD', 'GBP', 'EUR'].includes(code)) {
+            const result = showSymbol ? `${symbol}${formatted}` : formatted;
+            return showCode ? `${result} ${code}` : result;
+        }
+
+        const result = showSymbol ? `${symbol} ${formatted}` : formatted;
+        return showCode ? `${result} (${code})` : result;
+    } catch {
         // Fallback formatting
-        return `${currency} ${value.toFixed(2)}`;
+        const symbol = CURRENCY_SYMBOLS[code] || code;
+        return `${symbol} ${value.toFixed(decimals)}`;
     }
+}
+
+/**
+ * Get currency symbol for a currency code
+ * @param {string} currency - ISO 4217 currency code
+ * @returns {string} Currency symbol
+ */
+export function getCurrencySymbol(currency = 'KES') {
+    return CURRENCY_SYMBOLS[currency?.toUpperCase()] || currency;
+}
+
+/**
+ * Get decimal places for a currency
+ * @param {string} currency - ISO 4217 currency code
+ * @returns {number} Number of decimal places
+ */
+export function getCurrencyDecimals(currency = 'KES') {
+    return CURRENCY_DECIMALS[currency?.toUpperCase()] ?? 2;
+}
+
+/**
+ * Parse a currency string to number
+ * @param {string} value - Currency string to parse
+ * @returns {number} Parsed number value
+ */
+export function parseCurrency(value) {
+    if (typeof value === 'number') return value;
+    if (!value) return 0;
+
+    // Remove currency symbols and whitespace
+    let cleaned = String(value);
+    Object.values(CURRENCY_SYMBOLS).forEach(symbol => {
+        cleaned = cleaned.replace(symbol, '');
+    });
+    cleaned = cleaned.replace(/[,\s]/g, '').trim();
+
+    const num = parseFloat(cleaned);
+    return Number.isFinite(num) ? num : 0;
 }
 
 export function safeNumber(value, defaultValue = 0) {

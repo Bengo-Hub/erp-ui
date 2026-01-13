@@ -267,5 +267,138 @@ export const coreService = {
             console.error('Error submitting background job:', error);
             throw error;
         }
+    },
+
+    // Currency management methods
+    async getCurrencies() {
+        try {
+            const response = await axios.get(`${CORE_BASE_URL}currencies/`);
+            return response.data;
+        } catch (error) {
+            console.error('Error fetching currencies:', error);
+            throw error;
+        }
+    },
+
+    async convertCurrency(amount, fromCurrency, toCurrency, rate = null) {
+        try {
+            const payload = {
+                amount,
+                from_currency: fromCurrency,
+                to_currency: toCurrency
+            };
+            if (rate) payload.rate = rate;
+
+            const response = await axios.post(`${CORE_BASE_URL}currencies/convert/`, payload);
+            return response.data;
+        } catch (error) {
+            console.error('Error converting currency:', error);
+            throw error;
+        }
+    },
+
+    async formatCurrencyAmount(amount, currency = 'KES') {
+        try {
+            const response = await axios.get(`${CORE_BASE_URL}currencies/format/`, {
+                params: { amount, currency }
+            });
+            return response.data;
+        } catch (error) {
+            console.error('Error formatting currency:', error);
+            throw error;
+        }
+    },
+
+    // Exchange Rates Endpoints
+    getExchangeRates(params = {}) {
+        return axios.get(`${CORE_BASE_URL}exchange-rates/`, { params });
+    },
+
+    getExchangeRate(id) {
+        return axios.get(`${CORE_BASE_URL}exchange-rates/${id}/`);
+    },
+
+    async getLatestExchangeRate(fromCurrency, toCurrency) {
+        try {
+            const response = await axios.get(`${CORE_BASE_URL}exchange-rates/latest/`, {
+                params: { from_currency: fromCurrency, to_currency: toCurrency }
+            });
+            return response.data;
+        } catch (error) {
+            console.error('Error fetching latest exchange rate:', error);
+            throw error;
+        }
+    },
+
+    createExchangeRate(data) {
+        return axios.post(`${CORE_BASE_URL}exchange-rates/`, data);
+    },
+
+    updateExchangeRate(id, data) {
+        return axios.put(`${CORE_BASE_URL}exchange-rates/${id}/`, data);
+    },
+
+    deleteExchangeRate(id) {
+        return axios.delete(`${CORE_BASE_URL}exchange-rates/${id}/`);
+    },
+
+    // Exchange Rate API Settings (Integration)
+    async getExchangeRateAPISettings() {
+        try {
+            const response = await axios.get('/integrations/exchange-rate-api/current/');
+            return response.data;
+        } catch (error) {
+            console.error('Error fetching exchange rate API settings:', error);
+            throw error;
+        }
+    },
+
+    async getExchangeRateAPIStatus() {
+        try {
+            const response = await axios.get('/integrations/exchange-rate-api/status/');
+            return response.data;
+        } catch (error) {
+            console.error('Error fetching exchange rate API status:', error);
+            throw error;
+        }
+    },
+
+    async saveExchangeRateAPISettings(data) {
+        try {
+            // Check if settings exist
+            const existing = await axios.get('/integrations/exchange-rate-api/');
+            if (existing.data && existing.data.length > 0) {
+                // Update existing
+                const response = await axios.put(`/integrations/exchange-rate-api/${existing.data[0].id}/`, data);
+                return response.data;
+            } else {
+                // Create new
+                const response = await axios.post('/integrations/exchange-rate-api/', data);
+                return response.data;
+            }
+        } catch (error) {
+            console.error('Error saving exchange rate API settings:', error);
+            throw error;
+        }
+    },
+
+    async triggerExchangeRateFetch() {
+        try {
+            const response = await axios.post('/integrations/exchange-rate-api/fetch_now/');
+            return response.data;
+        } catch (error) {
+            console.error('Error triggering exchange rate fetch:', error);
+            throw error;
+        }
+    },
+
+    async getLatestAPIRates() {
+        try {
+            const response = await axios.get('/integrations/exchange-rate-api/latest_rates/');
+            return response.data;
+        } catch (error) {
+            console.error('Error fetching latest API rates:', error);
+            throw error;
+        }
     }
 };

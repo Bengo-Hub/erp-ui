@@ -6,8 +6,10 @@ import AddSupplier from '@/components/crm/AddSupplier.vue';
 import AddCustomer from '@/components/crm/AddCustomer.vue';
 import BranchForm from '@/components/branches/BranchForm.vue';
 import PermissionButton from '@/components/common/PermissionButton.vue';
+import CurrencySelector from '@/components/shared/CurrencySelector.vue';
 import { useToast } from '@/composables/useToast';
 import { useAddEditModal } from '@/composables/useAddEditModal';
+import { useCurrency } from '@/composables/useCurrency';
 import { crmService } from '@/services/crm/crmService';
 import { ecommerceService } from '@/services/ecommerce/ecommerceService';
 import { productService } from '@/services/ecommerce/productService';
@@ -26,6 +28,7 @@ import { useRoute, useRouter } from 'vue-router';
 const router = useRouter();
 const route = useRoute();
 const { showToast } = useToast();
+const { initialize: initCurrencies } = useCurrency();
 
 // Check if edit mode
 const isEditMode = computed(() => !!route.params.id);
@@ -50,7 +53,10 @@ const form = reactive({
     tax_rate_id: null,
     discount_amount: 0,
     shipping_cost: 0,
-    total: 0
+    total: 0,
+    // Currency support
+    currency: 'KES',
+    exchange_rate: 1.0
 });
 
 // Validation rules
@@ -661,11 +667,11 @@ const saveAndSend = async () => {
 const prepareInvoiceData = (status) => {
     // Helper to round to 2 decimal places
     const round2 = (val) => Math.round((Number(val) || 0) * 100) / 100;
-    
+
     return {
         customer: form.customer?.id || form.customer,
         branch: form.branch,
-        invoice_date: form.invoice_date instanceof Date ? 
+        invoice_date: form.invoice_date instanceof Date ?
             form.invoice_date.toISOString().split('T')[0] : form.invoice_date,
         payment_terms: form.payment_terms,
         custom_terms_days: form.payment_terms === 'custom' ? form.custom_terms_days : null,
@@ -681,6 +687,9 @@ const prepareInvoiceData = (status) => {
         billing_address: form.billing_address,
         tax_mode: form.tax_mode,
         tax_rate: form.tax_rate,
+        // Currency support
+        currency: form.currency,
+        exchange_rate: form.exchange_rate,
         items: form.items.map(item => ({
             name: item.name,
             description: item.description,
@@ -708,9 +717,10 @@ onMounted(async () => {
         loadCustomers(),
         loadBranches(),
         loadProducts(),
-        loadTaxRates()
+        loadTaxRates(),
+        initCurrencies()
     ]);
-    
+
     // Load invoice if edit mode
     if (isEditMode.value) {
         await loadInvoice(route.params.id);
@@ -738,7 +748,9 @@ const loadInvoice = async (id) => {
         form.shipping_cost = invoice.shipping_cost;
         form.tax_mode = invoice.tax_mode || 'line_items';
         form.tax_rate = invoice.tax_rate || 0;
-        
+        form.currency = invoice.currency || 'KES';
+        form.exchange_rate = invoice.exchange_rate || 1.0;
+
         // Load items - match product_id against both direct products and nested product structures
         form.items = (invoice.items || []).map(item => {
             let matchedProduct = null;
@@ -918,12 +930,20 @@ const loadInvoice = async (id) => {
 
                         <div>
                             <label class="block text-sm font-medium mb-2">Template</label>
-                            <Dropdown 
+                            <Dropdown
                                 v-model="form.template_name"
                                 :options="templateOptions"
                                 optionLabel="label"
                                 optionValue="value"
                                 class="w-full"
+                            />
+                        </div>
+
+                        <div>
+                            <label class="block text-sm font-medium mb-2">Currency</label>
+                            <CurrencySelector
+                                v-model="form.currency"
+                                size="large"
                             />
                         </div>
                     </div>
@@ -980,12 +1000,12 @@ const loadInvoice = async (id) => {
                                     <div class="space-y-3">
                                         <div class="flex justify-between">
                                             <span class="text-surface-700 dark:text-surface-300">Subtotal:</span>
-                                            <span class="font-semibold">{{ formatCurrency(form.subtotal) }}</span>
+                                            <span class="font-semibold">{{ formatCurrency(form.subtotal, form.currency) }}</span>
                                         </div>
-                                        
+
                                         <div class="flex justify-between">
                                             <span class="text-surface-700 dark:text-surface-300">Tax:</span>
-                                            <span class="font-semibold">{{ formatCurrency(form.tax_amount) }}</span>
+                                            <span class="font-semibold">{{ formatCurrency(form.tax_amount, form.currency) }}</span>
                                         </div>
 
                                         <div class="flex items-center gap-2">
@@ -1021,7 +1041,7 @@ const loadInvoice = async (id) => {
                                         
                                         <div class="flex justify-between items-center">
                                             <span class="text-xl font-bold text-surface-900 dark:text-surface-0">Total:</span>
-                                            <span class="text-2xl font-bold text-primary">{{ formatCurrency(grandTotal) }}</span>
+                                            <span class="text-2xl font-bold text-primary">{{ formatCurrency(grandTotal, form.currency) }}</span>
                                         </div>
                                     </div>
                                 </template>
