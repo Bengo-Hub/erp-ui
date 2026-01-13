@@ -1,11 +1,15 @@
 <script setup>
 import { useToast } from '@/composables/useToast';
+import { financeService } from '@/services/finance/financeService';
 import { systemConfigService } from '@/services/shared/systemConfigService';
 import { useConfirm } from 'primevue/useconfirm';
 import { computed, onMounted, ref } from 'vue';
 
 const { showToast } = useToast();
 const confirm = useConfirm();
+
+// Tax rates (loaded from finance module for dropdown)
+const taxRates = ref([]);
 
 // Breadcrumb items
 const home = ref({ icon: 'pi pi-home', to: '/' });
@@ -85,14 +89,6 @@ const loadingPrefixSettings = ref(false);
 // Document Sequences
 const documentSequences = ref([]);
 const loadingSequences = ref(false);
-
-// Tax Rates
-const taxRates = ref([]);
-const taxRate = ref({});
-const taxRateDialog = ref(false);
-const editingTaxRate = ref(false);
-const savingTaxRate = ref(false);
-const loadingTaxRates = ref(false);
 
 // Product Settings
 const productSettings = ref({
@@ -229,11 +225,23 @@ onMounted(async () => {
         loadBranches(),
         loadPrefixSettings(),
         loadDocumentSequences(),
-        loadTaxRates(),
         loadProductSettings(),
-        loadSaleSettings()
+        loadSaleSettings(),
+        loadTaxRates()
     ]);
 });
+
+// Load tax rates from finance module for default_tax dropdown
+async function loadTaxRates() {
+    try {
+        const response = await financeService.getTaxRates();
+        if (response.data) {
+            taxRates.value = response.data.results || response.data || [];
+        }
+    } catch (error) {
+        console.error('Error loading tax rates:', error);
+    }
+}
 
 // Business Details Methods
 async function loadBusinessDetails() {
@@ -440,82 +448,6 @@ async function loadBranches() {
         showToast('error', 'Error', 'Failed to fetch branches', 3000);
     } finally {
         loadingBranches.value = false;
-    }
-}
-
-// Tax Rates Methods
-async function loadTaxRates() {
-    loadingTaxRates.value = true;
-    try {
-        const response = await systemConfigService.getTaxRates();
-        if (response.success) {
-            taxRates.value = response.data || [];
-        }
-    } catch (error) {
-        console.error('Error loading tax rates:', error);
-    } finally {
-        loadingTaxRates.value = false;
-    }
-}
-
-function openTaxRateDialog() {
-    taxRate.value = {
-        name: '',
-        code: '',
-        rate: 0,
-        is_active: true
-    };
-    editingTaxRate.value = false;
-    taxRateDialog.value = true;
-}
-
-function editTaxRate(data) {
-    taxRate.value = { ...data };
-    editingTaxRate.value = true;
-    taxRateDialog.value = true;
-}
-
-async function saveTaxRate() {
-    savingTaxRate.value = true;
-    try {
-        let response;
-        if (editingTaxRate.value) {
-            response = await systemConfigService.updateTaxRate(taxRate.value.id, taxRate.value);
-        } else {
-            response = await systemConfigService.createTaxRate(taxRate.value);
-        }
-
-        if (response.success) {
-            showToast('success', 'Success', `Tax rate ${editingTaxRate.value ? 'updated' : 'created'} successfully`, 3000);
-            taxRateDialog.value = false;
-            await loadTaxRates();
-        }
-    } catch (error) {
-        showToast('error', 'Error', `Failed to ${editingTaxRate.value ? 'update' : 'create'} tax rate`, 3000);
-    } finally {
-        savingTaxRate.value = false;
-    }
-}
-
-function confirmDeleteTaxRate(data) {
-    confirm.require({
-        message: `Are you sure you want to delete the tax rate "${data.name}"?`,
-        header: 'Delete Confirmation',
-        icon: 'pi pi-exclamation-triangle',
-        acceptClass: 'p-button-danger',
-        accept: () => deleteTaxRate(data.id)
-    });
-}
-
-async function deleteTaxRate(id) {
-    try {
-        const response = await systemConfigService.deleteTaxRate(id);
-        if (response.success) {
-            showToast('success', 'Success', 'Tax rate deleted successfully', 3000);
-            await loadTaxRates();
-        }
-    } catch (error) {
-        showToast('error', 'Error', 'Failed to delete tax rate', 3000);
     }
 }
 
@@ -910,61 +842,6 @@ function getComplianceSeverity(status) {
                     </div>
                 </TabPanel>
 
-                <!-- Tax Rates Tab -->
-                <TabPanel header="Tax Rates">
-                    <div class="p-4">
-                        <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
-                            <div>
-                                <h2 class="text-xl font-semibold m-0 text-surface-900 dark:text-surface-0">Manage Tax Rates</h2>
-                                <p class="text-surface-600 dark:text-surface-400 m-0 mt-1">Configure tax rates for your business transactions</p>
-                            </div>
-                            <Button label="Add Tax Rate" icon="pi pi-plus" @click="openTaxRateDialog()" class="w-full md:w-auto" />
-                        </div>
-
-                        <DataTable
-                            :value="taxRates"
-                            :paginator="true"
-                            :rows="10"
-                            responsiveLayout="scroll"
-                            stripedRows
-                            class="p-datatable-sm"
-                            :loading="loadingTaxRates"
-                        >
-                            <Column field="name" header="Tax Name" :sortable="true">
-                                <template #body="{ data }">
-                                    <span class="font-medium">{{ data.name }}</span>
-                                </template>
-                            </Column>
-                            <Column field="code" header="Code" :sortable="true"></Column>
-                            <Column field="rate" header="Rate (%)" :sortable="true">
-                                <template #body="{ data }">
-                                    <span class="font-mono">{{ data.rate }}%</span>
-                                </template>
-                            </Column>
-                            <Column field="is_active" header="Status" :sortable="true">
-                                <template #body="{ data }">
-                                    <Tag :value="data.is_active ? 'Active' : 'Inactive'" :severity="data.is_active ? 'success' : 'secondary'" />
-                                </template>
-                            </Column>
-                            <Column header="Actions" :exportable="false" style="min-width: 8rem">
-                                <template #body="{ data }">
-                                    <div class="flex gap-2">
-                                        <Button icon="pi pi-pencil" outlined rounded severity="secondary" @click="editTaxRate(data)" v-tooltip.top="'Edit'" />
-                                        <Button icon="pi pi-trash" outlined rounded severity="danger" @click="confirmDeleteTaxRate(data)" v-tooltip.top="'Delete'" />
-                                    </div>
-                                </template>
-                            </Column>
-                            <template #empty>
-                                <div class="text-center py-8">
-                                    <i class="pi pi-percentage text-4xl text-surface-400 mb-3 block"></i>
-                                    <p class="text-surface-600 dark:text-surface-400 mb-4">No tax rates found</p>
-                                    <Button label="Add First Tax Rate" icon="pi pi-plus" @click="openTaxRateDialog()" />
-                                </div>
-                            </template>
-                        </DataTable>
-                    </div>
-                </TabPanel>
-
                 <!-- Product Settings Tab -->
                 <TabPanel header="Product Settings">
                     <div class="p-4">
@@ -1242,34 +1119,6 @@ function getComplianceSeverity(status) {
                 <div class="flex gap-2 justify-end">
                     <Button label="Cancel" icon="pi pi-times" severity="secondary" outlined @click="closeBranchDialog" />
                     <Button label="Save" icon="pi pi-check" @click="saveBranch" :loading="savingBranch" />
-                </div>
-            </template>
-        </Dialog>
-
-        <!-- Tax Rate Dialog -->
-        <Dialog v-model:visible="taxRateDialog" :style="{ width: '450px' }" :header="editingTaxRate ? 'Edit Tax Rate' : 'Add Tax Rate'" :modal="true" class="p-fluid" :draggable="false">
-            <div class="grid grid-cols-1 gap-4">
-                <div class="field">
-                    <label for="tax_name" class="font-semibold mb-2 block">Tax Name <span class="text-red-500">*</span></label>
-                    <InputText id="tax_name" v-model="taxRate.name" class="w-full" placeholder="e.g. VAT" required autofocus />
-                </div>
-                <div class="field">
-                    <label for="tax_code" class="font-semibold mb-2 block">Tax Code <span class="text-red-500">*</span></label>
-                    <InputText id="tax_code" v-model="taxRate.code" class="w-full uppercase" placeholder="e.g. VAT16" required />
-                </div>
-                <div class="field">
-                    <label for="tax_rate" class="font-semibold mb-2 block">Rate (%) <span class="text-red-500">*</span></label>
-                    <InputNumber id="tax_rate" v-model="taxRate.rate" class="w-full" mode="decimal" :min="0" :max="100" :minFractionDigits="2" :maxFractionDigits="2" suffix="%" required />
-                </div>
-                <div class="flex items-center gap-2">
-                    <Checkbox id="tax_is_active" v-model="taxRate.is_active" binary />
-                    <label for="tax_is_active" class="font-medium cursor-pointer">Active</label>
-                </div>
-            </div>
-            <template #footer>
-                <div class="flex gap-2 justify-end">
-                    <Button label="Cancel" icon="pi pi-times" severity="secondary" outlined @click="taxRateDialog = false" />
-                    <Button label="Save" icon="pi pi-check" @click="saveTaxRate" :loading="savingTaxRate" />
                 </div>
             </template>
         </Dialog>
