@@ -140,7 +140,7 @@ export function resetBranding(defaults = {}) {
 // Default branding values
 export const DEFAULT_BRANDING = {
     name: 'BengoBox ERP',
-    logoUrl: '@/assets/images/logos/logo.png',
+    logoUrl: '/logo.png', // Default logo from public folder
     primaryColor: '#1976D2',
     secondaryColor: '#FF5722',
     textColor: '#212121',

@@ -70,10 +70,9 @@ const actions = {
                     const incomingRoles = Array.isArray(data.roles) ? data.roles : [];
                     const mapped = incomingRoles.map((r) => (typeof r === 'string' ? r.toLowerCase() : r)).filter(Boolean);
                     user.roles = Array.from(new Set(mapped));
-                    user.isSuperuser = user.roles.includes('superusers') || 
-                    user.roles.includes('admin') || user.roles.includes('cto') 
-                    || user.roles.includes('ceo') || user.roles.includes('manager') 
-                    || user.roles.includes('hr');
+                    // Only actual superusers should bypass permission checks
+                    // Other elevated roles (admin, cto, ceo, etc.) should still have RBAC enforced
+                    user.isSuperuser = user.roles.includes('superusers') || user.is_superuser === true;
                 } catch (_) {
                     // roles optional
                 }

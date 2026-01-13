@@ -21,7 +21,7 @@
         <!-- Filters -->
         <Card class="mb-6">
             <template #content>
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
                     <IconField iconPosition="left">
                         <InputIcon class="pi pi-search" />
                         <InputText
@@ -30,13 +30,33 @@
                             class="w-full"
                         />
                     </IconField>
-                    
+
                     <Dropdown
                         v-model="filterModule"
                         :options="modules"
                         optionLabel="label"
                         optionValue="value"
                         placeholder="Filter by Module"
+                        showClear
+                        class="w-full"
+                    />
+
+                    <Dropdown
+                        v-model="filterRole"
+                        :options="roleOptions"
+                        optionLabel="label"
+                        optionValue="value"
+                        placeholder="Filter by Role"
+                        showClear
+                        class="w-full"
+                    />
+
+                    <Dropdown
+                        v-model="filterAction"
+                        :options="actionOptions"
+                        optionLabel="label"
+                        optionValue="value"
+                        placeholder="Filter by Action"
                         showClear
                         class="w-full"
                     />
@@ -256,7 +276,7 @@ import { userManagementService } from '@/services/auth/userManagementService';
 import { FilterMatchMode } from '@primevue/core/api';
 import IconField from 'primevue/iconfield';
 import InputIcon from 'primevue/inputicon';
-import { computed, onMounted, ref } from 'vue';
+import { computed, onMounted, ref, watch } from 'vue';
 
 const { showToast } = useToast();
 const { hasPermission } = usePermissions();
@@ -276,6 +296,24 @@ const filters = ref({
 });
 
 const filterModule = ref(null);
+const filterRole = ref(null);
+const filterAction = ref(null);
+
+// Action type options
+const actionOptions = [
+    { label: 'Create (Add)', value: 'add' },
+    { label: 'Read (View)', value: 'view' },
+    { label: 'Update (Change)', value: 'change' },
+    { label: 'Delete', value: 'delete' }
+];
+
+// Role options computed from loaded roles
+const roleOptions = computed(() => {
+    return roles.value.map(role => ({
+        label: role.name,
+        value: role.id
+    }));
+});
 
 const modules = computed(() => {
     const uniqueModules = [...new Set(permissions.value.map(p => p.content_type?.model || 'unknown'))];
@@ -289,6 +327,7 @@ const modules = computed(() => {
 const filteredPermissions = computed(() => {
     let result = permissions.value;
 
+    // Client-side module filter (in addition to server-side)
     if (filterModule.value) {
         result = result.filter(permission =>
             permission.content_type?.model === filterModule.value
@@ -299,18 +338,40 @@ const filteredPermissions = computed(() => {
 });
 
 // Methods
-const loadPermissions = async () => {
+const loadPermissions = async (showSuccessToast = true) => {
     loading.value = true;
     try {
+        // Build filter params for server-side filtering
+        const params = {
+            page_size: 500  // Load more for better client-side filtering
+        };
+
+        // Add role filter if selected
+        if (filterRole.value) {
+            params.role = filterRole.value;
+        }
+
+        // Add action filter if selected
+        if (filterAction.value) {
+            params.action = filterAction.value;
+        }
+
+        // Add search filter if entered
+        if (filters.value.global.value) {
+            params.search = filters.value.global.value;
+        }
+
         const [permissionsRes, rolesRes] = await Promise.all([
-            userManagementService.getPermissions(),
+            userManagementService.getPermissions(params),
             userManagementService.getRoles()
         ]);
-        
+
         permissions.value = permissionsRes.data?.results || permissionsRes.data || [];
         roles.value = rolesRes.data?.results || rolesRes.data || [];
-        
-        showToast('success', 'Permissions loaded successfully', 'Success');
+
+        if (showSuccessToast) {
+            showToast('success', 'Permissions loaded successfully', 'Success');
+        }
     } catch (error) {
         console.error('Error loading permissions:', error);
         showToast('error', 'Failed to load permissions', 'Error');
@@ -326,7 +387,10 @@ const viewPermission = (permission) => {
 
 const clearFilters = () => {
     filterModule.value = null;
+    filterRole.value = null;
+    filterAction.value = null;
     filters.value.global.value = '';
+    loadPermissions(false);
 };
 
 const getModuleName = (contentType) => {
@@ -390,6 +454,24 @@ const exportPermissions = () => {
     a.download = 'permissions.csv';
     a.click();
 };
+
+// Watchers - reload permissions when server-side filters change
+watch(filterRole, () => {
+    loadPermissions(false);
+});
+
+watch(filterAction, () => {
+    loadPermissions(false);
+});
+
+// Debounced search - reload after user stops typing
+let searchTimeout = null;
+watch(() => filters.value.global.value, () => {
+    if (searchTimeout) clearTimeout(searchTimeout);
+    searchTimeout = setTimeout(() => {
+        loadPermissions(false);
+    }, 500);
+});
 
 // Lifecycle
 onMounted(() => {

@@ -66,10 +66,29 @@ const refreshNotifications = () => {
     }
 };
 
-// Computed property for business logo
+// Default logo path (from public folder)
+const DEFAULT_LOGO = '/logo.png';
+
+// Computed property for business logo with fallback
 const businessLogo = computed(() => {
-    return businessDetails.value?.business__logo || '/logo.png';
+    return businessDetails.value?.business__logo || DEFAULT_LOGO;
 });
+
+// State for logo loading error
+const logoLoadError = ref(false);
+
+// Actual logo to display (business logo or default if loading failed)
+const displayLogo = computed(() => {
+    if (logoLoadError.value) {
+        return DEFAULT_LOGO;
+    }
+    return businessLogo.value;
+});
+
+// Handle logo loading error - fallback to default
+const handleLogoError = () => {
+    logoLoadError.value = true;
+};
 
 const businessName = computed(() => {
     return businessDetails.value?.name || 'BengoERP';
@@ -191,11 +210,11 @@ const { onMenuToggle } = useLayout();
             </button>
             
             <a @click.prevent="navigateToDashboard" class="layout-topbar-logo cursor-pointer">
-                <img 
-                    v-if="businessLogo" 
-                    :src="businessLogo" 
-                    :alt="businessName" 
-                    class="topbar-logo-img" 
+                <img
+                    :src="displayLogo"
+                    :alt="businessName"
+                    class="topbar-logo-img"
+                    @error="handleLogoError"
                 />
                 <div class="logo-text">
                     <span class="business-name">{{ businessName }}</span>

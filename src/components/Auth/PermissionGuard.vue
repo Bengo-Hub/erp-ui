@@ -37,25 +37,24 @@ const store = useStore();
 
 const hasAccess = computed(() => {
     const user = store.state.auth.user;
-    if (!user || !user.permissions) {
+    if (!user) {
         return false;
     }
 
-    const permissions = user.permissions;
-
+    // Pass the full user object so superuser checks work correctly
     // Check single permission
     if (props.permission) {
-        return hasPermission(permissions, props.permission);
+        return hasPermission(user, props.permission);
     }
 
     // Check any permission
     if (props.anyPermission) {
-        return hasAnyPermission(permissions, props.anyPermission);
+        return hasAnyPermission(user, props.anyPermission);
     }
 
     // Check all permissions
     if (props.allPermissions) {
-        return hasAllPermissions(permissions, props.allPermissions);
+        return hasAllPermissions(user, props.allPermissions);
     }
 
     // No permissions specified, allow access

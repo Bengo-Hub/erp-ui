@@ -1177,8 +1177,9 @@ const originalModel = ref([
 const model = ref([]);
 
 onBeforeMount(() => {
-    const user = JSON.parse(sessionStorage.user);
-    model.value = filterMenuItems(originalModel.value, user.permissions);
+    const user = JSON.parse(sessionStorage.getItem('user') || '{}');
+    // Pass the full user object so isSuperUser check can access roles
+    model.value = filterMenuItems(originalModel.value, user);
 });
 </script>
 

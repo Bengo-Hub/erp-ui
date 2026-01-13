@@ -14,8 +14,9 @@ const items = ref([
     { label: 'Business', to: '/settings/business' }
 ]);
 
-// Business details (core business info only - currency/timezone/financial year moved to Currency & Time settings)
+// Business details (core business info)
 const businessDetails = ref({
+    id: null,
     name: '',
     start_date: null,
     stock_accounting_method: '',
@@ -27,7 +28,26 @@ const businessDetails = ref({
     phone: '',
     email: '',
     website: '',
-    address: ''
+    address: '',
+    // KRA & Compliance fields
+    kra_number: '',
+    business_license_number: '',
+    business_license_expiry: null,
+    business_registration_number: '',
+    business_type: 'limited_company',
+    county: '',
+    postal_code: '',
+    kra_api_enabled: false,
+    tax_compliance_status: 'pending',
+    // Branding fields
+    business_primary_color: '#1976D2',
+    business_secondary_color: '#FF5722',
+    business_text_color: '#212121',
+    business_background_color: '#ffffff',
+    ui_theme_preset: 'Lara',
+    ui_menu_mode: 'static',
+    ui_dark_mode: false,
+    ui_surface_style: 'slate'
 });
 const originalBusinessDetails = ref({});
 const savingBusinessDetails = ref(false);
@@ -66,6 +86,37 @@ const loadingPrefixSettings = ref(false);
 const documentSequences = ref([]);
 const loadingSequences = ref(false);
 
+// Tax Rates
+const taxRates = ref([]);
+const taxRate = ref({});
+const taxRateDialog = ref(false);
+const editingTaxRate = ref(false);
+const savingTaxRate = ref(false);
+const loadingTaxRates = ref(false);
+
+// Product Settings
+const productSettings = ref({
+    id: null,
+    default_unit: 'Piece(s)',
+    enable_warranty: false,
+    enable_product_expiry: false,
+    stop_selling_days_before_expiry: 1,
+    sku_prefix: 'BH'
+});
+const originalProductSettings = ref({});
+const savingProductSettings = ref(false);
+const loadingProductSettings = ref(false);
+
+// Sale Settings
+const saleSettings = ref({
+    id: null,
+    default_discount: 0,
+    default_tax: null
+});
+const originalSaleSettings = ref({});
+const savingSaleSettings = ref(false);
+const loadingSaleSettings = ref(false);
+
 // Dropdown options
 const accountingMethods = [
     { name: 'First In First Out (FIFO)', code: 'FIFO' },
@@ -76,6 +127,57 @@ const accountingMethods = [
 const industryOptions = [
     'Retail', 'Manufacturing', 'Services', 'Technology', 'Healthcare',
     'Education', 'Construction', 'Agriculture', 'Transportation', 'Other'
+];
+
+const businessTypeOptions = [
+    { label: 'Sole Proprietorship', value: 'sole_proprietorship' },
+    { label: 'Partnership', value: 'partnership' },
+    { label: 'Limited Company', value: 'limited_company' },
+    { label: 'Public Company', value: 'public_company' },
+    { label: 'NGO', value: 'ngo' },
+    { label: 'Other', value: 'other' }
+];
+
+const complianceStatusOptions = [
+    { label: 'Compliant', value: 'compliant', severity: 'success' },
+    { label: 'Non-Compliant', value: 'non_compliant', severity: 'danger' },
+    { label: 'Pending Review', value: 'pending', severity: 'warning' },
+    { label: 'Exempt', value: 'exempt', severity: 'info' }
+];
+
+const themePresets = [
+    { label: 'Lara Theme', value: 'Lara' },
+    { label: 'Aura Theme', value: 'Aura' }
+];
+
+const menuModes = [
+    { label: 'Static', value: 'static' },
+    { label: 'Overlay', value: 'overlay' }
+];
+
+const surfaceStyles = [
+    { label: 'Slate', value: 'slate' },
+    { label: 'Zinc', value: 'zinc' },
+    { label: 'Stone', value: 'stone' },
+    { label: 'Soho', value: 'soho' },
+    { label: 'Vela', value: 'vela' },
+    { label: 'Arya', value: 'arya' }
+];
+
+const unitOptions = [
+    'Piece(s)', 'Kilogram(s)', 'Gram(s)', 'Litre(s)', 'Millilitre(s)',
+    'Metre(s)', 'Centimetre(s)', 'Box(es)', 'Pack(s)', 'Dozen(s)', 'Set(s)'
+];
+
+// Kenyan counties
+const kenyanCounties = [
+    'Baringo', 'Bomet', 'Bungoma', 'Busia', 'Elgeyo-Marakwet', 'Embu', 'Garissa',
+    'Homa Bay', 'Isiolo', 'Kajiado', 'Kakamega', 'Kericho', 'Kiambu', 'Kilifi',
+    'Kirinyaga', 'Kisii', 'Kisumu', 'Kitui', 'Kwale', 'Laikipia', 'Lamu',
+    'Machakos', 'Makueni', 'Mandera', 'Marsabit', 'Meru', 'Migori', 'Mombasa',
+    'Murang\'a', 'Nairobi', 'Nakuru', 'Nandi', 'Narok', 'Nyamira', 'Nyandarua',
+    'Nyeri', 'Samburu', 'Siaya', 'Taita-Taveta', 'Tana River', 'Tharaka-Nithi',
+    'Trans-Nzoia', 'Turkana', 'Uasin Gishu', 'Vihiga', 'Wajir', 'West Pokot'
 ];
 
 // Grouped prefix settings for display
@@ -122,10 +224,15 @@ const prefixGroups = computed(() => [
 
 // Load data on component mount
 onMounted(async () => {
-    await loadBusinessDetails();
-    await loadBranches();
-    await loadPrefixSettings();
-    await loadDocumentSequences();
+    await Promise.all([
+        loadBusinessDetails(),
+        loadBranches(),
+        loadPrefixSettings(),
+        loadDocumentSequences(),
+        loadTaxRates(),
+        loadProductSettings(),
+        loadSaleSettings()
+    ]);
 });
 
 // Business Details Methods
@@ -134,15 +241,18 @@ async function loadBusinessDetails() {
         const response = await systemConfigService.getBusinessSettings();
         if (response.success) {
             let data = response.data.results;
-            if (data) {
-                businessDetails.value = data[0];
-                branches.value = businessDetails.value.branches;
+            if (data && data.length > 0) {
+                businessDetails.value = { ...businessDetails.value, ...data[0] };
+                branches.value = businessDetails.value.branches || [];
             }
             originalBusinessDetails.value = JSON.parse(JSON.stringify(businessDetails.value));
 
-            // Format date if needed
+            // Format dates if needed
             if (businessDetails.value.start_date) {
                 businessDetails.value.start_date = new Date(businessDetails.value.start_date);
+            }
+            if (businessDetails.value.business_license_expiry) {
+                businessDetails.value.business_license_expiry = new Date(businessDetails.value.business_license_expiry);
             }
         }
     } catch (error) {
@@ -313,7 +423,6 @@ async function loadDocumentSequences() {
         }
     } catch (error) {
         console.error('Error loading document sequences:', error);
-        // Not showing error toast as this is optional data
     } finally {
         loadingSequences.value = false;
     }
@@ -324,7 +433,7 @@ async function loadBranches() {
         loadingBranches.value = true;
         const response = await systemConfigService.getBusinessBranches();
         if (response.success) {
-            branches.value = response.data.results;
+            branches.value = response.data.results || response.data || [];
         }
     } catch (error) {
         console.error('Error fetching branches:', error);
@@ -332,6 +441,170 @@ async function loadBranches() {
     } finally {
         loadingBranches.value = false;
     }
+}
+
+// Tax Rates Methods
+async function loadTaxRates() {
+    loadingTaxRates.value = true;
+    try {
+        const response = await systemConfigService.getTaxRates();
+        if (response.success) {
+            taxRates.value = response.data || [];
+        }
+    } catch (error) {
+        console.error('Error loading tax rates:', error);
+    } finally {
+        loadingTaxRates.value = false;
+    }
+}
+
+function openTaxRateDialog() {
+    taxRate.value = {
+        name: '',
+        code: '',
+        rate: 0,
+        is_active: true
+    };
+    editingTaxRate.value = false;
+    taxRateDialog.value = true;
+}
+
+function editTaxRate(data) {
+    taxRate.value = { ...data };
+    editingTaxRate.value = true;
+    taxRateDialog.value = true;
+}
+
+async function saveTaxRate() {
+    savingTaxRate.value = true;
+    try {
+        let response;
+        if (editingTaxRate.value) {
+            response = await systemConfigService.updateTaxRate(taxRate.value.id, taxRate.value);
+        } else {
+            response = await systemConfigService.createTaxRate(taxRate.value);
+        }
+
+        if (response.success) {
+            showToast('success', 'Success', `Tax rate ${editingTaxRate.value ? 'updated' : 'created'} successfully`, 3000);
+            taxRateDialog.value = false;
+            await loadTaxRates();
+        }
+    } catch (error) {
+        showToast('error', 'Error', `Failed to ${editingTaxRate.value ? 'update' : 'create'} tax rate`, 3000);
+    } finally {
+        savingTaxRate.value = false;
+    }
+}
+
+function confirmDeleteTaxRate(data) {
+    confirm.require({
+        message: `Are you sure you want to delete the tax rate "${data.name}"?`,
+        header: 'Delete Confirmation',
+        icon: 'pi pi-exclamation-triangle',
+        acceptClass: 'p-button-danger',
+        accept: () => deleteTaxRate(data.id)
+    });
+}
+
+async function deleteTaxRate(id) {
+    try {
+        const response = await systemConfigService.deleteTaxRate(id);
+        if (response.success) {
+            showToast('success', 'Success', 'Tax rate deleted successfully', 3000);
+            await loadTaxRates();
+        }
+    } catch (error) {
+        showToast('error', 'Error', 'Failed to delete tax rate', 3000);
+    }
+}
+
+// Product Settings Methods
+async function loadProductSettings() {
+    loadingProductSettings.value = true;
+    try {
+        const response = await systemConfigService.getProductSettings();
+        if (response.success && response.data) {
+            productSettings.value = { ...productSettings.value, ...response.data };
+            originalProductSettings.value = JSON.parse(JSON.stringify(productSettings.value));
+        }
+    } catch (error) {
+        console.error('Error loading product settings:', error);
+    } finally {
+        loadingProductSettings.value = false;
+    }
+}
+
+async function saveProductSettings() {
+    savingProductSettings.value = true;
+    try {
+        let response;
+        if (productSettings.value.id) {
+            response = await systemConfigService.updateProductSettings(productSettings.value.id, productSettings.value);
+        } else {
+            response = await systemConfigService.createProductSettings(productSettings.value);
+        }
+
+        if (response.success) {
+            showToast('success', 'Success', 'Product settings updated successfully', 3000);
+            originalProductSettings.value = JSON.parse(JSON.stringify(productSettings.value));
+            if (response.data?.id) {
+                productSettings.value.id = response.data.id;
+            }
+        }
+    } catch (error) {
+        showToast('error', 'Error', 'Failed to update product settings', 3000);
+    } finally {
+        savingProductSettings.value = false;
+    }
+}
+
+function resetProductSettings() {
+    productSettings.value = JSON.parse(JSON.stringify(originalProductSettings.value));
+}
+
+// Sale Settings Methods
+async function loadSaleSettings() {
+    loadingSaleSettings.value = true;
+    try {
+        const response = await systemConfigService.getSaleSettings();
+        if (response.success && response.data) {
+            saleSettings.value = { ...saleSettings.value, ...response.data };
+            originalSaleSettings.value = JSON.parse(JSON.stringify(saleSettings.value));
+        }
+    } catch (error) {
+        console.error('Error loading sale settings:', error);
+    } finally {
+        loadingSaleSettings.value = false;
+    }
+}
+
+async function saveSaleSettings() {
+    savingSaleSettings.value = true;
+    try {
+        let response;
+        if (saleSettings.value.id) {
+            response = await systemConfigService.updateSaleSettings(saleSettings.value.id, saleSettings.value);
+        } else {
+            response = await systemConfigService.createSaleSettings(saleSettings.value);
+        }
+
+        if (response.success) {
+            showToast('success', 'Success', 'Sale settings updated successfully', 3000);
+            originalSaleSettings.value = JSON.parse(JSON.stringify(saleSettings.value));
+            if (response.data?.id) {
+                saleSettings.value.id = response.data.id;
+            }
+        }
+    } catch (error) {
+        showToast('error', 'Error', 'Failed to update sale settings', 3000);
+    } finally {
+        savingSaleSettings.value = false;
+    }
+}
+
+function resetSaleSettings() {
+    saleSettings.value = JSON.parse(JSON.stringify(originalSaleSettings.value));
 }
 
 // Helper for sequence badge color
@@ -352,6 +625,11 @@ function getSequenceSeverity(docType) {
     };
     return severityMap[docType] || 'secondary';
 }
+
+function getComplianceSeverity(status) {
+    const option = complianceStatusOptions.find(o => o.value === status);
+    return option?.severity || 'secondary';
+}
 </script>
 
 <template>
@@ -362,7 +640,7 @@ function getSequenceSeverity(docType) {
             <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
                 <div>
                     <h1 class="text-2xl md:text-3xl font-bold text-surface-900 dark:text-surface-0 m-0">Business Settings</h1>
-                    <p class="text-surface-600 dark:text-surface-400 mt-1 m-0">Configure your business details and document settings</p>
+                    <p class="text-surface-600 dark:text-surface-400 mt-1 m-0">Configure your business details, compliance, branding, and document settings</p>
                 </div>
             </div>
 
@@ -394,18 +672,6 @@ function getSequenceSeverity(docType) {
                                     <label for="industry" class="font-semibold text-surface-700 dark:text-surface-200 mb-2 block">Industry</label>
                                     <Select id="industry" v-model="businessDetails.industry" :options="industryOptions" placeholder="Select Industry" class="w-full" editable />
                                     <small class="text-surface-500">Your business industry/sector</small>
-                                </div>
-
-                                <div class="field">
-                                    <label for="tax_id" class="font-semibold text-surface-700 dark:text-surface-200 mb-2 block">Tax ID / PIN</label>
-                                    <InputText id="tax_id" v-model="businessDetails.tax_id" class="w-full" placeholder="Enter Tax ID" />
-                                    <small class="text-surface-500">Business tax identification number</small>
-                                </div>
-
-                                <div class="field">
-                                    <label for="registration_number" class="font-semibold text-surface-700 dark:text-surface-200 mb-2 block">Registration Number</label>
-                                    <InputText id="registration_number" v-model="businessDetails.registration_number" class="w-full" placeholder="Enter Registration No." />
-                                    <small class="text-surface-500">Business registration number</small>
                                 </div>
 
                                 <div class="field">
@@ -444,6 +710,343 @@ function getSequenceSeverity(docType) {
                             <div class="flex flex-col sm:flex-row justify-end gap-3 mt-6 pt-4 border-t border-surface-200 dark:border-surface-700">
                                 <Button type="button" label="Cancel" severity="secondary" outlined @click="resetBusinessDetails" class="w-full sm:w-auto" />
                                 <Button type="submit" label="Save Changes" icon="pi pi-check" :loading="savingBusinessDetails" class="w-full sm:w-auto" />
+                            </div>
+                        </form>
+                    </div>
+                </TabPanel>
+
+                <!-- KRA & Compliance Tab -->
+                <TabPanel header="KRA & Compliance">
+                    <div class="p-4">
+                        <form @submit.prevent="saveBusinessDetails" class="p-fluid">
+                            <!-- Registration Section -->
+                            <div class="mb-8">
+                                <div class="flex items-center gap-2 mb-4">
+                                    <i class="pi pi-id-card text-lg text-primary"></i>
+                                    <h3 class="text-lg font-semibold m-0 text-surface-800 dark:text-surface-100">Business Registration</h3>
+                                </div>
+                                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                                    <div class="field">
+                                        <label for="business_type" class="font-semibold text-surface-700 dark:text-surface-200 mb-2 block">Business Type</label>
+                                        <Select id="business_type" v-model="businessDetails.business_type" :options="businessTypeOptions" optionLabel="label" optionValue="value" placeholder="Select Type" class="w-full" />
+                                    </div>
+                                    <div class="field">
+                                        <label for="business_registration_number" class="font-semibold text-surface-700 dark:text-surface-200 mb-2 block">Registration Number</label>
+                                        <InputText id="business_registration_number" v-model="businessDetails.business_registration_number" class="w-full" placeholder="e.g. PVT-123456" />
+                                    </div>
+                                    <div class="field">
+                                        <label for="tax_id" class="font-semibold text-surface-700 dark:text-surface-200 mb-2 block">Tax ID / PIN</label>
+                                        <InputText id="tax_id" v-model="businessDetails.tax_id" class="w-full" placeholder="e.g. P051234567A" />
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- KRA Section -->
+                            <div class="mb-8">
+                                <div class="flex items-center gap-2 mb-4">
+                                    <i class="pi pi-verified text-lg text-primary"></i>
+                                    <h3 class="text-lg font-semibold m-0 text-surface-800 dark:text-surface-100">KRA eTIMS Integration</h3>
+                                </div>
+                                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                                    <div class="field">
+                                        <label for="kra_number" class="font-semibold text-surface-700 dark:text-surface-200 mb-2 block">KRA PIN Number</label>
+                                        <InputText id="kra_number" v-model="businessDetails.kra_number" class="w-full" placeholder="e.g. P051234567A" />
+                                        <small class="text-surface-500">Your KRA PIN for tax compliance</small>
+                                    </div>
+                                    <div class="field">
+                                        <label for="tax_compliance_status" class="font-semibold text-surface-700 dark:text-surface-200 mb-2 block">Compliance Status</label>
+                                        <Select id="tax_compliance_status" v-model="businessDetails.tax_compliance_status" :options="complianceStatusOptions" optionLabel="label" optionValue="value" class="w-full">
+                                            <template #value="slotProps">
+                                                <Tag v-if="slotProps.value" :value="complianceStatusOptions.find(o => o.value === slotProps.value)?.label" :severity="getComplianceSeverity(slotProps.value)" />
+                                            </template>
+                                            <template #option="slotProps">
+                                                <Tag :value="slotProps.option.label" :severity="slotProps.option.severity" />
+                                            </template>
+                                        </Select>
+                                    </div>
+                                    <div class="field flex items-end">
+                                        <div class="flex items-center gap-2">
+                                            <Checkbox id="kra_api_enabled" v-model="businessDetails.kra_api_enabled" binary />
+                                            <label for="kra_api_enabled" class="font-medium cursor-pointer">Enable KRA API Integration</label>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- License Section -->
+                            <div class="mb-8">
+                                <div class="flex items-center gap-2 mb-4">
+                                    <i class="pi pi-file-check text-lg text-primary"></i>
+                                    <h3 class="text-lg font-semibold m-0 text-surface-800 dark:text-surface-100">Business License</h3>
+                                </div>
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    <div class="field">
+                                        <label for="business_license_number" class="font-semibold text-surface-700 dark:text-surface-200 mb-2 block">License Number</label>
+                                        <InputText id="business_license_number" v-model="businessDetails.business_license_number" class="w-full" placeholder="Enter license number" />
+                                    </div>
+                                    <div class="field">
+                                        <label for="business_license_expiry" class="font-semibold text-surface-700 dark:text-surface-200 mb-2 block">License Expiry Date</label>
+                                        <DatePicker id="business_license_expiry" v-model="businessDetails.business_license_expiry" dateFormat="yy-mm-dd" class="w-full" placeholder="Select expiry date" showIcon />
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Location Section -->
+                            <div class="mb-8">
+                                <div class="flex items-center gap-2 mb-4">
+                                    <i class="pi pi-map-marker text-lg text-primary"></i>
+                                    <h3 class="text-lg font-semibold m-0 text-surface-800 dark:text-surface-100">Location (Kenya)</h3>
+                                </div>
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    <div class="field">
+                                        <label for="county" class="font-semibold text-surface-700 dark:text-surface-200 mb-2 block">County</label>
+                                        <Select id="county" v-model="businessDetails.county" :options="kenyanCounties" placeholder="Select County" class="w-full" filter editable />
+                                    </div>
+                                    <div class="field">
+                                        <label for="postal_code" class="font-semibold text-surface-700 dark:text-surface-200 mb-2 block">Postal Code</label>
+                                        <InputText id="postal_code" v-model="businessDetails.postal_code" class="w-full" placeholder="e.g. 00100" />
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="flex flex-col sm:flex-row justify-end gap-3 mt-6 pt-4 border-t border-surface-200 dark:border-surface-700">
+                                <Button type="button" label="Cancel" severity="secondary" outlined @click="resetBusinessDetails" class="w-full sm:w-auto" />
+                                <Button type="submit" label="Save Compliance Settings" icon="pi pi-check" :loading="savingBusinessDetails" class="w-full sm:w-auto" />
+                            </div>
+                        </form>
+                    </div>
+                </TabPanel>
+
+                <!-- Branding Tab -->
+                <TabPanel header="Branding">
+                    <div class="p-4">
+                        <form @submit.prevent="saveBusinessDetails" class="p-fluid">
+                            <!-- Colors Section -->
+                            <div class="mb-8">
+                                <div class="flex items-center gap-2 mb-4">
+                                    <i class="pi pi-palette text-lg text-primary"></i>
+                                    <h3 class="text-lg font-semibold m-0 text-surface-800 dark:text-surface-100">Brand Colors</h3>
+                                </div>
+                                <div class="grid grid-cols-2 md:grid-cols-4 gap-6">
+                                    <div class="field">
+                                        <label for="primary_color" class="font-semibold text-surface-700 dark:text-surface-200 mb-2 block">Primary Color</label>
+                                        <div class="flex gap-2 items-center">
+                                            <ColorPicker v-model="businessDetails.business_primary_color" format="hex" class="w-10" />
+                                            <InputText v-model="businessDetails.business_primary_color" class="flex-1" placeholder="#1976D2" />
+                                        </div>
+                                    </div>
+                                    <div class="field">
+                                        <label for="secondary_color" class="font-semibold text-surface-700 dark:text-surface-200 mb-2 block">Secondary Color</label>
+                                        <div class="flex gap-2 items-center">
+                                            <ColorPicker v-model="businessDetails.business_secondary_color" format="hex" class="w-10" />
+                                            <InputText v-model="businessDetails.business_secondary_color" class="flex-1" placeholder="#FF5722" />
+                                        </div>
+                                    </div>
+                                    <div class="field">
+                                        <label for="text_color" class="font-semibold text-surface-700 dark:text-surface-200 mb-2 block">Text Color</label>
+                                        <div class="flex gap-2 items-center">
+                                            <ColorPicker v-model="businessDetails.business_text_color" format="hex" class="w-10" />
+                                            <InputText v-model="businessDetails.business_text_color" class="flex-1" placeholder="#212121" />
+                                        </div>
+                                    </div>
+                                    <div class="field">
+                                        <label for="background_color" class="font-semibold text-surface-700 dark:text-surface-200 mb-2 block">Background Color</label>
+                                        <div class="flex gap-2 items-center">
+                                            <ColorPicker v-model="businessDetails.business_background_color" format="hex" class="w-10" />
+                                            <InputText v-model="businessDetails.business_background_color" class="flex-1" placeholder="#ffffff" />
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Theme Section -->
+                            <div class="mb-8">
+                                <div class="flex items-center gap-2 mb-4">
+                                    <i class="pi pi-sun text-lg text-primary"></i>
+                                    <h3 class="text-lg font-semibold m-0 text-surface-800 dark:text-surface-100">UI Theme Settings</h3>
+                                </div>
+                                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                                    <div class="field">
+                                        <label for="ui_theme_preset" class="font-semibold text-surface-700 dark:text-surface-200 mb-2 block">Theme Preset</label>
+                                        <Select id="ui_theme_preset" v-model="businessDetails.ui_theme_preset" :options="themePresets" optionLabel="label" optionValue="value" class="w-full" />
+                                    </div>
+                                    <div class="field">
+                                        <label for="ui_menu_mode" class="font-semibold text-surface-700 dark:text-surface-200 mb-2 block">Menu Mode</label>
+                                        <Select id="ui_menu_mode" v-model="businessDetails.ui_menu_mode" :options="menuModes" optionLabel="label" optionValue="value" class="w-full" />
+                                    </div>
+                                    <div class="field">
+                                        <label for="ui_surface_style" class="font-semibold text-surface-700 dark:text-surface-200 mb-2 block">Surface Style</label>
+                                        <Select id="ui_surface_style" v-model="businessDetails.ui_surface_style" :options="surfaceStyles" optionLabel="label" optionValue="value" class="w-full" />
+                                    </div>
+                                    <div class="field flex items-end">
+                                        <div class="flex items-center gap-2">
+                                            <Checkbox id="ui_dark_mode" v-model="businessDetails.ui_dark_mode" binary />
+                                            <label for="ui_dark_mode" class="font-medium cursor-pointer">Enable Dark Mode</label>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Preview Section -->
+                            <div class="mb-8">
+                                <div class="flex items-center gap-2 mb-4">
+                                    <i class="pi pi-eye text-lg text-primary"></i>
+                                    <h3 class="text-lg font-semibold m-0 text-surface-800 dark:text-surface-100">Color Preview</h3>
+                                </div>
+                                <div class="p-4 rounded-lg border border-surface-200 dark:border-surface-700" :style="{ backgroundColor: businessDetails.business_background_color }">
+                                    <div class="flex gap-4 items-center flex-wrap">
+                                        <div class="px-4 py-2 rounded" :style="{ backgroundColor: businessDetails.business_primary_color, color: '#fff' }">Primary Button</div>
+                                        <div class="px-4 py-2 rounded" :style="{ backgroundColor: businessDetails.business_secondary_color, color: '#fff' }">Secondary Button</div>
+                                        <span :style="{ color: businessDetails.business_text_color }">Sample Text Content</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="flex flex-col sm:flex-row justify-end gap-3 mt-6 pt-4 border-t border-surface-200 dark:border-surface-700">
+                                <Button type="button" label="Cancel" severity="secondary" outlined @click="resetBusinessDetails" class="w-full sm:w-auto" />
+                                <Button type="submit" label="Save Branding" icon="pi pi-check" :loading="savingBusinessDetails" class="w-full sm:w-auto" />
+                            </div>
+                        </form>
+                    </div>
+                </TabPanel>
+
+                <!-- Tax Rates Tab -->
+                <TabPanel header="Tax Rates">
+                    <div class="p-4">
+                        <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
+                            <div>
+                                <h2 class="text-xl font-semibold m-0 text-surface-900 dark:text-surface-0">Manage Tax Rates</h2>
+                                <p class="text-surface-600 dark:text-surface-400 m-0 mt-1">Configure tax rates for your business transactions</p>
+                            </div>
+                            <Button label="Add Tax Rate" icon="pi pi-plus" @click="openTaxRateDialog()" class="w-full md:w-auto" />
+                        </div>
+
+                        <DataTable
+                            :value="taxRates"
+                            :paginator="true"
+                            :rows="10"
+                            responsiveLayout="scroll"
+                            stripedRows
+                            class="p-datatable-sm"
+                            :loading="loadingTaxRates"
+                        >
+                            <Column field="name" header="Tax Name" :sortable="true">
+                                <template #body="{ data }">
+                                    <span class="font-medium">{{ data.name }}</span>
+                                </template>
+                            </Column>
+                            <Column field="code" header="Code" :sortable="true"></Column>
+                            <Column field="rate" header="Rate (%)" :sortable="true">
+                                <template #body="{ data }">
+                                    <span class="font-mono">{{ data.rate }}%</span>
+                                </template>
+                            </Column>
+                            <Column field="is_active" header="Status" :sortable="true">
+                                <template #body="{ data }">
+                                    <Tag :value="data.is_active ? 'Active' : 'Inactive'" :severity="data.is_active ? 'success' : 'secondary'" />
+                                </template>
+                            </Column>
+                            <Column header="Actions" :exportable="false" style="min-width: 8rem">
+                                <template #body="{ data }">
+                                    <div class="flex gap-2">
+                                        <Button icon="pi pi-pencil" outlined rounded severity="secondary" @click="editTaxRate(data)" v-tooltip.top="'Edit'" />
+                                        <Button icon="pi pi-trash" outlined rounded severity="danger" @click="confirmDeleteTaxRate(data)" v-tooltip.top="'Delete'" />
+                                    </div>
+                                </template>
+                            </Column>
+                            <template #empty>
+                                <div class="text-center py-8">
+                                    <i class="pi pi-percentage text-4xl text-surface-400 mb-3 block"></i>
+                                    <p class="text-surface-600 dark:text-surface-400 mb-4">No tax rates found</p>
+                                    <Button label="Add First Tax Rate" icon="pi pi-plus" @click="openTaxRateDialog()" />
+                                </div>
+                            </template>
+                        </DataTable>
+                    </div>
+                </TabPanel>
+
+                <!-- Product Settings Tab -->
+                <TabPanel header="Product Settings">
+                    <div class="p-4">
+                        <div class="mb-6">
+                            <h2 class="text-xl font-semibold m-0 text-surface-900 dark:text-surface-0">Product Configuration</h2>
+                            <p class="text-surface-600 dark:text-surface-400 m-0 mt-1">Configure default settings for products and inventory</p>
+                        </div>
+
+                        <div v-if="loadingProductSettings" class="flex justify-center py-8">
+                            <ProgressSpinner style="width: 50px; height: 50px" strokeWidth="4" />
+                        </div>
+
+                        <form v-else @submit.prevent="saveProductSettings" class="p-fluid">
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div class="field">
+                                    <label for="default_unit" class="font-semibold text-surface-700 dark:text-surface-200 mb-2 block">Default Unit</label>
+                                    <Select id="default_unit" v-model="productSettings.default_unit" :options="unitOptions" placeholder="Select Unit" class="w-full" editable />
+                                    <small class="text-surface-500">Default unit of measurement for new products</small>
+                                </div>
+
+                                <div class="field">
+                                    <label for="sku_prefix" class="font-semibold text-surface-700 dark:text-surface-200 mb-2 block">SKU Prefix</label>
+                                    <InputText id="sku_prefix" v-model="productSettings.sku_prefix" class="w-full uppercase" maxlength="10" placeholder="e.g. BH" />
+                                    <small class="text-surface-500">Prefix for auto-generated SKU codes</small>
+                                </div>
+
+                                <div class="field">
+                                    <label for="stop_selling_days_before_expiry" class="font-semibold text-surface-700 dark:text-surface-200 mb-2 block">Stop Selling Before Expiry (Days)</label>
+                                    <InputNumber id="stop_selling_days_before_expiry" v-model="productSettings.stop_selling_days_before_expiry" class="w-full" :min="0" :max="365" />
+                                    <small class="text-surface-500">Days before expiry to stop selling products</small>
+                                </div>
+
+                                <div class="field flex flex-col gap-4">
+                                    <div class="flex items-center gap-2">
+                                        <Checkbox id="enable_warranty" v-model="productSettings.enable_warranty" binary />
+                                        <label for="enable_warranty" class="font-medium cursor-pointer">Enable Product Warranty</label>
+                                    </div>
+                                    <div class="flex items-center gap-2">
+                                        <Checkbox id="enable_product_expiry" v-model="productSettings.enable_product_expiry" binary />
+                                        <label for="enable_product_expiry" class="font-medium cursor-pointer">Enable Product Expiry Tracking</label>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="flex flex-col sm:flex-row justify-end gap-3 mt-6 pt-4 border-t border-surface-200 dark:border-surface-700">
+                                <Button type="button" label="Reset" severity="secondary" outlined @click="resetProductSettings" class="w-full sm:w-auto" />
+                                <Button type="submit" label="Save Product Settings" icon="pi pi-check" :loading="savingProductSettings" class="w-full sm:w-auto" />
+                            </div>
+                        </form>
+                    </div>
+                </TabPanel>
+
+                <!-- Sale Settings Tab -->
+                <TabPanel header="Sale Settings">
+                    <div class="p-4">
+                        <div class="mb-6">
+                            <h2 class="text-xl font-semibold m-0 text-surface-900 dark:text-surface-0">Sales Configuration</h2>
+                            <p class="text-surface-600 dark:text-surface-400 m-0 mt-1">Configure default settings for sales transactions</p>
+                        </div>
+
+                        <div v-if="loadingSaleSettings" class="flex justify-center py-8">
+                            <ProgressSpinner style="width: 50px; height: 50px" strokeWidth="4" />
+                        </div>
+
+                        <form v-else @submit.prevent="saveSaleSettings" class="p-fluid">
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div class="field">
+                                    <label for="default_discount" class="font-semibold text-surface-700 dark:text-surface-200 mb-2 block">Default Discount (%)</label>
+                                    <InputNumber id="default_discount" v-model="saleSettings.default_discount" class="w-full" mode="decimal" :min="0" :max="100" :minFractionDigits="2" :maxFractionDigits="2" suffix="%" />
+                                    <small class="text-surface-500">Default discount percentage for sales</small>
+                                </div>
+
+                                <div class="field">
+                                    <label for="default_tax" class="font-semibold text-surface-700 dark:text-surface-200 mb-2 block">Default Tax Rate</label>
+                                    <Select id="default_tax" v-model="saleSettings.default_tax" :options="taxRates" optionLabel="name" optionValue="id" placeholder="Select Tax Rate" class="w-full" showClear />
+                                    <small class="text-surface-500">Default tax rate for sales transactions</small>
+                                </div>
+                            </div>
+
+                            <div class="flex flex-col sm:flex-row justify-end gap-3 mt-6 pt-4 border-t border-surface-200 dark:border-surface-700">
+                                <Button type="button" label="Reset" severity="secondary" outlined @click="resetSaleSettings" class="w-full sm:w-auto" />
+                                <Button type="submit" label="Save Sale Settings" icon="pi pi-check" :loading="savingSaleSettings" class="w-full sm:w-auto" />
                             </div>
                         </form>
                     </div>
@@ -639,6 +1242,34 @@ function getSequenceSeverity(docType) {
                 <div class="flex gap-2 justify-end">
                     <Button label="Cancel" icon="pi pi-times" severity="secondary" outlined @click="closeBranchDialog" />
                     <Button label="Save" icon="pi pi-check" @click="saveBranch" :loading="savingBranch" />
+                </div>
+            </template>
+        </Dialog>
+
+        <!-- Tax Rate Dialog -->
+        <Dialog v-model:visible="taxRateDialog" :style="{ width: '450px' }" :header="editingTaxRate ? 'Edit Tax Rate' : 'Add Tax Rate'" :modal="true" class="p-fluid" :draggable="false">
+            <div class="grid grid-cols-1 gap-4">
+                <div class="field">
+                    <label for="tax_name" class="font-semibold mb-2 block">Tax Name <span class="text-red-500">*</span></label>
+                    <InputText id="tax_name" v-model="taxRate.name" class="w-full" placeholder="e.g. VAT" required autofocus />
+                </div>
+                <div class="field">
+                    <label for="tax_code" class="font-semibold mb-2 block">Tax Code <span class="text-red-500">*</span></label>
+                    <InputText id="tax_code" v-model="taxRate.code" class="w-full uppercase" placeholder="e.g. VAT16" required />
+                </div>
+                <div class="field">
+                    <label for="tax_rate" class="font-semibold mb-2 block">Rate (%) <span class="text-red-500">*</span></label>
+                    <InputNumber id="tax_rate" v-model="taxRate.rate" class="w-full" mode="decimal" :min="0" :max="100" :minFractionDigits="2" :maxFractionDigits="2" suffix="%" required />
+                </div>
+                <div class="flex items-center gap-2">
+                    <Checkbox id="tax_is_active" v-model="taxRate.is_active" binary />
+                    <label for="tax_is_active" class="font-medium cursor-pointer">Active</label>
+                </div>
+            </div>
+            <template #footer>
+                <div class="flex gap-2 justify-end">
+                    <Button label="Cancel" icon="pi pi-times" severity="secondary" outlined @click="taxRateDialog = false" />
+                    <Button label="Save" icon="pi pi-check" @click="saveTaxRate" :loading="savingTaxRate" />
                 </div>
             </template>
         </Dialog>

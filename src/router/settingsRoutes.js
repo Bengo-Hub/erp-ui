@@ -200,5 +200,13 @@ export const settingsRoutes = [
         name: 'kraSettings',
         meta: { requiresAuth: true },
         component: () => import('@/views/pages/settings/integrations/KRASettings.vue')
+    },
+
+    // Notification Settings
+    {
+        path: '/settings/notifications',
+        name: 'notificationSettings',
+        meta: { requiresAuth: true },
+        component: () => import('@/views/pages/settings/notifications.vue')
     }
 ];

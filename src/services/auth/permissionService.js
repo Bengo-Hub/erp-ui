@@ -223,24 +223,13 @@ export const filterMenuItems = (menuItems, userPermissionsOrUser) => {
     }
 
     // Extract permissions array from object or use as-is
-    const userPermissions = Array.isArray(userPermissionsOrUser) 
-        ? userPermissionsOrUser 
+    const userPermissions = Array.isArray(userPermissionsOrUser)
+        ? userPermissionsOrUser
         : (userPermissionsOrUser?.permissions || []);
 
     if (!userPermissions || !Array.isArray(userPermissions)) {
         return [];
     }
-
-    // Helper: require view+change+delete for the same module codename
-    const hasAdminCombination = (permission) => {
-        if (typeof permission !== 'string') return false;
-        // permission like 'view_payslip' or 'change_employee' etc.
-        const match = permission.match(/^(view|change|add|delete)_(.+)$/);
-        if (!match) return false;
-        const module = match[2];
-        const required = [`view_${module}`, `change_${module}`];
-        return required.every((p) => hasPermission(userPermissions, p));
-    };
 
     return menuItems
         .map((item) => {
@@ -254,8 +243,9 @@ export const filterMenuItems = (menuItems, userPermissionsOrUser) => {
                 } : null;
             }
             if (item.permission) {
-                // Strict menu rule: show only if user has view+change+delete for the module
-                return hasAdminCombination(item.permission) ? item : null;
+                // Show menu item if user has the specified permission
+                // This allows users with view-only permissions to see menu items
+                return hasPermission(userPermissions, item.permission) ? item : null;
             }
             return item; // Items without a permission attribute are always shown
         })
@@ -354,19 +344,19 @@ export const isSuperUser = (user) => {
     if (user && typeof user === 'object' && !Array.isArray(user)) {
         const roles = Array.isArray(user.roles) ? user.roles.map((r) => String(r).toLowerCase()) : [];
         const permissions = Array.isArray(user.permissions) ? user.permissions : [];
-        
-        return user.is_superuser === true || 
-               user.isSuperuser === true || 
+
+        return user.is_superuser === true ||
+               user.isSuperuser === true ||
                roles.includes('superusers') ||
                permissions.includes('is_superuser');
     }
-    
+
     // If passed an array (permissions array - legacy support)
+    // Only check for explicit superuser permission, not arbitrary count
     if (Array.isArray(user)) {
-        return user.includes('is_superuser') || 
-               user.length > 100; // Arbitrary threshold for superuser (legacy)
+        return user.includes('is_superuser');
     }
-    
+
     return false;
 };
 

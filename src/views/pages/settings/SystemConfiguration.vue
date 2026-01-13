@@ -270,6 +270,34 @@
                         </div>
                     </template>
                 </Card>
+
+                <!-- Notification Settings -->
+                <Card v-if="canIntegrations" class="hover:shadow-lg transition-shadow cursor-pointer" @click="navigateTo('/settings/notifications')">
+                    <template #header>
+                        <div class="bg-gradient-to-r from-orange-500 to-orange-700 p-6">
+                            <i class="pi pi-bell text-white text-4xl"></i>
+                        </div>
+                    </template>
+                    <template #title>
+                        <h3 class="text-xl font-semibold text-gray-900 dark:text-gray-100">Notification Settings</h3>
+                    </template>
+                    <template #content>
+                        <p class="text-gray-600 dark:text-gray-400 text-sm">
+                            Configure email, SMS, and push notification integrations
+                        </p>
+                        <div class="mt-4 flex flex-wrap gap-2">
+                            <Badge value="Email" severity="info" />
+                            <Badge value="SMS" severity="info" />
+                            <Badge value="Push" severity="info" />
+                        </div>
+                    </template>
+                    <template #footer>
+                        <div class="flex items-center text-primary-600 dark:text-primary-400 text-sm font-medium">
+                            <span>Configure</span>
+                            <i class="pi pi-arrow-right ml-2"></i>
+                        </div>
+                    </template>
+                </Card>
             </div>
 
             <!-- Quick Stats -->

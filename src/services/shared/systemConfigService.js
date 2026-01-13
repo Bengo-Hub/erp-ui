@@ -501,8 +501,389 @@ export const systemConfigService = {
     getBrandingSettings() {
         return axios.get('/core/branding-settings/');
     },
-    
+
     updateBrandingSettings(id, data) {
         return axios.put(`/core/branding-settings/${id}/`, data);
+    },
+
+    // Product Settings
+    async getProductSettings() {
+        try {
+            const response = await axios.get(`business/product-settings/`);
+            const data = response.data?.results?.[0] || response.data?.[0] || response.data || {};
+            return { success: true, data };
+        } catch (error) {
+            return handleError(error);
+        }
+    },
+
+    async createProductSettings(data) {
+        try {
+            const response = await axios.post(`business/product-settings/`, data);
+            return { success: true, data: response.data };
+        } catch (error) {
+            return handleError(error);
+        }
+    },
+
+    async updateProductSettings(id, data) {
+        try {
+            const response = await axios.patch(`business/product-settings/${id}/`, data);
+            return { success: true, data: response.data };
+        } catch (error) {
+            return handleError(error);
+        }
+    },
+
+    // Sale Settings
+    async getSaleSettings() {
+        try {
+            const response = await axios.get(`business/sale-settings/`);
+            const data = response.data?.results?.[0] || response.data?.[0] || response.data || {};
+            return { success: true, data };
+        } catch (error) {
+            return handleError(error);
+        }
+    },
+
+    async createSaleSettings(data) {
+        try {
+            const response = await axios.post(`business/sale-settings/`, data);
+            return { success: true, data: response.data };
+        } catch (error) {
+            return handleError(error);
+        }
+    },
+
+    async updateSaleSettings(id, data) {
+        try {
+            const response = await axios.patch(`business/sale-settings/${id}/`, data);
+            return { success: true, data: response.data };
+        } catch (error) {
+            return handleError(error);
+        }
+    },
+
+    // Tax Rates (from finance module)
+    async getTaxRates() {
+        try {
+            const response = await axios.get(`finance/taxes/rates/`);
+            const data = response.data?.results ?? response.data ?? [];
+            return { success: true, data };
+        } catch (error) {
+            return handleError(error);
+        }
+    },
+
+    async createTaxRate(data) {
+        try {
+            const response = await axios.post(`finance/taxes/rates/`, data);
+            return { success: true, data: response.data };
+        } catch (error) {
+            return handleError(error);
+        }
+    },
+
+    async updateTaxRate(id, data) {
+        try {
+            const response = await axios.patch(`finance/taxes/rates/${id}/`, data);
+            return { success: true, data: response.data };
+        } catch (error) {
+            return handleError(error);
+        }
+    },
+
+    async deleteTaxRate(id) {
+        try {
+            const response = await axios.delete(`finance/taxes/rates/${id}/`);
+            return { success: true, data: response.data };
+        } catch (error) {
+            return handleError(error);
+        }
+    },
+
+    // Service Types
+    async getServiceTypes() {
+        try {
+            const response = await axios.get(`business/service-types/`);
+            const data = response.data?.results ?? response.data ?? [];
+            return { success: true, data };
+        } catch (error) {
+            return handleError(error);
+        }
+    },
+
+    async createServiceType(data) {
+        try {
+            const response = await axios.post(`business/service-types/`, data);
+            return { success: true, data: response.data };
+        } catch (error) {
+            return handleError(error);
+        }
+    },
+
+    async updateServiceType(id, data) {
+        try {
+            const response = await axios.patch(`business/service-types/${id}/`, data);
+            return { success: true, data: response.data };
+        } catch (error) {
+            return handleError(error);
+        }
+    },
+
+    async deleteServiceType(id) {
+        try {
+            const response = await axios.delete(`business/service-types/${id}/`);
+            return { success: true, data: response.data };
+        } catch (error) {
+            return handleError(error);
+        }
+    },
+
+    // ===== Notification Settings =====
+
+    // Notification Integrations (Email, SMS, Push)
+    async getNotificationIntegrations(params = {}) {
+        try {
+            const response = await axios.get(`notifications/settings/integrations/`, { params });
+            const data = response.data?.results ?? response.data ?? [];
+            return { success: true, data };
+        } catch (error) {
+            return handleError(error);
+        }
+    },
+
+    async getNotificationIntegration(id) {
+        try {
+            const response = await axios.get(`notifications/settings/integrations/${id}/`);
+            return { success: true, data: response.data };
+        } catch (error) {
+            return handleError(error);
+        }
+    },
+
+    async createNotificationIntegration(data) {
+        try {
+            const response = await axios.post(`notifications/settings/integrations/`, data);
+            return { success: true, data: response.data };
+        } catch (error) {
+            return handleError(error);
+        }
+    },
+
+    async updateNotificationIntegration(id, data) {
+        try {
+            const response = await axios.patch(`notifications/settings/integrations/${id}/`, data);
+            return { success: true, data: response.data };
+        } catch (error) {
+            return handleError(error);
+        }
+    },
+
+    async deleteNotificationIntegration(id) {
+        try {
+            const response = await axios.delete(`notifications/settings/integrations/${id}/`);
+            return { success: true, data: response.data };
+        } catch (error) {
+            return handleError(error);
+        }
+    },
+
+    async testNotificationIntegration(id, recipient) {
+        try {
+            const response = await axios.post(`notifications/settings/integrations/${id}/test/`, { recipient });
+            return { success: true, data: response.data };
+        } catch (error) {
+            return handleError(error);
+        }
+    },
+
+    async setDefaultIntegration(id) {
+        try {
+            const response = await axios.post(`notifications/settings/integrations/${id}/set_default/`);
+            return { success: true, data: response.data };
+        } catch (error) {
+            return handleError(error);
+        }
+    },
+
+    async getIntegrationStatus() {
+        try {
+            const response = await axios.get(`notifications/settings/integrations/status/`);
+            return { success: true, data: response.data };
+        } catch (error) {
+            return handleError(error);
+        }
+    },
+
+    // Email Templates
+    async getEmailTemplates(params = {}) {
+        try {
+            const response = await axios.get(`notifications/settings/email-templates/`, { params });
+            const data = response.data?.results ?? response.data ?? [];
+            return { success: true, data };
+        } catch (error) {
+            return handleError(error);
+        }
+    },
+
+    async createEmailTemplate(data) {
+        try {
+            const response = await axios.post(`notifications/settings/email-templates/`, data);
+            return { success: true, data: response.data };
+        } catch (error) {
+            return handleError(error);
+        }
+    },
+
+    async updateEmailTemplate(id, data) {
+        try {
+            const response = await axios.patch(`notifications/settings/email-templates/${id}/`, data);
+            return { success: true, data: response.data };
+        } catch (error) {
+            return handleError(error);
+        }
+    },
+
+    async deleteEmailTemplate(id) {
+        try {
+            const response = await axios.delete(`notifications/settings/email-templates/${id}/`);
+            return { success: true, data: response.data };
+        } catch (error) {
+            return handleError(error);
+        }
+    },
+
+    // SMS Templates
+    async getSMSTemplates(params = {}) {
+        try {
+            const response = await axios.get(`notifications/settings/sms-templates/`, { params });
+            const data = response.data?.results ?? response.data ?? [];
+            return { success: true, data };
+        } catch (error) {
+            return handleError(error);
+        }
+    },
+
+    async createSMSTemplate(data) {
+        try {
+            const response = await axios.post(`notifications/settings/sms-templates/`, data);
+            return { success: true, data: response.data };
+        } catch (error) {
+            return handleError(error);
+        }
+    },
+
+    async updateSMSTemplate(id, data) {
+        try {
+            const response = await axios.patch(`notifications/settings/sms-templates/${id}/`, data);
+            return { success: true, data: response.data };
+        } catch (error) {
+            return handleError(error);
+        }
+    },
+
+    async deleteSMSTemplate(id) {
+        try {
+            const response = await axios.delete(`notifications/settings/sms-templates/${id}/`);
+            return { success: true, data: response.data };
+        } catch (error) {
+            return handleError(error);
+        }
+    },
+
+    // Push Templates
+    async getPushTemplates(params = {}) {
+        try {
+            const response = await axios.get(`notifications/settings/push-templates/`, { params });
+            const data = response.data?.results ?? response.data ?? [];
+            return { success: true, data };
+        } catch (error) {
+            return handleError(error);
+        }
+    },
+
+    async createPushTemplate(data) {
+        try {
+            const response = await axios.post(`notifications/settings/push-templates/`, data);
+            return { success: true, data: response.data };
+        } catch (error) {
+            return handleError(error);
+        }
+    },
+
+    async updatePushTemplate(id, data) {
+        try {
+            const response = await axios.patch(`notifications/settings/push-templates/${id}/`, data);
+            return { success: true, data: response.data };
+        } catch (error) {
+            return handleError(error);
+        }
+    },
+
+    async deletePushTemplate(id) {
+        try {
+            const response = await axios.delete(`notifications/settings/push-templates/${id}/`);
+            return { success: true, data: response.data };
+        } catch (error) {
+            return handleError(error);
+        }
+    },
+
+    // Exchange Rate API Settings
+    async getExchangeRateSettings() {
+        try {
+            const response = await axios.get(`integrations/exchange-rate-api/current/`);
+            return { success: true, data: response.data };
+        } catch (error) {
+            return handleError(error);
+        }
+    },
+
+    async saveExchangeRateSettings(data) {
+        try {
+            if (data && data.id) {
+                const response = await axios.patch(`integrations/exchange-rate-api/${data.id}/`, data);
+                return { success: true, data: response.data };
+            } else {
+                const response = await axios.post(`integrations/exchange-rate-api/`, data);
+                return { success: true, data: response.data };
+            }
+        } catch (error) {
+            return handleError(error);
+        }
+    },
+
+    async testExchangeRateFetch() {
+        try {
+            const response = await axios.post(`integrations/exchange-rate-api/fetch_now/`);
+            return { success: true, data: response.data };
+        } catch (error) {
+            return handleError(error);
+        }
+    },
+
+    // M-Pesa Settings
+    async getMpesaSettings() {
+        try {
+            const response = await axios.get(`integrations/mpesa-settings/current/`);
+            return { success: true, data: response.data };
+        } catch (error) {
+            return handleError(error);
+        }
+    },
+
+    async saveMpesaSettings(data) {
+        try {
+            if (data && data.id) {
+                const response = await axios.patch(`integrations/mpesa-settings/${data.id}/`, data);
+                return { success: true, data: response.data };
+            } else {
+                const response = await axios.post(`integrations/mpesa-settings/`, data);
+                return { success: true, data: response.data };
+            }
+        } catch (error) {
+            return handleError(error);
+        }
     }
 };
