@@ -246,7 +246,7 @@ const onTaxSaved = async (newTax) => {
       <Column header="Product/Service *" :style="showTaxFields ? 'min-width: 350px' : 'width: 35%'">
         <template #body="{ data, index }">
           <div class="flex gap-2 w-full items-center">
-            <!-- For invoices/quotations: use product field -->
+            <!-- For invoices/quotations: use AutoComplete with product field -->
             <AutoComplete
               v-if="showTaxFields"
               :model-value="data.product"
@@ -259,16 +259,9 @@ const onTaxSaved = async (newTax) => {
               :dropdown="true"
               :forceSelection="false"
             />
-            <Button
-              v-if="showAddProduct"
-              icon="pi pi-plus"
-              class="p-button-sm p-button-success p-button-rounded"
-              @click="$emit('add-product')"
-              v-tooltip.top="'Create new product'"
-            />
-            <!-- For expenses/POs: use stockItem field -->
+            <!-- For expenses/POs: use Dropdown with stockItem field -->
             <Dropdown
-              v-else
+              v-if="!showTaxFields"
               :model-value="data.stockItem"
               @update:model-value="(val) => { data.stockItem = val; deriveFromProduct(data, val); }"
               :options="normalizedProducts"
@@ -277,12 +270,20 @@ const onTaxSaved = async (newTax) => {
               placeholder="Select product/item"
               class="flex-1"
             />
+            <!-- Add product button (works for both modes) -->
+            <Button
+              v-if="showAddProduct"
+              icon="pi pi-plus"
+              class="p-button-sm p-button-success p-button-rounded"
+              @click="$emit('add-product')"
+              v-tooltip.top="'Create new product'"
+            />
             <div v-if="showProductActions" class="flex gap-1">
-              <Button 
+              <Button
                 v-if="showEditProduct && (data.stockItem || data.product)"
-                icon="pi pi-pencil" 
-                class="p-button-sm p-button-info p-button-rounded" 
-                @click="emit('edit-product', data.stockItem || data.product, index)" 
+                icon="pi pi-pencil"
+                class="p-button-sm p-button-info p-button-rounded"
+                @click="emit('edit-product', data.stockItem || data.product, index)"
                 v-tooltip.top="'Edit product'"
               />
             </div>
