@@ -757,6 +757,8 @@ onMounted(async () => {
                                     :show-edit-product="true"
                                     :show-tax-fields="form.tax_mode === 'line_items'"
                                     :show-description="true"
+                                    :currency="form.currency"
+                                    base-currency="KES"
                                     @add-product="handleAddProduct"
                                     @edit-product="handleEditProduct"
                                 />

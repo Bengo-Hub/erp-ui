@@ -1013,6 +1013,7 @@ const loadInvoice = async (id) => {
                             :show-tax-fields="true"
                             :show-description="true"
                             :currency="form.currency"
+                            base-currency="KES"
                             @add-product="handleAddProduct"
                             @edit-product="handleEditProduct"
                             @update:items="calculateTotals"

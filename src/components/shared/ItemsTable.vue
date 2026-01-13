@@ -3,6 +3,7 @@ import { computed, ref, onMounted, watch } from 'vue';
 import { formatCurrency } from '@/utils/formatters';
 import TaxForm from '@/components/finance/taxes/TaxForm.vue';
 import { financeService } from '@/services/finance/financeService';
+import { useCurrency } from '@/composables/useCurrency';
 
 const props = defineProps({
   items: {
@@ -43,8 +44,16 @@ const props = defineProps({
   locale: {
     type: String,
     default: 'en-KE'
+  },
+  // Base currency that product prices are stored in (for conversion when form currency differs)
+  baseCurrency: {
+    type: String,
+    default: 'KES'
   }
 });
+
+// Currency conversion helper
+const { convertAmount } = useCurrency();
 
 const emit = defineEmits(['update:items', 'add-product', 'edit-product']);
 
@@ -161,7 +170,7 @@ onMounted(async () => {
 });
 
 // When product changes, derive price, tax and description preview
-const deriveFromProduct = (item, selected) => {
+const deriveFromProduct = async (item, selected) => {
   const productData = selected?.product || selected;
   if (!productData) return;
   // Prevent duplicate product lines: if another line already has this product, merge quantities
@@ -189,8 +198,22 @@ const deriveFromProduct = (item, selected) => {
   } catch (e) {
     console.warn('Error while checking duplicate products', e);
   }
-  const price = selected?.selling_price ?? productData?.selling_price ?? 0;
-  setUnitPrice(item, parseFloat(price || 0));
+  let price = selected?.selling_price ?? productData?.selling_price ?? 0;
+  price = parseFloat(price || 0);
+
+  // Convert price if form currency differs from base currency (products stored in base currency)
+  if (props.currency && props.baseCurrency && props.currency !== props.baseCurrency && price > 0) {
+    try {
+      const convertedPrice = await convertAmount(price, props.baseCurrency, props.currency);
+      if (convertedPrice && convertedPrice > 0) {
+        price = convertedPrice;
+      }
+    } catch (e) {
+      console.warn('Price conversion failed, using original price:', e);
+    }
+  }
+
+  setUnitPrice(item, price);
   // Do NOT auto-assign tax; leave it optional for user to select
   const desc = productData?.description || '';
   // Prefill description with first 20 chars; user can edit
