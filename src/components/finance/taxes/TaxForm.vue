@@ -1,7 +1,7 @@
 <script setup>
 import { useToast } from '@/composables/useToast';
 import { financeService } from '@/services/finance/financeService';
-import { computed, reactive, ref, watch } from 'vue';
+import { computed, onMounted, reactive, ref, watch } from 'vue';
 
 const props = defineProps({
     visible: {
@@ -14,13 +14,20 @@ const props = defineProps({
     }
 });
 
-const emit = defineEmits(['update:visible', 'saved']);
+const emit = defineEmits(['update:visible', 'saved', 'category-created']);
 
 const { showToast } = useToast();
 
 // State
 const saving = ref(false);
 const errors = ref({});
+const loadingCategories = ref(false);
+const showCategoryDialog = ref(false);
+const savingCategory = ref(false);
+const newCategory = reactive({
+    name: '',
+    description: ''
+});
 
 // Form data
 const form = reactive({
@@ -42,15 +49,8 @@ const form = reactive({
     kra_name: ''
 });
 
-// Options
-const categoryOptions = [
-    { label: 'VAT', value: 'vat' },
-    { label: 'Income Tax', value: 'income_tax' },
-    { label: 'Withholding Tax', value: 'withholding_tax' },
-    { label: 'Excise Duty', value: 'excise_duty' },
-    { label: 'Import Duty', value: 'import_duty' },
-    { label: 'Other', value: 'other' }
-];
+// Options - Categories loaded from backend
+const categoryOptions = ref([]);
 
 const rateTypeOptions = [
     { label: 'Percentage', value: 'percentage' },
@@ -170,23 +170,36 @@ const saveTax = async () => {
 
     saving.value = true;
     try {
-        const taxData = { ...form };
+        // Map form fields to backend expected fields
+        const taxData = {
+            name: form.name,
+            category: form.category,  // Now an ID from the dropdown
+            rate: form.rate,
+            calculation_type: form.rate_type,  // Backend expects calculation_type
+            description: form.description,
+            is_default: form.is_default,
+            is_active: form.status === 'active',
+            kra_code: form.kra_code || null,
+            // Additional fields if backend supports them
+            ...(form.code && { tax_number: form.code })
+        };
 
-            let response;
-            if (isEdit.value) {
-                response = await financeService.updateTaxRate(props.tax.id, taxData);
-                showToast('success', 'Tax rate updated successfully');
-            } else {
-                response = await financeService.createTaxRate(taxData);
-                showToast('success', 'Tax rate created successfully');
-            }
+        let response;
+        if (isEdit.value) {
+            response = await financeService.updateTaxRate(props.tax.id, taxData);
+            showToast('success', 'Tax rate updated successfully');
+        } else {
+            response = await financeService.createTaxRate(taxData);
+            showToast('success', 'Tax rate created successfully');
+        }
 
-            // emit the newly created/updated tax object so callers can assign it
-            emit('saved', response.data || response);
+        // emit the newly created/updated tax object so callers can assign it
+        emit('saved', response.data?.data || response.data || response);
         closeDialog();
     } catch (error) {
         console.error('Error saving tax:', error);
-        showToast('error', `Failed to ${isEdit.value ? 'update' : 'create'} tax rate`);
+        const errMsg = error.response?.data?.errors?.[0]?.message || `Failed to ${isEdit.value ? 'update' : 'create'} tax rate`;
+        showToast('error', errMsg);
     } finally {
         saving.value = false;
     }
@@ -197,7 +210,72 @@ const closeDialog = () => {
     resetForm();
 };
 
-// resetForm defined above
+// Load tax categories from backend
+const loadCategories = async () => {
+    loadingCategories.value = true;
+    try {
+        const response = await financeService.getTaxCategories();
+        const categories = response.data?.results || response.data || [];
+        categoryOptions.value = categories.map(cat => ({
+            label: cat.name,
+            value: cat.id  // Use ID as value for proper FK reference
+        }));
+    } catch (error) {
+        console.error('Error loading tax categories:', error);
+        showToast('error', 'Failed to load tax categories');
+    } finally {
+        loadingCategories.value = false;
+    }
+};
+
+// Open add category dialog
+const openAddCategory = () => {
+    newCategory.name = '';
+    newCategory.description = '';
+    showCategoryDialog.value = true;
+};
+
+// Save new category
+const saveCategory = async () => {
+    if (!newCategory.name.trim()) {
+        showToast('error', 'Category name is required');
+        return;
+    }
+
+    savingCategory.value = true;
+    try {
+        const response = await financeService.createTaxCategory({
+            name: newCategory.name.trim(),
+            description: newCategory.description.trim()
+        });
+        const created = response.data?.data || response.data;
+        showToast('success', `Category "${created.name}" created successfully`);
+
+        // Reload categories and select the new one
+        await loadCategories();
+        form.category = created.id;
+
+        showCategoryDialog.value = false;
+        emit('category-created', created);
+    } catch (error) {
+        console.error('Error creating category:', error);
+        const errMsg = error.response?.data?.errors?.[0]?.message || 'Failed to create category';
+        showToast('error', errMsg);
+    } finally {
+        savingCategory.value = false;
+    }
+};
+
+// Load categories on mount and when dialog opens
+onMounted(() => {
+    loadCategories();
+});
+
+watch(() => props.visible, (isVisible) => {
+    if (isVisible) {
+        loadCategories();
+    }
+});
 </script>
 
 <template>
@@ -221,7 +299,30 @@ const closeDialog = () => {
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div class="space-y-2">
                     <label class="block text-sm font-medium text-gray-700"> Tax Category <span class="text-red-500">*</span> </label>
-                    <Dropdown v-model="form.category" :options="categoryOptions" optionLabel="label" optionValue="value" class="w-full" placeholder="Select tax category" :class="{ 'p-invalid': errors.category }" required />
+                    <div class="flex gap-2">
+                        <Dropdown
+                            v-model="form.category"
+                            :options="categoryOptions"
+                            optionLabel="label"
+                            optionValue="value"
+                            class="flex-1"
+                            placeholder="Select tax category"
+                            :class="{ 'p-invalid': errors.category }"
+                            :loading="loadingCategories"
+                            :filter="true"
+                            filterPlaceholder="Search categories..."
+                            emptyMessage="No categories found"
+                            required
+                        />
+                        <Button
+                            type="button"
+                            icon="pi pi-plus"
+                            severity="secondary"
+                            @click="openAddCategory"
+                            v-tooltip.top="'Add new category'"
+                            class="p-button-outlined"
+                        />
+                    </div>
                     <small v-if="errors.category" class="p-error">{{ errors.category }}</small>
                 </div>
 
@@ -327,6 +428,53 @@ const closeDialog = () => {
             <div class="flex justify-end space-x-3">
                 <Button label="Cancel" severity="secondary" @click="closeDialog" />
                 <Button :label="isEdit ? 'Update Tax Rate' : 'Create Tax Rate'" @click="saveTax" :loading="saving" class="p-button-primary" />
+            </div>
+        </template>
+    </Dialog>
+
+    <!-- Add Category Dialog -->
+    <Dialog
+        v-model:visible="showCategoryDialog"
+        :modal="true"
+        header="Add Tax Category"
+        :style="{ width: '30rem' }"
+    >
+        <div class="space-y-4">
+            <div class="space-y-2">
+                <label class="block text-sm font-medium text-gray-700">
+                    Category Name <span class="text-red-500">*</span>
+                </label>
+                <InputText
+                    v-model="newCategory.name"
+                    class="w-full"
+                    placeholder="e.g., VAT, Excise Duty, Import Duty"
+                    @keyup.enter="saveCategory"
+                />
+            </div>
+            <div class="space-y-2">
+                <label class="block text-sm font-medium text-gray-700">
+                    Description
+                </label>
+                <Textarea
+                    v-model="newCategory.description"
+                    class="w-full"
+                    rows="2"
+                    placeholder="Optional description"
+                />
+            </div>
+        </div>
+        <template #footer>
+            <div class="flex justify-end gap-2">
+                <Button
+                    label="Cancel"
+                    severity="secondary"
+                    @click="showCategoryDialog = false"
+                />
+                <Button
+                    label="Create Category"
+                    @click="saveCategory"
+                    :loading="savingCategory"
+                />
             </div>
         </template>
     </Dialog>
