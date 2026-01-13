@@ -21,17 +21,22 @@ const testing = ref(false);
 // Active tab
 const activeTab = ref(0);
 
-// M-Pesa Settings
+// M-Pesa Settings - mapped to all backend MpesaSettings model fields
 const mpesa = ref({
     id: null,
-    mode: 'sandbox',
+    // Core credentials
     consumer_key: '',
     consumer_secret: '',
-    shortcode: '',
+    short_code: '',  // Business Paybill/Till number
     passkey: '',
-    callback_url: '',
-    timeout_url: '',
-    result_url: '',
+    security_credential: '',  // For B2C/B2B operations
+    // Initiator details (for B2C/B2B)
+    initiator_name: '',
+    initiator_password: '',
+    // URLs
+    base_url: 'https://api.safaricom.co.ke',  // Production default
+    callback_base_url: '',  // Your domain base URL for callbacks
+    // Status
     is_active: false
 });
 
@@ -58,16 +63,14 @@ const gatewayStatus = ref({
 });
 
 // Options
-const modeOptions = [
-    { label: 'Sandbox (Testing)', value: 'sandbox' },
-    { label: 'Production (Live)', value: 'production' }
+const environmentOptions = [
+    { label: 'Sandbox (Testing)', value: 'https://sandbox.safaricom.co.ke' },
+    { label: 'Production (Live)', value: 'https://api.safaricom.co.ke' }
 ];
 
 // Computed
-const mpesaBaseUrl = computed(() => {
-    return mpesa.value.mode === 'production'
-        ? 'https://api.safaricom.co.ke'
-        : 'https://sandbox.safaricom.co.ke';
+const isProductionMode = computed(() => {
+    return mpesa.value.base_url === 'https://api.safaricom.co.ke';
 });
 
 // Load settings on mount
@@ -174,7 +177,7 @@ function getStatusLabel(connected) {
                         <Tag :value="mpesa.is_active ? 'Active' : 'Inactive'" :severity="mpesa.is_active ? 'success' : 'secondary'" />
                     </div>
                     <div class="flex items-center justify-between">
-                        <span class="text-sm text-surface-500">{{ mpesa.mode === 'production' ? 'Live Mode' : 'Sandbox Mode' }}</span>
+                        <span class="text-sm text-surface-500">{{ isProductionMode ? 'Live Mode' : 'Sandbox Mode' }}</span>
                         <Tag :value="getStatusLabel(gatewayStatus.mpesa.connected)" :severity="getStatusSeverity(gatewayStatus.mpesa.connected)" />
                     </div>
                 </div>
@@ -237,24 +240,37 @@ function getStatusLabel(connected) {
                         </div>
 
                         <form v-else @submit.prevent="saveMpesaSettings" class="p-fluid">
-                            <!-- Mode & Status -->
+                            <!-- Production Mode Warning -->
+                            <div v-if="isProductionMode" class="mb-6 p-4 bg-red-50 dark:bg-red-900/20 rounded-lg border border-red-200 dark:border-red-800">
+                                <div class="flex gap-3">
+                                    <i class="pi pi-exclamation-triangle text-red-600 dark:text-red-400 mt-0.5"></i>
+                                    <div>
+                                        <p class="text-sm text-red-700 dark:text-red-300 m-0 font-medium">Production Mode Active</p>
+                                        <p class="text-sm text-red-600 dark:text-red-400 m-0 mt-1">
+                                            You are using the production M-Pesa API. Real money transactions will be processed.
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Environment & Status -->
                             <div class="mb-8">
                                 <div class="flex items-center gap-2 mb-4">
                                     <i class="pi pi-cog text-lg text-primary"></i>
-                                    <h3 class="text-lg font-semibold m-0 text-surface-800 dark:text-surface-100">Configuration</h3>
+                                    <h3 class="text-lg font-semibold m-0 text-surface-800 dark:text-surface-100">Environment</h3>
                                 </div>
 
                                 <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
                                     <div class="field">
-                                        <label class="font-semibold text-surface-700 dark:text-surface-200 mb-2 block">Environment</label>
-                                        <Select v-model="mpesa.mode" :options="modeOptions" optionLabel="label" optionValue="value" class="w-full" />
-                                        <small class="text-surface-500">Select sandbox for testing or production for live transactions</small>
+                                        <label class="font-semibold text-surface-700 dark:text-surface-200 mb-2 block">API Base URL <span class="text-red-500">*</span></label>
+                                        <Select v-model="mpesa.base_url" :options="environmentOptions" optionLabel="label" optionValue="value" class="w-full" />
+                                        <small class="text-surface-500">Select sandbox for testing or production for live</small>
                                     </div>
 
                                     <div class="field">
-                                        <label class="font-semibold text-surface-700 dark:text-surface-200 mb-2 block">API Base URL</label>
-                                        <InputText :value="mpesaBaseUrl" disabled class="w-full" />
-                                        <small class="text-surface-500">Automatically set based on environment</small>
+                                        <label class="font-semibold text-surface-700 dark:text-surface-200 mb-2 block">Business Shortcode <span class="text-red-500">*</span></label>
+                                        <InputText v-model="mpesa.short_code" class="w-full" placeholder="e.g. 174379" />
+                                        <small class="text-surface-500">Your M-Pesa Paybill or Till Number</small>
                                     </div>
 
                                     <div class="field flex items-end">
@@ -288,23 +304,47 @@ function getStatusLabel(connected) {
                                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                                     <div class="field">
                                         <label class="font-semibold text-surface-700 dark:text-surface-200 mb-2 block">Consumer Key <span class="text-red-500">*</span></label>
-                                        <Password v-model="mpesa.consumer_key" :feedback="false" toggleMask class="w-full" placeholder="Enter consumer key" />
+                                        <Password v-model="mpesa.consumer_key" :feedback="false" toggleMask class="w-full" placeholder="Enter consumer key from Safaricom Daraja" />
                                     </div>
 
                                     <div class="field">
                                         <label class="font-semibold text-surface-700 dark:text-surface-200 mb-2 block">Consumer Secret <span class="text-red-500">*</span></label>
-                                        <Password v-model="mpesa.consumer_secret" :feedback="false" toggleMask class="w-full" placeholder="Enter consumer secret" />
-                                    </div>
-
-                                    <div class="field">
-                                        <label class="font-semibold text-surface-700 dark:text-surface-200 mb-2 block">Business Shortcode <span class="text-red-500">*</span></label>
-                                        <InputText v-model="mpesa.shortcode" class="w-full" placeholder="e.g. 174379" />
-                                        <small class="text-surface-500">Your M-Pesa Paybill or Till Number</small>
+                                        <Password v-model="mpesa.consumer_secret" :feedback="false" toggleMask class="w-full" placeholder="Enter consumer secret from Safaricom Daraja" />
                                     </div>
 
                                     <div class="field">
                                         <label class="font-semibold text-surface-700 dark:text-surface-200 mb-2 block">Passkey <span class="text-red-500">*</span></label>
-                                        <Password v-model="mpesa.passkey" :feedback="false" toggleMask class="w-full" placeholder="Enter passkey" />
+                                        <Password v-model="mpesa.passkey" :feedback="false" toggleMask class="w-full" placeholder="STK Push passkey" />
+                                        <small class="text-surface-500">Required for STK Push (Lipa Na M-Pesa)</small>
+                                    </div>
+
+                                    <div class="field">
+                                        <label class="font-semibold text-surface-700 dark:text-surface-200 mb-2 block">Security Credential</label>
+                                        <Password v-model="mpesa.security_credential" :feedback="false" toggleMask class="w-full" placeholder="For B2C/B2B operations" />
+                                        <small class="text-surface-500">Required for B2C and B2B transactions</small>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Initiator Details (for B2C/B2B) -->
+                            <div class="mb-8">
+                                <div class="flex items-center gap-2 mb-4">
+                                    <i class="pi pi-user text-lg text-primary"></i>
+                                    <h3 class="text-lg font-semibold m-0 text-surface-800 dark:text-surface-100">Initiator Details</h3>
+                                    <Tag value="For B2C/B2B" severity="secondary" class="ml-2" />
+                                </div>
+
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    <div class="field">
+                                        <label class="font-semibold text-surface-700 dark:text-surface-200 mb-2 block">Initiator Name</label>
+                                        <InputText v-model="mpesa.initiator_name" class="w-full" placeholder="API initiator username" />
+                                        <small class="text-surface-500">Username for API operations</small>
+                                    </div>
+
+                                    <div class="field">
+                                        <label class="font-semibold text-surface-700 dark:text-surface-200 mb-2 block">Initiator Password</label>
+                                        <Password v-model="mpesa.initiator_password" :feedback="false" toggleMask class="w-full" placeholder="API initiator password" />
+                                        <small class="text-surface-500">Password for API operations</small>
                                     </div>
                                 </div>
                             </div>
@@ -313,26 +353,30 @@ function getStatusLabel(connected) {
                             <div class="mb-8">
                                 <div class="flex items-center gap-2 mb-4">
                                     <i class="pi pi-link text-lg text-primary"></i>
-                                    <h3 class="text-lg font-semibold m-0 text-surface-800 dark:text-surface-100">Callback URLs</h3>
+                                    <h3 class="text-lg font-semibold m-0 text-surface-800 dark:text-surface-100">Callback Configuration</h3>
                                 </div>
 
                                 <div class="grid grid-cols-1 gap-6">
                                     <div class="field">
-                                        <label class="font-semibold text-surface-700 dark:text-surface-200 mb-2 block">Callback URL</label>
-                                        <InputText v-model="mpesa.callback_url" class="w-full" placeholder="https://yourdomain.com/api/v1/payments/mpesa/callback/" />
-                                        <small class="text-surface-500">URL where M-Pesa will send payment results</small>
+                                        <label class="font-semibold text-surface-700 dark:text-surface-200 mb-2 block">Callback Base URL</label>
+                                        <InputText v-model="mpesa.callback_base_url" class="w-full" placeholder="https://yourdomain.com" />
+                                        <small class="text-surface-500">Your server's public URL where M-Pesa will send callbacks. Must be HTTPS and publicly accessible.</small>
                                     </div>
+                                </div>
 
-                                    <div class="field">
-                                        <label class="font-semibold text-surface-700 dark:text-surface-200 mb-2 block">Timeout URL</label>
-                                        <InputText v-model="mpesa.timeout_url" class="w-full" placeholder="https://yourdomain.com/api/v1/payments/mpesa/timeout/" />
-                                        <small class="text-surface-500">URL for timeout notifications</small>
-                                    </div>
-
-                                    <div class="field">
-                                        <label class="font-semibold text-surface-700 dark:text-surface-200 mb-2 block">Result URL</label>
-                                        <InputText v-model="mpesa.result_url" class="w-full" placeholder="https://yourdomain.com/api/v1/payments/mpesa/result/" />
-                                        <small class="text-surface-500">URL for B2C/B2B results</small>
+                                <div class="mt-4 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
+                                    <div class="flex gap-2">
+                                        <i class="pi pi-info-circle text-blue-500 mt-0.5"></i>
+                                        <div>
+                                            <p class="text-sm text-blue-700 dark:text-blue-300 m-0">
+                                                The following callback endpoints will be automatically constructed:
+                                            </p>
+                                            <ul class="text-sm text-blue-600 dark:text-blue-400 m-0 mt-2 list-disc ml-4">
+                                                <li>STK Callback: <code class="font-mono">{callback_base_url}/api/v1/payments/mpesa/stk-callback/</code></li>
+                                                <li>B2C Result: <code class="font-mono">{callback_base_url}/api/v1/payments/mpesa/b2c-result/</code></li>
+                                                <li>B2C Timeout: <code class="font-mono">{callback_base_url}/api/v1/payments/mpesa/b2c-timeout/</code></li>
+                                            </ul>
+                                        </div>
                                     </div>
                                 </div>
                             </div>

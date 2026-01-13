@@ -435,6 +435,20 @@ export const systemConfigService = {
             return handleError(error);
         }
     },
+    async updateDocumentSequence(documentType, currentSequence) {
+        try {
+            const response = await axios.post(`business/document-sequences/update-sequence/`, {
+                document_type: documentType,
+                current_sequence: currentSequence
+            });
+            return {
+                success: true,
+                data: response.data
+            };
+        } catch (error) {
+            return handleError(error);
+        }
+    },
 
     // Payment Integrations
     async getPaymentIntegrations() {

@@ -43,15 +43,6 @@ const businessDetails = ref({
     postal_code: '',
     kra_api_enabled: false,
     tax_compliance_status: 'pending',
-    // Branding fields
-    business_primary_color: '#1976D2',
-    business_secondary_color: '#FF5722',
-    business_text_color: '#212121',
-    business_background_color: '#ffffff',
-    ui_theme_preset: 'Lara',
-    ui_menu_mode: 'static',
-    ui_dark_mode: false,
-    ui_surface_style: 'slate'
 });
 const originalBusinessDetails = ref({});
 const savingBusinessDetails = ref(false);
@@ -89,6 +80,9 @@ const loadingPrefixSettings = ref(false);
 // Document Sequences
 const documentSequences = ref([]);
 const loadingSequences = ref(false);
+const sequenceDialog = ref(false);
+const editingSequence = ref({});
+const savingSequence = ref(false);
 
 // Product Settings
 const productSettings = ref({
@@ -139,25 +133,6 @@ const complianceStatusOptions = [
     { label: 'Non-Compliant', value: 'non_compliant', severity: 'danger' },
     { label: 'Pending Review', value: 'pending', severity: 'warning' },
     { label: 'Exempt', value: 'exempt', severity: 'info' }
-];
-
-const themePresets = [
-    { label: 'Lara Theme', value: 'Lara' },
-    { label: 'Aura Theme', value: 'Aura' }
-];
-
-const menuModes = [
-    { label: 'Static', value: 'static' },
-    { label: 'Overlay', value: 'overlay' }
-];
-
-const surfaceStyles = [
-    { label: 'Slate', value: 'slate' },
-    { label: 'Zinc', value: 'zinc' },
-    { label: 'Stone', value: 'stone' },
-    { label: 'Soho', value: 'soho' },
-    { label: 'Vela', value: 'vela' },
-    { label: 'Arya', value: 'arya' }
 ];
 
 const unitOptions = [
@@ -436,6 +411,44 @@ async function loadDocumentSequences() {
     }
 }
 
+function openSequenceDialog(seq) {
+    editingSequence.value = {
+        document_type: seq.document_type,
+        document_type_display: seq.document_type_display,
+        current_sequence: seq.current_sequence,
+        prefix: seq.prefix
+    };
+    sequenceDialog.value = true;
+}
+
+function closeSequenceDialog() {
+    sequenceDialog.value = false;
+    editingSequence.value = {};
+}
+
+async function saveSequence() {
+    savingSequence.value = true;
+    try {
+        const response = await systemConfigService.updateDocumentSequence(
+            editingSequence.value.document_type,
+            editingSequence.value.current_sequence
+        );
+
+        if (response.success) {
+            showToast('success', 'Success', `${editingSequence.value.document_type_display} sequence updated successfully`, 3000);
+            sequenceDialog.value = false;
+            await loadDocumentSequences();
+        } else {
+            showToast('error', 'Error', response.error || 'Failed to update sequence', 3000);
+        }
+    } catch (error) {
+        showToast('error', 'Error', 'Failed to update document sequence', 3000);
+        console.error('Error updating sequence:', error);
+    } finally {
+        savingSequence.value = false;
+    }
+}
+
 async function loadBranches() {
     try {
         loadingBranches.value = true;
@@ -572,7 +585,7 @@ function getComplianceSeverity(status) {
             <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
                 <div>
                     <h1 class="text-2xl md:text-3xl font-bold text-surface-900 dark:text-surface-0 m-0">Business Settings</h1>
-                    <p class="text-surface-600 dark:text-surface-400 mt-1 m-0">Configure your business details, compliance, branding, and document settings</p>
+                    <p class="text-surface-600 dark:text-surface-400 mt-1 m-0">Configure your business details, compliance, and document settings</p>
                 </div>
             </div>
 
@@ -749,99 +762,6 @@ function getComplianceSeverity(status) {
                     </div>
                 </TabPanel>
 
-                <!-- Branding Tab -->
-                <TabPanel header="Branding">
-                    <div class="p-4">
-                        <form @submit.prevent="saveBusinessDetails" class="p-fluid">
-                            <!-- Colors Section -->
-                            <div class="mb-8">
-                                <div class="flex items-center gap-2 mb-4">
-                                    <i class="pi pi-palette text-lg text-primary"></i>
-                                    <h3 class="text-lg font-semibold m-0 text-surface-800 dark:text-surface-100">Brand Colors</h3>
-                                </div>
-                                <div class="grid grid-cols-2 md:grid-cols-4 gap-6">
-                                    <div class="field">
-                                        <label for="primary_color" class="font-semibold text-surface-700 dark:text-surface-200 mb-2 block">Primary Color</label>
-                                        <div class="flex gap-2 items-center">
-                                            <ColorPicker v-model="businessDetails.business_primary_color" format="hex" class="w-10" />
-                                            <InputText v-model="businessDetails.business_primary_color" class="flex-1" placeholder="#1976D2" />
-                                        </div>
-                                    </div>
-                                    <div class="field">
-                                        <label for="secondary_color" class="font-semibold text-surface-700 dark:text-surface-200 mb-2 block">Secondary Color</label>
-                                        <div class="flex gap-2 items-center">
-                                            <ColorPicker v-model="businessDetails.business_secondary_color" format="hex" class="w-10" />
-                                            <InputText v-model="businessDetails.business_secondary_color" class="flex-1" placeholder="#FF5722" />
-                                        </div>
-                                    </div>
-                                    <div class="field">
-                                        <label for="text_color" class="font-semibold text-surface-700 dark:text-surface-200 mb-2 block">Text Color</label>
-                                        <div class="flex gap-2 items-center">
-                                            <ColorPicker v-model="businessDetails.business_text_color" format="hex" class="w-10" />
-                                            <InputText v-model="businessDetails.business_text_color" class="flex-1" placeholder="#212121" />
-                                        </div>
-                                    </div>
-                                    <div class="field">
-                                        <label for="background_color" class="font-semibold text-surface-700 dark:text-surface-200 mb-2 block">Background Color</label>
-                                        <div class="flex gap-2 items-center">
-                                            <ColorPicker v-model="businessDetails.business_background_color" format="hex" class="w-10" />
-                                            <InputText v-model="businessDetails.business_background_color" class="flex-1" placeholder="#ffffff" />
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <!-- Theme Section -->
-                            <div class="mb-8">
-                                <div class="flex items-center gap-2 mb-4">
-                                    <i class="pi pi-sun text-lg text-primary"></i>
-                                    <h3 class="text-lg font-semibold m-0 text-surface-800 dark:text-surface-100">UI Theme Settings</h3>
-                                </div>
-                                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                                    <div class="field">
-                                        <label for="ui_theme_preset" class="font-semibold text-surface-700 dark:text-surface-200 mb-2 block">Theme Preset</label>
-                                        <Select id="ui_theme_preset" v-model="businessDetails.ui_theme_preset" :options="themePresets" optionLabel="label" optionValue="value" class="w-full" />
-                                    </div>
-                                    <div class="field">
-                                        <label for="ui_menu_mode" class="font-semibold text-surface-700 dark:text-surface-200 mb-2 block">Menu Mode</label>
-                                        <Select id="ui_menu_mode" v-model="businessDetails.ui_menu_mode" :options="menuModes" optionLabel="label" optionValue="value" class="w-full" />
-                                    </div>
-                                    <div class="field">
-                                        <label for="ui_surface_style" class="font-semibold text-surface-700 dark:text-surface-200 mb-2 block">Surface Style</label>
-                                        <Select id="ui_surface_style" v-model="businessDetails.ui_surface_style" :options="surfaceStyles" optionLabel="label" optionValue="value" class="w-full" />
-                                    </div>
-                                    <div class="field flex items-end">
-                                        <div class="flex items-center gap-2">
-                                            <Checkbox id="ui_dark_mode" v-model="businessDetails.ui_dark_mode" binary />
-                                            <label for="ui_dark_mode" class="font-medium cursor-pointer">Enable Dark Mode</label>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <!-- Preview Section -->
-                            <div class="mb-8">
-                                <div class="flex items-center gap-2 mb-4">
-                                    <i class="pi pi-eye text-lg text-primary"></i>
-                                    <h3 class="text-lg font-semibold m-0 text-surface-800 dark:text-surface-100">Color Preview</h3>
-                                </div>
-                                <div class="p-4 rounded-lg border border-surface-200 dark:border-surface-700" :style="{ backgroundColor: businessDetails.business_background_color }">
-                                    <div class="flex gap-4 items-center flex-wrap">
-                                        <div class="px-4 py-2 rounded" :style="{ backgroundColor: businessDetails.business_primary_color, color: '#fff' }">Primary Button</div>
-                                        <div class="px-4 py-2 rounded" :style="{ backgroundColor: businessDetails.business_secondary_color, color: '#fff' }">Secondary Button</div>
-                                        <span :style="{ color: businessDetails.business_text_color }">Sample Text Content</span>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div class="flex flex-col sm:flex-row justify-end gap-3 mt-6 pt-4 border-t border-surface-200 dark:border-surface-700">
-                                <Button type="button" label="Cancel" severity="secondary" outlined @click="resetBusinessDetails" class="w-full sm:w-auto" />
-                                <Button type="submit" label="Save Branding" icon="pi pi-check" :loading="savingBusinessDetails" class="w-full sm:w-auto" />
-                            </div>
-                        </form>
-                    </div>
-                </TabPanel>
-
                 <!-- Product Settings Tab -->
                 <TabPanel header="Product Settings">
                     <div class="p-4">
@@ -986,7 +906,7 @@ function getComplianceSeverity(status) {
                     <div class="p-4">
                         <div class="mb-6">
                             <h2 class="text-xl font-semibold m-0 text-surface-900 dark:text-surface-0">Document Number Sequences</h2>
-                            <p class="text-surface-600 dark:text-surface-400 m-0 mt-1">View current document number sequences and next numbers</p>
+                            <p class="text-surface-600 dark:text-surface-400 m-0 mt-1">View and edit document number sequences to control your document numbering</p>
                         </div>
 
                         <div v-if="loadingSequences" class="flex justify-center py-8">
@@ -1003,7 +923,10 @@ function getComplianceSeverity(status) {
                                  class="bg-surface-50 dark:bg-surface-800 rounded-lg p-4 border border-surface-200 dark:border-surface-700 hover:shadow-md transition-shadow">
                                 <div class="flex items-center justify-between mb-3">
                                     <span class="font-semibold text-surface-700 dark:text-surface-200">{{ seq.document_type_display }}</span>
-                                    <Tag :value="seq.prefix" :severity="getSequenceSeverity(seq.document_type)" />
+                                    <div class="flex items-center gap-2">
+                                        <Tag :value="seq.prefix" :severity="getSequenceSeverity(seq.document_type)" />
+                                        <Button icon="pi pi-pencil" text rounded size="small" @click="openSequenceDialog(seq)" v-tooltip.top="'Edit sequence'" />
+                                    </div>
                                 </div>
                                 <div class="space-y-2">
                                     <div class="flex justify-between text-sm">
@@ -1027,6 +950,9 @@ function getComplianceSeverity(status) {
                                     </p>
                                     <p class="text-sm text-blue-600 dark:text-blue-400 m-0 mt-1">
                                         Example: INV0033-150126 (Invoice #33 on Jan 15, 2026)
+                                    </p>
+                                    <p class="text-sm text-blue-600 dark:text-blue-400 m-0 mt-1">
+                                        Click the edit button on any sequence card to change the starting number.
                                     </p>
                                 </div>
                             </div>
@@ -1119,6 +1045,38 @@ function getComplianceSeverity(status) {
                 <div class="flex gap-2 justify-end">
                     <Button label="Cancel" icon="pi pi-times" severity="secondary" outlined @click="closeBranchDialog" />
                     <Button label="Save" icon="pi pi-check" @click="saveBranch" :loading="savingBranch" />
+                </div>
+            </template>
+        </Dialog>
+
+        <!-- Document Sequence Edit Dialog -->
+        <Dialog v-model:visible="sequenceDialog" :style="{ width: '400px' }" header="Edit Document Sequence" :modal="true" class="p-fluid" :draggable="false">
+            <div class="grid grid-cols-1 gap-4">
+                <div class="field">
+                    <label class="font-semibold mb-2 block">Document Type</label>
+                    <div class="flex items-center gap-2">
+                        <Tag :value="editingSequence.prefix" severity="info" />
+                        <span class="font-medium text-surface-700 dark:text-surface-200">{{ editingSequence.document_type_display }}</span>
+                    </div>
+                </div>
+                <div class="field">
+                    <label for="current_sequence" class="font-semibold mb-2 block">Current Sequence Value <span class="text-red-500">*</span></label>
+                    <InputNumber id="current_sequence" v-model="editingSequence.current_sequence" class="w-full" :min="0" :max="999999999" placeholder="Enter sequence value" autofocus />
+                    <small class="text-surface-500">The next document will be numbered {{ editingSequence.current_sequence + 1 }}</small>
+                </div>
+                <div class="p-3 bg-amber-50 dark:bg-amber-900/20 rounded-lg border border-amber-200 dark:border-amber-800">
+                    <div class="flex gap-2">
+                        <i class="pi pi-exclamation-triangle text-amber-500"></i>
+                        <p class="text-sm text-amber-700 dark:text-amber-300 m-0">
+                            Changing this value will affect future document numbers. Make sure this won't create duplicate document numbers.
+                        </p>
+                    </div>
+                </div>
+            </div>
+            <template #footer>
+                <div class="flex gap-2 justify-end">
+                    <Button label="Cancel" icon="pi pi-times" severity="secondary" outlined @click="closeSequenceDialog" />
+                    <Button label="Save" icon="pi pi-check" @click="saveSequence" :loading="savingSequence" />
                 </div>
             </template>
         </Dialog>

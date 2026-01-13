@@ -25,22 +25,31 @@ const connectionStatus = ref({
     message: ''
 });
 
-// KRA Settings
+// KRA Settings - mapped to all backend KRASettings model fields
 const kra = ref({
     id: null,
+    // Environment
     mode: 'sandbox',
-    base_url: 'https://api.sandbox.kra.go.ke',
+    base_url: 'https://sandbox.etims.kra.go.ke',
+    // Organization identifiers
     kra_pin: '',
-    branch_code: '',
+    branch_code: '00',  // Default: head office
+    // Credentials
     client_id: '',
     client_secret: '',
     username: '',
     password: '',
+    // Device identifiers
     device_serial: '',
     pos_serial: '',
+    // Endpoint paths (defaults from KRA eTIMS documentation)
     token_path: '/oauth/token',
     invoice_path: '/etims/v1/invoices',
     invoice_status_path: '/etims/v1/invoices/status',
+    certificate_path: '/etims/v1/certificates',
+    compliance_path: '/etims/v1/compliance',
+    sync_path: '/etims/v1/sync',
+    // Status
     is_active: false
 });
 
@@ -405,6 +414,21 @@ function updateBaseUrl() {
                         <div class="field">
                             <label class="font-semibold text-surface-700 dark:text-surface-200 mb-2 block">Invoice Status Path</label>
                             <InputText v-model="kra.invoice_status_path" class="w-full font-mono text-sm" placeholder="/etims/v1/invoices/status" />
+                        </div>
+
+                        <div class="field">
+                            <label class="font-semibold text-surface-700 dark:text-surface-200 mb-2 block">Certificate Path</label>
+                            <InputText v-model="kra.certificate_path" class="w-full font-mono text-sm" placeholder="/etims/v1/certificates" />
+                        </div>
+
+                        <div class="field">
+                            <label class="font-semibold text-surface-700 dark:text-surface-200 mb-2 block">Compliance Path</label>
+                            <InputText v-model="kra.compliance_path" class="w-full font-mono text-sm" placeholder="/etims/v1/compliance" />
+                        </div>
+
+                        <div class="field">
+                            <label class="font-semibold text-surface-700 dark:text-surface-200 mb-2 block">Sync Path</label>
+                            <InputText v-model="kra.sync_path" class="w-full font-mono text-sm" placeholder="/etims/v1/sync" />
                         </div>
                     </div>
                 </div>

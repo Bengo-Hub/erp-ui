@@ -1157,17 +1157,11 @@ const originalModel = ref([
                         to: '/settings/integrations/payment'
                     },
                     {
-                        label: 'SMS Gateway',
+                        label: 'Notifications Settings',
                         permission: 'view_smsconfiguration',
                         icon: 'pi pi-fw pi-mobile',
-                        to: '/settings/integrations/sms'
+                        to: '/settings/notifications'
                     },
-                    {
-                        label: 'Email Service',
-                        permission: 'view_emailconfiguration',
-                        icon: 'pi pi-fw pi-envelope',
-                        to: '/settings/integrations/email'
-                    }
                 ]
             }
         ]
