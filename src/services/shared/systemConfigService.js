@@ -113,6 +113,45 @@ export const systemConfigService = {
         }
     },
 
+    // Approval Steps
+    async getApprovalSteps(workflowId) {
+        try {
+            const response = await axios.get(`approvals/steps/`, {
+                params: { workflow: workflowId }
+            });
+            return response.data;
+        } catch (error) {
+            return handleError(error);
+        }
+    },
+
+    async createApprovalStep(data) {
+        try {
+            const response = await axios.post(`approvals/steps/`, data);
+            return response.data;
+        } catch (error) {
+            return handleError(error);
+        }
+    },
+
+    async updateApprovalStep(id, data) {
+        try {
+            const response = await axios.patch(`approvals/steps/${id}/`, data);
+            return response.data;
+        } catch (error) {
+            return handleError(error);
+        }
+    },
+
+    async deleteApprovalStep(id) {
+        try {
+            const response = await axios.delete(`approvals/steps/${id}/`);
+            return response.data;
+        } catch (error) {
+            return handleError(error);
+        }
+    },
+
     // Users (for approval assignment)
     async getUsers() {
         try {

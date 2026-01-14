@@ -45,36 +45,48 @@ const reasonOptions = [
     { label: 'Other', value: 'other' }
 ];
 
+// Helper to extract array from various API response formats
+const extractArray = (response) => {
+    const data = response?.data || response;
+    if (data?.data?.results) return data.data.results;
+    if (data?.results) return data.results;
+    if (data?.data && Array.isArray(data.data)) return data.data;
+    if (Array.isArray(data)) return data;
+    return [];
+};
+
 // Load data
 const loadCustomers = async () => {
     try {
         const response = await crmService.getContacts({ page_size: 500 });
-        customers.value = response.data?.results || response.data || [];
+        const data = extractArray(response);
+        customers.value = data.map(c => ({
+            ...c,
+            full_name: c.full_name || `${c.first_name || ''} ${c.last_name || ''}`.trim() || c.business_name || c.email || `Customer #${c.id}`
+        }));
     } catch (error) {
         console.error('Error loading customers:', error);
+        customers.value = [];
     }
 };
 
 const loadInvoices = async () => {
     try {
         const response = await invoiceService.getInvoices({ page_size: 500 });
-        invoices.value = response.data?.results || response.data || [];
+        invoices.value = extractArray(response);
     } catch (error) {
         console.error('Error loading invoices:', error);
+        invoices.value = [];
     }
 };
 
 const loadProducts = async () => {
     try {
         const response = await ecommerceService.searchProductsLite({ search: '' });
-        const payload = response.data || response || {};
-        let data = payload.data ?? payload.results ?? payload;
-        if (data && data.results && Array.isArray(data.results)) {
-            data = data.results;
-        }
-        products.value = Array.isArray(data) ? data : [];
+        products.value = extractArray(response);
     } catch (error) {
         console.error('Error loading products:', error);
+        products.value = [];
     }
 };
 
@@ -82,27 +94,53 @@ const loadDebitNote = async (id) => {
     try {
         loading.value = true;
         const response = await debitNoteService.getDebitNote(id);
-        const data = response.data || response;
+        const data = response.data?.data || response.data || response;
+
+        // Find customer - check customer_details first, then customer object/ID
+        let customer = null;
+        if (data.customer_details) {
+            customer = customers.value.find(c => c.id === data.customer_details.id) || data.customer_details;
+        } else if (data.customer) {
+            const customerId = typeof data.customer === 'object' ? data.customer.id : data.customer;
+            customer = customers.value.find(c => c.id === customerId);
+            if (!customer && typeof data.customer === 'object') {
+                customer = data.customer;
+            }
+        }
+
+        // Find source invoice - match by ID and ensure it has invoice_number for display
+        let sourceInvoice = null;
+        const sourceInvoiceId = typeof data.source_invoice === 'object' ? data.source_invoice?.id : data.source_invoice;
+        if (sourceInvoiceId) {
+            sourceInvoice = invoices.value.find(inv => inv.id === sourceInvoiceId);
+            if (!sourceInvoice && data.invoice_number) {
+                sourceInvoice = { id: sourceInvoiceId, invoice_number: data.invoice_number };
+            }
+        }
+
+        // Map items with null safety for products array
+        const productsList = Array.isArray(products.value) ? products.value : [];
+        const itemsList = Array.isArray(data.items) ? data.items : (Array.isArray(data.order_items) ? data.order_items : []);
 
         form.value = {
-            customer: customers.value.find(c => c.id === data.customer) || data.customer,
-            debit_note_date: new Date(data.debit_note_date),
-            source_invoice: data.source_invoice,
+            customer: customer,
+            debit_note_date: data.debit_note_date ? new Date(data.debit_note_date) : new Date(),
+            source_invoice: sourceInvoice,
             reason: data.reason || '',
             notes: data.notes || '',
-            subtotal: data.subtotal || 0,
-            tax_amount: data.tax_amount || 0,
-            total: data.total || 0,
-            items: (data.items || []).map(item => ({
-                product: item.product_id ? products.value.find(p => p.id === item.product_id || p.product?.id === item.product_id) : null,
-                name: item.name,
-                description: item.description,
-                quantity: item.quantity,
-                unit_price: item.unit_price || 0,
-                tax_rate: item.tax_rate || 0,
-                tax_amount: item.tax_amount || 0,
-                subtotal: item.subtotal || 0,
-                total: item.total || 0
+            subtotal: parseFloat(data.subtotal) || 0,
+            tax_amount: parseFloat(data.tax_amount) || 0,
+            total: parseFloat(data.total) || 0,
+            items: itemsList.map(item => ({
+                product: item.object_id ? productsList.find(p => p.id === item.object_id || p.product?.id === item.object_id) : null,
+                name: item.name || '',
+                description: item.description || '',
+                quantity: item.quantity || 1,
+                unit_price: parseFloat(item.unit_price) || 0,
+                tax_rate: parseFloat(item.tax_rate) || 0,
+                tax_amount: parseFloat(item.tax_amount) || 0,
+                subtotal: parseFloat(item.total_price) || parseFloat(item.subtotal) || 0,
+                total: parseFloat(item.total_price) || parseFloat(item.total) || 0
             }))
         };
     } catch (error) {

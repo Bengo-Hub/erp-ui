@@ -24,20 +24,36 @@ export function setDocumentTitle(businessName, defaultName, suffix = '') {
 export function setCSSVariables(businessDetails, defaultColors = {}) {
     const root = document.documentElement;
 
-    // Primary color
-    const primaryColor = businessDetails?.business_primary_color || businessDetails?.business__primary_color || defaultColors.primaryColor || '#1976D2';
+    // Primary color - support multiple field name formats
+    const primaryColor = businessDetails?.primary_color
+        || businessDetails?.business_primary_color
+        || businessDetails?.business__primary_color
+        || defaultColors.primaryColor
+        || '#1976D2';
     root.style.setProperty('--primary-color', primaryColor);
 
     // Secondary color
-    const secondaryColor = businessDetails?.business_secondary_color || businessDetails?.business__secondary_color || defaultColors.secondaryColor || '#FF5722';
+    const secondaryColor = businessDetails?.secondary_color
+        || businessDetails?.business_secondary_color
+        || businessDetails?.business__secondary_color
+        || defaultColors.secondaryColor
+        || '#FF5722';
     root.style.setProperty('--secondary-color', secondaryColor);
 
     // Text colors
-    const textColor = businessDetails?.business_text_color || businessDetails?.business__text_color || defaultColors.textColor || '#212121';
+    const textColor = businessDetails?.text_color
+        || businessDetails?.business_text_color
+        || businessDetails?.business__text_color
+        || defaultColors.textColor
+        || '#212121';
     root.style.setProperty('--text-color', textColor);
 
     // Background color
-    const backgroundColor = businessDetails?.business_background_color || businessDetails?.business__background_color || defaultColors.backgroundColor || '#FFFFFF';
+    const backgroundColor = businessDetails?.background_color
+        || businessDetails?.business_background_color
+        || businessDetails?.business__background_color
+        || defaultColors.backgroundColor
+        || '#FFFFFF';
     root.style.setProperty('--background-color', backgroundColor);
 }
 

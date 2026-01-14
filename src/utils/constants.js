@@ -75,8 +75,9 @@ export const CONTRACT_STATUSES = [
 
 // Pagination Defaults
 export const PAGINATION = {
-    defaultRows: 10,
-    rowsPerPageOptions: [5, 10, 20, 50, 100]
+    defaultRows: 100,
+    rowsPerPageOptions: [10, 25, 50, 100, 250, 500],
+    maxRows: 500
 };
 
 // API Response Codes

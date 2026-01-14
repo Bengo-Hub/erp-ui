@@ -13,6 +13,8 @@ const saving = ref(false);
 
 const business = computed(() => store.state.auth.business);
 
+const businessId = ref(null);
+
 const form = ref({
     primary_color: '#3B82F6',
     secondary_color: '#10B981',
@@ -38,35 +40,43 @@ const fetchBrandingSettings = async () => {
     loading.value = true;
     try {
         const response = await systemConfigService.getBrandingSettings();
-        
+
         // Handle both response formats
         const data = response.data || response;
-        
+
         if (data) {
+            // Store the business ID for updates
+            businessId.value = data.id || data.business_id || business.value?.id;
+
             Object.assign(form.value, {
                 primary_color: data.primary_color || '#3B82F6',
                 secondary_color: data.secondary_color || '#10B981',
                 text_color: data.text_color || '#1F2937',
                 background_color: data.background_color || '#FFFFFF',
-                logo_url: data.logo_full_url || data.logo_url || '',
+                logo_url: data.logo_full_url || data.logo_url || data.logo || '',
                 favicon_url: data.favicon_url || '',
-                watermark_url: data.watermark_full_url || data.watermark_url || '',
-                app_name: data.app_name || 'BengoERP',
+                watermark_url: data.watermark_full_url || data.watermark_url || data.watermark || '',
+                app_name: data.app_name || data.business_name || 'BengoERP',
                 tagline: data.tagline || '',
                 footer_text: data.footer_text || '',
-                enable_dark_mode: data.enable_dark_mode ?? true,
+                enable_dark_mode: data.enable_dark_mode ?? data.dark_mode ?? true,
                 theme_preset: data.theme_preset || 'Lara',
                 menu_mode: data.menu_mode || 'static'
             });
-            
-            if (data.logo_full_url || data.logo_url) logoPreview.value = data.logo_full_url || data.logo_url;
-            if (data.watermark_full_url || data.watermark_url) watermarkPreview.value = data.watermark_full_url || data.watermark_url;
+
+            if (data.logo_full_url || data.logo_url || data.logo) {
+                logoPreview.value = data.logo_full_url || data.logo_url || data.logo;
+            }
+            if (data.watermark_full_url || data.watermark_url || data.watermark) {
+                watermarkPreview.value = data.watermark_full_url || data.watermark_url || data.watermark;
+            }
         }
-        
+
         // Also load from business if available
         if (business.value) {
-            if (business.value.logo) logoPreview.value = business.value.logo;
-            if (business.value.watermarklogo) watermarkPreview.value = business.value.watermarklogo;
+            if (!businessId.value) businessId.value = business.value.id;
+            if (business.value.logo && !logoPreview.value) logoPreview.value = business.value.logo;
+            if (business.value.watermarklogo && !watermarkPreview.value) watermarkPreview.value = business.value.watermarklogo;
         }
     } catch (error) {
         console.error('Error fetching branding settings:', error);
@@ -113,26 +123,31 @@ const removeWatermark = () => {
 };
 
 const saveBrandingSettings = async () => {
+    if (!businessId.value) {
+        showToast('error', 'Error', 'Business ID not found. Please refresh the page.');
+        return;
+    }
+
     saving.value = true;
     try {
-        const response = await systemConfigService.updateBrandingSettings(1, form.value);
-        
+        const response = await systemConfigService.updateBrandingSettings(businessId.value, form.value);
+
         // Handle response format
         const data = response.data || response;
-        
+
         showToast('success', 'Success', data.message || 'Branding settings saved successfully');
-        
+
         // Apply the color changes immediately to CSS variables
         applyBrandingToUI(form.value);
-        
+
         // Reload business details to reflect changes
         await store.dispatch('auth/loadBusinessDetails');
-        
+
         // Reload the form to ensure we have the latest data
         await fetchBrandingSettings();
     } catch (error) {
         console.error('Error saving branding settings:', error);
-        showToast('error', 'Error', error?.response?.data?.detail || error.message || 'Failed to save branding settings');
+        showToast('error', 'Error', error?.response?.data?.detail || error?.response?.data?.error || error.message || 'Failed to save branding settings');
     } finally {
         saving.value = false;
     }
