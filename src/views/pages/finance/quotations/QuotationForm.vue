@@ -253,8 +253,15 @@ const loadBranches = async () => {
         branches.value = response.data?.results || response.data || [];
         // Auto-select user's default branch from session
         const biz = JSON.parse(sessionStorage.getItem('business') || '{}');
-        if (biz?.branch_code) {
-            const userBranch = branches.value.find(b => b.branch_code === biz.branch_code || b.id === biz.id);
+        if (biz?.branch_id || biz?.branch_code) {
+            // First try by branch_id (numeric ID), then by branch_code
+            let userBranch = null;
+            if (biz.branch_id) {
+                userBranch = branches.value.find(b => b.id === biz.branch_id || b.id === parseInt(biz.branch_id, 10));
+            }
+            if (!userBranch && biz.branch_code) {
+                userBranch = branches.value.find(b => b.branch_code === biz.branch_code);
+            }
             if (userBranch) {
                 form.branch = userBranch.id;
             } else if (branches.value.length > 0) {

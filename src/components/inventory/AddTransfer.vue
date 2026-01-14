@@ -63,8 +63,14 @@ const fetchBranches = async () => {
         branches.value = response.data.results || response.data || [];
         // Auto-select user's default branch as "from" branch
         const biz = JSON.parse(sessionStorage.getItem('business') || '{}');
-        if (biz?.branch_code && !transfer.branch_from) {
-            const userBranch = branches.value.find(b => b.branch_code === biz.branch_code || b.id === biz.id);
+        if ((biz?.branch_id || biz?.branch_code) && !transfer.branch_from) {
+            let userBranch = null;
+            if (biz.branch_id) {
+                userBranch = branches.value.find(b => b.id === biz.branch_id || b.id === parseInt(biz.branch_id, 10));
+            }
+            if (!userBranch && biz.branch_code) {
+                userBranch = branches.value.find(b => b.branch_code === biz.branch_code);
+            }
             if (userBranch) {
                 transfer.branch_from = userBranch.id;
             }

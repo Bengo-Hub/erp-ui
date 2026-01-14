@@ -86,7 +86,9 @@ const actions = {
                 const business = {
                     business__name: rawBiz.business__name || 'BengoBox ERP',
                     name: rawBiz.name || rawBiz.branch_name || '',
+                    branch_name: rawBiz.branch_name || rawBiz.name || '',
                     branch_code: rawBiz.branch_code || rawBiz.location_id || null,
+                    branch_id: rawBiz.branch_id || null,
                     country: rawBiz.country || '',
                     city: rawBiz.city || '',
                     postal_code: rawBiz.postal_code || '',
@@ -96,6 +98,7 @@ const actions = {
                     address: rawBiz.address || '',
                     email: rawBiz.email || '',
                     website: rawBiz.website || '',
+                    kra_number: rawBiz.kra_number || '',
                     // Backend logo.url already includes /media/ prefix, just prepend base URL
                     business__logo: rawBiz.business__logo ? (rawBiz.business__logo.startsWith('http') ? rawBiz.business__logo : baseUrl + rawBiz.business__logo) : '',
                     business__watermarklogo: rawBiz.business__watermarklogo ? (rawBiz.business__watermarklogo.startsWith('http') ? rawBiz.business__watermarklogo : baseUrl + rawBiz.business__watermarklogo) : '',

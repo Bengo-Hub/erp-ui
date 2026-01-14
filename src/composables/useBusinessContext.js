@@ -42,9 +42,14 @@ export function useBusinessContext() {
     const defaultBranchCode = computed(() => business.value?.branch_code || null);
 
     /**
-     * Get the user's default branch ID (same as branch_code in this system)
+     * Get the user's default branch ID
      */
-    const defaultBranchId = computed(() => business.value?.id || null);
+    const defaultBranchId = computed(() => business.value?.branch_id || null);
+
+    /**
+     * Get the business ID
+     */
+    const businessId = computed(() => business.value?.id || null);
 
     /**
      * Get the business name
@@ -72,15 +77,15 @@ export function useBusinessContext() {
         const branchCode = defaultBranchCode.value;
         const branchId = defaultBranchId.value;
 
-        if (branchCode) {
-            // First try to find by branch_code
-            const match = branches.find(b => b.branch_code === branchCode);
+        // First try to find by branch_id (numeric ID)
+        if (branchId) {
+            const match = branches.find(b => b.id === branchId || b.id === parseInt(branchId, 10));
             if (match) return match;
         }
 
-        if (branchId) {
-            // Then try by ID
-            const match = branches.find(b => b.id === branchId);
+        // Then try by branch_code (string code like "MB00100")
+        if (branchCode) {
+            const match = branches.find(b => b.branch_code === branchCode);
             if (match) return match;
         }
 
@@ -104,6 +109,7 @@ export function useBusinessContext() {
         user,
         defaultBranchCode,
         defaultBranchId,
+        businessId,
         businessName,
         refreshContext,
         findUserBranch,
