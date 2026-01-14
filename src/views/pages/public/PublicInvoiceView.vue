@@ -59,15 +59,6 @@ const fetchInvoice = async () => {
     }
 };
 
-const initiatePayment = (method) => {
-    if (!invoice.value?.customer?.user?.email) {
-        showToast('warn', 'Validation', 'Customer email is required for payment');
-        return;
-    }
-    showPaymentDialog.value = true;
-    // Payment dialog will handle different payment methods
-};
-
 const openPaymentDialog = () => {
     showPaymentDialog.value = true;
 };
@@ -79,6 +70,14 @@ const downloadInvoice = () => {
 
 const printInvoice = () => {
     window.print();
+};
+
+const onPaymentInitiated = (paymentInfo) => {
+    showToast('info', 'Payment Started', `Payment via ${paymentInfo.method} has been initiated.`);
+    // Refresh invoice after a short delay to check for updates
+    setTimeout(() => {
+        fetchInvoice();
+    }, 5000);
 };
 
 // Lifecycle
@@ -249,22 +248,17 @@ onMounted(() => {
 
                         <!-- Payment Methods -->
                         <div class="space-y-4">
-                            <!-- M-Pesa STK Push -->
-                            <Button 
-                                v-if="invoice.customer?.user?.phone"
-                                label="Pay with M-Pesa" 
-                                icon="pi pi-phone"
-                                class="w-full p-button-lg p-button-outlined"
-                                @click="initiatePayment('mpesa')"
+                            <!-- Primary Payment Button - Opens Dialog -->
+                            <Button
+                                label="Make a Payment"
+                                icon="pi pi-lock"
+                                class="w-full p-button-lg p-button-success"
+                                @click="openPaymentDialog"
                             />
 
-                            <!-- Card Payment -->
-                            <Button 
-                                label="Pay with Card" 
-                                icon="pi pi-credit-card"
-                                class="w-full p-button-lg p-button-outlined"
-                                @click="initiatePayment('card')"
-                            />
+                            <p class="text-center text-gray-500 dark:text-gray-400 text-sm">
+                                Secure payment via Paystack, M-Pesa, or Card
+                            </p>
 
                             <!-- Manual Payment Info -->
                             <div v-if="paymentAccounts.length > 0" class="mt-6 pt-6 border-t border-blue-200 dark:border-blue-700">
@@ -301,11 +295,12 @@ onMounted(() => {
         </div>
 
         <!-- Payment Dialog -->
-        <PaymentDialog 
+        <PaymentDialog
             v-if="invoice"
             v-model:visible="showPaymentDialog"
-            :invoice="invoice"
+            :invoice="{ ...invoice, share_token: shareToken }"
             :balance-due="balanceDue"
+            @payment-initiated="onPaymentInitiated"
         />
     </div>
 </template>

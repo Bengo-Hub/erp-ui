@@ -1,7 +1,9 @@
 <script setup>
-import { ref, computed, watch } from 'vue';
+import { ref, computed, watch, onMounted } from 'vue';
+import { useRoute } from 'vue-router';
 import { useToast } from '@/composables/useToast';
 import { formatCurrency } from '@/utils/formatters';
+import axios from 'axios';
 
 const props = defineProps({
     visible: {
@@ -20,20 +22,26 @@ const props = defineProps({
 
 const emit = defineEmits(['update:visible', 'payment-initiated']);
 
+const route = useRoute();
 const { showToast } = useToast();
 
 // Reactive state
-const paymentMethod = ref('mpesa'); // 'mpesa', 'card', 'manual'
+const paymentMethod = ref('paystack'); // 'mpesa', 'card', 'paystack', 'manual'
 const loading = ref(false);
+const availablePaymentMethods = ref([]);
+const loadingMethods = ref(false);
 
 // M-Pesa fields
 const mpesaPhone = ref('');
 const mpesaAmount = ref(props.balanceDue);
 
-// Card fields
+// Card/Paystack fields
 const cardHolderName = ref('');
 const cardEmail = ref('');
 const cardAmount = ref(props.balanceDue);
+
+// Paystack specific
+const paystackChannels = ref(['card', 'bank', 'mobile_money']);
 
 // Manual payment reference
 const manualReference = ref('');
@@ -61,15 +69,59 @@ const customerName = computed(() => {
 const paymentMethodLabel = computed(() => {
     if (paymentMethod.value === 'mpesa') return 'M-Pesa STK Push';
     if (paymentMethod.value === 'card') return 'Card Payment';
+    if (paymentMethod.value === 'paystack') return 'Paystack';
     return 'Manual Payment';
 });
 
+const shareToken = computed(() => route.params.token || props.invoice?.share_token);
+
+const isPaystackAvailable = computed(() => {
+    return availablePaymentMethods.value.some(m => m.method === 'paystack' && m.enabled);
+});
+
+const isMpesaAvailable = computed(() => {
+    return availablePaymentMethods.value.some(m => m.method === 'mpesa' && m.enabled);
+});
+
+const isCardAvailable = computed(() => {
+    return availablePaymentMethods.value.some(m => m.method === 'card' && m.enabled);
+});
+
 // Methods
+const fetchAvailablePaymentMethods = async () => {
+    if (!props.invoice?.id || !shareToken.value) return;
+
+    loadingMethods.value = true;
+    try {
+        const response = await axios.get(`/api/v1/finance/payment/public/invoice/${props.invoice.id}/${shareToken.value}/methods/`);
+        availablePaymentMethods.value = response.data?.methods || [];
+
+        // Set default payment method based on available methods
+        if (isPaystackAvailable.value) {
+            paymentMethod.value = 'paystack';
+        } else if (isMpesaAvailable.value) {
+            paymentMethod.value = 'mpesa';
+        } else if (isCardAvailable.value) {
+            paymentMethod.value = 'card';
+        } else {
+            paymentMethod.value = 'manual';
+        }
+    } catch (error) {
+        console.error('Error fetching payment methods:', error);
+        // Fallback to manual if we can't fetch methods
+        paymentMethod.value = 'manual';
+    } finally {
+        loadingMethods.value = false;
+    }
+};
+
 const handlePayment = async () => {
     if (paymentMethod.value === 'mpesa') {
         await processMpesaPayment();
     } else if (paymentMethod.value === 'card') {
         await processCardPayment();
+    } else if (paymentMethod.value === 'paystack') {
+        await processPaystackPayment();
     } else {
         await confirmManualPayment();
     }
@@ -88,9 +140,9 @@ const processMpesaPayment = async () => {
 
     loading.value = true;
     try {
-        // Call backend to initiate M-Pesa STK push
-        const response = await axios.post('/finance/invoicing/payments/mpesa-stk/', {
-            invoice_id: props.invoice.id,
+        // Call public payment API to initiate M-Pesa STK push
+        const response = await axios.post(`/api/v1/finance/payment/public/invoice/${props.invoice.id}/${shareToken.value}/pay/`, {
+            payment_method: 'mpesa',
             phone: mpesaPhone.value,
             amount: mpesaAmount.value
         });
@@ -104,6 +156,43 @@ const processMpesaPayment = async () => {
     } catch (error) {
         console.error('M-Pesa payment error:', error);
         showToast('error', 'Error', error.response?.data?.error || 'Failed to initiate M-Pesa payment');
+    } finally {
+        loading.value = false;
+    }
+};
+
+const processPaystackPayment = async () => {
+    if (!cardEmail.value) {
+        showToast('warn', 'Validation', 'Please enter your email address');
+        return;
+    }
+
+    if (cardAmount.value <= 0) {
+        showToast('warn', 'Validation', 'Please enter a valid amount');
+        return;
+    }
+
+    loading.value = true;
+    try {
+        // Call public payment API to initiate Paystack payment
+        const response = await axios.post(`/api/v1/finance/payment/public/invoice/${props.invoice.id}/${shareToken.value}/pay/`, {
+            payment_method: 'paystack',
+            email: cardEmail.value,
+            amount: cardAmount.value,
+            name: cardHolderName.value || customerName.value,
+            channels: paystackChannels.value
+        });
+
+        if (response.data?.success && response.data?.authorization_url) {
+            // Redirect to Paystack checkout page
+            showToast('info', 'Redirecting', 'Redirecting to secure payment page...');
+            window.location.href = response.data.authorization_url;
+        } else {
+            showToast('error', 'Error', response.data?.error || 'Failed to initialize payment');
+        }
+    } catch (error) {
+        console.error('Paystack payment error:', error);
+        showToast('error', 'Error', error.response?.data?.error || 'Failed to initiate Paystack payment');
     } finally {
         loading.value = false;
     }
@@ -127,9 +216,9 @@ const processCardPayment = async () => {
 
     loading.value = true;
     try {
-        // Call backend to initiate card payment (e.g., Stripe, M-Pesa card)
-        const response = await axios.post('/finance/invoicing/payments/card/', {
-            invoice_id: props.invoice.id,
+        // Call public payment API to initiate card payment
+        const response = await axios.post(`/api/v1/finance/payment/public/invoice/${props.invoice.id}/${shareToken.value}/pay/`, {
+            payment_method: 'card',
             amount: cardAmount.value,
             cardholder_name: cardHolderName.value,
             email: cardEmail.value
@@ -166,12 +255,30 @@ watch(() => props.invoice, (newInvoice) => {
     if (newInvoice) {
         mpesaPhone.value = newInvoice.customer?.user?.phone || '';
         cardEmail.value = newInvoice.customer?.user?.email || '';
+        // Fetch available payment methods when invoice changes
+        fetchAvailablePaymentMethods();
     }
 }, { deep: true });
 
 watch(() => props.balanceDue, (newAmount) => {
     mpesaAmount.value = newAmount;
     cardAmount.value = newAmount;
+});
+
+watch(() => props.visible, (newVisible) => {
+    if (newVisible && props.invoice?.id) {
+        // Fetch payment methods when dialog becomes visible
+        fetchAvailablePaymentMethods();
+    }
+});
+
+// Lifecycle
+onMounted(() => {
+    if (props.invoice) {
+        mpesaPhone.value = props.invoice.customer?.user?.phone || '';
+        cardEmail.value = props.invoice.customer?.user?.email || '';
+        fetchAvailablePaymentMethods();
+    }
 });
 </script>
 
@@ -195,8 +302,32 @@ watch(() => props.balanceDue, (newAmount) => {
             <!-- Payment Method Selection -->
             <div>
                 <label class="block text-sm font-medium mb-3">Select Payment Method:</label>
-                <div class="space-y-3">
-                    <div class="flex items-center p-3 border border-gray-300 dark:border-gray-600 rounded-lg cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700"
+
+                <!-- Loading state for payment methods -->
+                <div v-if="loadingMethods" class="flex justify-center py-4">
+                    <i class="pi pi-spin pi-spinner text-2xl text-blue-500"></i>
+                </div>
+
+                <div v-else class="space-y-3">
+                    <!-- Paystack Option (Recommended) -->
+                    <div v-if="isPaystackAvailable"
+                         class="flex items-center p-3 border border-gray-300 dark:border-gray-600 rounded-lg cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700"
+                         @click="paymentMethod = 'paystack'"
+                         :class="{ 'bg-green-50 dark:bg-green-900 border-green-500': paymentMethod === 'paystack' }">
+                        <RadioButton v-model="paymentMethod" value="paystack" />
+                        <div class="ml-3 flex-1">
+                            <div class="flex items-center gap-2">
+                                <p class="font-medium text-gray-800 dark:text-white">Pay with Paystack</p>
+                                <span class="px-2 py-0.5 text-xs bg-green-100 text-green-800 rounded-full">Recommended</span>
+                            </div>
+                            <p class="text-xs text-gray-600 dark:text-gray-400">Card, Bank Transfer, Mobile Money</p>
+                        </div>
+                        <img src="/images/paystack-logo.svg" alt="Paystack" class="h-6 ml-2" onerror="this.style.display='none'" />
+                    </div>
+
+                    <!-- M-Pesa Option -->
+                    <div v-if="isMpesaAvailable"
+                         class="flex items-center p-3 border border-gray-300 dark:border-gray-600 rounded-lg cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700"
                          @click="paymentMethod = 'mpesa'"
                          :class="{ 'bg-blue-50 dark:bg-blue-900 border-blue-500': paymentMethod === 'mpesa' }">
                         <RadioButton v-model="paymentMethod" value="mpesa" />
@@ -206,7 +337,9 @@ watch(() => props.balanceDue, (newAmount) => {
                         </div>
                     </div>
 
-                    <div class="flex items-center p-3 border border-gray-300 dark:border-gray-600 rounded-lg cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700"
+                    <!-- Card Payment Option -->
+                    <div v-if="isCardAvailable"
+                         class="flex items-center p-3 border border-gray-300 dark:border-gray-600 rounded-lg cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700"
                          @click="paymentMethod = 'card'"
                          :class="{ 'bg-blue-50 dark:bg-blue-900 border-blue-500': paymentMethod === 'card' }">
                         <RadioButton v-model="paymentMethod" value="card" />
@@ -216,6 +349,7 @@ watch(() => props.balanceDue, (newAmount) => {
                         </div>
                     </div>
 
+                    <!-- Bank Transfer / Manual Option (Always available) -->
                     <div class="flex items-center p-3 border border-gray-300 dark:border-gray-600 rounded-lg cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700"
                          @click="paymentMethod = 'manual'"
                          :class="{ 'bg-blue-50 dark:bg-blue-900 border-blue-500': paymentMethod === 'manual' }">
@@ -232,7 +366,7 @@ watch(() => props.balanceDue, (newAmount) => {
             <div v-if="paymentMethod === 'mpesa'" class="space-y-4">
                 <div>
                     <label class="block text-sm font-medium mb-2">Phone Number: *</label>
-                    <InputText 
+                    <InputText
                         v-model="mpesaPhone"
                         placeholder="254712345678"
                         class="w-full"
@@ -242,7 +376,7 @@ watch(() => props.balanceDue, (newAmount) => {
 
                 <div>
                     <label class="block text-sm font-medium mb-2">Amount: *</label>
-                    <InputNumber 
+                    <InputNumber
                         v-model="mpesaAmount"
                         :use-grouping="true"
                         :currency="invoice?.currency || 'KES'"
@@ -253,6 +387,52 @@ watch(() => props.balanceDue, (newAmount) => {
 
                 <Message severity="info" :closable="false">
                     <p class="text-sm">You will receive an M-Pesa prompt on your phone. Enter your PIN to complete the payment.</p>
+                </Message>
+            </div>
+
+            <!-- Paystack Fields -->
+            <div v-else-if="paymentMethod === 'paystack'" class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium mb-2">Your Name:</label>
+                    <InputText
+                        v-model="cardHolderName"
+                        :placeholder="customerName || 'Full Name'"
+                        class="w-full"
+                    />
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium mb-2">Email Address: *</label>
+                    <InputText
+                        v-model="cardEmail"
+                        type="email"
+                        :placeholder="customerEmail || 'email@example.com'"
+                        class="w-full"
+                    />
+                    <small class="text-gray-500 dark:text-gray-400">Payment receipt will be sent to this email</small>
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium mb-2">Amount: *</label>
+                    <InputNumber
+                        v-model="cardAmount"
+                        :use-grouping="true"
+                        :currency="invoice?.currency || 'KES'"
+                        :maxFractionDigits="2"
+                        class="w-full"
+                    />
+                </div>
+
+                <Message severity="success" :closable="false">
+                    <div class="text-sm">
+                        <p class="font-medium mb-1">Secure Payment via Paystack</p>
+                        <p>You will be redirected to Paystack's secure checkout page where you can pay using:</p>
+                        <ul class="list-disc list-inside mt-1 text-xs">
+                            <li>Credit/Debit Card (Visa, Mastercard)</li>
+                            <li>Bank Transfer</li>
+                            <li>Mobile Money</li>
+                        </ul>
+                    </div>
                 </Message>
             </div>
 
@@ -319,18 +499,19 @@ watch(() => props.balanceDue, (newAmount) => {
         </div>
 
         <template #footer>
-            <Button 
-                label="Cancel" 
-                icon="pi pi-times" 
-                @click="cancel" 
+            <Button
+                label="Cancel"
+                icon="pi pi-times"
+                @click="cancel"
                 class="p-button-text"
                 :disabled="loading"
             />
-            <Button 
-                :label="`Pay ${formatCurrency(balanceDue)}`"
-                :icon="paymentMethod === 'mpesa' ? 'pi pi-phone' : paymentMethod === 'card' ? 'pi pi-credit-card' : 'pi pi-check'"
+            <Button
+                :label="paymentMethod === 'paystack' ? `Pay ${formatCurrency(balanceDue)} with Paystack` : `Pay ${formatCurrency(balanceDue)}`"
+                :icon="paymentMethod === 'mpesa' ? 'pi pi-phone' : paymentMethod === 'card' ? 'pi pi-credit-card' : paymentMethod === 'paystack' ? 'pi pi-lock' : 'pi pi-check'"
                 @click="handlePayment"
                 :loading="loading"
+                :class="paymentMethod === 'paystack' ? 'p-button-success' : ''"
             />
         </template>
     </Dialog>

@@ -40,6 +40,24 @@ const mpesa = ref({
     is_active: false
 });
 
+// Paystack Settings
+const paystack = ref({
+    id: null,
+    is_test_mode: true,
+    public_key: '',
+    secret_key: '',
+    webhook_secret: '',
+    base_url: 'https://api.paystack.co',
+    webhook_url: '',
+    callback_url: '',
+    enabled_channels: ['card', 'bank_transfer', 'mobile_money'],
+    default_currency: 'KES',
+    business_name: '',
+    support_email: '',
+    subaccount_code: '',
+    is_active: false
+});
+
 // Future payment gateways placeholders
 const stripe = ref({
     is_active: false,
@@ -58,9 +76,39 @@ const paypal = ref({
 // Gateway status
 const gatewayStatus = ref({
     mpesa: { connected: false, last_check: null },
+    paystack: { connected: false, last_check: null },
     stripe: { connected: false, last_check: null },
     paypal: { connected: false, last_check: null }
 });
+
+// Auto-configured URLs from backend
+const autoConfiguredUrls = ref({
+    frontend_base: '',
+    backend_base: '',
+    mpesa: {},
+    paystack: {},
+    paypal: {},
+    stripe: {}
+});
+
+// Paystack channel options
+const paystackChannelOptions = [
+    { label: 'Card', value: 'card' },
+    { label: 'Bank Transfer', value: 'bank_transfer' },
+    { label: 'Mobile Money', value: 'mobile_money' },
+    { label: 'USSD', value: 'ussd' },
+    { label: 'QR Code', value: 'qr' },
+    { label: 'Bank', value: 'bank' }
+];
+
+// Paystack currency options
+const paystackCurrencyOptions = [
+    { label: 'Kenyan Shilling (KES)', value: 'KES' },
+    { label: 'Nigerian Naira (NGN)', value: 'NGN' },
+    { label: 'Ghanaian Cedi (GHS)', value: 'GHS' },
+    { label: 'South African Rand (ZAR)', value: 'ZAR' },
+    { label: 'US Dollar (USD)', value: 'USD' }
+];
 
 // Options
 const environmentOptions = [
@@ -73,10 +121,64 @@ const isProductionMode = computed(() => {
     return mpesa.value.base_url === 'https://api.safaricom.co.ke';
 });
 
+// Computed for Paystack test mode
+const isPaystackLiveMode = computed(() => !paystack.value.is_test_mode);
+
 // Load settings on mount
 onMounted(async () => {
+    await loadAutoConfiguredUrls();
     await loadMpesaSettings();
+    await loadPaystackSettings();
 });
+
+// Load auto-configured URLs from backend
+async function loadAutoConfiguredUrls() {
+    try {
+        const response = await fetch('/api/v1/integrations/urls/', {
+            headers: {
+                'Authorization': `Token ${sessionStorage.getItem('token')}`
+            }
+        });
+        const data = await response.json();
+        if (data.success && data.urls) {
+            autoConfiguredUrls.value = data.urls;
+            // Auto-populate URLs if empty
+            if (!paystack.value.webhook_url && data.urls.paystack?.webhook_url) {
+                paystack.value.webhook_url = data.urls.paystack.webhook_url;
+            }
+            if (!paystack.value.callback_url && data.urls.paystack?.callback_url) {
+                paystack.value.callback_url = data.urls.paystack.callback_url;
+            }
+        }
+    } catch (error) {
+        console.error('Error loading auto-configured URLs:', error);
+    }
+}
+
+// Sync URLs with backend (update DB with auto-configured URLs)
+async function syncIntegrationUrls() {
+    try {
+        const response = await fetch('/api/v1/integrations/urls/sync/', {
+            method: 'POST',
+            headers: {
+                'Authorization': `Token ${sessionStorage.getItem('token')}`,
+                'Content-Type': 'application/json'
+            }
+        });
+        const data = await response.json();
+        if (data.success) {
+            showToast('success', 'Success', 'Integration URLs synchronized', 3000);
+            // Reload settings to show updated URLs
+            await loadPaystackSettings();
+            await loadMpesaSettings();
+        } else {
+            showToast('error', 'Error', data.error || 'Failed to sync URLs', 4000);
+        }
+    } catch (error) {
+        console.error('Error syncing URLs:', error);
+        showToast('error', 'Error', 'Failed to sync integration URLs', 4000);
+    }
+}
 
 // M-Pesa Methods
 async function loadMpesaSettings() {
@@ -146,6 +248,104 @@ function getStatusSeverity(connected) {
 function getStatusLabel(connected) {
     return connected ? 'Connected' : 'Not Connected';
 }
+
+// Paystack Methods
+async function loadPaystackSettings() {
+    try {
+        const response = await fetch('/api/v1/integrations/paystack-settings/current/', {
+            headers: {
+                'Authorization': `Token ${sessionStorage.getItem('token')}`
+            }
+        });
+        const data = await response.json();
+        if (data && !data.error) {
+            paystack.value = { ...paystack.value, ...data };
+        }
+    } catch (error) {
+        console.error('Error loading Paystack settings:', error);
+    }
+}
+
+async function savePaystackSettings() {
+    saving.value = true;
+    try {
+        const method = paystack.value.id ? 'PUT' : 'POST';
+        const url = paystack.value.id
+            ? `/api/v1/integrations/paystack-settings/${paystack.value.id}/`
+            : '/api/v1/integrations/paystack-settings/';
+
+        const response = await fetch(url, {
+            method,
+            headers: {
+                'Authorization': `Token ${sessionStorage.getItem('token')}`,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(paystack.value)
+        });
+
+        const data = await response.json();
+
+        if (response.ok) {
+            paystack.value = { ...paystack.value, ...data };
+            showToast('success', 'Success', 'Paystack settings saved successfully', 3000);
+        } else {
+            showToast('error', 'Error', data.message || 'Failed to save Paystack settings', 4000);
+        }
+    } catch (error) {
+        console.error('Error saving Paystack settings:', error);
+        showToast('error', 'Error', 'Failed to save Paystack settings', 4000);
+    } finally {
+        saving.value = false;
+    }
+}
+
+async function testPaystackConnection() {
+    testing.value = true;
+    try {
+        const response = await fetch('/api/v1/integrations/paystack-settings/test_connection/', {
+            method: 'POST',
+            headers: {
+                'Authorization': `Token ${sessionStorage.getItem('token')}`,
+                'Content-Type': 'application/json'
+            }
+        });
+        const data = await response.json();
+
+        if (data.success) {
+            gatewayStatus.value.paystack.connected = true;
+            gatewayStatus.value.paystack.last_check = new Date().toISOString();
+            showToast('success', 'Connected', `Paystack connection successful. ${data.total_transactions || 0} transactions found.`, 3000);
+        } else {
+            gatewayStatus.value.paystack.connected = false;
+            showToast('warn', 'Warning', data.error || 'Paystack connection check failed', 4000);
+        }
+    } catch (error) {
+        console.error('Error testing Paystack connection:', error);
+        gatewayStatus.value.paystack.connected = false;
+        showToast('error', 'Error', 'Failed to test Paystack connection', 4000);
+    } finally {
+        testing.value = false;
+    }
+}
+
+// Auto-populate Paystack URLs from auto-configured values
+function autoPopulatePaystackUrls() {
+    if (autoConfiguredUrls.value.paystack?.callback_url) {
+        paystack.value.callback_url = autoConfiguredUrls.value.paystack.callback_url;
+    }
+    if (autoConfiguredUrls.value.paystack?.webhook_url) {
+        paystack.value.webhook_url = autoConfiguredUrls.value.paystack.webhook_url;
+    }
+    showToast('info', 'URLs Applied', 'Auto-configured URLs have been applied. Remember to save your settings.', 3000);
+}
+
+// Auto-populate M-Pesa URLs from auto-configured values
+function autoPopulateMpesaUrls() {
+    if (autoConfiguredUrls.value.mpesa?.callback_url) {
+        mpesa.value.callback_base_url = autoConfiguredUrls.value.backend_base || '';
+    }
+    showToast('info', 'URLs Applied', 'Auto-configured URLs have been applied. Remember to save your settings.', 3000);
+}
 </script>
 
 <template>
@@ -179,6 +379,26 @@ function getStatusLabel(connected) {
                     <div class="flex items-center justify-between">
                         <span class="text-sm text-surface-500">{{ isProductionMode ? 'Live Mode' : 'Sandbox Mode' }}</span>
                         <Tag :value="getStatusLabel(gatewayStatus.mpesa.connected)" :severity="getStatusSeverity(gatewayStatus.mpesa.connected)" />
+                    </div>
+                </div>
+
+                <!-- Paystack Card -->
+                <div class="bg-surface-50 dark:bg-surface-800 rounded-xl p-4 border border-surface-200 dark:border-surface-700">
+                    <div class="flex items-center justify-between mb-3">
+                        <div class="flex items-center gap-3">
+                            <div class="w-12 h-12 rounded-lg bg-teal-100 dark:bg-teal-900/30 flex items-center justify-center">
+                                <i class="pi pi-credit-card text-2xl text-teal-600 dark:text-teal-400"></i>
+                            </div>
+                            <div>
+                                <h3 class="font-semibold text-surface-900 dark:text-surface-0 m-0">Paystack</h3>
+                                <p class="text-sm text-surface-500 m-0">Cards, Banks & Mobile Money</p>
+                            </div>
+                        </div>
+                        <Tag :value="paystack.is_active ? 'Active' : 'Inactive'" :severity="paystack.is_active ? 'success' : 'secondary'" />
+                    </div>
+                    <div class="flex items-center justify-between">
+                        <span class="text-sm text-surface-500">{{ isPaystackLiveMode ? 'Live Mode' : 'Test Mode' }}</span>
+                        <Tag :value="getStatusLabel(gatewayStatus.paystack.connected)" :severity="getStatusSeverity(gatewayStatus.paystack.connected)" />
                     </div>
                 </div>
 
@@ -351,15 +571,37 @@ function getStatusLabel(connected) {
 
                             <!-- Callback URLs -->
                             <div class="mb-8">
-                                <div class="flex items-center gap-2 mb-4">
-                                    <i class="pi pi-link text-lg text-primary"></i>
-                                    <h3 class="text-lg font-semibold m-0 text-surface-800 dark:text-surface-100">Callback Configuration</h3>
+                                <div class="flex items-center justify-between mb-4">
+                                    <div class="flex items-center gap-2">
+                                        <i class="pi pi-link text-lg text-primary"></i>
+                                        <h3 class="text-lg font-semibold m-0 text-surface-800 dark:text-surface-100">Callback Configuration</h3>
+                                    </div>
+                                    <Button
+                                        type="button"
+                                        label="Auto-Configure"
+                                        icon="pi pi-sync"
+                                        severity="secondary"
+                                        size="small"
+                                        text
+                                        @click="autoPopulateMpesaUrls"
+                                    />
+                                </div>
+
+                                <!-- Auto-configured URL hints -->
+                                <div v-if="autoConfiguredUrls.backend_base" class="mb-4 p-3 bg-green-50 dark:bg-green-900/20 rounded-lg border border-green-200 dark:border-green-800">
+                                    <div class="flex gap-2">
+                                        <i class="pi pi-check-circle text-green-500 mt-0.5"></i>
+                                        <div class="text-sm">
+                                            <p class="text-green-700 dark:text-green-300 m-0 font-medium">Auto-configured Base URL detected:</p>
+                                            <p class="text-green-600 dark:text-green-400 m-0 mt-1 text-xs">{{ autoConfiguredUrls.backend_base }}</p>
+                                        </div>
+                                    </div>
                                 </div>
 
                                 <div class="grid grid-cols-1 gap-6">
                                     <div class="field">
                                         <label class="font-semibold text-surface-700 dark:text-surface-200 mb-2 block">Callback Base URL</label>
-                                        <InputText v-model="mpesa.callback_base_url" class="w-full" placeholder="https://yourdomain.com" />
+                                        <InputText v-model="mpesa.callback_base_url" class="w-full" :placeholder="autoConfiguredUrls.backend_base || 'https://yourdomain.com'" />
                                         <small class="text-surface-500">Your server's public URL where M-Pesa will send callbacks. Must be HTTPS and publicly accessible.</small>
                                     </div>
                                 </div>
@@ -396,6 +638,234 @@ function getStatusLabel(connected) {
                                 <Button
                                     type="submit"
                                     label="Save M-Pesa Settings"
+                                    icon="pi pi-check"
+                                    :loading="saving"
+                                    class="w-full sm:w-auto"
+                                />
+                            </div>
+                        </form>
+                    </div>
+                </TabPanel>
+
+                <!-- Paystack Tab -->
+                <TabPanel>
+                    <template #header>
+                        <div class="flex items-center gap-2">
+                            <i class="pi pi-credit-card"></i>
+                            <span>Paystack</span>
+                        </div>
+                    </template>
+
+                    <div class="p-4">
+                        <form @submit.prevent="savePaystackSettings" class="p-fluid">
+                            <!-- Live Mode Warning -->
+                            <div v-if="isPaystackLiveMode" class="mb-6 p-4 bg-red-50 dark:bg-red-900/20 rounded-lg border border-red-200 dark:border-red-800">
+                                <div class="flex gap-3">
+                                    <i class="pi pi-exclamation-triangle text-red-600 dark:text-red-400 mt-0.5"></i>
+                                    <div>
+                                        <p class="text-sm text-red-700 dark:text-red-300 m-0 font-medium">Live Mode Active</p>
+                                        <p class="text-sm text-red-600 dark:text-red-400 m-0 mt-1">
+                                            You are using the live Paystack API. Real money transactions will be processed.
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Environment & Status -->
+                            <div class="mb-8">
+                                <div class="flex items-center gap-2 mb-4">
+                                    <i class="pi pi-cog text-lg text-primary"></i>
+                                    <h3 class="text-lg font-semibold m-0 text-surface-800 dark:text-surface-100">Environment</h3>
+                                </div>
+
+                                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                                    <div class="field">
+                                        <label class="font-semibold text-surface-700 dark:text-surface-200 mb-2 block">Mode</label>
+                                        <div class="flex items-center gap-2">
+                                            <ToggleSwitch v-model="paystack.is_test_mode" />
+                                            <label class="font-medium">{{ paystack.is_test_mode ? 'Test Mode' : 'Live Mode' }}</label>
+                                        </div>
+                                        <small class="text-surface-500 mt-1 block">Toggle off for live transactions</small>
+                                    </div>
+
+                                    <div class="field">
+                                        <label class="font-semibold text-surface-700 dark:text-surface-200 mb-2 block">Default Currency</label>
+                                        <Select v-model="paystack.default_currency" :options="paystackCurrencyOptions" optionLabel="label" optionValue="value" class="w-full" />
+                                    </div>
+
+                                    <div class="field flex items-end">
+                                        <div class="flex items-center gap-2">
+                                            <ToggleSwitch v-model="paystack.is_active" />
+                                            <label class="font-medium">Enable Paystack Payments</label>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- API Credentials -->
+                            <div class="mb-8">
+                                <div class="flex items-center gap-2 mb-4">
+                                    <i class="pi pi-key text-lg text-primary"></i>
+                                    <h3 class="text-lg font-semibold m-0 text-surface-800 dark:text-surface-100">API Credentials</h3>
+                                </div>
+
+                                <div class="p-4 mb-4 bg-amber-50 dark:bg-amber-900/20 rounded-lg border border-amber-200 dark:border-amber-800">
+                                    <div class="flex gap-3">
+                                        <i class="pi pi-shield text-amber-600 dark:text-amber-400 mt-0.5"></i>
+                                        <div>
+                                            <p class="text-sm text-amber-700 dark:text-amber-300 m-0 font-medium">Security Notice</p>
+                                            <p class="text-sm text-amber-600 dark:text-amber-400 m-0 mt-1">
+                                                Get your API keys from your <a href="https://dashboard.paystack.com/#/settings/developer" target="_blank" class="underline">Paystack Dashboard</a>. All credentials are encrypted at rest.
+                                            </p>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    <div class="field">
+                                        <label class="font-semibold text-surface-700 dark:text-surface-200 mb-2 block">Public Key <span class="text-red-500">*</span></label>
+                                        <InputText v-model="paystack.public_key" class="w-full" placeholder="pk_test_... or pk_live_..." />
+                                        <small class="text-surface-500">Starts with pk_test_ or pk_live_</small>
+                                    </div>
+
+                                    <div class="field">
+                                        <label class="font-semibold text-surface-700 dark:text-surface-200 mb-2 block">Secret Key <span class="text-red-500">*</span></label>
+                                        <Password v-model="paystack.secret_key" :feedback="false" toggleMask class="w-full" placeholder="sk_test_... or sk_live_..." />
+                                        <small class="text-surface-500">Starts with sk_test_ or sk_live_</small>
+                                    </div>
+
+                                    <div class="field md:col-span-2">
+                                        <label class="font-semibold text-surface-700 dark:text-surface-200 mb-2 block">Webhook Secret</label>
+                                        <Password v-model="paystack.webhook_secret" :feedback="false" toggleMask class="w-full" placeholder="Optional - for webhook signature verification" />
+                                        <small class="text-surface-500">Used to verify webhook signatures from Paystack</small>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Payment Channels -->
+                            <div class="mb-8">
+                                <div class="flex items-center gap-2 mb-4">
+                                    <i class="pi pi-wallet text-lg text-primary"></i>
+                                    <h3 class="text-lg font-semibold m-0 text-surface-800 dark:text-surface-100">Payment Channels</h3>
+                                </div>
+
+                                <div class="field">
+                                    <label class="font-semibold text-surface-700 dark:text-surface-200 mb-2 block">Enabled Payment Methods</label>
+                                    <MultiSelect
+                                        v-model="paystack.enabled_channels"
+                                        :options="paystackChannelOptions"
+                                        optionLabel="label"
+                                        optionValue="value"
+                                        placeholder="Select payment channels"
+                                        class="w-full"
+                                        display="chip"
+                                    />
+                                    <small class="text-surface-500">Choose which payment methods to show on the checkout page</small>
+                                </div>
+                            </div>
+
+                            <!-- URLs Configuration -->
+                            <div class="mb-8">
+                                <div class="flex items-center justify-between mb-4">
+                                    <div class="flex items-center gap-2">
+                                        <i class="pi pi-link text-lg text-primary"></i>
+                                        <h3 class="text-lg font-semibold m-0 text-surface-800 dark:text-surface-100">URL Configuration</h3>
+                                    </div>
+                                    <Button
+                                        type="button"
+                                        label="Auto-Configure URLs"
+                                        icon="pi pi-sync"
+                                        severity="secondary"
+                                        size="small"
+                                        text
+                                        @click="autoPopulatePaystackUrls"
+                                    />
+                                </div>
+
+                                <!-- Auto-configured URL hints -->
+                                <div v-if="autoConfiguredUrls.paystack?.webhook_url" class="mb-4 p-3 bg-green-50 dark:bg-green-900/20 rounded-lg border border-green-200 dark:border-green-800">
+                                    <div class="flex gap-2">
+                                        <i class="pi pi-check-circle text-green-500 mt-0.5"></i>
+                                        <div class="text-sm">
+                                            <p class="text-green-700 dark:text-green-300 m-0 font-medium">Auto-configured URLs detected:</p>
+                                            <p class="text-green-600 dark:text-green-400 m-0 mt-1 text-xs">
+                                                Callback: {{ autoConfiguredUrls.paystack.callback_url }}<br>
+                                                Webhook: {{ autoConfiguredUrls.paystack.webhook_url }}
+                                            </p>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    <div class="field">
+                                        <label class="font-semibold text-surface-700 dark:text-surface-200 mb-2 block">Callback URL</label>
+                                        <InputText v-model="paystack.callback_url" class="w-full" :placeholder="autoConfiguredUrls.paystack?.callback_url || 'Auto-configured on save'" />
+                                        <small class="text-surface-500">URL to redirect customers after payment (leave empty for auto-config)</small>
+                                    </div>
+
+                                    <div class="field">
+                                        <label class="font-semibold text-surface-700 dark:text-surface-200 mb-2 block">Webhook URL</label>
+                                        <InputText v-model="paystack.webhook_url" class="w-full" :placeholder="autoConfiguredUrls.paystack?.webhook_url || 'Auto-configured on save'" />
+                                        <small class="text-surface-500">URL for Paystack to send event notifications (leave empty for auto-config)</small>
+                                    </div>
+                                </div>
+
+                                <div class="mt-4 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
+                                    <div class="flex gap-2">
+                                        <i class="pi pi-info-circle text-blue-500 mt-0.5"></i>
+                                        <div>
+                                            <p class="text-sm text-blue-700 dark:text-blue-300 m-0">
+                                                Configure the webhook URL in your <a href="https://dashboard.paystack.com/#/settings/developer" target="_blank" class="underline">Paystack Dashboard</a> to receive payment notifications.
+                                                URLs are automatically configured based on your server domain.
+                                            </p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Business Information -->
+                            <div class="mb-8">
+                                <div class="flex items-center gap-2 mb-4">
+                                    <i class="pi pi-building text-lg text-primary"></i>
+                                    <h3 class="text-lg font-semibold m-0 text-surface-800 dark:text-surface-100">Business Information</h3>
+                                </div>
+
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    <div class="field">
+                                        <label class="font-semibold text-surface-700 dark:text-surface-200 mb-2 block">Business Name</label>
+                                        <InputText v-model="paystack.business_name" class="w-full" placeholder="Your Business Name" />
+                                        <small class="text-surface-500">Shown on payment pages</small>
+                                    </div>
+
+                                    <div class="field">
+                                        <label class="font-semibold text-surface-700 dark:text-surface-200 mb-2 block">Support Email</label>
+                                        <InputText v-model="paystack.support_email" type="email" class="w-full" placeholder="support@yourbusiness.com" />
+                                        <small class="text-surface-500">Customer support email</small>
+                                    </div>
+
+                                    <div class="field md:col-span-2">
+                                        <label class="font-semibold text-surface-700 dark:text-surface-200 mb-2 block">Subaccount Code</label>
+                                        <InputText v-model="paystack.subaccount_code" class="w-full" placeholder="Optional - for split payments" />
+                                        <small class="text-surface-500">Use this for split payment scenarios</small>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Actions -->
+                            <div class="flex flex-col sm:flex-row justify-between gap-3 pt-4 border-t border-surface-200 dark:border-surface-700">
+                                <Button
+                                    type="button"
+                                    label="Test Connection"
+                                    icon="pi pi-check-circle"
+                                    severity="secondary"
+                                    outlined
+                                    :loading="testing"
+                                    @click="testPaystackConnection"
+                                    class="w-full sm:w-auto"
+                                />
+                                <Button
+                                    type="submit"
+                                    label="Save Paystack Settings"
                                     icon="pi pi-check"
                                     :loading="saving"
                                     class="w-full sm:w-auto"

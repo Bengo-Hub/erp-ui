@@ -294,5 +294,12 @@ export const financeRoutes = [
         name: 'public-quotation-view',
         component: () => import('@/views/pages/public/PublicQuotationView.vue'),
         meta: { requiresAuth: false, title: 'View Quotation', layout: 'public' }
+    },
+    // PUBLIC: Payment Callback (Paystack redirect after payment)
+    {
+        path: '/public/payment/callback',
+        name: 'public-payment-callback',
+        component: () => import('@/views/pages/public/PaymentCallback.vue'),
+        meta: { requiresAuth: false, title: 'Payment Status', layout: 'public' }
     }
 ];
