@@ -103,12 +103,13 @@
             </Card>
         </div>
 
-        <!-- Role Dialog -->
+        <!-- Role Dialog - Django Admin Style -->
         <Dialog
             v-model:visible="roleDialog"
             :header="editMode ? 'Edit Role' : 'Create Role'"
             :modal="true"
-            class="w-full md:w-3/4 lg:w-1/2"
+            class="role-dialog"
+            :style="{ width: '90vw', maxWidth: '1200px' }"
         >
             <div class="space-y-4">
                 <div>
@@ -122,96 +123,14 @@
                     <small v-if="submitted && !roleForm.name" class="text-red-500">Role name is required</small>
                 </div>
 
-                <!-- Permission Selection with Search and Module Filter -->
-                <div class="space-y-3">
+                <!-- Django Admin Style Dual List Permission Selector -->
+                <div>
                     <label class="block text-sm font-medium mb-2">Permissions</label>
-
-                    <!-- Search and Module Filter -->
-                    <div class="flex gap-2">
-                        <InputText
-                            v-model="permissionSearch"
-                            placeholder="Search permissions..."
-                            class="flex-1"
-                            @input="debouncedFilterPermissions"
-                        />
-                        <Dropdown
-                            v-model="selectedModule"
-                            :options="moduleOptions"
-                            optionLabel="label"
-                            optionValue="value"
-                            placeholder="All modules"
-                            class="w-48"
-                            @change="filterPermissions"
-                            showClear
-                        />
-                    </div>
-
-                    <!-- Permissions List with Virtual Scroll -->
-                    <div class="border rounded-lg max-h-64 overflow-y-auto bg-white dark:bg-gray-800">
-                        <div v-if="loadingPermissions" class="flex items-center justify-center p-8">
-                            <i class="pi pi-spin pi-spinner text-2xl text-primary-500"></i>
-                            <span class="ml-2">Loading permissions...</span>
-                        </div>
-                        <div v-else-if="filteredPermissions.length === 0" class="text-center p-4 text-gray-500">
-                            No permissions found
-                        </div>
-                        <div v-else class="divide-y divide-gray-100 dark:divide-gray-700">
-                            <label
-                                v-for="permission in filteredPermissions"
-                                :key="permission.id"
-                                class="flex items-center gap-3 p-3 hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer"
-                            >
-                                <Checkbox
-                                    :model-value="roleForm.permissions.includes(permission.id)"
-                                    :binary="true"
-                                    @update:model-value="(checked) => togglePermission(permission.id, checked)"
-                                />
-                                <i :class="getPermissionIcon(permission.codename)" class="text-sm text-primary-500"></i>
-                                <div class="flex-1 min-w-0">
-                                    <div class="font-medium text-gray-900 dark:text-gray-100 truncate">{{ permission.name }}</div>
-                                    <div class="text-xs text-gray-500 truncate">{{ permission.codename }}</div>
-                                </div>
-                            </label>
-                        </div>
-                    </div>
-
-                    <!-- Quick Actions -->
-                    <div class="flex gap-2 text-sm">
-                        <Button
-                            label="Select All Visible"
-                            icon="pi pi-check-square"
-                            size="small"
-                            severity="secondary"
-                            text
-                            @click="selectAllVisible"
-                        />
-                        <Button
-                            label="Clear All"
-                            icon="pi pi-times"
-                            size="small"
-                            severity="secondary"
-                            text
-                            @click="clearAllPermissions"
-                        />
-                    </div>
-                </div>
-
-                <!-- Permission Categories (grouped view) -->
-                <div class="bg-gray-50 dark:bg-gray-900 p-4 rounded-lg">
-                    <p class="text-sm font-medium mb-2">Selected Permissions: {{ roleForm.permissions?.length || 0 }}</p>
-                    <div class="flex flex-wrap gap-2">
-                        <Chip
-                            v-for="permId in roleForm.permissions?.slice(0, 10)"
-                            :key="permId"
-                            :label="getPermissionName(permId)"
-                            class="text-xs"
-                        />
-                        <Chip
-                            v-if="roleForm.permissions?.length > 10"
-                            :label="`+${roleForm.permissions.length - 10} more`"
-                            class="text-xs bg-gray-200"
-                        />
-                    </div>
+                    <DualListPermissionSelector
+                        v-model="roleForm.permissions"
+                        :permissions="allPermissions"
+                        :loading="loadingPermissions"
+                    />
                 </div>
             </div>
 
@@ -339,10 +258,11 @@
 </template>
 
 <script setup>
+import DualListPermissionSelector from '@/components/common/DualListPermissionSelector.vue';
 import PermissionButton from '@/components/common/PermissionButton.vue';
 import { useToast } from '@/composables/useToast';
 import { userManagementService } from '@/services/auth/userManagementService';
-import { computed, onMounted, ref, watch } from 'vue';
+import { onMounted, ref } from 'vue';
 
 const { showToast } = useToast();
 
@@ -354,35 +274,7 @@ const loadingPermissions = ref(false);
 const roles = ref([]);
 const users = ref([]);
 const allPermissions = ref([]);
-const filteredPermissions = ref([]);
 const selectedRole = ref(null);
-
-// Permission filtering
-const permissionSearch = ref('');
-const selectedModule = ref(null);
-let filterDebounceTimer = null;
-
-// Module options for filtering (derived from permissions)
-const moduleOptions = computed(() => {
-    const modules = new Set();
-    allPermissions.value.forEach(p => {
-        // Extract module from codename (e.g., "add_user" -> content_type app_label)
-        // Or use content_type if available
-        const parts = p.codename?.split('_') || [];
-        if (parts.length > 1) {
-            // Get app from content type if available, otherwise infer
-            const app = p.content_type?.app_label || parts.slice(1).join('_');
-            if (app) modules.add(app);
-        }
-    });
-    return [
-        { label: 'All Modules', value: null },
-        ...Array.from(modules).sort().map(m => ({
-            label: m.charAt(0).toUpperCase() + m.slice(1).replace(/_/g, ' '),
-            value: m
-        }))
-    ];
-});
 
 // Dialogs
 const roleDialog = ref(false);
@@ -396,57 +288,6 @@ const roleForm = ref({
     name: '',
     permissions: []
 });
-
-// Permission filtering methods
-const filterPermissions = () => {
-    const search = permissionSearch.value.toLowerCase().trim();
-    const module = selectedModule.value;
-
-    filteredPermissions.value = allPermissions.value.filter(p => {
-        // Search filter
-        const matchesSearch = !search ||
-            p.name?.toLowerCase().includes(search) ||
-            p.codename?.toLowerCase().includes(search);
-
-        // Module filter
-        const matchesModule = !module ||
-            p.content_type?.app_label === module ||
-            p.codename?.includes(module);
-
-        return matchesSearch && matchesModule;
-    });
-};
-
-const debouncedFilterPermissions = () => {
-    clearTimeout(filterDebounceTimer);
-    filterDebounceTimer = setTimeout(filterPermissions, 200);
-};
-
-// Permission toggle methods
-const togglePermission = (permissionId, checked) => {
-    if (checked) {
-        if (!roleForm.value.permissions.includes(permissionId)) {
-            roleForm.value.permissions.push(permissionId);
-        }
-    } else {
-        const idx = roleForm.value.permissions.indexOf(permissionId);
-        if (idx > -1) {
-            roleForm.value.permissions.splice(idx, 1);
-        }
-    }
-};
-
-const selectAllVisible = () => {
-    filteredPermissions.value.forEach(p => {
-        if (!roleForm.value.permissions.includes(p.id)) {
-            roleForm.value.permissions.push(p.id);
-        }
-    });
-};
-
-const clearAllPermissions = () => {
-    roleForm.value.permissions = [];
-};
 
 // Methods
 const loadRoles = async () => {
@@ -476,7 +317,6 @@ const loadPermissions = async () => {
         // Use getAllPermissions to fetch all pages
         const permissionsRes = await userManagementService.getAllPermissions();
         allPermissions.value = permissionsRes.data || [];
-        filterPermissions();
     } catch (error) {
         console.error('Error loading permissions:', error);
         showToast('error', 'Failed to load permissions', 'Error');
@@ -587,11 +427,6 @@ const getPermissionIcon = (codename) => {
     return 'pi pi-check';
 };
 
-const getPermissionName = (permissionId) => {
-    const permission = allPermissions.value.find(p => p.id === permissionId);
-    return permission?.name || permission?.codename || '';
-};
-
 onMounted(() => {
     loadRoles();
     loadPermissions();
@@ -622,6 +457,20 @@ onMounted(() => {
 
 :global(.dark) .role-card :deep(.p-card) {
     @apply bg-gray-800 border-gray-700;
+}
+
+/* Role dialog styling for dual-list selector */
+.role-dialog :deep(.p-dialog-content) {
+    @apply overflow-visible;
+    min-height: 500px;
+}
+
+/* Responsive dialog */
+@media (max-width: 768px) {
+    .role-dialog :deep(.p-dialog) {
+        width: 95vw !important;
+        max-width: none !important;
+    }
 }
 </style>
 
