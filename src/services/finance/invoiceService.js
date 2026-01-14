@@ -209,6 +209,35 @@ export const invoiceService = {
         }
     },
 
+    /**
+     * Get public invoice PDF URL for preview/download
+     * @param {string|number} id - Invoice ID
+     * @param {string} token - Share token
+     * @param {boolean} download - Whether to force download
+     * @returns {string} URL for the public PDF
+     */
+    getPublicPDFUrl(id, token, download = false) {
+        const baseUrl = axios.defaults.baseURL || '';
+        return `${baseUrl}${INVOICING_BASE}/public/invoice/${id}/${token}/pdf/${download ? '?download=true' : ''}`;
+    },
+
+    /**
+     * Fetch public invoice PDF as blob
+     * @param {string|number} id - Invoice ID
+     * @param {string} token - Share token
+     * @returns {Promise<Blob>} PDF blob
+     */
+    async getPublicInvoicePDF(id, token) {
+        try {
+            const response = await axios.get(`${INVOICING_BASE}/public/invoice/${id}/${token}/pdf/`, {
+                responseType: 'blob'
+            });
+            return response.data;
+        } catch (error) {
+            return handleError(error);
+        }
+    },
+
     async generateShareLink(id, options = {}) {
         try {
             const response = await axios.post(`${INVOICING_BASE}/invoices/${id}/generate-share-link/`, options);

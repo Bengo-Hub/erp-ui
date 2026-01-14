@@ -208,6 +208,35 @@ export const quotationService = {
         } catch (error) {
             return handleError(error);
         }
+    },
+
+    /**
+     * Get public quotation PDF URL for preview/download
+     * @param {string|number} id - Quotation ID
+     * @param {string} token - Share token
+     * @param {boolean} download - Whether to force download
+     * @returns {string} URL for the public PDF
+     */
+    getPublicPDFUrl(id, token, download = false) {
+        const baseUrl = axios.defaults.baseURL || '';
+        return `${baseUrl}${QUOTATIONS_BASE}/public/quotation/${id}/${token}/pdf/${download ? '?download=true' : ''}`;
+    },
+
+    /**
+     * Fetch public quotation PDF as blob
+     * @param {string|number} id - Quotation ID
+     * @param {string} token - Share token
+     * @returns {Promise<Blob>} PDF blob
+     */
+    async getPublicQuotationPDF(id, token) {
+        try {
+            const response = await axios.get(`${QUOTATIONS_BASE}/public/quotation/${id}/${token}/pdf/`, {
+                responseType: 'blob'
+            });
+            return response.data;
+        } catch (error) {
+            return handleError(error);
+        }
     }
 };
 
