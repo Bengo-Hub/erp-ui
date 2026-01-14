@@ -1,30 +1,45 @@
 <template>
     <div class="space-y-4">
-        <div class="field">
-            <label class="block text-sm font-medium mb-2">Bank</label>
-            <div class="flex gap-2">
-                <Dropdown
-                    v-model="localValue.bank_institution"
-                    :options="banks"
-                    optionLabel="name"
-                    optionValue="id"
-                    placeholder="Select Bank"
-                    class="w-full"
-                    @update:modelValue="val => { localValue.bank_institution = val; emitChange(); onBankChange(); }"
-                />
-                <Button icon="pi pi-plus" class="p-button-sm" @click="showAddBank = true" />
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div class="field">
+                <label class="block text-sm font-medium mb-2">Bank</label>
+                <div class="flex gap-2">
+                    <Dropdown
+                        v-model="localValue.bank_institution"
+                        :options="banks"
+                        optionLabel="name"
+                        optionValue="id"
+                        placeholder="Select Bank"
+                        class="w-full"
+                        filter
+                        @update:modelValue="val => { localValue.bank_institution = val; emitChange(); onBankChange(); }"
+                    />
+                    <Button icon="pi pi-plus" class="p-button-sm" @click="showAddBank = true" v-tooltip.top="'Add Bank'" />
+                </div>
             </div>
-        </div>
-        <div class="field">
-            <label class="block text-sm font-medium mb-2">Branch</label>
-            <div class="flex gap-2">
-                <Dropdown v-model="localValue.bank_branch" :options="branches" optionLabel="name" optionValue="id" placeholder="Select Branch" class="w-full" @update:modelValue="emitChange" />
-                <Button icon="pi pi-plus" class="p-button-sm" :disabled="!localValue.bank_institution" @click="showAddBranch = true" />
+            <div class="field">
+                <label class="block text-sm font-medium mb-2">Branch</label>
+                <div class="flex gap-2">
+                    <Dropdown v-model="localValue.bank_branch" :options="branches" optionLabel="name" optionValue="id" placeholder="Select Branch" class="w-full" filter @update:modelValue="emitChange" />
+                    <Button icon="pi pi-plus" class="p-button-sm" :disabled="!localValue.bank_institution" @click="showAddBranch = true" v-tooltip.top="'Add Branch'" />
+                </div>
             </div>
-        </div>
-        <div class="field">
-            <label class="block text-sm font-medium mb-2">Account Number</label>
-            <InputText v-model="localValue.account_number" class="w-full" @input="emitChange" />
+            <div class="field">
+                <label class="block text-sm font-medium mb-2">Account Name</label>
+                <InputText v-model="localValue.account_name" class="w-full" @input="emitChange" placeholder="Name as per bank records" />
+            </div>
+            <div class="field">
+                <label class="block text-sm font-medium mb-2">Account Number</label>
+                <InputText v-model="localValue.account_number" class="w-full" @input="emitChange" />
+            </div>
+            <div class="field">
+                <label class="block text-sm font-medium mb-2">Account Type</label>
+                <Dropdown v-model="localValue.account_type" :options="accountTypeOptions" optionLabel="label" optionValue="value" placeholder="Select Type" class="w-full" @change="emitChange" />
+            </div>
+            <div class="field">
+                <label class="block text-sm font-medium mb-2">Account Status</label>
+                <Dropdown v-model="localValue.status" :options="accountStatusOptions" optionLabel="label" optionValue="value" placeholder="Select Status" class="w-full" @change="emitChange" />
+            </div>
         </div>
 
         <Dialog v-model:visible="showAddBank" header="Add Bank" :modal="true" :style="{ width: '500px' }">
@@ -95,6 +110,18 @@ const showAddBank = ref(false);
 const showAddBranch = ref(false);
 const newBank = reactive({ name: '', code: '', short_code: '', swift_code: '' });
 const newBranch = reactive({ name: '', code: '' });
+
+const accountTypeOptions = [
+    { label: 'Savings', value: 'Savings' },
+    { label: 'Current', value: 'Current' },
+    { label: 'Fixed Deposit', value: 'Fixed Deposit' }
+];
+
+const accountStatusOptions = [
+    { label: 'Active', value: 'Active' },
+    { label: 'Inactive', value: 'Inactive' },
+    { label: 'Closed', value: 'Closed' }
+];
 
 watch(() => props.modelValue, (nv) => Object.assign(localValue, nv || {}));
 

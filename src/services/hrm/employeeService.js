@@ -573,11 +573,16 @@ export const employeeService = {
     // HR Details
     async getEmployeeHRDetails(employeeId) {
         try {
-                const response = await axios.get(`${EMPLOYEES_BASE}/hr-details/`, { params: { emp_id: employeeId } });
+            const response = await axios.get(`${EMPLOYEES_BASE}/hr-details/`, { params: { emp_id: employeeId } });
             return response.data;
         } catch (error) {
             return handleError(error);
         }
+    },
+
+    // List HR Details for tables/filters (used in hrData.vue)
+    listHRDetails(params = {}) {
+        return axios.get(`${EMPLOYEES_BASE}/hr-details/`, { params });
     },
 
     async updateEmployeeHRDetails(employeeId, hrDetailsData) {

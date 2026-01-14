@@ -8,7 +8,31 @@
                 </div>
             </template>
             <template #content>
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    <!-- Passport Photo -->
+                    <div class="field md:col-span-2 lg:col-span-1 lg:row-span-2">
+                        <label class="block text-sm font-medium mb-2">Passport Photo</label>
+                        <div v-if="passportPhotoPreview" class="mb-3 p-3 border border-surface-200 dark:border-surface-700 rounded-lg">
+                            <div class="flex flex-col items-center gap-3">
+                                <img :src="passportPhotoPreview" class="h-32 w-32 rounded-full object-cover" alt="Passport Photo" />
+                                <Button icon="pi pi-trash" severity="danger" text rounded size="small" @click="removePassportPhoto" v-tooltip.top="'Remove photo'" />
+                            </div>
+                        </div>
+                        <FileUpload mode="basic" name="passport_photo" accept="image/*" :maxFileSize="2000000" @select="onPassportPhotoUpload" chooseLabel="Upload Photo" class="w-full" />
+                    </div>
+                    <div class="field">
+                        <label class="block text-sm font-medium mb-2">Gender</label>
+                        <Dropdown v-model="employeeForm.gender" :options="genderOptions" optionLabel="label" optionValue="value" placeholder="Select Gender" class="w-full" />
+                    </div>
+                    <div class="field">
+                        <label class="block text-sm font-medium mb-2">Date of Birth</label>
+                        <Calendar v-model="employeeForm.date_of_birth" class="w-full" dateFormat="yy-mm-dd" showIcon />
+                        <small class="text-surface-500">Age: {{ ageYears || '—' }}</small>
+                    </div>
+                    <div class="field">
+                        <label class="block text-sm font-medium mb-2">Residential Status</label>
+                        <Dropdown v-model="employeeForm.residential_status" :options="residentialStatusOptions" optionLabel="label" optionValue="value" placeholder="Select Status" class="w-full" />
+                    </div>
                     <div class="field">
                         <label class="block text-sm font-medium mb-2">National ID</label>
                         <InputText v-model="employeeForm.national_id" class="w-full" />
@@ -26,9 +50,11 @@
                         <InputText v-model="employeeForm.nssf_no" class="w-full" />
                     </div>
                     <div class="field">
-                        <label class="block text-sm font-medium mb-2">Date of Birth</label>
-                        <Calendar v-model="employeeForm.date_of_birth" class="w-full" dateFormat="yy-mm-dd" showIcon />
-                        <small class="text-surface-500">Age: {{ ageYears || '—' }}</small>
+                        <label class="block text-sm font-medium mb-2">Employee Self-Service (ESS)</label>
+                        <div class="flex items-center gap-2">
+                            <Checkbox v-model="employeeForm.allow_ess" :binary="true" inputId="allow_ess" />
+                            <label for="allow_ess" class="cursor-pointer">Allow ESS Access</label>
+                        </div>
                     </div>
                 </div>
             </template>
@@ -105,12 +131,22 @@ const employeeForm = reactive({
     pin_no: '',
     shif_or_nhif_number: '',
     nssf_no: '',
-    date_of_birth: ''
+    date_of_birth: '',
+    gender: '',
+    residential_status: 'Resident',
+    allow_ess: false,
+    passport_photo: null
 });
 const contactForm = reactive({
     id: null,
     personal_email: '',
-    mobile_phone: ''
+    mobile_phone: '',
+    official_phone: '',
+    country: 'KE',
+    county: '',
+    city: '',
+    zip: '',
+    address: ''
 });
 const kinForm = reactive({
     id: null,
@@ -124,12 +160,34 @@ const bankForm = reactive({
     bank_institution: null,
     bank_branch: null,
     account_number: '',
-    is_primary: true
+    account_name: '',
+    account_type: 'Savings',
+    is_primary: true,
+    status: 'Active',
+    is_verified: false
 });
 const banks = ref([]);
 const branches = ref([]);
 const salaryDetails = ref(null);
 const saving = ref(false);
+const passportPhotoPreview = ref('');
+
+const genderOptions = [
+    { label: 'Male', value: 'Male' },
+    { label: 'Female', value: 'Female' },
+    { label: 'Other', value: 'Other' }
+];
+
+const residentialStatusOptions = [
+    { label: 'Resident', value: 'Resident' },
+    { label: 'Non-Resident', value: 'Non-Resident' }
+];
+
+const accountTypeOptions = [
+    { label: 'Savings', value: 'Savings' },
+    { label: 'Current', value: 'Current' },
+    { label: 'Fixed Deposit', value: 'Fixed Deposit' }
+];
 
 const ageYears = computed(() => {
     const dob = employeeForm.date_of_birth ? new Date(employeeForm.date_of_birth) : null;
@@ -140,6 +198,23 @@ const ageYears = computed(() => {
     if (m < 0 || (m === 0 && today.getDate() < dob.getDate())) age--;
     return age;
 });
+
+function onPassportPhotoUpload(event) {
+    const file = event.files[0];
+    if (file) {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            passportPhotoPreview.value = e.target.result;
+            employeeForm.passport_photo = file;
+        };
+        reader.readAsDataURL(file);
+    }
+}
+
+function removePassportPhoto() {
+    passportPhotoPreview.value = '';
+    employeeForm.passport_photo = null;
+}
 
 async function loadBanks() {
     const res = await systemConfigService.getBanks();
@@ -162,6 +237,12 @@ async function loadAll() {
             employeeForm.shif_or_nhif_number = empCore.shif_or_nhif_number || '';
             employeeForm.nssf_no = empCore.nssf_no || '';
             employeeForm.date_of_birth = empCore.date_of_birth || '';
+            employeeForm.gender = empCore.gender || '';
+            employeeForm.residential_status = empCore.residential_status || 'Resident';
+            employeeForm.allow_ess = empCore.allow_ess || false;
+            if (empCore.passport_photo) {
+                passportPhotoPreview.value = empCore.passport_photo;
+            }
         }
         // Contacts
         const contacts = await employeeService.getEmployeeContacts(employeeId.value);
@@ -170,6 +251,12 @@ async function loadAll() {
             contactForm.id = primaryContact.id;
             contactForm.personal_email = primaryContact.personal_email || '';
             contactForm.mobile_phone = primaryContact.mobile_phone || '';
+            contactForm.official_phone = primaryContact.official_phone || '';
+            contactForm.country = primaryContact.country || 'KE';
+            contactForm.county = primaryContact.county || '';
+            contactForm.city = primaryContact.city || '';
+            contactForm.zip = primaryContact.zip || '';
+            contactForm.address = primaryContact.address || '';
         }
         // Kin
         const kins = await employeeService.getEmployeeNextOfKins(employeeId.value);
@@ -191,7 +278,11 @@ async function loadAll() {
             bankForm.bank_institution = primary.bank_institution || null;
             bankForm.bank_branch = primary.bank_branch || null;
             bankForm.account_number = primary.account_number || '';
+            bankForm.account_name = primary.account_name || '';
+            bankForm.account_type = primary.account_type || 'Savings';
             bankForm.is_primary = true;
+            bankForm.status = primary.status || 'Active';
+            bankForm.is_verified = primary.is_verified || false;
         }
         await loadBanks();
     } catch (e) {
@@ -256,25 +347,36 @@ async function saveAll() {
     try {
         saving.value = true;
         // Core
-        await employeeService.updateEmployee(employeeId.value, {
+        const corePayload = {
             national_id: employeeForm.national_id || null,
             pin_no: employeeForm.pin_no || null,
             shif_or_nhif_number: employeeForm.shif_or_nhif_number || null,
             nssf_no: employeeForm.nssf_no || null,
-            date_of_birth: employeeForm.date_of_birth || null
-        });
+            date_of_birth: employeeForm.date_of_birth || null,
+            gender: employeeForm.gender || null,
+            residential_status: employeeForm.residential_status || 'Resident',
+            allow_ess: employeeForm.allow_ess || false
+        };
+        // Handle passport photo if changed
+        if (employeeForm.passport_photo && typeof employeeForm.passport_photo !== 'string') {
+            corePayload.passport_photo = employeeForm.passport_photo;
+        }
+        await employeeService.updateEmployee(employeeId.value, corePayload);
         // Contact
+        const contactPayload = {
+            personal_email: contactForm.personal_email || null,
+            mobile_phone: contactForm.mobile_phone || null,
+            official_phone: contactForm.official_phone || null,
+            country: contactForm.country || 'KE',
+            county: contactForm.county || null,
+            city: contactForm.city || null,
+            zip: contactForm.zip || null,
+            address: contactForm.address || null
+        };
         if (contactForm.id) {
-            await employeeService.updateEmployeeContact(employeeId.value, contactForm.id, {
-                personal_email: contactForm.personal_email || null,
-                mobile_phone: contactForm.mobile_phone || null
-            });
+            await employeeService.updateEmployeeContact(employeeId.value, contactForm.id, contactPayload);
         } else if (contactForm.personal_email || contactForm.mobile_phone) {
-            await employeeService.addEmployeeContact(employeeId.value, {
-                personal_email: contactForm.personal_email || null,
-                mobile_phone: contactForm.mobile_phone || null,
-                country: 'KE'
-            });
+            await employeeService.addEmployeeContact(employeeId.value, contactPayload);
         }
         // Kin
         if (kinForm.id) {
@@ -295,20 +397,19 @@ async function saveAll() {
         // Bank
         if (bankForm.account_number && bankForm.bank_institution && bankForm.bank_branch) {
             let bankAccountId = bankForm.id;
+            const bankPayload = {
+                bank_institution: bankForm.bank_institution,
+                bank_branch: bankForm.bank_branch,
+                account_number: bankForm.account_number,
+                account_name: bankForm.account_name || null,
+                account_type: bankForm.account_type || 'Savings',
+                is_primary: true,
+                status: bankForm.status || 'Active'
+            };
             if (bankAccountId) {
-                await employeeService.updateEmployeeBankAccount(employeeId.value, bankAccountId, {
-                    bank_institution: bankForm.bank_institution,
-                    bank_branch: bankForm.bank_branch,
-                    account_number: bankForm.account_number,
-                    is_primary: true
-                });
+                await employeeService.updateEmployeeBankAccount(employeeId.value, bankAccountId, bankPayload);
             } else {
-                const created = await employeeService.addEmployeeBankAccount(employeeId.value, {
-                    bank_institution: bankForm.bank_institution,
-                    bank_branch: bankForm.bank_branch,
-                    account_number: bankForm.account_number,
-                    is_primary: true
-                });
+                const created = await employeeService.addEmployeeBankAccount(employeeId.value, bankPayload);
                 bankAccountId = created?.id;
                 bankForm.id = bankAccountId || bankForm.id;
             }

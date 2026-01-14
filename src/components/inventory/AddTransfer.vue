@@ -60,7 +60,15 @@ const fetchBranches = async () => {
     try {
         loading.value = true;
         const response = await coreService.getBranches();
-        branches.value = response.data.results;
+        branches.value = response.data.results || response.data || [];
+        // Auto-select user's default branch as "from" branch
+        const biz = JSON.parse(sessionStorage.getItem('business') || '{}');
+        if (biz?.branch_code && !transfer.branch_from) {
+            const userBranch = branches.value.find(b => b.branch_code === biz.branch_code || b.id === biz.id);
+            if (userBranch) {
+                transfer.branch_from = userBranch.id;
+            }
+        }
     } catch (error) {
         showError('Failed to fetch branches', error);
     } finally {

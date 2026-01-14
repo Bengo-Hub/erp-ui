@@ -101,11 +101,15 @@ function fetchHrData() {
             </div>
         </template>
         <Column selectionMode="multiple" headerStyle="width: 3em" />
-        <Column field="hrData.staffNo" header="Staff No" />
-        <Column field="hrData.name" header="Employee" />
-        <Column field="hrData.JobTitle" header="Job Title" />
-        <Column field="hrData.ReportsTo" header="Reports To" />
-        <Column field="" header="Department" />
-        <Column field="" header="Region" />
+        <Column field="hrData.staffNo" header="Staff No" sortable />
+        <Column field="hrData.name" header="Employee" sortable />
+        <Column field="hrData.JobTitle" header="Job Title" sortable />
+        <Column header="Reports To">
+            <template #body="{ data }">
+                {{ data.hrData?.['Reports to']?.name || '—' }}
+            </template>
+        </Column>
+        <Column field="hrData.Department" header="Department" sortable />
+        <Column field="hrData.Region" header="Region" sortable />
     </DataTable>
 </template>

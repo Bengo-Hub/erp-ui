@@ -109,7 +109,15 @@ const loadInventoryItems = async () => {
 const loadBranches = async () => {
     try {
         const response = await coreService.getBranches();
-        branches.value = response.data.results;
+        branches.value = response.data.results || response.data || [];
+        // Auto-select user's default branch
+        const biz = JSON.parse(sessionStorage.getItem('business') || '{}');
+        if (biz?.branch_code && !form.branch) {
+            const userBranch = branches.value.find(b => b.branch_code === biz.branch_code || b.id === biz.id);
+            if (userBranch) {
+                form.branch = userBranch.id;
+            }
+        }
     } catch (error) {
         toast.add({
             severity: 'error',
