@@ -1,10 +1,11 @@
 <script setup>
-import { ref, computed, onMounted } from 'vue';
+import { ref, computed, onMounted, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useToast } from '@/composables/useToast';
 import { creditNoteService } from '@/services/finance/billingDocumentsService';
 import { invoiceService } from '@/services/finance/invoiceService';
 import { crmService } from '@/services/crm/crmService';
+import { financeService } from '@/services/finance/financeService';
 import ItemsTable from '@/components/shared/ItemsTable.vue';
 import { ecommerceService } from '@/services/ecommerce/ecommerceService';
 import { formatCurrency } from '@/utils/formatters';
@@ -27,6 +28,9 @@ const form = ref({
     items: [],
     subtotal: 0,
     tax_amount: 0,
+    tax_mode: 'line_items',
+    tax_rate: 0,
+    tax_rate_id: null,
     total: 0
 });
 
@@ -34,6 +38,7 @@ const form = ref({
 const customers = ref([]);
 const invoices = ref([]);
 const products = ref([]);
+const taxRates = ref([]);
 
 // Credit note reasons
 const reasonOptions = [
@@ -87,6 +92,35 @@ const loadProducts = async () => {
     } catch (error) {
         console.error('Error loading products:', error);
         products.value = [];
+    }
+};
+
+const loadTaxRates = async () => {
+    try {
+        const response = await financeService.getTaxRates({ page_size: 100 });
+        const list = response.data?.results || response.data || [];
+        taxRates.value = Array.isArray(list) ? list.map(t => ({
+            id: t.id,
+            label: t.tax_name || t.name || t.tax || t.code || `Tax ${t.id}`,
+            rate: parseFloat(t.percentage || t.tax_rate || 0)
+        })) : [];
+    } catch (error) {
+        console.error('Error loading tax rates:', error);
+        taxRates.value = [];
+    }
+};
+
+const taxOptions = computed(() => {
+    const opts = taxRates.value.map(t => ({ label: `${t.label} (${t.rate}%)`, value: t.id }));
+    opts.push({ label: 'Custom / Other', value: 'custom' });
+    return opts;
+});
+
+const onTaxSelect = (val) => {
+    if (val === 'custom' || !val) return;
+    const picked = taxRates.value.find(t => t.id === val);
+    if (picked) {
+        form.value.tax_rate = Number(picked.rate);
     }
 };
 
@@ -185,25 +219,47 @@ const onInvoiceSelect = async (invoice) => {
     }
 };
 
-// Calculate totals
+// Calculate totals - supports both per-line and on-total tax modes
 const calculateTotals = () => {
+    const itemsArray = Array.isArray(form.value.items) ? form.value.items : [];
     let subtotal = 0;
     let taxAmount = 0;
 
-    form.value.items.forEach(item => {
+    // First pass: calculate subtotals
+    itemsArray.forEach(item => {
         const lineSubtotal = (item.quantity || 0) * (item.unit_price || 0);
-        const lineTax = lineSubtotal * (item.tax_rate || 0) / 100;
         item.subtotal = lineSubtotal;
-        item.tax_amount = lineTax;
-        item.total = lineSubtotal + lineTax;
         subtotal += lineSubtotal;
-        taxAmount += lineTax;
     });
 
-    form.value.subtotal = subtotal;
-    form.value.tax_amount = taxAmount;
-    form.value.total = subtotal + taxAmount;
+    form.value.subtotal = Math.round(subtotal * 100) / 100;
+
+    // Calculate tax based on selected mode
+    if (form.value.tax_mode === 'on_total') {
+        const rate = Number(form.value.tax_rate) || 0;
+        taxAmount = (subtotal * rate) / 100;
+        // Zero-out per-line tax amounts when using on-total tax
+        itemsArray.forEach(item => {
+            item.tax_amount = 0;
+            item.total = item.subtotal;
+        });
+    } else {
+        // Per-line tax calculation
+        itemsArray.forEach(item => {
+            const lineTax = (item.subtotal || 0) * (item.tax_rate || 0) / 100;
+            item.tax_amount = lineTax;
+            item.total = (item.subtotal || 0) + lineTax;
+            taxAmount += lineTax;
+        });
+    }
+
+    form.value.tax_amount = Math.round(taxAmount * 100) / 100;
+    form.value.total = Math.round((subtotal + taxAmount) * 100) / 100;
 };
+
+// Watch for tax mode/rate changes
+watch(() => form.value.tax_rate, () => calculateTotals());
+watch(() => form.value.tax_mode, () => calculateTotals());
 
 // Save
 const save = async () => {
@@ -239,6 +295,8 @@ const save = async () => {
             notes: form.value.notes,
             subtotal: form.value.subtotal,
             tax_amount: form.value.tax_amount,
+            tax_mode: form.value.tax_mode,
+            tax_rate: form.value.tax_rate,
             total: form.value.total,
             items: form.value.items.map(item => ({
                 product_id: item.product?.product?.id || item.product?.id,
@@ -276,7 +334,7 @@ const cancel = () => {
 
 onMounted(async () => {
     loading.value = true;
-    await Promise.all([loadCustomers(), loadInvoices(), loadProducts()]);
+    await Promise.all([loadCustomers(), loadInvoices(), loadProducts(), loadTaxRates()]);
 
     if (isEditMode.value) {
         await loadCreditNote(route.params.id);
@@ -376,7 +434,7 @@ onMounted(async () => {
 
                 <!-- Totals -->
                 <div class="lg:col-span-2 flex justify-end">
-                    <div class="w-full md:w-80 space-y-2 p-4 bg-surface-50 dark:bg-surface-800 rounded-lg">
+                    <div class="w-full md:w-96 space-y-2 p-4 bg-surface-50 dark:bg-surface-800 rounded-lg">
                         <div class="flex justify-between">
                             <span>Subtotal:</span>
                             <span class="font-semibold">{{ formatCurrency(form.subtotal) }}</span>
@@ -384,6 +442,37 @@ onMounted(async () => {
                         <div class="flex justify-between">
                             <span>Tax:</span>
                             <span class="font-semibold">{{ formatCurrency(form.tax_amount) }}</span>
+                        </div>
+                        <div class="flex items-center gap-2 flex-wrap">
+                            <Dropdown
+                                v-model="form.tax_mode"
+                                :options="[{ label: 'Per line items', value: 'line_items' }, { label: 'On final amount', value: 'on_total' }]"
+                                optionLabel="label"
+                                optionValue="value"
+                                class="w-36"
+                                @change="calculateTotals"
+                            />
+                            <template v-if="form.tax_mode === 'on_total'">
+                                <Dropdown
+                                    v-model="form.tax_rate_id"
+                                    :options="taxOptions"
+                                    optionLabel="label"
+                                    optionValue="value"
+                                    class="w-40"
+                                    placeholder="Select tax"
+                                    @change="val => { onTaxSelect(val); calculateTotals(); }"
+                                />
+                                <InputNumber
+                                    v-if="form.tax_rate_id === 'custom' || taxRates.length === 0"
+                                    v-model="form.tax_rate"
+                                    suffix="%"
+                                    :min="0"
+                                    :max="100"
+                                    class="w-20"
+                                    @input="calculateTotals"
+                                />
+                                <small v-else class="text-sm">Rate: {{ form.tax_rate }}%</small>
+                            </template>
                         </div>
                         <Divider />
                         <div class="flex justify-between text-lg">

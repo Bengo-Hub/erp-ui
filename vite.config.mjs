@@ -10,6 +10,10 @@ import { defineConfig } from 'vite';
 
 // https://vitejs.dev/config/
 export default defineConfig({
+    server: {
+        port: 5216,  // Default port 5173 falls in Windows excluded range (5116-5215)
+        strictPort: false  // Allow fallback to next available port
+    },
     optimizeDeps: {
         noDiscovery: true
     },
