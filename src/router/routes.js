@@ -6,7 +6,7 @@ import { crmRoutes } from './crmRoutes';
 import { dashboardRoutes } from './dashboardRoutes';
 import { ecommerceRoutes } from './ecommerceRoutes';
 import { employeeRoutes } from './employeeRoutes';
-import { financeRoutes } from './financeRoutes';
+import { financeRoutes, publicFinanceRoutes } from './financeRoutes';
 import { inventoryRoutes } from './inventoryRoutes';
 import { leaveRoutes } from './leaveRoutes';
 import { manufacturingRoutes } from './manufacturingRoutes';
@@ -123,7 +123,9 @@ const routes = [
         ]
     },
     //#################### AUTH ROUTES #########################################
-    ...authRoutes
+    ...authRoutes,
+    //#################### PUBLIC ROUTES (No layout wrapper) ####################
+    ...publicFinanceRoutes
 ];
 
 export default routes;

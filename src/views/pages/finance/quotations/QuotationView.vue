@@ -22,6 +22,9 @@ const quotation = ref(null);
 const loading = ref(false);
 const showSendDialog = ref(false);
 const showConvertDialog = ref(false);
+const showShareDialog = ref(false);
+const shareUrl = ref(null);
+const shareLoading = ref(false);
 const actionLoading = ref(false);
 const showPdfModal = ref(false);
 const pdfBlob = ref(null);
@@ -258,6 +261,76 @@ const goBack = () => {
     router.push('/finance/quotations');
 };
 
+// Share functionality
+const generateShareLink = async () => {
+    shareLoading.value = true;
+    try {
+        const response = await quotationService.generateShareLink(quotation.value.id);
+        shareUrl.value = response.url || response.public_url;
+        showShareDialog.value = true;
+        showToast('success', 'Success', 'Share link generated');
+    } catch (error) {
+        console.error('Error generating share link:', error);
+        showToast('error', 'Error', 'Failed to generate share link');
+    } finally {
+        shareLoading.value = false;
+    }
+};
+
+const copyShareUrlToClipboard = async () => {
+    if (!shareUrl.value) return;
+    try {
+        await navigator.clipboard.writeText(shareUrl.value);
+        showToast('success', 'Copied', 'Share URL copied to clipboard');
+    } catch (error) {
+        showToast('error', 'Error', 'Failed to copy URL');
+    }
+};
+
+// Handle sending quotation via WhatsApp
+const handleSendViaWhatsApp = async (payload) => {
+    actionLoading.value = true;
+    try {
+        // First generate a share link if we don't have one
+        let publicUrl = shareUrl.value;
+        if (!publicUrl) {
+            const response = await quotationService.generateShareLink(quotation.value.id);
+            publicUrl = response.url || response.public_url;
+        }
+
+        if (!publicUrl) {
+            showToast('error', 'Error', 'Failed to generate share link');
+            return;
+        }
+
+        // Format phone number (remove non-numeric characters)
+        const phone = payload.phone.replace(/[^\d]/g, '');
+
+        // Build message with the share link
+        const customerName = quotation.value?.customer_details?.business_name ||
+            (quotation.value?.customer?.user?.first_name
+                ? `${quotation.value.customer.user.first_name} ${quotation.value.customer.user.last_name || ''}`.trim()
+                : quotation.value?.customer?.name || 'Customer');
+
+        const defaultMessage = `Hello ${customerName}, here is your quotation ${quotation.value.quotation_number}. Click the link below to view:`;
+        const message = payload.message || defaultMessage;
+        const fullMessage = `${message}\n\n${publicUrl}`;
+
+        // Open WhatsApp Web with pre-filled message
+        const encodedMessage = encodeURIComponent(fullMessage);
+        const whatsappUrl = `https://wa.me/${phone}?text=${encodedMessage}`;
+        window.open(whatsappUrl, '_blank');
+
+        showToast('success', 'Success', 'WhatsApp opened with quotation link');
+        showSendDialog.value = false;
+    } catch (error) {
+        console.error('Error sending via WhatsApp:', error);
+        showToast('error', 'Error', 'Failed to send via WhatsApp');
+    } finally {
+        actionLoading.value = false;
+    }
+};
+
 // Lifecycle
 onMounted(() => {
     fetchQuotation();
@@ -328,21 +401,29 @@ onMounted(() => {
                             @click="declineQuotation"
                             class="p-button-danger"
                         />
-                        <PermissionButton 
+                        <PermissionButton
                             v-if="canSend"
                             :permission="'send_quotation'"
-                            label="Send" 
-                            icon="pi pi-send" 
+                            label="Send"
+                            icon="pi pi-send"
                             @click="openSendDialog"
                             class="p-button-primary"
                         />
-                        <PermissionButton 
-                            v-if="quotation" 
+                        <PermissionButton
+                            :permission="'share_quotation'"
+                            label="Share"
+                            icon="pi pi-share-alt"
+                            class="p-button-secondary"
+                            @click="generateShareLink"
+                            :loading="shareLoading"
+                        />
+                        <PermissionButton
+                            v-if="quotation"
                             :permission="'view_quotation'"
-                            icon="pi pi-eye" 
-                            label="Preview" 
-                            class="p-button-secondary" 
-                            @click="previewPDF" 
+                            icon="pi pi-eye"
+                            label="Preview"
+                            class="p-button-secondary"
+                            @click="previewPDF"
                         />
                         <PermissionButton 
                             v-if="quotation.status === 'sent'"
@@ -586,14 +667,98 @@ onMounted(() => {
         </div>
 
         <!-- Email Send Dialog -->
-        <EmailSendDialog 
+        <EmailSendDialog
             v-model:visible="showSendDialog"
             :document="quotation"
             documentType="quotation"
             :loading="actionLoading"
             @send="handleSendQuotation"
+            @send-via-whatsapp="handleSendViaWhatsApp"
             @schedule="handleScheduleQuotation"
         />
+
+        <!-- Share Dialog -->
+        <Dialog
+            v-model:visible="showShareDialog"
+            modal
+            header="Share Quotation"
+            :style="{ width: '500px' }"
+            :dismissableMask="true"
+        >
+            <div v-if="shareUrl" class="space-y-4">
+                <Message severity="success" :closable="false">
+                    <i class="pi pi-check-circle mr-2"></i>
+                    <span>Public link generated successfully</span>
+                </Message>
+
+                <div class="bg-gray-50 dark:bg-gray-800 p-4 rounded border border-gray-200 dark:border-gray-700">
+                    <p class="text-sm text-gray-600 dark:text-gray-400 mb-2">Share this link with your customer:</p>
+                    <div class="flex gap-2">
+                        <InputText
+                            :value="shareUrl"
+                            readonly
+                            class="flex-1"
+                        />
+                        <Button
+                            icon="pi pi-copy"
+                            class="p-button-outlined"
+                            @click="copyShareUrlToClipboard"
+                            v-tooltip="'Copy to clipboard'"
+                        />
+                    </div>
+                </div>
+
+                <div class="space-y-2">
+                    <p class="text-sm font-medium text-gray-700 dark:text-gray-300">Your customer can:</p>
+                    <ul class="text-sm text-gray-600 dark:text-gray-400 space-y-1 list-disc list-inside">
+                        <li>View the quotation details</li>
+                        <li>Download PDF copy</li>
+                        <li>Accept or decline the quotation</li>
+                        <li>Print the quotation</li>
+                    </ul>
+                </div>
+
+                <Divider />
+
+                <div>
+                    <p class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">Or send directly:</p>
+                    <div class="flex gap-2">
+                        <Button
+                            label="Send via Email"
+                            icon="pi pi-envelope"
+                            class="flex-1"
+                            @click="() => {
+                                showShareDialog = false;
+                                openSendDialog();
+                            }"
+                        />
+                        <Button
+                            label="Send via WhatsApp"
+                            icon="pi pi-whatsapp"
+                            class="flex-1 p-button-success"
+                            @click="() => {
+                                const phone = quotation?.customer_details?.user?.phone || quotation?.customer?.user?.phone || '';
+                                if (phone) {
+                                    const customerName = quotation?.customer_details?.business_name || quotation?.customer?.user?.first_name || 'Customer';
+                                    const message = `Hello ${customerName}, here is your quotation ${quotation.quotation_number}. Click the link below to view:\n\n${shareUrl}`;
+                                    const encodedMessage = encodeURIComponent(message);
+                                    const whatsappUrl = `https://wa.me/${phone.replace(/[^\d]/g, '')}?text=${encodedMessage}`;
+                                    window.open(whatsappUrl, '_blank');
+                                    showShareDialog = false;
+                                } else {
+                                    showShareDialog = false;
+                                    openSendDialog();
+                                }
+                            }"
+                        />
+                    </div>
+                </div>
+            </div>
+
+            <template #footer v-if="shareUrl">
+                <Button label="Done" @click="showShareDialog = false" />
+            </template>
+        </Dialog>
 
         <!-- PDF Preview Modal -->
         <PDFPreview v-model:isOpen="showPdfModal" :pdfBlob="pdfBlob" :title="`Quotation - ${quotation?.quotation_number || ''}`" :filename="`quotation-${quotation?.quotation_number || ''}.pdf`" />

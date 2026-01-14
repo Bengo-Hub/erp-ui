@@ -4,6 +4,7 @@ import { useRoute, useRouter } from 'vue-router';
 import { useToast } from '@/composables/useToast';
 import { deliveryNoteService } from '@/services/finance/billingDocumentsService';
 import DocumentStatusBadge from '@/components/finance/shared/DocumentStatusBadge.vue';
+import EmailSendDialog from '@/components/finance/invoicing/EmailSendDialog.vue';
 import { formatCurrency, formatDate } from '@/utils/formatters';
 
 const route = useRoute();
@@ -13,6 +14,11 @@ const { showToast } = useToast();
 const loading = ref(true);
 const deliveryNote = ref(null);
 const markingDelivered = ref(false);
+const showSendDialog = ref(false);
+const showShareDialog = ref(false);
+const shareUrl = ref(null);
+const shareLoading = ref(false);
+const actionLoading = ref(false);
 
 const loadDeliveryNote = async () => {
     try {
@@ -67,6 +73,95 @@ const edit = () => {
     router.push(`/finance/delivery-notes/${route.params.id}/edit`);
 };
 
+const openSendDialog = () => {
+    showSendDialog.value = true;
+};
+
+// Share functionality
+const generateShareLink = async () => {
+    shareLoading.value = true;
+    try {
+        const response = await deliveryNoteService.generateShareLink(route.params.id);
+        shareUrl.value = response.url || response.public_url;
+        showShareDialog.value = true;
+        showToast('success', 'Success', 'Share link generated');
+    } catch (error) {
+        console.error('Error generating share link:', error);
+        showToast('error', 'Error', 'Failed to generate share link');
+    } finally {
+        shareLoading.value = false;
+    }
+};
+
+const copyShareUrlToClipboard = async () => {
+    if (!shareUrl.value) return;
+    try {
+        await navigator.clipboard.writeText(shareUrl.value);
+        showToast('success', 'Copied', 'Share URL copied to clipboard');
+    } catch (error) {
+        showToast('error', 'Error', 'Failed to copy URL');
+    }
+};
+
+// Handle sending delivery note via email
+const handleSendDeliveryNote = async (payload) => {
+    actionLoading.value = true;
+    try {
+        await deliveryNoteService.sendDeliveryNote(route.params.id, payload);
+        showToast('success', 'Success', 'Delivery note sent successfully');
+        showSendDialog.value = false;
+        await loadDeliveryNote();
+    } catch (error) {
+        console.error('Error sending delivery note:', error);
+        showToast('error', 'Error', 'Failed to send delivery note');
+    } finally {
+        actionLoading.value = false;
+    }
+};
+
+// Handle sending via WhatsApp
+const handleSendViaWhatsApp = async (payload) => {
+    actionLoading.value = true;
+    try {
+        // First generate a share link if we don't have one
+        let publicUrl = shareUrl.value;
+        if (!publicUrl) {
+            const response = await deliveryNoteService.generateShareLink(route.params.id);
+            publicUrl = response.url || response.public_url;
+        }
+
+        if (!publicUrl) {
+            showToast('error', 'Error', 'Failed to generate share link');
+            return;
+        }
+
+        // Format phone number
+        const phone = payload.phone.replace(/[^\d]/g, '');
+
+        // Build message
+        const customerName = deliveryNote.value?.customer_details?.full_name ||
+            deliveryNote.value?.supplier_details?.full_name ||
+            deliveryNote.value?.customer_name || 'Customer';
+
+        const defaultMessage = `Hello ${customerName}, here is your delivery note ${deliveryNote.value.delivery_note_number}. Click the link below to view:`;
+        const message = payload.message || defaultMessage;
+        const fullMessage = `${message}\n\n${publicUrl}`;
+
+        // Open WhatsApp
+        const encodedMessage = encodeURIComponent(fullMessage);
+        const whatsappUrl = `https://wa.me/${phone}?text=${encodedMessage}`;
+        window.open(whatsappUrl, '_blank');
+
+        showToast('success', 'Success', 'WhatsApp opened with delivery note link');
+        showSendDialog.value = false;
+    } catch (error) {
+        console.error('Error sending via WhatsApp:', error);
+        showToast('error', 'Error', 'Failed to send via WhatsApp');
+    } finally {
+        actionLoading.value = false;
+    }
+};
+
 onMounted(() => {
     loadDeliveryNote();
 });
@@ -84,8 +179,10 @@ onMounted(() => {
                         <p class="text-surface-500 m-0" v-if="deliveryNote">{{ deliveryNote.delivery_note_number }}</p>
                     </div>
                 </div>
-                <div class="flex gap-2" v-if="deliveryNote">
+                <div class="flex flex-wrap gap-2" v-if="deliveryNote">
                     <Button label="Edit" icon="pi pi-pencil" severity="secondary" @click="edit" />
+                    <Button label="Send" icon="pi pi-send" @click="openSendDialog" />
+                    <Button label="Share" icon="pi pi-share-alt" severity="secondary" @click="generateShareLink" :loading="shareLoading" />
                     <Button label="Download PDF" icon="pi pi-download" outlined @click="downloadPDF" />
                     <Button
                         v-if="deliveryNote.status !== 'delivered'"
@@ -171,11 +268,109 @@ onMounted(() => {
                 <p class="text-surface-500">Delivery note not found</p>
             </div>
         </div>
+
+        <!-- Email Send Dialog -->
+        <EmailSendDialog
+            v-model:visible="showSendDialog"
+            :document="deliveryNote"
+            documentType="delivery note"
+            :loading="actionLoading"
+            @send="handleSendDeliveryNote"
+            @send-via-whatsapp="handleSendViaWhatsApp"
+        />
+
+        <!-- Share Dialog -->
+        <Dialog
+            v-model:visible="showShareDialog"
+            modal
+            header="Share Delivery Note"
+            :style="{ width: '500px' }"
+            :dismissableMask="true"
+        >
+            <div v-if="shareUrl" class="space-y-4">
+                <Message severity="success" :closable="false">
+                    <i class="pi pi-check-circle mr-2"></i>
+                    <span>Public link generated successfully</span>
+                </Message>
+
+                <div class="bg-gray-50 dark:bg-gray-800 p-4 rounded border border-gray-200 dark:border-gray-700">
+                    <p class="text-sm text-gray-600 dark:text-gray-400 mb-2">Share this link with your customer:</p>
+                    <div class="flex gap-2">
+                        <InputText
+                            :value="shareUrl"
+                            readonly
+                            class="flex-1"
+                        />
+                        <Button
+                            icon="pi pi-copy"
+                            class="p-button-outlined"
+                            @click="copyShareUrlToClipboard"
+                            v-tooltip="'Copy to clipboard'"
+                        />
+                    </div>
+                </div>
+
+                <div class="space-y-2">
+                    <p class="text-sm font-medium text-gray-700 dark:text-gray-300">Your customer can:</p>
+                    <ul class="text-sm text-gray-600 dark:text-gray-400 space-y-1 list-disc list-inside">
+                        <li>View the delivery note details</li>
+                        <li>Download PDF copy</li>
+                        <li>Print the delivery note</li>
+                    </ul>
+                </div>
+
+                <Divider />
+
+                <div>
+                    <p class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">Or send directly:</p>
+                    <div class="flex gap-2">
+                        <Button
+                            label="Send via Email"
+                            icon="pi pi-envelope"
+                            class="flex-1"
+                            @click="() => {
+                                showShareDialog = false;
+                                openSendDialog();
+                            }"
+                        />
+                        <Button
+                            label="Send via WhatsApp"
+                            icon="pi pi-whatsapp"
+                            class="flex-1 p-button-success"
+                            @click="() => {
+                                const phone = deliveryNote?.customer_details?.phone || deliveryNote?.supplier_details?.phone || '';
+                                if (phone) {
+                                    const customerName = deliveryNote?.customer_details?.full_name || deliveryNote?.supplier_details?.full_name || deliveryNote?.customer_name || 'Customer';
+                                    const message = `Hello ${customerName}, here is your delivery note ${deliveryNote.delivery_note_number}. Click the link below to view:\n\n${shareUrl}`;
+                                    const encodedMessage = encodeURIComponent(message);
+                                    const whatsappUrl = `https://wa.me/${phone.replace(/[^\d]/g, '')}?text=${encodedMessage}`;
+                                    window.open(whatsappUrl, '_blank');
+                                    showShareDialog = false;
+                                } else {
+                                    showShareDialog = false;
+                                    openSendDialog();
+                                }
+                            }"
+                        />
+                    </div>
+                </div>
+            </div>
+
+            <template #footer v-if="shareUrl">
+                <Button label="Done" @click="showShareDialog = false" />
+            </template>
+        </Dialog>
     </div>
 </template>
 
 <style scoped>
 .delivery-note-view .space-y-6 > * + * {
     margin-top: 1.5rem;
+}
+.delivery-note-view .space-y-2 > * + * {
+    margin-top: 0.5rem;
+}
+.delivery-note-view .space-y-4 > * + * {
+    margin-top: 1rem;
 }
 </style>

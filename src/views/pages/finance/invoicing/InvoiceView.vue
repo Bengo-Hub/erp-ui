@@ -356,6 +356,52 @@ const handleSendInvoice = async (payload) => {
     }
 };
 
+// Handle sending invoice via WhatsApp
+const handleSendViaWhatsApp = async (payload) => {
+    actionLoading.value = true;
+    try {
+        // First generate a share link if we don't have one
+        let publicUrl = shareUrl.value;
+        if (!publicUrl) {
+            const response = await invoiceService.generateShareLink(invoice.value.id, {
+                allow_payment: true
+            });
+            publicUrl = response.url || response.public_url;
+        }
+
+        if (!publicUrl) {
+            showToast('error', 'Error', 'Failed to generate share link');
+            return;
+        }
+
+        // Format phone number (remove non-numeric characters except leading +)
+        const phone = payload.phone.replace(/[^\d]/g, '');
+
+        // Build message with the share link
+        const customerName = invoice.value?.customer_details?.business_name ||
+            (invoice.value?.customer?.user?.first_name
+                ? `${invoice.value.customer.user.first_name} ${invoice.value.customer.user.last_name || ''}`.trim()
+                : invoice.value?.customer?.name || 'Customer');
+
+        const defaultMessage = `Hello ${customerName}, here is your invoice ${invoice.value.invoice_number}. Click the link below to view and pay online:`;
+        const message = payload.message || defaultMessage;
+        const fullMessage = `${message}\n\n${publicUrl}`;
+
+        // Open WhatsApp Web with pre-filled message
+        const encodedMessage = encodeURIComponent(fullMessage);
+        const whatsappUrl = `https://wa.me/${phone}?text=${encodedMessage}`;
+        window.open(whatsappUrl, '_blank');
+
+        showToast('success', 'Success', 'WhatsApp opened with invoice link');
+        showSendDialog.value = false;
+    } catch (error) {
+        console.error('Error sending via WhatsApp:', error);
+        showToast('error', 'Error', 'Failed to send via WhatsApp');
+    } finally {
+        actionLoading.value = false;
+    }
+};
+
 const fetchPreview = async (type = 'invoice') => {
     if (!invoice.value) return;
     previewLoading.value = true;
@@ -627,12 +673,13 @@ onUnmounted(() => {
         </div>
 
         <!-- Email Send Dialog -->
-        <EmailSendDialog 
+        <EmailSendDialog
             v-model:visible="showSendDialog"
             :document="invoice"
             documentType="invoice"
             :loading="actionLoading"
             @send="handleSendInvoice"
+            @send-via-whatsapp="handleSendViaWhatsApp"
             @schedule="handleScheduleInvoice"
         />
 
@@ -701,13 +748,23 @@ onUnmounted(() => {
                                 openSendDialog();
                             }"
                         />
-                        <Button 
-                            label="Send via WhatsApp" 
-                            icon="pi pi-whatsapp" 
+                        <Button
+                            label="Send via WhatsApp"
+                            icon="pi pi-whatsapp"
                             class="flex-1 p-button-success"
                             @click="() => {
-                                showShareDialog = false;
-                                openSendDialog();
+                                const phone = invoice?.customer?.user?.phone || '';
+                                if (phone) {
+                                    const customerName = invoice?.customer_details?.business_name || invoice?.customer?.user?.first_name || 'Customer';
+                                    const message = `Hello ${customerName}, here is your invoice ${invoice.invoice_number}. Click the link below to view and pay online:\n\n${shareUrl}`;
+                                    const encodedMessage = encodeURIComponent(message);
+                                    const whatsappUrl = `https://wa.me/${phone.replace(/[^\d]/g, '')}?text=${encodedMessage}`;
+                                    window.open(whatsappUrl, '_blank');
+                                    showShareDialog = false;
+                                } else {
+                                    showShareDialog = false;
+                                    openSendDialog();
+                                }
                             }"
                         />
                     </div>

@@ -88,6 +88,24 @@ export const creditNoteService = {
         } catch (error) {
             return handleError(error);
         }
+    },
+
+    async generateShareLink(id, options = {}) {
+        try {
+            const response = await axios.post(`${INVOICING_BASE}/credit-notes/${id}/generate-share-link/`, options);
+            return response.data.data || response.data;
+        } catch (error) {
+            return handleError(error);
+        }
+    },
+
+    async sendCreditNote(id, emailData = {}) {
+        try {
+            const response = await axios.post(`${INVOICING_BASE}/credit-notes/${id}/send/`, emailData);
+            return response.data;
+        } catch (error) {
+            return handleError(error);
+        }
     }
 };
 
@@ -166,6 +184,24 @@ export const debitNoteService = {
     async applyToInvoice(id) {
         try {
             const response = await axios.post(`${INVOICING_BASE}/debit-notes/${id}/apply/`);
+            return response.data;
+        } catch (error) {
+            return handleError(error);
+        }
+    },
+
+    async generateShareLink(id, options = {}) {
+        try {
+            const response = await axios.post(`${INVOICING_BASE}/debit-notes/${id}/generate-share-link/`, options);
+            return response.data.data || response.data;
+        } catch (error) {
+            return handleError(error);
+        }
+    },
+
+    async sendDebitNote(id, emailData = {}) {
+        try {
+            const response = await axios.post(`${INVOICING_BASE}/debit-notes/${id}/send/`, emailData);
             return response.data;
         } catch (error) {
             return handleError(error);
@@ -264,6 +300,24 @@ export const deliveryNoteService = {
         } catch (error) {
             return handleError(error);
         }
+    },
+
+    async generateShareLink(id, options = {}) {
+        try {
+            const response = await axios.post(`${INVOICING_BASE}/delivery-notes/${id}/generate-share-link/`, options);
+            return response.data.data || response.data;
+        } catch (error) {
+            return handleError(error);
+        }
+    },
+
+    async sendDeliveryNote(id, emailData = {}) {
+        try {
+            const response = await axios.post(`${INVOICING_BASE}/delivery-notes/${id}/send/`, emailData);
+            return response.data;
+        } catch (error) {
+            return handleError(error);
+        }
     }
 };
 
@@ -352,6 +406,15 @@ export const proformaInvoiceService = {
         try {
             const response = await axios.post(`${INVOICING_BASE}/proforma-invoices/${id}/send/`, emailData);
             return response.data;
+        } catch (error) {
+            return handleError(error);
+        }
+    },
+
+    async generateShareLink(id, options = {}) {
+        try {
+            const response = await axios.post(`${INVOICING_BASE}/proforma-invoices/${id}/generate-share-link/`, options);
+            return response.data.data || response.data;
         } catch (error) {
             return handleError(error);
         }

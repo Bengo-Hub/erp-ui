@@ -4,6 +4,7 @@ import { useRoute, useRouter } from 'vue-router';
 import { useToast } from '@/composables/useToast';
 import { debitNoteService } from '@/services/finance/billingDocumentsService';
 import DocumentStatusBadge from '@/components/finance/shared/DocumentStatusBadge.vue';
+import EmailSendDialog from '@/components/finance/invoicing/EmailSendDialog.vue';
 import { formatCurrency, formatDate } from '@/utils/formatters';
 
 const route = useRoute();
@@ -13,6 +14,11 @@ const { showToast } = useToast();
 const loading = ref(true);
 const debitNote = ref(null);
 const applying = ref(false);
+const showSendDialog = ref(false);
+const showShareDialog = ref(false);
+const shareUrl = ref(null);
+const shareLoading = ref(false);
+const actionLoading = ref(false);
 
 const loadDebitNote = async () => {
     try {
@@ -64,6 +70,94 @@ const edit = () => {
     router.push(`/finance/debit-notes/${route.params.id}/edit`);
 };
 
+const openSendDialog = () => {
+    showSendDialog.value = true;
+};
+
+// Share functionality
+const generateShareLink = async () => {
+    shareLoading.value = true;
+    try {
+        const response = await debitNoteService.generateShareLink(route.params.id);
+        shareUrl.value = response.url || response.public_url;
+        showShareDialog.value = true;
+        showToast('success', 'Success', 'Share link generated');
+    } catch (error) {
+        console.error('Error generating share link:', error);
+        showToast('error', 'Error', 'Failed to generate share link');
+    } finally {
+        shareLoading.value = false;
+    }
+};
+
+const copyShareUrlToClipboard = async () => {
+    if (!shareUrl.value) return;
+    try {
+        await navigator.clipboard.writeText(shareUrl.value);
+        showToast('success', 'Copied', 'Share URL copied to clipboard');
+    } catch (error) {
+        showToast('error', 'Error', 'Failed to copy URL');
+    }
+};
+
+// Handle sending debit note via email
+const handleSendDebitNote = async (payload) => {
+    actionLoading.value = true;
+    try {
+        await debitNoteService.sendDebitNote(route.params.id, payload);
+        showToast('success', 'Success', 'Debit note sent successfully');
+        showSendDialog.value = false;
+        await loadDebitNote();
+    } catch (error) {
+        console.error('Error sending debit note:', error);
+        showToast('error', 'Error', 'Failed to send debit note');
+    } finally {
+        actionLoading.value = false;
+    }
+};
+
+// Handle sending via WhatsApp
+const handleSendViaWhatsApp = async (payload) => {
+    actionLoading.value = true;
+    try {
+        // First generate a share link if we don't have one
+        let publicUrl = shareUrl.value;
+        if (!publicUrl) {
+            const response = await debitNoteService.generateShareLink(route.params.id);
+            publicUrl = response.url || response.public_url;
+        }
+
+        if (!publicUrl) {
+            showToast('error', 'Error', 'Failed to generate share link');
+            return;
+        }
+
+        // Format phone number
+        const phone = payload.phone.replace(/[^\d]/g, '');
+
+        // Build message
+        const customerName = debitNote.value?.customer_details?.full_name ||
+            debitNote.value?.customer_name || 'Customer';
+
+        const defaultMessage = `Hello ${customerName}, here is your debit note ${debitNote.value.debit_note_number}. Click the link below to view:`;
+        const message = payload.message || defaultMessage;
+        const fullMessage = `${message}\n\n${publicUrl}`;
+
+        // Open WhatsApp
+        const encodedMessage = encodeURIComponent(fullMessage);
+        const whatsappUrl = `https://wa.me/${phone}?text=${encodedMessage}`;
+        window.open(whatsappUrl, '_blank');
+
+        showToast('success', 'Success', 'WhatsApp opened with debit note link');
+        showSendDialog.value = false;
+    } catch (error) {
+        console.error('Error sending via WhatsApp:', error);
+        showToast('error', 'Error', 'Failed to send via WhatsApp');
+    } finally {
+        actionLoading.value = false;
+    }
+};
+
 onMounted(() => {
     loadDebitNote();
 });
@@ -81,8 +175,10 @@ onMounted(() => {
                         <p class="text-surface-500 m-0" v-if="debitNote">{{ debitNote.debit_note_number }}</p>
                     </div>
                 </div>
-                <div class="flex gap-2" v-if="debitNote">
+                <div class="flex flex-wrap gap-2" v-if="debitNote">
                     <Button label="Edit" icon="pi pi-pencil" severity="secondary" @click="edit" />
+                    <Button label="Send" icon="pi pi-send" @click="openSendDialog" />
+                    <Button label="Share" icon="pi pi-share-alt" severity="secondary" @click="generateShareLink" :loading="shareLoading" />
                     <Button label="Download PDF" icon="pi pi-download" outlined @click="downloadPDF" />
                     <Button
                         v-if="debitNote.status === 'issued'"
@@ -175,6 +271,98 @@ onMounted(() => {
                 <p class="text-surface-500">Debit note not found</p>
             </div>
         </div>
+
+        <!-- Email Send Dialog -->
+        <EmailSendDialog
+            v-model:visible="showSendDialog"
+            :document="debitNote"
+            documentType="debit note"
+            :loading="actionLoading"
+            @send="handleSendDebitNote"
+            @send-via-whatsapp="handleSendViaWhatsApp"
+        />
+
+        <!-- Share Dialog -->
+        <Dialog
+            v-model:visible="showShareDialog"
+            modal
+            header="Share Debit Note"
+            :style="{ width: '500px' }"
+            :dismissableMask="true"
+        >
+            <div v-if="shareUrl" class="space-y-4">
+                <Message severity="success" :closable="false">
+                    <i class="pi pi-check-circle mr-2"></i>
+                    <span>Public link generated successfully</span>
+                </Message>
+
+                <div class="bg-gray-50 dark:bg-gray-800 p-4 rounded border border-gray-200 dark:border-gray-700">
+                    <p class="text-sm text-gray-600 dark:text-gray-400 mb-2">Share this link with your customer:</p>
+                    <div class="flex gap-2">
+                        <InputText
+                            :value="shareUrl"
+                            readonly
+                            class="flex-1"
+                        />
+                        <Button
+                            icon="pi pi-copy"
+                            class="p-button-outlined"
+                            @click="copyShareUrlToClipboard"
+                            v-tooltip="'Copy to clipboard'"
+                        />
+                    </div>
+                </div>
+
+                <div class="space-y-2">
+                    <p class="text-sm font-medium text-gray-700 dark:text-gray-300">Your customer can:</p>
+                    <ul class="text-sm text-gray-600 dark:text-gray-400 space-y-1 list-disc list-inside">
+                        <li>View the debit note details</li>
+                        <li>Download PDF copy</li>
+                        <li>Print the debit note</li>
+                    </ul>
+                </div>
+
+                <Divider />
+
+                <div>
+                    <p class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">Or send directly:</p>
+                    <div class="flex gap-2">
+                        <Button
+                            label="Send via Email"
+                            icon="pi pi-envelope"
+                            class="flex-1"
+                            @click="() => {
+                                showShareDialog = false;
+                                openSendDialog();
+                            }"
+                        />
+                        <Button
+                            label="Send via WhatsApp"
+                            icon="pi pi-whatsapp"
+                            class="flex-1 p-button-success"
+                            @click="() => {
+                                const phone = debitNote?.customer_details?.phone || '';
+                                if (phone) {
+                                    const customerName = debitNote?.customer_details?.full_name || debitNote?.customer_name || 'Customer';
+                                    const message = `Hello ${customerName}, here is your debit note ${debitNote.debit_note_number}. Click the link below to view:\n\n${shareUrl}`;
+                                    const encodedMessage = encodeURIComponent(message);
+                                    const whatsappUrl = `https://wa.me/${phone.replace(/[^\d]/g, '')}?text=${encodedMessage}`;
+                                    window.open(whatsappUrl, '_blank');
+                                    showShareDialog = false;
+                                } else {
+                                    showShareDialog = false;
+                                    openSendDialog();
+                                }
+                            }"
+                        />
+                    </div>
+                </div>
+            </div>
+
+            <template #footer v-if="shareUrl">
+                <Button label="Done" @click="showShareDialog = false" />
+            </template>
+        </Dialog>
     </div>
 </template>
 
@@ -184,5 +372,8 @@ onMounted(() => {
 }
 .debit-note-view .space-y-2 > * + * {
     margin-top: 0.5rem;
+}
+.debit-note-view .space-y-4 > * + * {
+    margin-top: 1rem;
 }
 </style>

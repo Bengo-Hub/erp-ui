@@ -281,25 +281,30 @@ export const financeRoutes = [
         component: () => import('@/views/pages/finance/invoicing/ProformaInvoiceForm.vue'),
         meta: { requiresAuth: true, title: 'Edit Proforma Invoice', permission: 'change_proformainvoice' }
     },
+];
+
+// PUBLIC Routes - These should NOT be wrapped in AppLayout
+// Export separately so they can be added at root level in routes.js
+export const publicFinanceRoutes = [
     // PUBLIC: Invoice View (for sharing with customers)
     {
         path: '/public/invoice/:id/:token',
         name: 'public-invoice-view',
         component: () => import('@/views/pages/public/PublicInvoiceView.vue'),
-        meta: { requiresAuth: false, title: 'View Invoice', layout: 'public' }
+        meta: { requiresAuth: false, title: 'View Invoice', isPublic: true }
     },
     // PUBLIC: Quotation View
     {
         path: '/public/quotation/:id/:token',
         name: 'public-quotation-view',
         component: () => import('@/views/pages/public/PublicQuotationView.vue'),
-        meta: { requiresAuth: false, title: 'View Quotation', layout: 'public' }
+        meta: { requiresAuth: false, title: 'View Quotation', isPublic: true }
     },
     // PUBLIC: Payment Callback (Paystack redirect after payment)
     {
         path: '/public/payment/callback',
         name: 'public-payment-callback',
         component: () => import('@/views/pages/public/PaymentCallback.vue'),
-        meta: { requiresAuth: false, title: 'Payment Status', layout: 'public' }
+        meta: { requiresAuth: false, title: 'Payment Status', isPublic: true }
     }
 ];

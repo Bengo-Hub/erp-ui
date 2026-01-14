@@ -4,6 +4,7 @@ import { useRoute, useRouter } from 'vue-router';
 import { useToast } from '@/composables/useToast';
 import { proformaInvoiceService } from '@/services/finance/billingDocumentsService';
 import DocumentStatusBadge from '@/components/finance/shared/DocumentStatusBadge.vue';
+import EmailSendDialog from '@/components/finance/invoicing/EmailSendDialog.vue';
 import { formatCurrency, formatDate } from '@/utils/formatters';
 
 const route = useRoute();
@@ -13,7 +14,11 @@ const { showToast } = useToast();
 const loading = ref(true);
 const proformaInvoice = ref(null);
 const converting = ref(false);
-const sending = ref(false);
+const showSendDialog = ref(false);
+const showShareDialog = ref(false);
+const shareUrl = ref(null);
+const shareLoading = ref(false);
+const actionLoading = ref(false);
 
 const loadProformaInvoice = async () => {
     try {
@@ -46,20 +51,6 @@ const convertToInvoice = async () => {
     }
 };
 
-const sendProforma = async () => {
-    try {
-        sending.value = true;
-        await proformaInvoiceService.sendProformaInvoice(route.params.id);
-        showToast('success', 'Success', 'Proforma invoice sent');
-        await loadProformaInvoice();
-    } catch (error) {
-        console.error('Error sending proforma:', error);
-        showToast('error', 'Error', 'Failed to send proforma invoice');
-    } finally {
-        sending.value = false;
-    }
-};
-
 const downloadPDF = async () => {
     try {
         const blob = await proformaInvoiceService.getProformaInvoicePDF(route.params.id);
@@ -81,6 +72,94 @@ const goBack = () => {
 
 const edit = () => {
     router.push(`/finance/proforma-invoices/${route.params.id}/edit`);
+};
+
+const openSendDialog = () => {
+    showSendDialog.value = true;
+};
+
+// Share functionality
+const generateShareLink = async () => {
+    shareLoading.value = true;
+    try {
+        const response = await proformaInvoiceService.generateShareLink(route.params.id);
+        shareUrl.value = response.url || response.public_url;
+        showShareDialog.value = true;
+        showToast('success', 'Success', 'Share link generated');
+    } catch (error) {
+        console.error('Error generating share link:', error);
+        showToast('error', 'Error', 'Failed to generate share link');
+    } finally {
+        shareLoading.value = false;
+    }
+};
+
+const copyShareUrlToClipboard = async () => {
+    if (!shareUrl.value) return;
+    try {
+        await navigator.clipboard.writeText(shareUrl.value);
+        showToast('success', 'Copied', 'Share URL copied to clipboard');
+    } catch (error) {
+        showToast('error', 'Error', 'Failed to copy URL');
+    }
+};
+
+// Handle sending proforma invoice via email
+const handleSendProformaInvoice = async (payload) => {
+    actionLoading.value = true;
+    try {
+        await proformaInvoiceService.sendProformaInvoice(route.params.id, payload);
+        showToast('success', 'Success', 'Proforma invoice sent successfully');
+        showSendDialog.value = false;
+        await loadProformaInvoice();
+    } catch (error) {
+        console.error('Error sending proforma invoice:', error);
+        showToast('error', 'Error', 'Failed to send proforma invoice');
+    } finally {
+        actionLoading.value = false;
+    }
+};
+
+// Handle sending via WhatsApp
+const handleSendViaWhatsApp = async (payload) => {
+    actionLoading.value = true;
+    try {
+        // First generate a share link if we don't have one
+        let publicUrl = shareUrl.value;
+        if (!publicUrl) {
+            const response = await proformaInvoiceService.generateShareLink(route.params.id);
+            publicUrl = response.url || response.public_url;
+        }
+
+        if (!publicUrl) {
+            showToast('error', 'Error', 'Failed to generate share link');
+            return;
+        }
+
+        // Format phone number
+        const phone = payload.phone.replace(/[^\d]/g, '');
+
+        // Build message
+        const customerName = proformaInvoice.value?.customer_details?.full_name ||
+            proformaInvoice.value?.customer_name || 'Customer';
+
+        const defaultMessage = `Hello ${customerName}, here is your proforma invoice ${proformaInvoice.value.proforma_number}. Click the link below to view:`;
+        const message = payload.message || defaultMessage;
+        const fullMessage = `${message}\n\n${publicUrl}`;
+
+        // Open WhatsApp
+        const encodedMessage = encodeURIComponent(fullMessage);
+        const whatsappUrl = `https://wa.me/${phone}?text=${encodedMessage}`;
+        window.open(whatsappUrl, '_blank');
+
+        showToast('success', 'Success', 'WhatsApp opened with proforma invoice link');
+        showSendDialog.value = false;
+    } catch (error) {
+        console.error('Error sending via WhatsApp:', error);
+        showToast('error', 'Error', 'Failed to send via WhatsApp');
+    } finally {
+        actionLoading.value = false;
+    }
 };
 
 const isExpired = () => {
@@ -107,14 +186,9 @@ onMounted(() => {
                 </div>
                 <div class="flex gap-2 flex-wrap" v-if="proformaInvoice">
                     <Button label="Edit" icon="pi pi-pencil" severity="secondary" @click="edit" />
+                    <Button label="Send" icon="pi pi-send" @click="openSendDialog" />
+                    <Button label="Share" icon="pi pi-share-alt" severity="secondary" @click="generateShareLink" :loading="shareLoading" />
                     <Button label="Download PDF" icon="pi pi-download" outlined @click="downloadPDF" />
-                    <Button
-                        v-if="proformaInvoice.status === 'draft'"
-                        label="Send"
-                        icon="pi pi-send"
-                        @click="sendProforma"
-                        :loading="sending"
-                    />
                     <Button
                         v-if="['sent', 'accepted'].includes(proformaInvoice.status) && !isExpired()"
                         label="Convert to Invoice"
@@ -228,6 +302,98 @@ onMounted(() => {
                 <p class="text-surface-500">Proforma invoice not found</p>
             </div>
         </div>
+
+        <!-- Email Send Dialog -->
+        <EmailSendDialog
+            v-model:visible="showSendDialog"
+            :document="proformaInvoice"
+            documentType="proforma invoice"
+            :loading="actionLoading"
+            @send="handleSendProformaInvoice"
+            @send-via-whatsapp="handleSendViaWhatsApp"
+        />
+
+        <!-- Share Dialog -->
+        <Dialog
+            v-model:visible="showShareDialog"
+            modal
+            header="Share Proforma Invoice"
+            :style="{ width: '500px' }"
+            :dismissableMask="true"
+        >
+            <div v-if="shareUrl" class="space-y-4">
+                <Message severity="success" :closable="false">
+                    <i class="pi pi-check-circle mr-2"></i>
+                    <span>Public link generated successfully</span>
+                </Message>
+
+                <div class="bg-gray-50 dark:bg-gray-800 p-4 rounded border border-gray-200 dark:border-gray-700">
+                    <p class="text-sm text-gray-600 dark:text-gray-400 mb-2">Share this link with your customer:</p>
+                    <div class="flex gap-2">
+                        <InputText
+                            :value="shareUrl"
+                            readonly
+                            class="flex-1"
+                        />
+                        <Button
+                            icon="pi pi-copy"
+                            class="p-button-outlined"
+                            @click="copyShareUrlToClipboard"
+                            v-tooltip="'Copy to clipboard'"
+                        />
+                    </div>
+                </div>
+
+                <div class="space-y-2">
+                    <p class="text-sm font-medium text-gray-700 dark:text-gray-300">Your customer can:</p>
+                    <ul class="text-sm text-gray-600 dark:text-gray-400 space-y-1 list-disc list-inside">
+                        <li>View the proforma invoice details</li>
+                        <li>Download PDF copy</li>
+                        <li>Print the proforma invoice</li>
+                    </ul>
+                </div>
+
+                <Divider />
+
+                <div>
+                    <p class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">Or send directly:</p>
+                    <div class="flex gap-2">
+                        <Button
+                            label="Send via Email"
+                            icon="pi pi-envelope"
+                            class="flex-1"
+                            @click="() => {
+                                showShareDialog = false;
+                                openSendDialog();
+                            }"
+                        />
+                        <Button
+                            label="Send via WhatsApp"
+                            icon="pi pi-whatsapp"
+                            class="flex-1 p-button-success"
+                            @click="() => {
+                                const phone = proformaInvoice?.customer_details?.phone || '';
+                                if (phone) {
+                                    const customerName = proformaInvoice?.customer_details?.full_name || proformaInvoice?.customer_name || 'Customer';
+                                    const message = `Hello ${customerName}, here is your proforma invoice ${proformaInvoice.proforma_number}. Click the link below to view:\n\n${shareUrl}`;
+                                    const encodedMessage = encodeURIComponent(message);
+                                    const whatsappUrl = `https://wa.me/${phone.replace(/[^\d]/g, '')}?text=${encodedMessage}`;
+                                    window.open(whatsappUrl, '_blank');
+                                    showShareDialog = false;
+                                } else {
+                                    showShareDialog = false;
+                                    openSendDialog();
+                                }
+                            }"
+                        />
+                    </div>
+                </div>
+            </div>
+
+            <template #footer v-if="shareUrl">
+                <Button label="Done" @click="showShareDialog = false" />
+            </template>
+        </Dialog>
     </div>
 </template>
 
@@ -237,5 +403,8 @@ onMounted(() => {
 }
 .proforma-invoice-view .space-y-2 > * + * {
     margin-top: 0.5rem;
+}
+.proforma-invoice-view .space-y-4 > * + * {
+    margin-top: 1rem;
 }
 </style>
