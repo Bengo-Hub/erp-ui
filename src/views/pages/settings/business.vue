@@ -18,31 +18,32 @@ const items = ref([
     { label: 'Business', to: '/settings/business' }
 ]);
 
-// Business details (core business info)
+// Business details (core business info) - maps to BusinessSettingsSerializer fields
 const businessDetails = ref({
     id: null,
     name: '',
     start_date: null,
     stock_accounting_method: '',
+    currency: 'KES',
     transaction_edit_days: 30,
     default_profit_margin: 25.0,
-    industry: '',
-    tax_id: '',
-    registration_number: '',
+    finacial_year_start_month: 'Jan',
+    // Contact fields (read-only, from branches/location)
     phone: '',
     email: '',
     website: '',
     address: '',
-    // KRA & Compliance fields
-    kra_number: '',
+    // Registration & Compliance fields
+    tax_id: '',
+    business_registration_number: '',
     business_license_number: '',
     business_license_expiry: null,
-    business_registration_number: '',
     business_type: 'limited_company',
     county: '',
     postal_code: '',
-    kra_api_enabled: false,
-    tax_compliance_status: 'pending',
+    // Logo fields
+    logo: null,
+    watermarklogo: null,
 });
 const originalBusinessDetails = ref({});
 const savingBusinessDetails = ref(false);
@@ -114,11 +115,6 @@ const accountingMethods = [
     { name: 'Average Cost', code: 'AVG' }
 ];
 
-const industryOptions = [
-    'Retail', 'Manufacturing', 'Services', 'Technology', 'Healthcare',
-    'Education', 'Construction', 'Agriculture', 'Transportation', 'Other'
-];
-
 const businessTypeOptions = [
     { label: 'Sole Proprietorship', value: 'sole_proprietorship' },
     { label: 'Partnership', value: 'partnership' },
@@ -126,13 +122,6 @@ const businessTypeOptions = [
     { label: 'Public Company', value: 'public_company' },
     { label: 'NGO', value: 'ngo' },
     { label: 'Other', value: 'other' }
-];
-
-const complianceStatusOptions = [
-    { label: 'Compliant', value: 'compliant', severity: 'success' },
-    { label: 'Non-Compliant', value: 'non_compliant', severity: 'danger' },
-    { label: 'Pending Review', value: 'pending', severity: 'warning' },
-    { label: 'Exempt', value: 'exempt', severity: 'info' }
 ];
 
 const unitOptions = [
@@ -571,10 +560,6 @@ function getSequenceSeverity(docType) {
     return severityMap[docType] || 'secondary';
 }
 
-function getComplianceSeverity(status) {
-    const option = complianceStatusOptions.find(o => o.value === status);
-    return option?.severity || 'secondary';
-}
 </script>
 
 <template>
@@ -614,27 +599,6 @@ function getComplianceSeverity(status) {
                                 </div>
 
                                 <div class="field">
-                                    <label for="industry" class="font-semibold text-surface-700 dark:text-surface-200 mb-2 block">Industry</label>
-                                    <Select id="industry" v-model="businessDetails.industry" :options="industryOptions" placeholder="Select Industry" class="w-full" editable />
-                                    <small class="text-surface-500">Your business industry/sector</small>
-                                </div>
-
-                                <div class="field">
-                                    <label for="phone" class="font-semibold text-surface-700 dark:text-surface-200 mb-2 block">Business Phone</label>
-                                    <InputText id="phone" v-model="businessDetails.phone" class="w-full" placeholder="Enter phone number" />
-                                </div>
-
-                                <div class="field">
-                                    <label for="email" class="font-semibold text-surface-700 dark:text-surface-200 mb-2 block">Business Email</label>
-                                    <InputText id="email" v-model="businessDetails.email" type="email" class="w-full" placeholder="Enter email address" />
-                                </div>
-
-                                <div class="field">
-                                    <label for="website" class="font-semibold text-surface-700 dark:text-surface-200 mb-2 block">Website</label>
-                                    <InputText id="website" v-model="businessDetails.website" class="w-full" placeholder="https://example.com" />
-                                </div>
-
-                                <div class="field">
                                     <label for="transaction_edit_days" class="font-semibold text-surface-700 dark:text-surface-200 mb-2 block">Edit Window (Days) <span class="text-red-500">*</span></label>
                                     <InputNumber id="transaction_edit_days" v-model="businessDetails.transaction_edit_days" class="w-full" :min="1" :max="365" required />
                                     <small class="text-surface-500">How long transactions can be edited</small>
@@ -646,9 +610,28 @@ function getComplianceSeverity(status) {
                                     <small class="text-surface-500">Default profit margin for products</small>
                                 </div>
 
+                                <div class="field">
+                                    <label for="phone" class="font-semibold text-surface-700 dark:text-surface-200 mb-2 block">Business Phone</label>
+                                    <InputText id="phone" v-model="businessDetails.phone" class="w-full" placeholder="From main branch" disabled />
+                                    <small class="text-surface-500">Managed in branch settings</small>
+                                </div>
+
+                                <div class="field">
+                                    <label for="email" class="font-semibold text-surface-700 dark:text-surface-200 mb-2 block">Business Email</label>
+                                    <InputText id="email" v-model="businessDetails.email" type="email" class="w-full" placeholder="From main branch" disabled />
+                                    <small class="text-surface-500">Managed in branch settings</small>
+                                </div>
+
+                                <div class="field">
+                                    <label for="website" class="font-semibold text-surface-700 dark:text-surface-200 mb-2 block">Website</label>
+                                    <InputText id="website" v-model="businessDetails.website" class="w-full" placeholder="From business location" disabled />
+                                    <small class="text-surface-500">Managed in location settings</small>
+                                </div>
+
                                 <div class="field md:col-span-2">
                                     <label for="address" class="font-semibold text-surface-700 dark:text-surface-200 mb-2 block">Physical Address</label>
-                                    <Textarea id="address" v-model="businessDetails.address" rows="3" class="w-full" placeholder="Enter business address" />
+                                    <Textarea id="address" v-model="businessDetails.address" rows="3" class="w-full" placeholder="From business location" disabled />
+                                    <small class="text-surface-500">Managed in location settings</small>
                                 </div>
                             </div>
 
@@ -660,8 +643,8 @@ function getComplianceSeverity(status) {
                     </div>
                 </TabPanel>
 
-                <!-- KRA & Compliance Tab -->
-                <TabPanel header="KRA & Compliance">
+                <!-- Registration & Compliance Tab -->
+                <TabPanel header="Registration & Compliance">
                     <div class="p-4">
                         <form @submit.prevent="saveBusinessDetails" class="p-fluid">
                             <!-- Registration Section -->
@@ -682,38 +665,6 @@ function getComplianceSeverity(status) {
                                     <div class="field">
                                         <label for="tax_id" class="font-semibold text-surface-700 dark:text-surface-200 mb-2 block">Tax ID / PIN</label>
                                         <InputText id="tax_id" v-model="businessDetails.tax_id" class="w-full" placeholder="e.g. P051234567A" />
-                                    </div>
-                                </div>
-                            </div>
-
-                            <!-- KRA Section -->
-                            <div class="mb-8">
-                                <div class="flex items-center gap-2 mb-4">
-                                    <i class="pi pi-verified text-lg text-primary"></i>
-                                    <h3 class="text-lg font-semibold m-0 text-surface-800 dark:text-surface-100">KRA eTIMS Integration</h3>
-                                </div>
-                                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                                    <div class="field">
-                                        <label for="kra_number" class="font-semibold text-surface-700 dark:text-surface-200 mb-2 block">KRA PIN Number</label>
-                                        <InputText id="kra_number" v-model="businessDetails.kra_number" class="w-full" placeholder="e.g. P051234567A" />
-                                        <small class="text-surface-500">Your KRA PIN for tax compliance</small>
-                                    </div>
-                                    <div class="field">
-                                        <label for="tax_compliance_status" class="font-semibold text-surface-700 dark:text-surface-200 mb-2 block">Compliance Status</label>
-                                        <Select id="tax_compliance_status" v-model="businessDetails.tax_compliance_status" :options="complianceStatusOptions" optionLabel="label" optionValue="value" class="w-full">
-                                            <template #value="slotProps">
-                                                <Tag v-if="slotProps.value" :value="complianceStatusOptions.find(o => o.value === slotProps.value)?.label" :severity="getComplianceSeverity(slotProps.value)" />
-                                            </template>
-                                            <template #option="slotProps">
-                                                <Tag :value="slotProps.option.label" :severity="slotProps.option.severity" />
-                                            </template>
-                                        </Select>
-                                    </div>
-                                    <div class="field flex items-end">
-                                        <div class="flex items-center gap-2">
-                                            <Checkbox id="kra_api_enabled" v-model="businessDetails.kra_api_enabled" binary />
-                                            <label for="kra_api_enabled" class="font-medium cursor-pointer">Enable KRA API Integration</label>
-                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -756,7 +707,21 @@ function getComplianceSeverity(status) {
 
                             <div class="flex flex-col sm:flex-row justify-end gap-3 mt-6 pt-4 border-t border-surface-200 dark:border-surface-700">
                                 <Button type="button" label="Cancel" severity="secondary" outlined @click="resetBusinessDetails" class="w-full sm:w-auto" />
-                                <Button type="submit" label="Save Compliance Settings" icon="pi pi-check" :loading="savingBusinessDetails" class="w-full sm:w-auto" />
+                                <Button type="submit" label="Save Registration Settings" icon="pi pi-check" :loading="savingBusinessDetails" class="w-full sm:w-auto" />
+                            </div>
+
+                            <!-- KRA eTIMS Info Box -->
+                            <div class="mt-6 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
+                                <div class="flex gap-3">
+                                    <i class="pi pi-info-circle text-blue-500 mt-0.5"></i>
+                                    <div>
+                                        <p class="text-sm text-blue-700 dark:text-blue-300 m-0 font-medium">KRA eTIMS Integration</p>
+                                        <p class="text-sm text-blue-600 dark:text-blue-400 m-0 mt-1">
+                                            To configure KRA eTIMS API integration for electronic tax invoicing, go to
+                                            <router-link to="/settings/integrations/kra" class="text-primary font-medium hover:underline">Settings → Integrations → KRA eTIMS</router-link>
+                                        </p>
+                                    </div>
+                                </div>
                             </div>
                         </form>
                     </div>
