@@ -317,7 +317,7 @@ onMounted(() => {
                         <Button v-if="data.status === 'draft'" icon="pi pi-pencil" class="p-button-text p-button-rounded text-blue-500" @click="openModal('edit', data)" v-tooltip.top="'Edit'" />
                         <Button v-if="data.status === 'draft'" icon="pi pi-trash" class="p-button-text p-button-rounded text-red-500" @click="confirmDelete(data)" v-tooltip.top="'Delete'" />
                         <Button
-                            v-if="data.status === 'approved' && data.type === 'inventory'"
+                            v-if="data.status === 'approved' && data.request_type === 'inventory'"
                             icon="pi pi-shopping-cart"
                             class="p-button-text p-button-rounded text-green-500"
                             @click="processInventoryRequest(data)"
