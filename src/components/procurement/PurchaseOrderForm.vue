@@ -540,11 +540,55 @@ onMounted(async () => {
 
     // If editing an existing order, populate the form
     if (props.order) {
+        // Copy basic scalar fields
         Object.keys(props.order).forEach((key) => {
-            if (key in form) {
+            if (key in form && key !== 'supplier' && key !== 'requisition' && key !== 'items' && key !== 'expected_delivery') {
                 form[key] = props.order[key];
             }
         });
+
+        // Set supplier - find the matching supplier object from loaded suppliers
+        if (props.order.supplier) {
+            const supplierId = typeof props.order.supplier === 'object' ? props.order.supplier.id : props.order.supplier;
+            form.supplier = suppliers.value.find(s => s.id === supplierId) || null;
+        }
+
+        // Set requisition - find the matching requisition object from loaded requisitions
+        if (props.order.requisition) {
+            const requisitionId = typeof props.order.requisition === 'object' ? props.order.requisition.id : props.order.requisition;
+            selectedRequisition.value = requisitions.value.find(r => r.id === requisitionId) || null;
+            form.requisition_reference = props.order.requisition_reference || selectedRequisition.value?.reference_number;
+        }
+
+        // Parse expected_delivery date
+        if (props.order.expected_delivery) {
+            const dateValue = props.order.expected_delivery;
+            form.expected_delivery = typeof dateValue === 'string' ? new Date(dateValue) : dateValue;
+        }
+
+        // Map items to the form structure - API returns order_items or items
+        const orderItems = props.order.order_items || props.order.items || [];
+        if (Array.isArray(orderItems) && orderItems.length > 0) {
+            form.items = orderItems.map(item => {
+                // Try to find the product in loaded products
+                const productId = item.object_id || item.product_id || (item.product && item.product.id);
+                const product = productId ? products.value.find(p => p.id === productId || p.product_id === productId) : null;
+
+                return {
+                    id: item.id,
+                    product: product || null,
+                    stockItem: product || { id: item.object_id, name: item.name, title: item.name },
+                    name: item.name || item.product_title || '',
+                    description: item.description || '',
+                    quantity: item.quantity || 1,
+                    unit_price: parseFloat(item.unit_price) || 0,
+                    unitPrice: parseFloat(item.unit_price) || 0,
+                    total: parseFloat(item.total_price) || 0,
+                    tax_rate: item.tax_rate || 0
+                };
+            });
+        }
+
         previousCurrency.value = props.order.currency || 'KES';
     }
 });

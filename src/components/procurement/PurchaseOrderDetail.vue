@@ -4,6 +4,7 @@ import { useRoute } from 'vue-router';
 import { useStore } from 'vuex';
 import { useToast } from 'primevue/usetoast';
 import { procurementService } from '@/services/procurement/procurementService';
+import { formatDate, formatDateTime, formatCurrency } from '@/utils/formatters';
 
 const route = useRoute();
 const store = useStore();
@@ -60,8 +61,10 @@ const loadOrderDetails = async () => {
     try {
         if (props.id) {
             const response = await procurementService.getPurchaseOrder(props.id);
-            order.value = response.data;
-            originalOrder.value = JSON.parse(JSON.stringify(response)); // Deep copy for comparison
+            // API returns { success, message, data } structure
+            order.value = response.data?.data || response.data;
+            originalOrder.value = JSON.parse(JSON.stringify(order.value)); // Deep copy for comparison
+            console.log('Loaded order:', order.value);
         }
     } catch (error) {
         handleError(error);
@@ -183,12 +186,8 @@ const getTimelineIcon = (status) => {
     return status === 'approved' ? 'pi pi-check' : 'pi pi-times';
 };
 
-const formatDateTime = (dateString) => {
-    if (!dateString) return '';
-    return new Date(dateString).toLocaleString();
-};
-
 const formatApprovalType = (type) => {
+    if (!type) return '';
     return type
         .split('_')
         .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
@@ -196,12 +195,23 @@ const formatApprovalType = (type) => {
 };
 
 const formatStatus = (status) => {
+    if (!status) return '';
     return status.charAt(0).toUpperCase() + status.slice(1);
 };
 
 const downloadPO = async (orderId) => {
     try {
-        await procurementService.downloadPurchaseOrderPDF(orderId);
+        const response = await procurementService.getPurchaseOrderPDF(orderId, true);
+        // Create blob and download
+        const blob = new Blob([response.data], { type: 'application/pdf' });
+        const url = window.URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `PO-${order.value?.order_number || orderId}.pdf`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        window.URL.revokeObjectURL(url);
     } catch (error) {
         handleError(error);
     }
@@ -209,7 +219,13 @@ const downloadPO = async (orderId) => {
 
 const downloadRequisition = async (requisitionId) => {
     try {
-        await procurementService.downloadRequisitionPDF(requisitionId);
+        // TODO: Implement requisition PDF download when endpoint is available
+        toast.add({
+            severity: 'info',
+            summary: 'Info',
+            detail: 'Requisition PDF download not yet implemented',
+            life: 3000
+        });
     } catch (error) {
         handleError(error);
     }
@@ -252,29 +268,38 @@ onMounted(() => {
                 <div class="title-section">
                     <h1 class="po-title">{{ order.order_number }}</h1>
                     <div class="status-badge">
-                        <Tag :value="order.status" :severity="getStatusSeverity(order.status)" />
+                        <Tag :value="order.status_display || order.status" :severity="getStatusSeverity(order.status)" />
                     </div>
+                    <Tag v-if="order.payment_status" :value="order.payment_status" :severity="order.payment_status === 'paid' ? 'success' : 'warning'" class="ml-2" />
                 </div>
 
                 <div class="supplier-info">
                     <div class="supplier-details">
                         <span class="supplier-label">Supplier:</span>
                         <div class="supplier-name">
-                            <Avatar :label="order.supplier_name.charAt(0)" shape="circle" />
-                            <span>{{ order.supplier_name }}</span>
+                            <Avatar :label="(order.supplier_name || order.supplier?.business_name || 'S').charAt(0)" shape="circle" />
+                            <div class="flex flex-col">
+                                <span>{{ order.supplier_name || order.supplier?.business_name || 'Unknown Supplier' }}</span>
+                                <small v-if="order.supplier?.email" class="text-gray-500">{{ order.supplier.email }}</small>
+                            </div>
                         </div>
                     </div>
 
                     <div class="delivery-info">
-                        <span class="info-label">Delivery Date:</span>
+                        <span class="info-label">Expected Delivery:</span>
                         <span class="info-value">{{ formatDate(order.expected_delivery) }}</span>
+                    </div>
+
+                    <div class="delivery-info" v-if="order.currency">
+                        <span class="info-label">Currency:</span>
+                        <span class="info-value">{{ order.currency_display || order.currency }}</span>
                     </div>
                 </div>
             </div>
 
             <div class="action-buttons" v-if="canApprove || canReject">
-                <Button label="Approve" icon="pi pi-check" severity="primary" class="reject-btn" @click="handleApproval('approved')" v-if="canApprove" />
-                <Button label="Reject" icon="pi pi-times" severity="danger" class="reject-btn" @click="showRejectDialog = true" v-if="canReject" />
+                <Button label="Approve" icon="pi pi-check" severity="success" @click="handleApproval('approved')" v-if="canApprove" />
+                <Button label="Reject" icon="pi pi-times" severity="danger" @click="showRejectDialog = true" v-if="canReject" />
             </div>
         </div>
 
@@ -282,8 +307,8 @@ onMounted(() => {
         <div class="po-content">
             <!-- Left Column -->
             <div class="po-main">
-                <!-- Timeline -->
-                <Card class="timeline-card">
+                <!-- Timeline - Only show if there are approvals -->
+                <Card class="timeline-card" v-if="order.approvals && order.approvals.length > 0">
                     <template #title>Approval Timeline</template>
                     <template #content>
                         <Timeline :value="order.approvals" align="alternate" class="custom-timeline">
@@ -294,7 +319,7 @@ onMounted(() => {
                             </template>
                             <template #content="slotProps">
                                 <div class="timeline-event">
-                                    <p>{{ formatStatus(slotProps.item.status) }} by {{ slotProps.item.approver__email }}</p>
+                                    <p>{{ formatStatus(slotProps.item.status) }} by {{ slotProps.item.approver__email || slotProps.item.approver?.email || 'Unknown' }}</p>
                                     <small class="text-gray-500">{{ formatDateTime(slotProps.item.created_at) }}</small>
                                     <p class="notes" v-if="slotProps.item.notes">{{ slotProps.item.notes }}</p>
                                 </div>
@@ -303,59 +328,75 @@ onMounted(() => {
                     </template>
                 </Card>
 
-                <!-- Items Table -->
-                <Card class="items-card">
-                    <template #title>Order Items</template>
+                <!-- No Approvals Message -->
+                <Card class="timeline-card" v-else>
+                    <template #title>Approval Timeline</template>
                     <template #content>
-                        <DataTable :value="order.items" class="items-datatable" responsiveLayout="scroll">
-                            <Column field="stock_item.name" header="Item">
-                                <template #body="{ data }">
-                                    <div class="item-name">
-                                        <span>{{ data.stock_item.name }}</span>
-                                        <small class="item-code">{{ data.stock_item.code }}</small>
-                                    </div>
-                                </template>
-                            </Column>
-                            <Column field="quantity" header="Qty" style="width: 100px">
-                                <template #body="{ data }">
-                                    <InputNumber v-model="data.quantity" mode="decimal" :min="1" :disabled="!canEdit" class="compact-input" />
-                                </template>
-                            </Column>
-                            <Column header="Unit Price" style="width: 150px">
-                                <template #body="{ data }">
-                                    <InputNumber v-model="data.unit_price" mode="currency" currency="USD" :disabled="!canEdit" class="compact-input" />
-                                </template>
-                            </Column>
-                            <Column header="Total" style="width: 150px">
-                                <template #body="{ data }">
-                                    {{ formatCurrency(data.quantity * data.unit_price) }}
-                                </template>
-                            </Column>
-                            <Column header="Status" style="width: 120px">
-                                <template #body="{ data }">
-                                    <Tag :value="data.status || 'pending'" :severity="getItemStatusSeverity(data.status)" />
-                                </template>
-                            </Column>
-                            <Column header="Actions" style="width: 100px" v-if="canEdit">
-                                <template #body="{ index }">
-                                    <Button icon="pi pi-trash" class="p-button-text p-button-danger" @click="removeItem(index)" v-tooltip="'Remove item'" />
-                                </template>
-                            </Column>
-                        </DataTable>
-
-                        <div class="flex justify-between mt-4">
-                            <Button icon="pi pi-plus" label="Add Item" class="p-button-text" @click="addItem" v-if="canEdit" />
-                            <Button icon="pi pi-save" label="Save Changes" @click="saveChanges" v-if="canEdit" :loading="isSaving" />
+                        <div class="text-center py-4 text-gray-500">
+                            <i class="pi pi-clock text-2xl mb-2"></i>
+                            <p>No approvals recorded yet</p>
                         </div>
                     </template>
                 </Card>
 
-                <!-- Terms & Conditions -->
-                <Card class="terms-card">
-                    <template #title>Terms & Conditions</template>
+                <!-- Items Table - Use order_items from API -->
+                <Card class="items-card">
+                    <template #title>
+                        <div class="flex justify-between items-center">
+                            <span>Order Items</span>
+                            <Tag :value="`${order.total_items || order.order_items?.length || 0} item(s)`" severity="info" />
+                        </div>
+                    </template>
+                    <template #content>
+                        <DataTable :value="order.order_items" class="items-datatable" responsiveLayout="scroll">
+                            <Column header="Item">
+                                <template #body="{ data }">
+                                    <div class="item-name">
+                                        <span class="font-medium">{{ data.name || data.product_title || 'Unknown Item' }}</span>
+                                        <small class="item-code text-gray-500" v-if="data.sku">SKU: {{ data.sku }}</small>
+                                        <small class="item-code text-gray-500" v-if="data.description">{{ data.description }}</small>
+                                    </div>
+                                </template>
+                            </Column>
+                            <Column field="quantity" header="Qty" style="width: 80px">
+                                <template #body="{ data }">
+                                    <span>{{ data.quantity }}</span>
+                                </template>
+                            </Column>
+                            <Column header="Unit Price" style="width: 140px">
+                                <template #body="{ data }">
+                                    {{ formatCurrency(data.unit_price, order.currency) }}
+                                </template>
+                            </Column>
+                            <Column header="Total" style="width: 140px">
+                                <template #body="{ data }">
+                                    {{ formatCurrency(data.total_price, order.currency) }}
+                                </template>
+                            </Column>
+                        </DataTable>
+
+                        <div class="flex justify-end mt-4" v-if="canEdit">
+                            <Button icon="pi pi-save" label="Save Changes" @click="saveChanges" :loading="isSaving" />
+                        </div>
+                    </template>
+                </Card>
+
+                <!-- Delivery Instructions -->
+                <Card class="terms-card" v-if="order.delivery_instructions">
+                    <template #title>Delivery Instructions</template>
                     <template #content>
                         <div class="terms-content">
-                            <Textarea v-model="order.terms" rows="5" autoResize class="w-full" :disabled="!canEdit" />
+                            <p>{{ order.delivery_instructions }}</p>
+                        </div>
+                    </template>
+                </Card>
+
+                <!-- Notes -->
+                <Card class="terms-card" v-if="order.notes">
+                    <template #title>Notes</template>
+                    <template #content>
+                        <div class="terms-content">
+                            <p>{{ order.notes }}</p>
                         </div>
                     </template>
                 </Card>
@@ -369,52 +410,89 @@ onMounted(() => {
                     <template #content>
                         <div class="summary-item">
                             <span class="label">Subtotal:</span>
-                            <span class="value">{{ formatCurrency(order.approved_budget || 0) }}</span>
+                            <span class="value">{{ formatCurrency(order.subtotal, order.currency) }}</span>
                         </div>
-                        <div class="summary-item">
-                            <span class="label">Tax ({{ order.tax_rate }}%):</span>
-                            <span class="value">{{ formatCurrency(order.tax_amount || 0) }}</span>
+                        <div class="summary-item" v-if="parseFloat(order.tax_amount) > 0">
+                            <span class="label">Tax ({{ order.tax_rate || 0 }}%):</span>
+                            <span class="value">{{ formatCurrency(order.tax_amount, order.currency) }}</span>
                         </div>
-                        <div class="summary-item">
-                            <span class="label">Discount ({{ order.discount }}%):</span>
-                            <span class="value">-{{ formatCurrency(order.discount || 0) }}</span>
+                        <div class="summary-item" v-if="parseFloat(order.discount_amount) > 0">
+                            <span class="label">Discount:</span>
+                            <span class="value text-red-500">-{{ formatCurrency(order.discount_amount, order.currency) }}</span>
+                        </div>
+                        <div class="summary-item" v-if="parseFloat(order.shipping_cost) > 0">
+                            <span class="label">Shipping:</span>
+                            <span class="value">{{ formatCurrency(order.shipping_cost, order.currency) }}</span>
                         </div>
                         <Divider />
                         <div class="summary-item grand-total">
-                            <span class="label">Grand Total:</span>
-                            <span class="value">{{ formatCurrency((order.approved_budget || 0) + (order.tax_amount || 0) - (order.discount || 0)) }}</span>
+                            <span class="label">Total:</span>
+                            <span class="value">{{ order.formatted_total || formatCurrency(order.total, order.currency) }}</span>
+                        </div>
+                        <div class="summary-item" v-if="order.approved_budget">
+                            <span class="label">Approved Budget:</span>
+                            <span class="value">{{ formatCurrency(order.approved_budget, order.currency) }}</span>
+                        </div>
+                        <div class="summary-item" v-if="order.total_paid > 0">
+                            <span class="label">Amount Paid:</span>
+                            <span class="value text-green-600">{{ formatCurrency(order.total_paid, order.currency) }}</span>
                         </div>
                     </template>
                 </Card>
 
-                <!-- Procurement Details -->
+                <!-- Order Details -->
                 <Card class="procurement-card">
-                    <template #title>Procurement Details</template>
+                    <template #title>Order Details</template>
                     <template #content>
-                        <div class="detail-item" v-for="approval in order.approvals">
+                        <div class="detail-item">
+                            <span class="label">Order Type:</span>
+                            <span>{{ formatStatus(order.order_type) }}</span>
+                        </div>
+                        <div class="detail-item">
+                            <span class="label">Source:</span>
+                            <span>{{ formatStatus(order.source) }}</span>
+                        </div>
+                        <div class="detail-item" v-if="order.created_by">
                             <span class="label">Created By:</span>
-                            <div class="user-info" v-if="approval.status != 'pending'">
-                                <Avatar :label="approval.approver__email.charAt(0)" shape="circle" size="small" />
-                                <span>{{ approval.approver__email }}</span>
+                            <div class="user-info">
+                                <Avatar :label="(order.created_by.first_name || order.created_by.username || 'U').charAt(0)" shape="circle" size="small" />
+                                <span>{{ order.created_by.first_name }} {{ order.created_by.last_name }}</span>
                             </div>
                         </div>
                         <div class="detail-item">
                             <span class="label">Created On:</span>
                             <span>{{ formatDateTime(order.created_at) }}</span>
                         </div>
-                        <div class="detail-item" v-if="order.approvals.filter((approval) => approval.status != 'approved' && approval.department__title == 'Procurement').length > 0">
-                            <span class="label">Procurement Approver:</span>
-                            <div class="user-info">
-                                <Avatar :label="order.approvals.filter((approval) => approval.status != 'approved' && approval.department__title == 'Procurement')[0].approver__email.charAt(0)" shape="circle" size="small" />
-                                <span>{{ order.approvals.filter((approval) => approval.status != 'approved' && approval.department__title == 'Procurement')[0].approver__email }}</span>
-                            </div>
+                        <div class="detail-item" v-if="order.updated_at">
+                            <span class="label">Last Updated:</span>
+                            <span>{{ formatDateTime(order.updated_at) }}</span>
                         </div>
-                        <div class="detail-item" v-if="order.approvals.filter((approval) => approval.status != 'approved' && approval.department__title == 'Finance').length > 0">
-                            <span class="label">Finance Approver:</span>
-                            <div class="user-info">
-                                <Avatar :label="order.approvals.filter((approval) => approval.status != 'approved' && approval.department__title == 'Finance')[0].approver__email.charAt(0)" shape="circle" size="small" />
-                                <span>{{ order.approvals.filter((approval) => approval.status != 'approved' && approval.department__title == 'Finance')[0].approver__email }}</span>
-                            </div>
+                        <div class="detail-item" v-if="order.requisition_reference">
+                            <span class="label">Requisition:</span>
+                            <span>{{ order.requisition_reference }}</span>
+                        </div>
+                    </template>
+                </Card>
+
+                <!-- Supplier Details -->
+                <Card class="procurement-card" v-if="order.supplier">
+                    <template #title>Supplier Details</template>
+                    <template #content>
+                        <div class="detail-item">
+                            <span class="label">Name:</span>
+                            <span>{{ order.supplier.business_name || order.supplier.full_name }}</span>
+                        </div>
+                        <div class="detail-item" v-if="order.supplier.email">
+                            <span class="label">Email:</span>
+                            <span>{{ order.supplier.email }}</span>
+                        </div>
+                        <div class="detail-item" v-if="order.supplier.phone">
+                            <span class="label">Phone:</span>
+                            <span>{{ order.supplier.phone }}</span>
+                        </div>
+                        <div class="detail-item" v-if="order.supplier.business_address">
+                            <span class="label">Address:</span>
+                            <span>{{ order.supplier.business_address }}</span>
                         </div>
                     </template>
                 </Card>
