@@ -1,6 +1,7 @@
 <script setup>
 import { useToast } from '@/composables/useToast';
 import { systemConfigService } from '@/services/shared/systemConfigService';
+import axios from '@/utils/axiosConfig';
 import { computed, onMounted, ref } from 'vue';
 
 const { showToast } = useToast();
@@ -134,12 +135,8 @@ onMounted(async () => {
 // Load auto-configured URLs from backend
 async function loadAutoConfiguredUrls() {
     try {
-        const response = await fetch('/api/v1/integrations/urls/', {
-            headers: {
-                'Authorization': `Token ${sessionStorage.getItem('token')}`
-            }
-        });
-        const data = await response.json();
+        const response = await axios.get('/integrations/urls/');
+        const data = response.data;
         if (data.success && data.urls) {
             autoConfiguredUrls.value = data.urls;
             // Auto-populate URLs if empty
@@ -158,14 +155,8 @@ async function loadAutoConfiguredUrls() {
 // Sync URLs with backend (update DB with auto-configured URLs)
 async function syncIntegrationUrls() {
     try {
-        const response = await fetch('/api/v1/integrations/urls/sync/', {
-            method: 'POST',
-            headers: {
-                'Authorization': `Token ${sessionStorage.getItem('token')}`,
-                'Content-Type': 'application/json'
-            }
-        });
-        const data = await response.json();
+        const response = await axios.post('/integrations/urls/sync/');
+        const data = response.data;
         if (data.success) {
             showToast('success', 'Success', 'Integration URLs synchronized', 3000);
             // Reload settings to show updated URLs
@@ -217,12 +208,8 @@ async function testMpesaConnection() {
     testing.value = true;
     try {
         // The health check endpoint can verify connectivity
-        const response = await fetch('/api/v1/integrations/health/mpesa/', {
-            headers: {
-                'Authorization': `Token ${sessionStorage.getItem('token')}`
-            }
-        });
-        const data = await response.json();
+        const response = await axios.get('/integrations/health/mpesa/');
+        const data = response.data;
 
         if (data.status === 'healthy' || data.connected) {
             gatewayStatus.value.mpesa.connected = true;
@@ -252,12 +239,8 @@ function getStatusLabel(connected) {
 // Paystack Methods
 async function loadPaystackSettings() {
     try {
-        const response = await fetch('/api/v1/integrations/paystack-settings/current/', {
-            headers: {
-                'Authorization': `Token ${sessionStorage.getItem('token')}`
-            }
-        });
-        const data = await response.json();
+        const response = await axios.get('/integrations/paystack-settings/current/');
+        const data = response.data;
         if (data && !data.error) {
             paystack.value = { ...paystack.value, ...data };
         }
@@ -269,31 +252,20 @@ async function loadPaystackSettings() {
 async function savePaystackSettings() {
     saving.value = true;
     try {
-        const method = paystack.value.id ? 'PUT' : 'POST';
-        const url = paystack.value.id
-            ? `/api/v1/integrations/paystack-settings/${paystack.value.id}/`
-            : '/api/v1/integrations/paystack-settings/';
-
-        const response = await fetch(url, {
-            method,
-            headers: {
-                'Authorization': `Token ${sessionStorage.getItem('token')}`,
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify(paystack.value)
-        });
-
-        const data = await response.json();
-
-        if (response.ok) {
-            paystack.value = { ...paystack.value, ...data };
-            showToast('success', 'Success', 'Paystack settings saved successfully', 3000);
+        let response;
+        if (paystack.value.id) {
+            response = await axios.put(`/integrations/paystack-settings/${paystack.value.id}/`, paystack.value);
         } else {
-            showToast('error', 'Error', data.message || 'Failed to save Paystack settings', 4000);
+            response = await axios.post('/integrations/paystack-settings/', paystack.value);
         }
+
+        const data = response.data;
+        paystack.value = { ...paystack.value, ...data };
+        showToast('success', 'Success', 'Paystack settings saved successfully', 3000);
     } catch (error) {
         console.error('Error saving Paystack settings:', error);
-        showToast('error', 'Error', 'Failed to save Paystack settings', 4000);
+        const message = error.response?.data?.message || error.response?.data?.detail || 'Failed to save Paystack settings';
+        showToast('error', 'Error', message, 4000);
     } finally {
         saving.value = false;
     }
@@ -302,14 +274,8 @@ async function savePaystackSettings() {
 async function testPaystackConnection() {
     testing.value = true;
     try {
-        const response = await fetch('/api/v1/integrations/paystack-settings/test_connection/', {
-            method: 'POST',
-            headers: {
-                'Authorization': `Token ${sessionStorage.getItem('token')}`,
-                'Content-Type': 'application/json'
-            }
-        });
-        const data = await response.json();
+        const response = await axios.post('/integrations/paystack-settings/test_connection/');
+        const data = response.data;
 
         if (data.success) {
             gatewayStatus.value.paystack.connected = true;

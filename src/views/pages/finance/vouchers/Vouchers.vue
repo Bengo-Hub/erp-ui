@@ -1,11 +1,19 @@
 <script setup>
 import VoucherForm from '@/components/finance/vouchers/VoucherForm.vue';
 import { useToast } from '@/composables/useToast';
+import { useApprovalPermissions } from '@/composables/useApprovalPermissions';
 import { financeService } from '@/services/finance/financeService';
 import { formatCurrency, formatDate } from '@/utils/formatters';
 import { onMounted, reactive, ref } from 'vue';
 
 const { showToast } = useToast();
+const { isDesignatedApprover } = useApprovalPermissions();
+
+// Helper to check if current user can approve a voucher
+const canApproveVoucher = (voucher) => {
+    if (!voucher || voucher.status !== 'pending') return false;
+    return isDesignatedApprover(voucher, 'approve_voucher');
+};
 
 // State
 const loading = ref(false);
@@ -265,8 +273,8 @@ onMounted(() => {
                             <div class="flex space-x-2">
                                 <Button icon="pi pi-eye" severity="info" size="small" @click="viewVoucher(data)" v-tooltip.top="'View Details'" />
                                 <Button icon="pi pi-pencil" severity="secondary" size="small" @click="editVoucher(data)" v-tooltip.top="'Edit Voucher'" v-if="data.status === 'draft'" />
-                                <Button icon="pi pi-check" severity="success" size="small" @click="updateStatus(data, 'approved')" v-tooltip.top="'Approve'" v-if="data.status === 'pending'" />
-                                <Button icon="pi pi-times" severity="danger" size="small" @click="updateStatus(data, 'rejected')" v-tooltip.top="'Reject'" v-if="data.status === 'pending'" />
+                                <Button icon="pi pi-check" severity="success" size="small" @click="updateStatus(data, 'approved')" v-tooltip.top="'Approve'" v-if="canApproveVoucher(data)" />
+                                <Button icon="pi pi-times" severity="danger" size="small" @click="updateStatus(data, 'rejected')" v-tooltip.top="'Reject'" v-if="canApproveVoucher(data)" />
                                 <Button icon="pi pi-trash" severity="danger" size="small" @click="deleteVoucher(data)" v-tooltip.top="'Delete Voucher'" v-if="data.status === 'draft'" />
                             </div>
                         </template>

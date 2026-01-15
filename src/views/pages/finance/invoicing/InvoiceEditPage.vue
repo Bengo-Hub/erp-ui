@@ -4,6 +4,7 @@ import { computed, onMounted, ref } from 'vue';
 import { invoiceService } from '@/services/finance/invoiceService';
 import { useToast } from '@/composables/useToast';
 import { usePermissions } from '@/composables/usePermissions';
+import { useApprovalPermissions } from '@/composables/useApprovalPermissions';
 import PermissionButton from '@/components/common/PermissionButton.vue';
 import Button from 'primevue/button';
 import Spinner from '@/components/ui/Spinner.vue';
@@ -13,14 +14,17 @@ const route = useRoute();
 const router = useRouter();
 const { showToast } = useToast();
 const { hasPermission } = usePermissions();
+const { isDesignatedApprover } = useApprovalPermissions();
 
 const invoiceId = route.params.id;
 const loading = ref(false);
 const invoice = ref(null);
 
-const canApprove = computed(() => 
-  hasPermission('change_billingdocument') && invoice.value?.status === 'draft'
-);
+// Check if current user can approve - must be designated approver
+const canApprove = computed(() => {
+  if (!invoice.value || invoice.value.status !== 'draft') return false;
+  return isDesignatedApprover(invoice.value, 'change_billingdocument');
+});
 
 // Load invoice data
 const loadInvoice = async () => {

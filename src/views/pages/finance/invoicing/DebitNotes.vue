@@ -40,10 +40,10 @@ const fetchDebitNotes = async () => {
     loading.value = true;
     try {
         const params = getFilterParams();
+        // Service already returns extracted paginated data: { results, count, next, previous, ... }
         const response = await debitNoteService.getDebitNotes(params);
-        const data = response.data || response;
-        debitNotes.value = data.results || data || [];
-        totalRecords.value = data.count || debitNotes.value.length;
+        debitNotes.value = response.results || [];
+        totalRecords.value = response.count || debitNotes.value.length;
     } catch (error) {
         console.error('Error fetching debit notes:', error);
         showToast('error', 'Error', 'Failed to load debit notes');
@@ -248,16 +248,16 @@ onMounted(() => {
 
                     <Column header="Related Invoice">
                         <template #body="{ data }">
-                            <span v-if="data.related_invoice_number" class="text-sm">
-                                {{ data.related_invoice_number }}
+                            <span v-if="data.invoice_number" class="text-sm">
+                                {{ data.invoice_number }}
                             </span>
                             <span v-else class="text-surface-400">N/A</span>
                         </template>
                     </Column>
 
-                    <Column field="debit_date" header="Date" sortable>
+                    <Column field="debit_note_date" header="Date" sortable>
                         <template #body="{ data }">
-                            {{ formatDate(data.debit_date) }}
+                            {{ formatDate(data.debit_note_date) }}
                         </template>
                     </Column>
 

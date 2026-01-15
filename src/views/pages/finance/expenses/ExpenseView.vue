@@ -6,6 +6,7 @@ import DocumentStatusBadge from '@/components/finance/shared/DocumentStatusBadge
 import Spinner from '@/components/ui/Spinner.vue';
 import PermissionButton from '@/components/common/PermissionButton.vue';
 import { usePermissions } from '@/composables/usePermissions';
+import { useApprovalPermissions } from '@/composables/useApprovalPermissions';
 import { useToast } from '@/composables/useToast';
 import { expenseService } from '@/services/finance/expenseService';
 import { formatCurrency, formatDate } from '@/utils/formatters';
@@ -16,6 +17,7 @@ const route = useRoute();
 const router = useRouter();
 const { showToast } = useToast();
 const { hasPermission } = usePermissions();
+const { isDesignatedApprover } = useApprovalPermissions();
 
 // Data
 const expense = ref(null);
@@ -27,8 +29,11 @@ const showSendDialog = ref(false);
 const approvalAction = ref('approve');
 const actionLoading = ref(false);
 
-// Computed
-const canApprove = computed(() => hasPermission('approve_expense'));
+// Computed - check if current user is the designated approver
+const canApproveExpense = computed(() => {
+    if (!expense.value || expense.value.status !== 'pending') return false;
+    return isDesignatedApprover(expense.value, 'approve_expense');
+});
 const canEdit = computed(() => hasPermission('change_expense') && ['draft', 'rejected'].includes(expense.value?.status));
 const canDelete = computed(() => hasPermission('delete_expense') && expense.value?.status === 'draft');
 const canRecordPayment = computed(() => hasPermission('record_payment') && expense.value?.status === 'approved');
@@ -235,19 +240,19 @@ onMounted(() => {
                     </div>
                     <!-- Action Buttons -->
                     <div class="flex flex-wrap gap-2">
-                        <PermissionButton 
-                            v-if="canApprove && expense.status === 'pending'"
+                        <PermissionButton
+                            v-if="canApproveExpense"
                             :permission="'approve_expense'"
-                            label="Approve" 
-                            icon="pi pi-check" 
+                            label="Approve"
+                            icon="pi pi-check"
                             @click="openApprovalDialog"
                             class="p-button-success"
                         />
-                        <PermissionButton 
-                            v-if="canApprove && expense.status === 'pending'"
+                        <PermissionButton
+                            v-if="canApproveExpense"
                             :permission="'reject_expense'"
-                            label="Reject" 
-                            icon="pi pi-times" 
+                            label="Reject"
+                            icon="pi pi-times"
                             @click="openRejectionDialog"
                             class="p-button-danger"
                         />

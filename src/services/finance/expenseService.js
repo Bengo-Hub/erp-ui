@@ -20,6 +20,7 @@ export const expenseService = {
     approve: (id, data = {}) => axios.post(`${FINANCE_BASE_URL}/expenses/${id}/approve/`, data),
     reject: (id, data = {}) => axios.post(`${FINANCE_BASE_URL}/expenses/${id}/reject/`, data),
     submit: (id, data = {}) => axios.post(`${FINANCE_BASE_URL}/expenses/${id}/submit/`, data),
+    submitForApproval: (id, data = {}) => axios.post(`${FINANCE_BASE_URL}/expenses/${id}/submit-for-approval/`, data),
     clone: (id) => axios.post(`${FINANCE_BASE_URL}/expenses/${id}/clone/`),
     bulkApprove: (ids) => axios.post(`${FINANCE_BASE_URL}/expenses/bulk-approve/`, { ids }),
     bulkReject: (ids, reason = '') => axios.post(`${FINANCE_BASE_URL}/expenses/bulk-reject/`, { ids, reason }),

@@ -5,6 +5,7 @@ import DocumentStatusBadge from '@/components/finance/shared/DocumentStatusBadge
 import Spinner from '@/components/ui/Spinner.vue';
 import PermissionButton from '@/components/common/PermissionButton.vue';
 import { usePermissions } from '@/composables/usePermissions';
+import { useApprovalPermissions } from '@/composables/useApprovalPermissions';
 import { useToast } from '@/composables/useToast';
 import { invoiceService } from '@/services/finance/invoiceService';
 import { creditNoteService, debitNoteService, deliveryNoteService } from '@/services/finance/billingDocumentsService';
@@ -17,6 +18,7 @@ const route = useRoute();
 const router = useRouter();
 const { showToast } = useToast();
 const { hasPermission } = usePermissions();
+const { isDesignatedApprover } = useApprovalPermissions();
 
 // Reactive state
 const invoice = ref(null);
@@ -40,6 +42,13 @@ const canDelete = computed(() => hasPermission('delete_billingdocument') && invo
 const canSend = computed(() => ['sent', 'overdue'].includes(invoice.value?.status));
 const canRecordPayment = computed(() => !['paid', 'void', 'cancelled'].includes(invoice.value?.status) && invoice.value?.balance_due > 0);
 const canVoid = computed(() => !['paid', 'void', 'cancelled'].includes(invoice.value?.status));
+
+// Check if current user can approve this invoice
+const canApproveInvoice = computed(() => {
+    if (!invoice.value || invoice.value.status !== 'draft') return false;
+    // Use designated approver check - falls back to permission if no specific approver
+    return isDesignatedApprover(invoice.value, 'change_billingdocument');
+});
 
 const totalItems = computed(() => invoice.value?.items?.length || 0);
 
@@ -538,11 +547,11 @@ onUnmounted(() => {
                             class="p-button-sm"
                             @click="() => router.push(`/finance/invoices/${invoice.id}/edit`)"
                         />
-                        <PermissionButton 
-                            v-if="invoice?.status === 'draft'"
+                        <PermissionButton
+                            v-if="canApproveInvoice"
                             :permission="'change_billingdocument'"
-                            label="Approve" 
-                            icon="pi pi-check" 
+                            label="Approve"
+                            icon="pi pi-check"
                             class="p-button-sm p-button-success"
                             @click="approveInvoice"
                         />

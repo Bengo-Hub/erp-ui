@@ -167,6 +167,36 @@ const deleteExpense = async (expense) => {
     }
 };
 
+const submitForApproval = async (expense) => {
+    if (!confirm(`Submit expense "${expense.reference_no}" for approval?`)) return;
+
+    try {
+        await expenseService.submitForApproval(expense.id);
+        showToast('success', 'Success', 'Expense submitted for approval');
+        await Promise.all([fetchExpenses(), fetchSummary()]);
+    } catch (error) {
+        console.error('Error submitting expense:', error);
+        showToast('error', 'Error', 'Failed to submit expense for approval');
+    }
+};
+
+// Helper to check if current user is the designated approver for an expense
+const isDesignatedApprover = (expense) => {
+    // Check if the expense has an assigned approver that matches current user
+    if (expense.current_approver_id) {
+        const currentUserId = parseInt(localStorage.getItem('user_id') || '0');
+        return expense.current_approver_id === currentUserId;
+    }
+    // Fall back to permission-based check if no specific approver assigned
+    return canApprove.value;
+};
+
+// Check if user can submit this expense for approval
+const canSubmitForApproval = (expense) => {
+    // Can submit if it's a draft and user created it or has edit permission
+    return expense.status === 'draft' && (expense.created_by_me || hasPermission('change_expense'));
+};
+
 const bulkApprove = async () => {
     if (selectedExpenses.value.length === 0) {
         showToast('warn', 'Warning', 'Please select expenses to approve');
@@ -478,44 +508,54 @@ onMounted(() => {
                         <Column header="Actions" :exportable="false" style="min-width: 200px">
                             <template #body="{ data }">
                                 <div class="flex gap-1">
-                                    <Button 
-                                        icon="pi pi-eye" 
-                                        class="p-button-text p-button-sm" 
+                                    <Button
+                                        icon="pi pi-eye"
+                                        class="p-button-text p-button-sm"
                                         @click="viewExpense(data)"
                                         v-tooltip.top="'View'"
                                     />
-                                    <Button 
-                                        v-if="canApprove && data.status === 'pending'"
-                                        icon="pi pi-check" 
-                                        class="p-button-text p-button-sm p-button-success" 
+                                    <!-- Submit for Approval - shown to creators of draft expenses -->
+                                    <Button
+                                        v-if="canSubmitForApproval(data)"
+                                        icon="pi pi-send"
+                                        class="p-button-text p-button-sm p-button-info"
+                                        @click="submitForApproval(data)"
+                                        v-tooltip.top="'Submit for Approval'"
+                                    />
+                                    <!-- Approve - only shown to designated approvers -->
+                                    <Button
+                                        v-if="isDesignatedApprover(data) && data.status === 'pending'"
+                                        icon="pi pi-check"
+                                        class="p-button-text p-button-sm p-button-success"
                                         @click="openApprovalDialog(data)"
                                         v-tooltip.top="'Approve'"
                                     />
-                                    <Button 
-                                        v-if="canApprove && data.status === 'pending'"
-                                        icon="pi pi-times" 
-                                        class="p-button-text p-button-sm p-button-danger" 
+                                    <!-- Reject - only shown to designated approvers -->
+                                    <Button
+                                        v-if="isDesignatedApprover(data) && data.status === 'pending'"
+                                        icon="pi pi-times"
+                                        class="p-button-text p-button-sm p-button-danger"
                                         @click="openRejectionDialog(data)"
                                         v-tooltip.top="'Reject'"
                                     />
-                                    <Button 
+                                    <Button
                                         v-if="data.status === 'approved'"
-                                        icon="pi pi-money-bill" 
-                                        class="p-button-text p-button-sm p-button-primary" 
+                                        icon="pi pi-money-bill"
+                                        class="p-button-text p-button-sm p-button-primary"
                                         @click="openPaymentDialog(data)"
                                         v-tooltip.top="'Record Payment'"
                                     />
-                                    <Button 
+                                    <Button
                                         v-if="canEdit && ['draft', 'rejected'].includes(data.status)"
-                                        icon="pi pi-pencil" 
-                                        class="p-button-text p-button-sm" 
+                                        icon="pi pi-pencil"
+                                        class="p-button-text p-button-sm"
                                         @click="editExpense(data)"
                                         v-tooltip.top="'Edit'"
                                     />
-                                    <Button 
+                                    <Button
                                         v-if="canDelete && data.status === 'draft'"
-                                        icon="pi pi-trash" 
-                                        class="p-button-text p-button-sm p-button-danger" 
+                                        icon="pi pi-trash"
+                                        class="p-button-text p-button-sm p-button-danger"
                                         @click="deleteExpense(data)"
                                         v-tooltip.top="'Delete'"
                                     />

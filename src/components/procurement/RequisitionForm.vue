@@ -196,12 +196,15 @@ const submitForm = async () => {
         isSubmitting.value = true;
 
         // Prepare payload based on request type
+        // Format date to YYYY-MM-DD for all request types
+        const formattedDate = form.requiredDate ? moment(form.requiredDate).format('YYYY-MM-DD') : null;
+
         let payload;
         if (form.requestType === 'inventory') {
             payload = {
                 request_type: 'inventory',
                 purpose: form.purpose,
-                required_by_date: moment(form.requiredDate).format('YYYY-MM-DD'), // Convert to YYYY-MM-DD form.requiredDate,
+                required_by_date: formattedDate,
                 priority: form.priority,
                 branch_code: form.branch,
                 items: form.items.map((item) => ({
@@ -213,28 +216,34 @@ const submitForm = async () => {
             };
         } else if (form.requestType === 'external_item') {
             payload = {
-                type: 'external_item',
+                request_type: 'external_item',
                 purpose: form.purpose,
-                required_by_date: form.requiredDate,
+                required_by_date: formattedDate,
                 priority: form.priority,
-                preferred_supplier_ids: form.preferredSuppliers.map((s) => s.id),
+                preferred_suppliers: form.preferredSuppliers.map((s) => s.id),
                 items: form.items.map((item) => ({
+                    item_type: 'external',
                     description: item.description,
                     quantity: item.quantity,
                     specifications: item.specifications,
                     urgent: item.urgent,
-                    estimated_price: item.estimatedPrice
+                    estimated_price: item.estimatedPrice || 0
                 }))
             };
         } else if (form.requestType === 'service') {
             payload = {
-                type: 'service',
+                request_type: 'service',
                 purpose: form.purpose,
-                required_by_date: form.requiredDate,
+                required_by_date: formattedDate,
                 priority: form.priority,
-                service_description: form.serviceDescription,
-                expected_deliverables: form.expectedDeliverables,
-                duration: form.duration
+                // For service type, create a single service item
+                items: [{
+                    item_type: 'service',
+                    service_description: form.serviceDescription,
+                    expected_deliverables: form.expectedDeliverables,
+                    duration: form.duration,
+                    quantity: 1
+                }]
             };
         }
 

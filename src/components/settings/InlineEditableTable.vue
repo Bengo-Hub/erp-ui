@@ -1,6 +1,6 @@
 <script setup>
 import { useToast } from '@/composables/useToast';
-import { ref } from 'vue';
+import { ref, computed } from 'vue';
 
 const props = defineProps({
     items: {
@@ -18,6 +18,10 @@ const props = defineProps({
     emptyMessage: {
         type: String,
         default: 'No items found. Click "Add Item" to create your first entry.'
+    },
+    itemLabel: {
+        type: String,
+        default: 'item'
     }
 });
 
@@ -26,6 +30,27 @@ const emit = defineEmits(['save', 'delete', 'add']);
 const { showToast } = useToast();
 const editingRows = ref({});
 const newItem = ref({});
+
+// Delete confirmation state
+const deleteDialog = ref(false);
+const itemToDelete = ref(null);
+const indexToDelete = ref(null);
+const deleting = ref(false);
+
+// Computed to get item display name for confirmation
+const deleteItemName = computed(() => {
+    if (!itemToDelete.value) return '';
+    // Try to find a name field from the first column or common name fields
+    const nameFields = ['name', 'title', 'label', 'code', 'number'];
+    for (const field of nameFields) {
+        if (itemToDelete.value[field]) return itemToDelete.value[field];
+    }
+    // Fall back to first column's value
+    if (props.columns.length > 0 && itemToDelete.value[props.columns[0].field]) {
+        return itemToDelete.value[props.columns[0].field];
+    }
+    return props.itemLabel;
+});
 
 const initializeNewItem = () => {
     const item = {};
@@ -56,7 +81,30 @@ const saveRow = (index) => {
 };
 
 const deleteRow = (item, index) => {
-    emit('delete', item, index);
+    // Show confirmation dialog instead of immediate delete
+    itemToDelete.value = item;
+    indexToDelete.value = index;
+    deleteDialog.value = true;
+};
+
+const confirmDelete = () => {
+    if (!itemToDelete.value) return;
+
+    deleting.value = true;
+    emit('delete', itemToDelete.value, indexToDelete.value);
+
+    // Reset state after emitting (parent should handle actual deletion)
+    // The deleting state will be reset when the parent refetches data or calls closeDeleteDialog
+    setTimeout(() => {
+        closeDeleteDialog();
+    }, 500);
+};
+
+const closeDeleteDialog = () => {
+    deleteDialog.value = false;
+    itemToDelete.value = null;
+    indexToDelete.value = null;
+    deleting.value = false;
 };
 
 const addNewItem = () => {
@@ -228,21 +276,61 @@ const getInputType = (type) => {
 
         <!-- Actions -->
         <div class="flex justify-between items-center p-4 bg-surface-50 dark:bg-surface-800 border-t border-surface-200 dark:border-surface-700">
-            <Button 
-                label="Add Item" 
-                icon="pi pi-plus" 
+            <Button
+                label="Add Item"
+                icon="pi pi-plus"
                 outlined
                 @click="addNewItem"
                 :disabled="loading"
             />
-            <Button 
-                label="Update Settings" 
-                icon="pi pi-save" 
+            <Button
+                label="Update Settings"
+                icon="pi pi-save"
                 severity="success"
                 @click="$emit('save-all')"
                 :disabled="loading"
             />
         </div>
+
+        <!-- Delete Confirmation Dialog -->
+        <Dialog
+            v-model:visible="deleteDialog"
+            header="Confirm Deletion"
+            modal
+            :style="{ width: '400px' }"
+            :closable="!deleting"
+            :closeOnEscape="!deleting"
+        >
+            <div class="flex items-start gap-4">
+                <i class="pi pi-exclamation-triangle text-4xl text-yellow-500"></i>
+                <div>
+                    <p class="text-surface-700 dark:text-surface-200 mb-2">
+                        Are you sure you want to delete <strong>{{ deleteItemName }}</strong>?
+                    </p>
+                    <p class="text-sm text-surface-500 dark:text-surface-400">
+                        This action cannot be undone.
+                    </p>
+                </div>
+            </div>
+            <template #footer>
+                <div class="flex justify-end gap-2">
+                    <Button
+                        label="Cancel"
+                        icon="pi pi-times"
+                        text
+                        @click="closeDeleteDialog"
+                        :disabled="deleting"
+                    />
+                    <Button
+                        label="Delete"
+                        icon="pi pi-trash"
+                        severity="danger"
+                        @click="confirmDelete"
+                        :loading="deleting"
+                    />
+                </div>
+            </template>
+        </Dialog>
     </div>
 </template>
 

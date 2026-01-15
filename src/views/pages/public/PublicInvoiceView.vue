@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed, onMounted } from 'vue';
+import { ref, computed, onMounted, onUnmounted } from 'vue';
 import { useRoute } from 'vue-router';
 import { useToast } from '@/composables/useToast';
 import { invoiceService } from '@/services/finance/invoiceService';
@@ -15,8 +15,9 @@ const invoice = ref(null);
 const loading = ref(false);
 const error = ref(null);
 const showPaymentDialog = ref(false);
-const pdfUrl = ref(null);
+const pdfBlobUrl = ref(null);
 const pdfLoading = ref(true);
+const pdfError = ref(false);
 const activeTab = ref(0); // 0 = PDF preview, 1 = Details
 
 // Computed
@@ -42,8 +43,8 @@ const fetchInvoice = async () => {
     try {
         const response = await invoiceService.getPublicInvoice(documentId.value, shareToken.value);
         invoice.value = response;
-        // Generate PDF URL
-        pdfUrl.value = invoiceService.getPublicPDFUrl(documentId.value, shareToken.value);
+        // Load PDF as blob for reliable iframe display
+        await loadPdfBlob();
     } catch (err) {
         console.error('Error fetching invoice:', err);
         error.value = 'Unable to load invoice. The link may be invalid or expired.';
@@ -53,32 +54,65 @@ const fetchInvoice = async () => {
     }
 };
 
+const loadPdfBlob = async () => {
+    pdfLoading.value = true;
+    pdfError.value = false;
+    try {
+        const pdfBlob = await invoiceService.getPublicInvoicePDF(documentId.value, shareToken.value);
+        if (pdfBlob && pdfBlob instanceof Blob) {
+            // Revoke previous blob URL if exists
+            if (pdfBlobUrl.value) {
+                URL.revokeObjectURL(pdfBlobUrl.value);
+            }
+            // Create blob URL for iframe
+            pdfBlobUrl.value = URL.createObjectURL(pdfBlob);
+        } else {
+            throw new Error('Invalid PDF response');
+        }
+    } catch (err) {
+        console.error('Error loading PDF:', err);
+        pdfError.value = true;
+    } finally {
+        pdfLoading.value = false;
+    }
+};
+
 const openPaymentDialog = () => {
     showPaymentDialog.value = true;
 };
 
-const downloadInvoice = () => {
-    const downloadUrl = invoiceService.getPublicPDFUrl(documentId.value, shareToken.value, true);
-    window.open(downloadUrl, '_blank');
+const downloadInvoice = async () => {
+    try {
+        const pdfBlob = await invoiceService.getPublicInvoicePDF(documentId.value, shareToken.value);
+        if (pdfBlob && pdfBlob instanceof Blob) {
+            const url = URL.createObjectURL(pdfBlob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = `Invoice_${invoice.value?.invoice_number || documentId.value}.pdf`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(url);
+        }
+    } catch (err) {
+        console.error('Download error:', err);
+        showToast('error', 'Error', 'Failed to download invoice');
+    }
 };
 
 const printInvoice = () => {
-    // Open PDF in new window and print
-    const printWindow = window.open(pdfUrl.value, '_blank');
+    // Use blob URL if available, otherwise try direct URL
+    const printUrl = pdfBlobUrl.value || invoiceService.getPublicPDFUrl(documentId.value, shareToken.value);
+    const printWindow = window.open(printUrl, '_blank');
     if (printWindow) {
         printWindow.onload = () => {
-            printWindow.print();
+            setTimeout(() => printWindow.print(), 500);
         };
     }
 };
 
-const onPdfLoad = () => {
-    pdfLoading.value = false;
-};
-
-const onPdfError = () => {
-    pdfLoading.value = false;
-    showToast('warn', 'Warning', 'PDF preview may not be available. Try downloading instead.');
+const retryPdfLoad = () => {
+    loadPdfBlob();
 };
 
 const onPaymentInitiated = (paymentInfo) => {
@@ -91,6 +125,13 @@ const onPaymentInitiated = (paymentInfo) => {
 // Lifecycle
 onMounted(() => {
     fetchInvoice();
+});
+
+// Cleanup blob URL on unmount
+onUnmounted(() => {
+    if (pdfBlobUrl.value) {
+        URL.revokeObjectURL(pdfBlobUrl.value);
+    }
 });
 </script>
 
@@ -164,16 +205,44 @@ onMounted(() => {
 
                         <!-- PDF Preview Tab -->
                         <div v-show="activeTab === 0" class="relative" style="min-height: 600px;">
+                            <!-- Loading State -->
                             <div v-if="pdfLoading" class="absolute inset-0 flex items-center justify-center bg-gray-100 dark:bg-gray-700">
-                                <Spinner />
+                                <div class="text-center">
+                                    <Spinner />
+                                    <p class="mt-3 text-sm text-gray-600 dark:text-gray-400">Loading document preview...</p>
+                                </div>
                             </div>
+
+                            <!-- Error State -->
+                            <div v-else-if="pdfError" class="absolute inset-0 flex items-center justify-center bg-gray-100 dark:bg-gray-700">
+                                <div class="text-center p-6">
+                                    <i class="pi pi-file-pdf text-5xl text-gray-400 mb-4 block"></i>
+                                    <h3 class="text-lg font-semibold text-gray-700 dark:text-gray-300 mb-2">Preview Unavailable</h3>
+                                    <p class="text-sm text-gray-500 dark:text-gray-400 mb-4">Unable to load the PDF preview in browser.</p>
+                                    <div class="flex gap-2 justify-center">
+                                        <Button
+                                            label="Retry"
+                                            icon="pi pi-refresh"
+                                            class="p-button-sm p-button-secondary"
+                                            @click="retryPdfLoad"
+                                        />
+                                        <Button
+                                            label="Download PDF"
+                                            icon="pi pi-download"
+                                            class="p-button-sm"
+                                            @click="downloadInvoice"
+                                        />
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- PDF iframe -->
                             <iframe
-                                v-if="pdfUrl"
-                                :src="pdfUrl"
+                                v-else-if="pdfBlobUrl"
+                                :src="pdfBlobUrl"
                                 class="w-full border-0"
                                 style="height: 700px;"
-                                @load="onPdfLoad"
-                                @error="onPdfError"
+                                type="application/pdf"
                             />
                         </div>
 

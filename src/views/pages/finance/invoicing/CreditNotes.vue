@@ -40,10 +40,10 @@ const fetchCreditNotes = async () => {
     loading.value = true;
     try {
         const params = getFilterParams();
+        // Service already returns extracted paginated data: { results, count, next, previous, ... }
         const response = await creditNoteService.getCreditNotes(params);
-        const data = response.data || response;
-        creditNotes.value = data.results || data || [];
-        totalRecords.value = data.count || creditNotes.value.length;
+        creditNotes.value = response.results || [];
+        totalRecords.value = response.count || creditNotes.value.length;
     } catch (error) {
         console.error('Error fetching credit notes:', error);
         showToast('error', 'Error', 'Failed to load credit notes');
@@ -248,16 +248,16 @@ onMounted(() => {
 
                     <Column header="Related Invoice">
                         <template #body="{ data }">
-                            <span v-if="data.related_invoice_number" class="text-sm">
-                                {{ data.related_invoice_number }}
+                            <span v-if="data.invoice_number" class="text-sm">
+                                {{ data.invoice_number }}
                             </span>
                             <span v-else class="text-surface-400">N/A</span>
                         </template>
                     </Column>
 
-                    <Column field="credit_date" header="Date" sortable>
+                    <Column field="credit_note_date" header="Date" sortable>
                         <template #body="{ data }">
-                            {{ formatDate(data.credit_date) }}
+                            {{ formatDate(data.credit_note_date) }}
                         </template>
                     </Column>
 

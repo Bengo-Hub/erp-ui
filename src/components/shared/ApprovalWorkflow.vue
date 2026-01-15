@@ -1,10 +1,21 @@
 <script setup>
 import { ref, computed } from 'vue';
+import { useApprovalPermissions } from '@/composables/useApprovalPermissions';
+
+const { isDesignatedApprover } = useApprovalPermissions();
 
 const props = defineProps({
     approvalSteps: Array,
     currentStage: String,
-    userRole: String
+    userRole: String,
+    document: {
+        type: Object,
+        default: null
+    },
+    fallbackPermission: {
+        type: String,
+        default: null
+    }
 });
 
 const emit = defineEmits(['approve']);
@@ -12,7 +23,13 @@ const emit = defineEmits(['approve']);
 const comments = ref('');
 
 const showApprovalActions = computed(() => {
-    return (props.userRole === 'procurement' && props.currentStage === 'procurement_review') || (props.userRole === 'finance' && props.currentStage === 'finance_review');
+    // If document is provided, use the designated approver check
+    if (props.document) {
+        return isDesignatedApprover(props.document, props.fallbackPermission);
+    }
+    // Fall back to legacy role-based check
+    return (props.userRole === 'procurement' && props.currentStage === 'procurement_review') ||
+           (props.userRole === 'finance' && props.currentStage === 'finance_review');
 });
 
 const approve = (decision) => {

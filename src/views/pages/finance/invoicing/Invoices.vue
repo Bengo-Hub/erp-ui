@@ -5,6 +5,7 @@ import PaymentRecordDialog from '@/components/finance/invoicing/PaymentRecordDia
 import DocumentStatusBadge from '@/components/finance/shared/DocumentStatusBadge.vue';
 import { useDocumentFilters } from '@/composables/finance/useDocumentFilters';
 import { usePermissions } from '@/composables/usePermissions';
+import { useApprovalPermissions } from '@/composables/useApprovalPermissions';
 import { useToast } from '@/composables/useToast';
 import { invoiceService } from '@/services/finance/invoiceService';
 import { formatCurrency, formatDate } from '@/utils/formatters';
@@ -14,6 +15,7 @@ import { useRouter } from 'vue-router';
 const router = useRouter();
 const { showToast } = useToast();
 const { hasPermission } = usePermissions();
+const { isDesignatedApprover } = useApprovalPermissions();
 
 // Use shared filter composable
 const { filters, currentPage, perPage, totalRecords, onPage, onFilter, getFilterParams } = useDocumentFilters();
@@ -67,8 +69,8 @@ const getInvoiceActions = (invoice) => {
 
     if (!invoice) return actions;
 
-    // Approve action for draft invoices
-    if (invoice.status === 'draft') {
+    // Approve action for draft invoices - only show if user is designated approver
+    if (invoice.status === 'draft' && isDesignatedApprover(invoice, 'change_billingdocument')) {
         actions.push({ label: 'Approve', icon: 'pi pi-check', command: () => approveInvoice(invoice) });
     }
 
