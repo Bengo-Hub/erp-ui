@@ -710,6 +710,13 @@ const onTaxSelect = (val) => {
     }
 };
 
+// Handler for PrimeVue Dropdown @change event (receives event object, not raw value)
+const onTaxRateSelect = (event) => {
+    const val = event.value;
+    onTaxSelect(val);
+    calculateTotals();
+};
+
 // Lifecycle
 onMounted(async () => {
     await Promise.all([
@@ -1008,7 +1015,7 @@ const loadQuotation = async (id) => {
                                         <div class="flex items-center gap-2">
                                             <Dropdown v-model="form.tax_mode" :options="[{ label: 'Per line items', value: 'line_items' }, { label: 'On final amount', value: 'on_total' }]" optionLabel="label" optionValue="value" class="w-36" @change="calculateTotals" />
                                             <div v-if="form.tax_mode === 'on_total'" class="flex items-center gap-2">
-                                                <Dropdown v-model="form.tax_rate_id" :options="taxOptions" optionLabel="label" optionValue="value" class="w-48" @change="val => { onTaxSelect(val); calculateTotals(); }" />
+                                                <Dropdown v-model="form.tax_rate_id" :options="taxOptions" optionLabel="label" optionValue="value" class="w-48" @change="onTaxRateSelect" />
                                                 <InputNumber v-if="form.tax_rate_id === 'custom' || taxRates.length === 0" v-model="form.tax_rate" suffix="%" :min="0" :max="100" class="w-24" @input="calculateTotals" />
                                                 <small v-else class="text-sm">Rate: {{ form.tax_rate }}%</small>
                                             </div>
