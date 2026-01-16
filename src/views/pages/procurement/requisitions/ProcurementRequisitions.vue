@@ -137,20 +137,11 @@ const closeModal = () => {
     modal.value.visible = false;
 };
 
-const handleSubmit = async (formData) => {
-    try {
-        if (modal.value.type === 'create') {
-            await procurementService.createRequisition(formData);
-            showToast('success', `${formatType(formData.type)} requisition created`);
-        } else {
-            await procurementService.updateRequisition(formData);
-            showToast('success', 'Requisition updated');
-        }
-        loadRequisitions();
-        closeModal();
-    } catch (error) {
-        handleError(error);
-    }
+const handleSubmit = async () => {
+    // The form component already handles the API call and shows success toast
+    // We just need to reload the list and close the modal
+    loadRequisitions();
+    closeModal();
 };
 
 const updateStatus = async (data) => {
