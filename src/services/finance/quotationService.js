@@ -237,6 +237,22 @@ export const quotationService = {
         } catch (error) {
             return handleError(error);
         }
+    },
+
+    /**
+     * Accept a quotation from the public view
+     * @param {string|number} id - Quotation ID
+     * @param {string} token - Share token
+     * @param {Object} data - Accept data (email, notes)
+     * @returns {Promise<Object>} Response data
+     */
+    async acceptPublicQuotation(id, token, data) {
+        try {
+            const response = await axios.post(`${QUOTATIONS_BASE}/public/quotation/${id}/${token}/accept/`, data);
+            return response.data;
+        } catch (error) {
+            return handleError(error);
+        }
     }
 };
 

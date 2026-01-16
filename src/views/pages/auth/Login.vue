@@ -202,7 +202,7 @@ const getDashboardRedirectPathForUser = (user) => {
                                 <Checkbox v-model="form.remember" id="rememberme1" class="mr-2"></Checkbox>
                                 <label for="rememberme1">Remember me</label>
                             </div>
-                            <span class="font-medium no-underline ml-2 text-right cursor-pointer text-primary">Forgot password?</span>
+                            <router-link to="/auth/forgot-password" class="font-medium no-underline ml-2 text-right cursor-pointer text-primary hover:underline">Forgot password?</router-link>
                         </div>
                         <Button label="Sign In" @click="handleLogin" class="w-full"></Button>
                     </div>

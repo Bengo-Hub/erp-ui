@@ -13,6 +13,18 @@ export const authRoutes = [
         component: () => import('@/views/pages/auth/Login.vue')
     },
     {
+        path: '/auth/forgot-password',
+        name: 'forgotPassword',
+        meta: { requiresAuth: false },
+        component: () => import('@/views/pages/auth/ForgotPassword.vue')
+    },
+    {
+        path: '/auth/reset-password/:uid/:token',
+        name: 'resetPassword',
+        meta: { requiresAuth: false },
+        component: () => import('@/views/pages/auth/ResetPassword.vue')
+    },
+    {
         path: '/auth/access',
         name: 'accessDenied',
         meta: { requiresAuth: false },

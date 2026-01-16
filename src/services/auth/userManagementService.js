@@ -327,13 +327,23 @@ export const userManagementService = {
     // Backup Management
     getBackups: async () => {
         try {
-            return await axios.get('/auth/backups/');
+            const response = await axios.get('/auth/backups/');
+            return response;
         } catch (error) {
             console.error('Failed to fetch backups:', error);
             throw error;
         }
     },
-    
+
+    getBackup: async (id) => {
+        try {
+            return await axios.get(`/auth/backups/${id}/`);
+        } catch (error) {
+            console.error(`Failed to fetch backup ${id}:`, error);
+            throw error;
+        }
+    },
+
     createBackup: async (type) => {
         try {
             return await axios.post('/auth/backups/', { type });
@@ -342,16 +352,46 @@ export const userManagementService = {
             throw error;
         }
     },
-    
-    restoreBackup: async (id) => {
+
+    /**
+     * Download a backup file
+     * @param {number} id - Backup ID
+     * @returns {Promise} - Blob response for download
+     */
+    downloadBackup: async (id) => {
         try {
-            return await axios.post(`/auth/backups/${id}/restore/`);
+            return await axios.get(`/auth/backups/${id}/?action=download`, {
+                responseType: 'blob'
+            });
+        } catch (error) {
+            console.error(`Failed to download backup ${id}:`, error);
+            throw error;
+        }
+    },
+
+    /**
+     * Get presigned download URL for a backup (for S3 backups)
+     * @param {number} id - Backup ID
+     * @returns {Promise} - Response with download_url
+     */
+    getBackupDownloadUrl: async (id) => {
+        try {
+            return await axios.get(`/auth/backups/${id}/?action=url`);
+        } catch (error) {
+            console.error(`Failed to get download URL for backup ${id}:`, error);
+            throw error;
+        }
+    },
+
+    restoreBackup: async (id, confirm = false) => {
+        try {
+            return await axios.post(`/auth/backups/${id}/`, { confirm });
         } catch (error) {
             console.error(`Failed to restore backup ${id}:`, error);
             throw error;
         }
     },
-    
+
     deleteBackup: async (id) => {
         try {
             return await axios.delete(`/auth/backups/${id}/`);
@@ -360,7 +400,7 @@ export const userManagementService = {
             throw error;
         }
     },
-    
+
     getBackupConfig: async () => {
         try {
             return await axios.get('/auth/backups/config/');
@@ -369,7 +409,7 @@ export const userManagementService = {
             throw error;
         }
     },
-    
+
     updateBackupConfig: async (configData) => {
         try {
             return await axios.put('/auth/backups/config/', configData);
@@ -378,7 +418,7 @@ export const userManagementService = {
             throw error;
         }
     },
-    
+
     scheduleBackup: async (data) => {
         try {
             return await axios.post('/auth/backups/schedule/', data);
@@ -387,7 +427,7 @@ export const userManagementService = {
             throw error;
         }
     },
-    
+
     getBackupSchedule: async () => {
         try {
             return await axios.get('/auth/backups/schedule/');
@@ -396,7 +436,7 @@ export const userManagementService = {
             throw error;
         }
     },
-    
+
     updateBackupSchedule: async (scheduleData) => {
         try {
             return await axios.put('/auth/backups/schedule/', scheduleData);
@@ -405,7 +445,7 @@ export const userManagementService = {
             throw error;
         }
     },
-    
+
     deleteBackupSchedule: async (id) => {
         try {
             return await axios.delete(`/auth/backups/schedule/${id}/`);
