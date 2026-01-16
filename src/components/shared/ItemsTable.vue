@@ -148,7 +148,7 @@ const loadTaxes = async () => {
     const data = response.data || response;
     const list = data?.results || data || [];
     // Normalize to { id, name, percentage }
-    taxes.value = Array.isArray(list) ? list.map(t => ({ id: t.id, name: t.tax_name || t.name || t.tax, percentage: parseFloat(t.percentage || t.tax_rate || 0) })) : [];
+    taxes.value = Array.isArray(list) ? list.map(t => ({ id: t.id, name: t.tax_name || t.name || t.tax, percentage: parseFloat(t.rate || t.percentage || t.tax_rate || 0) })) : [];
   } catch (error) {
     console.error('❌ Error loading taxes:', error);
     taxes.value = [];

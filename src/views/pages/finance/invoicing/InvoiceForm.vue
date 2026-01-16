@@ -309,7 +309,7 @@ const loadTaxRates = async () => {
     try {
         const response = await financeService.getTaxRates();
         const list = response.data?.results || response.data || [];
-        taxRates.value = Array.isArray(list) ? list.map(t => ({ id: t.id, label: t.tax_name || t.name || t.tax || t.code || `Tax ${t.id}`, rate: parseFloat(t.percentage || t.tax_rate || 0) })) : [];
+        taxRates.value = Array.isArray(list) ? list.map(t => ({ id: t.id, label: t.tax_name || t.name || t.tax || t.code || `Tax ${t.id}`, rate: parseFloat(t.rate || t.percentage || t.tax_rate || 0) })) : [];
         if (form.tax_rate) {
             const m = taxRates.value.find(x => Number(x.rate) === Number(form.tax_rate));
             if (m) form.tax_rate_id = m.id;

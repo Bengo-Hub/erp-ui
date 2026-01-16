@@ -102,7 +102,7 @@ const loadTaxRates = async () => {
         taxRates.value = Array.isArray(list) ? list.map(t => ({
             id: t.id,
             label: t.tax_name || t.name || t.tax || t.code || `Tax ${t.id}`,
-            rate: parseFloat(t.percentage || t.tax_rate || 0)
+            rate: parseFloat(t.rate || t.percentage || t.tax_rate || 0)
         })) : [];
     } catch (error) {
         console.error('Error loading tax rates:', error);

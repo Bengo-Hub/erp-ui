@@ -681,7 +681,7 @@ const loadTaxRates = async () => {
     try {
         const response = await financeService.getTaxRates({ page_size: 100 });
         const list = response.data?.results || response.data || [];
-        taxRates.value = Array.isArray(list) ? list.map(t => ({ id: t.id, label: t.tax_name || t.name || t.tax || t.code || `Tax ${t.id}`, rate: parseFloat(t.percentage || t.tax_rate || 0) })) : [];
+        taxRates.value = Array.isArray(list) ? list.map(t => ({ id: t.id, label: t.tax_name || t.name || t.tax || t.code || `Tax ${t.id}`, rate: parseFloat(t.rate || t.percentage || t.tax_rate || 0) })) : [];
         // If editing existing doc and tax_rate matches one of the rates, set the id
         if (form.tax_rate) {
             const m = taxRates.value.find(x => Number(x.rate) === Number(form.tax_rate));

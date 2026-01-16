@@ -86,7 +86,7 @@ const loadTaxRates = async () => {
         const response = await financeService.getTaxRates({ page_size: 100 });
         const data = response.data || response;
         const list = data?.results || data || [];
-        taxRates.value = Array.isArray(list) ? list.map(t => ({ id: t.id, name: t.tax_name || t.name, rate: parseFloat(t.percentage || t.tax_rate || 0) })) : [];
+        taxRates.value = Array.isArray(list) ? list.map(t => ({ id: t.id, name: t.tax_name || t.name, rate: parseFloat(t.rate || t.percentage || t.tax_rate || 0) })) : [];
     } catch (error) {
         console.error('Error loading tax rates:', error);
         showToast('error', 'Failed to load tax rates');
