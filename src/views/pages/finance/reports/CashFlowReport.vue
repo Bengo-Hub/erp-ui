@@ -28,7 +28,7 @@
                         <template #content>
                             <div class="text-center">
                                 <div :class="`text-3xl font-bold mb-2 ${summary.operatingCashFlow >= 0 ? 'text-green-600' : 'text-red-600'}`">
-                                    {{ formatCurrency(summary.operatingCashFlow) }}
+                                    {{ formatReportAmount(summary.operatingCashFlow) }}
                                 </div>
                                 <div class="text-sm text-gray-600">Operating Activities</div>
                             </div>
@@ -38,7 +38,7 @@
                         <template #content>
                             <div class="text-center">
                                 <div :class="`text-3xl font-bold mb-2 ${summary.investingCashFlow >= 0 ? 'text-green-600' : 'text-red-600'}`">
-                                    {{ formatCurrency(summary.investingCashFlow) }}
+                                    {{ formatReportAmount(summary.investingCashFlow) }}
                                 </div>
                                 <div class="text-sm text-gray-600">Investing Activities</div>
                             </div>
@@ -48,7 +48,7 @@
                         <template #content>
                             <div class="text-center">
                                 <div :class="`text-3xl font-bold mb-2 ${summary.financingCashFlow >= 0 ? 'text-green-600' : 'text-red-600'}`">
-                                    {{ formatCurrency(summary.financingCashFlow) }}
+                                    {{ formatReportAmount(summary.financingCashFlow) }}
                                 </div>
                                 <div class="text-sm text-gray-600">Financing Activities</div>
                             </div>
@@ -58,7 +58,7 @@
                         <template #content>
                             <div class="text-center">
                                 <div :class="`text-3xl font-bold mb-2 ${summary.netCashFlow >= 0 ? 'text-blue-600' : 'text-orange-600'}`">
-                                    {{ formatCurrency(summary.netCashFlow) }}
+                                    {{ formatReportAmount(summary.netCashFlow) }}
                                 </div>
                                 <div class="text-sm text-gray-600">Net Cash Flow</div>
                             </div>
@@ -82,37 +82,37 @@
                                     <!-- Operating Activities -->
                                     <tr class="bg-green-50 font-bold">
                                         <td class="py-3 px-4">CASH FLOWS FROM OPERATING ACTIVITIES</td>
-                                        <td class="text-right py-3 px-4">{{ formatCurrency(summary.operatingCashFlow) }}</td>
+                                        <td class="text-right py-3 px-4">{{ formatReportAmount(summary.operatingCashFlow) }}</td>
                                     </tr>
                                     <tr v-for="item in reportData.operating_activities" :key="item.id" class="border-b border-gray-200">
                                         <td class="py-3 px-4 pl-8">{{ item.description }}</td>
-                                        <td class="text-right py-3 px-4">{{ formatCurrency(item.amount) }}</td>
+                                        <td class="text-right py-3 px-4">{{ formatReportAmount(item.amount) }}</td>
                                     </tr>
 
                                     <!-- Investing Activities -->
                                     <tr class="bg-blue-50 font-bold mt-4">
                                         <td class="py-3 px-4">CASH FLOWS FROM INVESTING ACTIVITIES</td>
-                                        <td class="text-right py-3 px-4">{{ formatCurrency(summary.investingCashFlow) }}</td>
+                                        <td class="text-right py-3 px-4">{{ formatReportAmount(summary.investingCashFlow) }}</td>
                                     </tr>
                                     <tr v-for="item in reportData.investing_activities" :key="item.id" class="border-b border-gray-200">
                                         <td class="py-3 px-4 pl-8">{{ item.description }}</td>
-                                        <td class="text-right py-3 px-4">{{ formatCurrency(item.amount) }}</td>
+                                        <td class="text-right py-3 px-4">{{ formatReportAmount(item.amount) }}</td>
                                     </tr>
 
                                     <!-- Financing Activities -->
                                     <tr class="bg-orange-50 font-bold mt-4">
                                         <td class="py-3 px-4">CASH FLOWS FROM FINANCING ACTIVITIES</td>
-                                        <td class="text-right py-3 px-4">{{ formatCurrency(summary.financingCashFlow) }}</td>
+                                        <td class="text-right py-3 px-4">{{ formatReportAmount(summary.financingCashFlow) }}</td>
                                     </tr>
                                     <tr v-for="item in reportData.financing_activities" :key="item.id" class="border-b border-gray-200">
                                         <td class="py-3 px-4 pl-8">{{ item.description }}</td>
-                                        <td class="text-right py-3 px-4">{{ formatCurrency(item.amount) }}</td>
+                                        <td class="text-right py-3 px-4">{{ formatReportAmount(item.amount) }}</td>
                                     </tr>
 
                                     <!-- Net Change in Cash -->
                                     <tr class="font-bold text-lg bg-gray-100 mt-4">
                                         <td class="py-3 px-4">NET CHANGE IN CASH</td>
-                                        <td class="text-right py-3 px-4">{{ formatCurrency(summary.netCashFlow) }}</td>
+                                        <td class="text-right py-3 px-4">{{ formatReportAmount(summary.netCashFlow) }}</td>
                                     </tr>
                                 </tbody>
                             </table>
@@ -139,12 +139,15 @@
 <script setup>
 import { ReportLayout, ReportFilters } from '@/components/hrm/reports';
 import { useToast } from '@/composables/useToast';
+import { useGlobalCurrency } from '@/composables/useGlobalCurrency';
 import { financeReportsService } from '@/services/reports/financeReportsService';
-import { formatCurrency } from '@/utils/formatters';
 import { buildReportQueryParams, getDefaultReportFilters, validateReportFilters } from '@/utils/reportUtils';
 import { computed, ref } from 'vue';
 
 const { showToast } = useToast();
+const { formatCurrencySync } = useGlobalCurrency();
+
+const formatReportAmount = (amount) => formatCurrencySync(amount).value;
 
 const loading = ref(false);
 const reportData = ref(null);

@@ -5,13 +5,17 @@ import { useDocumentFilters } from '@/composables/finance/useDocumentFilters';
 import { usePermissions } from '@/composables/usePermissions';
 import { useToast } from '@/composables/useToast';
 import { debitNoteService } from '@/services/finance/billingDocumentsService';
-import { formatCurrency, formatDate } from '@/utils/formatters';
+import { formatDate } from '@/utils/formatters';
+import { useGlobalCurrency } from '@/composables/useGlobalCurrency';
 import { computed, onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
 
 const router = useRouter();
 const { showToast } = useToast();
 const { hasPermission } = usePermissions();
+const { formatCurrencySync } = useGlobalCurrency();
+
+const formatCurrency = (amount, currency = 'KES') => formatCurrencySync(amount, currency).value;
 
 // Use shared filter composable
 const { filters, currentPage, perPage, totalRecords, onPage, onFilter, getFilterParams } = useDocumentFilters();
@@ -25,15 +29,6 @@ const selectedDebitNotes = ref([]);
 const canCreate = computed(() => hasPermission('add_debitnote'));
 const canEdit = computed(() => hasPermission('change_debitnote'));
 const canDelete = computed(() => hasPermission('delete_debitnote'));
-
-// Status options for filtering
-const statusOptions = [
-    { label: 'All', value: '' },
-    { label: 'Draft', value: 'draft' },
-    { label: 'Issued', value: 'issued' },
-    { label: 'Applied', value: 'applied' },
-    { label: 'Void', value: 'void' }
-];
 
 // Methods
 const fetchDebitNotes = async () => {
@@ -135,6 +130,15 @@ const deleteDebitNote = async (note) => {
 const getCustomerName = (note) => {
     return note.customer_details?.name || note.customer_details?.business_name || 'N/A';
 };
+
+// Status options for filtering
+const statusOptions = [
+    { label: 'All', value: '' },
+    { label: 'Draft', value: 'draft' },
+    { label: 'Issued', value: 'issued' },
+    { label: 'Applied', value: 'applied' },
+    { label: 'Void', value: 'void' }
+];
 
 // Lifecycle
 onMounted(() => {

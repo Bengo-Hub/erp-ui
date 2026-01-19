@@ -1,5 +1,6 @@
 <script setup>
 import { useToast } from '@/composables/useToast';
+import { useGlobalCurrency } from '@/composables/useGlobalCurrency';
 import { coreService } from '@/services/shared/coreService';
 import { manufacturingService } from '@/services/manufacturing/manufacturingService';
 import { useVuelidate } from '@vuelidate/core';
@@ -7,7 +8,10 @@ import { minValue, required } from '@vuelidate/validators';
 import { useConfirm } from 'primevue/useconfirm';
 import { computed, onMounted, reactive, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
-import { formatCurrency, formatDate } from '@/utils/formatters';
+import { formatDate } from '@/utils/formatters';
+
+const { formatCurrencySync } = useGlobalCurrency();
+const formatCurrency = (amount, currency = 'KES') => formatCurrencySync(amount, currency).value;
 
 const { showToast } = useToast();
 const route = useRoute();
@@ -387,35 +391,36 @@ onMounted(async () => {
 </script>
 
 <template>
-    <div class="grid">
-        <div class="col-12">
-            <div class="card relative">
+    <div class="max-w-7xl mx-auto p-6">
+        <Card class="mb-6 relative">
+            <template #content>
                 <!-- Loading Overlay -->
-                <div v-if="loading" class="flex flex-column align-items-center justify-content-center absolute w-full h-full z-5" style="background-color: rgba(255, 255, 255, 0.8)">
-                    <ProgressSpinner class="w-4rem h-4rem" strokeWidth="5" />
-                    <span class="mt-3 font-medium">Loading...</span>
+                <div v-if="loading" class="flex flex-col items-center justify-center absolute inset-0 z-50 bg-white/80 dark:bg-gray-900/80">
+                    <ProgressSpinner class="w-16 h-16" strokeWidth="5" />
+                    <span class="mt-3 font-medium text-gray-900 dark:text-gray-100">Loading...</span>
                 </div>
 
-                <div class="flex justify-content-between align-items-center mb-4">
-                    <h5 class="m-0">Create Production Batch</h5>
+                <div class="flex justify-between items-center mb-6">
+                    <h2 class="text-2xl font-bold text-gray-900 dark:text-gray-100 m-0">Create Production Batch</h2>
                     <Button label="Back to Batches" icon="pi pi-arrow-left" outlined @click="goBack" />
                 </div>
 
                 <!-- Progress Steps -->
-                <Steps :key="'steps-' + currentStep" :model="steps" :readonly="false" :activeIndex="currentStep" class="mb-5" />
+                <Steps :key="'steps-' + currentStep" :model="steps" :readonly="false" :activeIndex="currentStep" class="mb-6" />
+
                 <!-- Step 1: Formula Selection -->
-                <div v-if="currentStep === 0" class="formgrid grid p-fluid">
-                    <div class="field col-12">
-                        <label for="formula" class="font-bold">Formula*</label>
-                        <Dropdown id="formula" v-model="batch.formula" :options="formulas" optionLabel="name" :class="{ 'p-invalid': v$.formula.$invalid && submitted }" placeholder="Select a formula" class="w-full" @change="onFormulaChange" />
-                        <small v-if="v$.formula.$invalid && submitted" class="p-error">Formula is required</small>
+                <div v-if="currentStep === 0" class="space-y-4">
+                    <div>
+                        <label for="formula" class="block text-sm font-medium mb-2">Formula*</label>
+                        <Dropdown id="formula" v-model="batch.formula" :options="formulas" optionLabel="name" :invalid="v$.formula.$invalid && submitted" placeholder="Select a formula" class="w-full" @change="onFormulaChange" />
+                        <small v-if="v$.formula.$invalid && submitted" class="text-red-500">Formula is required</small>
                     </div>
                 </div>
 
                 <!-- Step 2: Production Details -->
-                <div v-if="currentStep === 1" class="formgrid grid p-fluid">
-                    <div class="field col-12 md:col-6">
-                        <label for="branch" class="font-bold">Production Branch*</label>
+                <div v-if="currentStep === 1" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label for="branch" class="block text-sm font-medium mb-2">Production Branch*</label>
                         <Dropdown
                             id="branch"
                             v-model="batch.branch"
@@ -423,49 +428,49 @@ onMounted(async () => {
                             optionLabel="name"
                             :filter="true"
                             filterPlaceholder="Search branch"
-                            :class="{ 'p-invalid': v$.branch.$invalid && submitted }"
+                            :invalid="v$.branch.$invalid && submitted"
                             placeholder="Select branch"
                             class="w-full"
                         />
-                        <small v-if="v$.branch.$invalid && submitted" class="p-error">Branch is required</small>
+                        <small v-if="v$.branch.$invalid && submitted" class="text-red-500">Branch is required</small>
                     </div>
 
-                    <div class="field col-12 md:col-6">
-                        <label for="scheduled_date" class="font-bold">Scheduled Date*</label>
-                        <Calendar id="scheduled_date" v-model="batch.scheduled_date" showTime hourFormat="24" :class="{ 'p-invalid': v$.scheduled_date.$invalid && submitted }" class="w-full" />
-                        <small v-if="v$.scheduled_date.$invalid && submitted" class="p-error">Scheduled date is required</small>
+                    <div>
+                        <label for="scheduled_date" class="block text-sm font-medium mb-2">Scheduled Date*</label>
+                        <Calendar id="scheduled_date" v-model="batch.scheduled_date" showTime hourFormat="24" :invalid="v$.scheduled_date.$invalid && submitted" class="w-full" />
+                        <small v-if="v$.scheduled_date.$invalid && submitted" class="text-red-500">Scheduled date is required</small>
                     </div>
 
-                    <div class="field col-12 md:col-6">
-                        <label for="planned_quantity" class="font-bold">Planned Quantity*</label>
+                    <div>
+                        <label for="planned_quantity" class="block text-sm font-medium mb-2">Planned Quantity*</label>
                         <div class="p-inputgroup">
-                            <InputNumber id="planned_quantity" v-model="batch.planned_quantity" :class="{ 'p-invalid': v$.planned_quantity.$invalid && submitted }" class="w-full" />
+                            <InputNumber id="planned_quantity" v-model="batch.planned_quantity" :invalid="v$.planned_quantity.$invalid && submitted" class="w-full" />
                             <span class="p-inputgroup-addon">{{ selectedFormula?.output_unit_details?.title || 'Units' }}</span>
                         </div>
-                        <small v-if="v$.planned_quantity.$invalid && submitted" class="p-error">Planned quantity is required</small>
+                        <small v-if="v$.planned_quantity.$invalid && submitted" class="text-red-500">Planned quantity is required</small>
                     </div>
 
-                    <div class="field col-12 md:col-6">
-                        <label for="supervisor" class="font-bold">Supervisor</label>
+                    <div>
+                        <label for="supervisor" class="block text-sm font-medium mb-2">Supervisor</label>
                         <Dropdown id="supervisor" v-model="batch.supervisor" :options="supervisors" optionLabel="email" :filter="true" filterPlaceholder="Search supervisor" placeholder="Select supervisor" class="w-full" />
                     </div>
 
-                    <div class="field col-12">
-                        <label for="notes" class="font-bold">Notes</label>
+                    <div class="col-span-2">
+                        <label for="notes" class="block text-sm font-medium mb-2">Notes</label>
                         <Textarea id="notes" v-model="batch.notes" rows="3" class="w-full" />
                     </div>
                 </div>
 
                 <!-- Step 3: Material Verification -->
-                <div v-if="currentStep === 2" class="formgrid grid p-fluid">
-                    <h5 class="mt-0 mb-3 flex align-items-center">
+                <div v-if="currentStep === 2" class="space-y-4">
+                    <h5 class="mt-0 mb-4 flex items-center text-lg font-bold text-gray-900 dark:text-gray-100">
                         <span>Required Raw Materials</span>
-                        <div v-if="checkingMaterials" class="ml-3 flex align-items-center">
+                        <div v-if="checkingMaterials" class="ml-3 flex items-center">
                             <ProgressSpinner style="width: 1.5rem; height: 1.5rem" strokeWidth="6" />
-                            <span class="ml-2 text-sm">Checking availability...</span>
+                            <span class="ml-2 text-sm text-gray-600 dark:text-gray-400">Checking availability...</span>
                         </div>
                     </h5>
-                    <DataTable :value="requiredMaterials" responsiveLayout="stack" breakpoint="960px" stripedRows class="p-datatable-sm" showGridlines :loading="checkingMaterials">
+                    <DataTable :value="requiredMaterials" responsiveLayout="scroll" stripedRows showGridlines :loading="checkingMaterials">
                         <Column field="raw_material_details.product.title" header="Material">
                             <template #body="slotProps">
                                 {{ slotProps.data?.raw_material_details?.product?.title || 'N/A' }}
@@ -494,82 +499,81 @@ onMounted(async () => {
                     </DataTable>
 
                     <!-- Material Shortages Alert -->
-                    <div v-if="materialShortages.length > 0" class="p-4 border-round surface-card shadow-1 mt-4 mb-4">
-                        <div class="flex align-items-center mb-3">
+                    <div v-if="materialShortages.length > 0" class="p-6 rounded-lg bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 mt-4">
+                        <div class="flex items-center mb-4">
                             <Checkbox v-model="confirmShortage" binary class="mr-2" />
-                            <label class="text-yellow-800">I understand the material shortage and want to proceed anyway</label>
+                            <label class="text-yellow-800 dark:text-yellow-200">I understand the material shortage and want to proceed anyway</label>
                         </div>
 
-                        <div class="flex align-items-center mb-3">
-                            <i class="pi pi-exclamation-triangle text-yellow-500 mr-2" style="font-size: 1.5rem"></i>
-                            <h5 class="m-0 text-yellow-700">Material Shortages Detected</h5>
+                        <div class="flex items-center mb-4">
+                            <i class="pi pi-exclamation-triangle text-yellow-500 mr-2 text-2xl"></i>
+                            <h5 class="m-0 text-yellow-700 dark:text-yellow-300 font-bold">Material Shortages Detected</h5>
                         </div>
 
-                        <div class="text-700 mb-4">The following materials have insufficient stock levels:</div>
-                        <ul class="mt-2 mb-3 pl-4">
-                            <li v-for="(shortage, index) in materialShortages" :key="index" class="mb-2">
-                                <div class="flex align-items-center flex-wrap gap-2">
-                                    <span class="font-medium">{{ shortage.raw_material.product.title }}:</span>
+                        <div class="text-gray-700 dark:text-gray-300 mb-4">The following materials have insufficient stock levels:</div>
+                        <ul class="mt-2 mb-4 pl-4 space-y-2">
+                            <li v-for="(shortage, index) in materialShortages" :key="index">
+                                <div class="flex items-center flex-wrap gap-2">
+                                    <span class="font-medium text-gray-900 dark:text-gray-100">{{ shortage.raw_material.product.title }}:</span>
                                     <Tag severity="danger" value="Shortage" />
-                                    <span
+                                    <span class="text-gray-700 dark:text-gray-300"
                                         >Need additional <span class="font-bold">{{ formatNumber(shortage.shortage) }} {{ shortage.unit.title }}</span></span
                                     >
                                 </div>
                             </li>
                         </ul>
-                        <div class="flex gap-2 mt-3">
+                        <div class="flex gap-2 mt-4">
                             <Button label="View Inventory" icon="pi pi-box" outlined @click="navigateToInventory" />
                             <Button label="Order Materials" icon="pi pi-shopping-cart" severity="warning" text @click="navigateToInventory" />
                         </div>
                     </div>
 
                     <!-- Total Cost -->
-                    <div v-if="totalMaterialCost > 0" class="flex justify-content-end mt-4 mb-4">
-                        <div class="p-3 border-round surface-card shadow-1 w-auto">
-                            <div class="text-500 mb-1">Total Material Cost</div>
-                            <div class="text-900 font-medium text-xl">{{ formatCurrency(totalMaterialCost) }}</div>
+                    <div v-if="totalMaterialCost > 0" class="flex justify-end mt-4">
+                        <div class="p-4 rounded-lg bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
+                            <div class="text-sm text-gray-600 dark:text-gray-400 mb-1">Total Material Cost</div>
+                            <div class="text-gray-900 dark:text-gray-100 font-medium text-xl">{{ formatCurrency(totalMaterialCost) }}</div>
                         </div>
                     </div>
                 </div>
 
                 <!-- Step 4: Review & Submit -->
-                <div v-if="currentStep === 3" class="review-content">
-                    <div class="grid flex-column md:flex-row">
-                        <div class="col-12 md:col-6 lg:col-6">
-                            <div class="field mb-4">
-                                <label class="font-bold block mb-2">Formula:</label>
-                                <span>{{ batch.formula?.name || 'N/A' }}</span>
+                <div v-if="currentStep === 3" class="space-y-6">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div class="space-y-4">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Formula:</label>
+                                <span class="text-gray-900 dark:text-gray-100">{{ batch.formula?.name || 'N/A' }}</span>
                             </div>
-                            <div class="field mb-4">
-                                <label class="font-bold block mb-2">Production Branch:</label>
-                                <span>{{ batch.branch?.name || 'N/A' }}</span>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Production Branch:</label>
+                                <span class="text-gray-900 dark:text-gray-100">{{ batch.branch?.name || 'N/A' }}</span>
                             </div>
-                            <div class="field mb-4">
-                                <label class="font-bold block mb-2">Scheduled Date:</label>
-                                <span>{{ formatDateTime(batch.scheduled_date) }}</span>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Scheduled Date:</label>
+                                <span class="text-gray-900 dark:text-gray-100">{{ formatDateTime(batch.scheduled_date) }}</span>
                             </div>
                         </div>
-                        <div class="col-12 md:col-6 lg:col-6">
-                            <div class="field mb-4">
-                                <label class="font-bold block mb-2">Planned Quantity:</label>
-                                <span>{{ batch.planned_quantity }} {{ selectedFormula?.output_unit_details?.title || 'Units' }}</span>
+                        <div class="space-y-4">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Planned Quantity:</label>
+                                <span class="text-gray-900 dark:text-gray-100">{{ batch.planned_quantity }} {{ selectedFormula?.output_unit_details?.title || 'Units' }}</span>
                             </div>
-                            <div class="field mb-4">
-                                <label class="font-bold block mb-2">Supervisor:</label>
-                                <span>{{ batch.supervisor?.email || 'N/A' }}</span>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Supervisor:</label>
+                                <span class="text-gray-900 dark:text-gray-100">{{ batch.supervisor?.email || 'N/A' }}</span>
                             </div>
-                            <div class="field mb-4">
-                                <label class="font-bold block mb-2">Notes:</label>
-                                <span class="whitespace-pre-wrap">{{ batch.notes || 'N/A' }}</span>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Notes:</label>
+                                <span class="text-gray-900 dark:text-gray-100 whitespace-pre-wrap">{{ batch.notes || 'N/A' }}</span>
                             </div>
                         </div>
                     </div>
 
                     <Divider />
 
-                    <h5 class="mt-0 mb-3">Material Requirements</h5>
-                    <DataTable :value="requiredMaterials" class="p-datatable-sm"> <!-- DataTable columns same as before --> </DataTable
-                    ><DataTable :value="requiredMaterials" responsiveLayout="stack" breakpoint="960px" stripedRows class="p-datatable-sm" showGridlines :loading="checkingMaterials">
+                    <h5 class="mt-0 mb-4 text-lg font-bold text-gray-900 dark:text-gray-100">Material Requirements</h5>
+                    <DataTable :value="requiredMaterials" responsiveLayout="scroll" stripedRows showGridlines :loading="checkingMaterials">
                         <Column field="raw_material_details.product.title" header="Material">
                             <template #body="slotProps">
                                 {{ slotProps.data?.raw_material_details?.product?.title || 'N/A' }}
@@ -597,18 +601,18 @@ onMounted(async () => {
                         </Column>
                     </DataTable>
 
-                    <div class="flex justify-content-end mt-4">
-                        <div class="p-3 border-round surface-card shadow-1 w-auto">
-                            <div class="text-500 mb-1">Total Material Cost</div>
-                            <div class="text-900 font-medium text-xl">{{ formatCurrency(totalMaterialCost) }}</div>
+                    <div class="flex justify-end mt-6">
+                        <div class="p-4 rounded-lg bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
+                            <div class="text-sm text-gray-600 dark:text-gray-400 mb-1">Total Material Cost</div>
+                            <div class="text-gray-900 dark:text-gray-100 font-medium text-xl">{{ formatCurrency(totalMaterialCost) }}</div>
                         </div>
                     </div>
                 </div>
 
                 <!-- Action Buttons -->
-                <div class="flex justify-content-between mt-5">
+                <div class="flex justify-between mt-8">
                     <Button v-if="currentStep > 0" label="Previous" icon="pi pi-arrow-left" outlined @click="previousStep" />
-                    <Button v-else label="Cancel" icon="pi pi-times" outlined class="p-button-danger" @click="goBack" />
+                    <Button v-else label="Cancel" icon="pi pi-times" severity="danger" outlined @click="goBack" />
 
                     <div class="flex gap-2">
                         <Button label="Save as Draft" icon="pi pi-save" outlined @click="saveAsDraft" />
@@ -616,15 +620,21 @@ onMounted(async () => {
                         <Button v-else label="Create Batch" icon="pi pi-check" @click="saveBatch" :loading="saving" :disabled="materialShortages.length > 0 && !confirmShortage" />
                     </div>
                 </div>
-            </div>
-        </div>
+            </template>
+        </Card>
     </div>
 </template>
+
 <style scoped>
-.review-content .field label {
-    color: var(--surface-700);
-}
 .whitespace-pre-wrap {
     white-space: pre-wrap;
+}
+
+:deep(.p-datatable .p-datatable-thead > tr > th) {
+    @apply bg-gray-50 dark:bg-gray-800;
+}
+
+:deep(.p-datatable .p-datatable-tbody > tr) {
+    @apply hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors;
 }
 </style>

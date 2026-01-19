@@ -1,10 +1,12 @@
 <script setup>
 import { useToast } from '@/composables/useToast';
+import { useGlobalCurrency } from '@/composables/useGlobalCurrency';
 import { ref, reactive, computed, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { FilterMatchMode, FilterOperator } from '@primevue/core/api';
-import { formatCurrency } from '@/utils/formatters';
 import { manufacturingService } from '@/services/manufacturing/manufacturingService';
+
+const { formatCurrencySync } = useGlobalCurrency();
 
 const { showToast } = useToast();
 const router = useRouter();
@@ -364,7 +366,7 @@ onMounted(() => {
                                 </div>
                                 <div>
                                     <span class="block text-gray-500">Estimated Cost</span>
-                                    <span class="block text-2xl font-semibold">{{ formatCurrency(totalEstimatedCost) }}</span>
+                                    <span class="block text-2xl font-semibold">{{ formatCurrencySync(totalEstimatedCost) }}</span>
                                     <span class="text-sm text-gray-500"> Potential purchases </span>
                                 </div>
                             </div>

@@ -3,9 +3,13 @@ import { useToast } from '@/composables/useToast';
 import { FilterMatchMode } from '@primevue/core/api';
 import { useConfirm } from 'primevue/useconfirm';
 import { computed, onMounted, reactive, ref } from 'vue';
-//import AddTransfer from '@/components/inventory/AddTransfer.vue'
+import AddTransfer from '@/components/inventory/AddTransfer.vue';
 import { inventoryService } from '@/services/ecommerce/inventoryService';
-import { formatCurrency, formatDate } from '@/utils/formatters';
+import { formatDate } from '@/utils/formatters';
+import { useGlobalCurrency } from '@/composables/useGlobalCurrency';
+
+const { formatCurrencySync } = useGlobalCurrency();
+const formatCurrency = (amount, currency = 'KES') => formatCurrencySync(amount, currency).value;
 
 const { showToast } = useToast();
 const confirm = useConfirm();

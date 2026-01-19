@@ -4,7 +4,13 @@ import { useRoute } from 'vue-router';
 import { useStore } from 'vuex';
 import { useToast } from 'primevue/usetoast';
 import { procurementService } from '@/services/procurement/procurementService';
-import { formatDate, formatDateTime, formatCurrency } from '@/utils/formatters';
+import { formatDate, formatDateTime } from '@/utils/formatters';
+import { useGlobalCurrency } from '@/composables/useGlobalCurrency';
+
+const { formatCurrencySync } = useGlobalCurrency();
+
+// Helper function for currency formatting
+const formatCurrency = (amount, currency = 'KES') => formatCurrencySync(amount, currency).value;
 
 const route = useRoute();
 const store = useStore();

@@ -9,7 +9,7 @@ import { useApprovalPermissions } from '@/composables/useApprovalPermissions';
 import { useToast } from '@/composables/useToast';
 import { invoiceService } from '@/services/finance/invoiceService';
 import { creditNoteService, debitNoteService, deliveryNoteService } from '@/services/finance/billingDocumentsService';
-import { formatCurrency, formatDate } from '@/utils/formatters';
+import { formatDate } from '@/utils/formatters';
 import { useGlobalCurrency } from '@/composables/useGlobalCurrency';
 import { computed, onMounted, onUnmounted, ref } from 'vue';
 import PDFPreview from '@/components/shared/PDFPreview.vue';

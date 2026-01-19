@@ -30,7 +30,7 @@
                 <Card class="shadow-sm">
                     <template #content>
                         <div class="text-center">
-                            <div class="text-3xl font-bold text-green-600 mb-2">{{ formatCurrency(summary.totalAmount) }}</div>
+                            <div class="text-3xl font-bold text-green-600 mb-2">{{ formatReportAmount(summary.totalAmount) }}</div>
                             <div class="text-sm text-gray-600 dark:text-gray-400">Total Amount</div>
                         </div>
                     </template>
@@ -68,14 +68,14 @@
                 <Column field="account_number" header="Account Number" :sortable="true" />
                 <Column field="branch_name" header="Branch" :sortable="true" />
                 <Column field="gross_pay" header="Gross Pay" :sortable="true">
-                    <template #body="{ data }">{{ formatCurrency(data.gross_pay) }}</template>
+                    <template #body="{ data }">{{ formatReportAmount(data.gross_pay) }}</template>
                 </Column>
                 <Column field="total_deductions" header="Deductions" :sortable="true">
-                    <template #body="{ data }">{{ formatCurrency(data.total_deductions) }}</template>
+                    <template #body="{ data }">{{ formatReportAmount(data.total_deductions) }}</template>
                 </Column>
                 <Column field="net_pay" header="Net Pay" :sortable="true">
                     <template #body="{ data }">
-                        <span class="font-semibold text-green-600">{{ formatCurrency(data.net_pay) }}</span>
+                        <span class="font-semibold text-green-600">{{ formatReportAmount(data.net_pay) }}</span>
                     </template>
                 </Column>
             </ReportDataTable>
@@ -87,11 +87,15 @@
 import { ReportDataTable, ReportFilters, ReportLayout } from '@/components/hrm/reports';
 import { useToast } from '@/composables/useToast';
 import { hrmReportsService } from '@/services/reports/reportsService';
-import { formatCurrency } from '@/utils/formatters';
+import { useGlobalCurrency } from '@/composables/useGlobalCurrency';
 import { buildReportQueryParams, getDefaultReportFilters, validateReportFilters } from '@/utils/reportUtils';
 import { computed, ref } from 'vue';
 
 const { showToast } = useToast();
+const { formatCurrencySync } = useGlobalCurrency();
+
+// Helper function for formatting amounts in reports
+const formatReportAmount = (amount) => formatCurrencySync(amount).value;
 
 const loading = ref(false);
 const reportData = ref([]);

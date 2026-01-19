@@ -1,5 +1,11 @@
 <script setup>
-import { formatCurrency } from '@/utils/formatters';
+import { useGlobalCurrency } from '@/composables/useGlobalCurrency';
+
+const { formatCurrencySync } = useGlobalCurrency();
+
+// Helper function for currency formatting
+const formatCurrency = (amount, currency = 'KES') => formatCurrencySync(amount, currency).value;
+
 const props = defineProps({
     order: {
         type: Object,

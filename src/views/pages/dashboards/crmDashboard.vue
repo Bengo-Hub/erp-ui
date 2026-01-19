@@ -3,11 +3,12 @@ import { useChartOptions } from '@/composables/useChartOptions';
 import { useDashboardState } from '@/composables/useDashboardState';
 import { usePermissions } from '@/composables/usePermissions';
 import { useToast } from '@/composables/useToast';
+import { useGlobalCurrency } from '@/composables/useGlobalCurrency';
 import { dashboardService } from '@/services/shared/dashboardService';
 import { PERIOD_OPTIONS } from '@/utils/constants';
 import Chart from 'primevue/chart';
-import { formatCurrency, safeNumber } from '@/utils/formatters';
-import { onMounted, ref, watch } from 'vue';
+import { safeNumber } from '@/utils/formatters';
+import { computed, onMounted, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
 
 const router = useRouter();
@@ -15,6 +16,9 @@ const { showToast } = useToast();
 const { barChartOptions, pieChartOptions } = useChartOptions();
 const { state, executeDataFetch } = useDashboardState();
 const { hasPermission, hasAnyPermission } = usePermissions();
+const { formatCurrencySync } = useGlobalCurrency();
+
+const formatCurrency = (amount, currency = 'KES') => formatCurrencySync(amount, currency).value;
 
 const loading = ref(false);
 const period = ref('month');
@@ -42,6 +46,37 @@ const leadSourcesChartData = ref(null);
 const dealStagesChartData = ref(null);
 const salesPipelineChartData = ref(null);
 const representativesChartData = ref(null);
+
+// Reactive formatted values for summary cards
+const formattedTotalContacts = computed(() =>
+    safeNumber(dashboardData.value.total_contacts, 0).toLocaleString()
+);
+
+const formattedTotalLeads = computed(() =>
+    safeNumber(dashboardData.value.total_leads, 0).toLocaleString()
+);
+
+const formattedTotalDeals = computed(() =>
+    safeNumber(dashboardData.value.total_deals, 0).toLocaleString()
+);
+
+const formattedPipelineValue = computed(() =>
+    formatCurrency(safeNumber(dashboardData.value.pipeline_value, 0))
+);
+
+const formattedConversionRate = computed(() => {
+    const rate = safeNumber(dashboardData.value.conversion_rate, 0);
+    return Number.isFinite(rate) ? (rate * 100).toFixed(1) + '%' : '0.0%';
+});
+
+const formattedAverageDealSize = computed(() =>
+    formatCurrency(safeNumber(dashboardData.value.average_deal_size, 0))
+);
+
+const formattedWinRate = computed(() => {
+    const rate = safeNumber(dashboardData.value.win_rate, 0);
+    return (rate * 100).toFixed(1) + '%';
+});
 
 // Load dashboard data
 const loadDashboardData = async () => {
@@ -182,7 +217,7 @@ onMounted(() => {
                     </template>
                     <template #content>
                         <div class="text-3xl font-bold">
-                            {{ dashboardData.total_contacts.toLocaleString() }}
+                            {{ formattedTotalContacts }}
                         </div>
                     </template>
                 </Card>
@@ -196,7 +231,7 @@ onMounted(() => {
                     </template>
                     <template #content>
                         <div class="text-3xl font-bold">
-                            {{ dashboardData.total_leads.toLocaleString() }}
+                            {{ formattedTotalLeads }}
                         </div>
                     </template>
                 </Card>
@@ -210,7 +245,7 @@ onMounted(() => {
                     </template>
                     <template #content>
                         <div class="text-3xl font-bold">
-                            {{ dashboardData.total_deals.toLocaleString() }}
+                            {{ formattedTotalDeals }}
                         </div>
                     </template>
                 </Card>
@@ -224,7 +259,7 @@ onMounted(() => {
                     </template>
                     <template #content>
                         <div class="text-3xl font-bold">
-                            {{ formatCurrency(safeNumber(dashboardData.pipeline_value, 0)) }}
+                            {{ formattedPipelineValue }}
                         </div>
                     </template>
                 </Card>
@@ -241,7 +276,7 @@ onMounted(() => {
                     </template>
                     <template #content>
                         <div class="text-3xl font-bold">
-                            {{ (Number.isFinite(Number(dashboardData.conversion_rate)) ? (Number(dashboardData.conversion_rate) * 100).toFixed(1) : '0.0') }}%
+                            {{ formattedConversionRate }}
                         </div>
                     </template>
                 </Card>
@@ -255,7 +290,7 @@ onMounted(() => {
                     </template>
                     <template #content>
                         <div class="text-3xl font-bold">
-                            {{ formatCurrency(safeNumber(dashboardData.average_deal_size, 0)) }}
+                            {{ formattedAverageDealSize }}
                         </div>
                     </template>
                 </Card>
@@ -269,7 +304,7 @@ onMounted(() => {
                     </template>
                     <template #content>
                         <div class="text-3xl font-bold">
-                            {{ (dashboardData.win_rate * 100).toFixed(1) }}%
+                            {{ formattedWinRate }}
                         </div>
                     </template>
                 </Card>

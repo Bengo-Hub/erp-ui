@@ -1,11 +1,14 @@
 <script setup>
-import { useToast } from '@/composables/useToast';
+import { useToast } from 'primevue/usetoast';
 import { customerService } from '@/services/crm/customerService';
-import { formatCurrency, formatDate } from '@/utils/formatters';
+import { formatDate } from '@/utils/formatters';
+import { useGlobalCurrency } from '@/composables/useGlobalCurrency';
 import { computed, onMounted, ref } from 'vue';
 
 // PrimeVue components
-const { showToast } = useToast();
+const toast = useToast();
+const { formatCurrencySync } = useGlobalCurrency();
+const formatCurrency = (amount, currency = 'KES') => formatCurrencySync(amount, currency).value;
 
 // Reactive data
 const stages = ref([]);
@@ -26,7 +29,12 @@ const fetchData = async () => {
         stages.value.sort((a, b) => a.order - b.order);
     } catch (error) {
         console.error('Error fetching pipeline data:', error);
-        showToast('error', 'Failed to load pipeline data');
+        toast.add({
+            severity: 'error',
+            summary: 'Error',
+            detail: 'Failed to load pipeline data',
+            life: 3000
+        });
         stages.value = [];
         deals.value = [];
     } finally {
@@ -59,18 +67,33 @@ const moveDeal = async (deal) => {
 
         const nextStage = stages.value.find((s) => s.order > currentStage.order);
         if (!nextStage) {
-            showToast('info', 'Deal is already at the final stage');
+            toast.add({
+                severity: 'info',
+                summary: 'Info',
+                detail: 'Deal is already at the final stage',
+                life: 3000
+            });
             return;
         }
 
         await customerService.moveDeal(deal.id, nextStage.id);
 
-        showToast('success', `Deal moved to ${nextStage.name}`);
+        toast.add({
+            severity: 'success',
+            summary: 'Success',
+            detail: `Deal moved to ${nextStage.name}`,
+            life: 3000
+        });
 
         await fetchData();
     } catch (error) {
         console.error('Error moving deal:', error);
-        showToast('error', 'Failed to move deal');
+        toast.add({
+            severity: 'error',
+            summary: 'Error',
+            detail: 'Failed to move deal',
+            life: 3000
+        });
     }
 };
 

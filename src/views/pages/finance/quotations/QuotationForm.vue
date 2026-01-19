@@ -17,7 +17,6 @@ import { procurementService } from '@/services/procurement/procurementService';
 import { coreService } from '@/services/shared/coreService';
 import { financeService } from '@/services/finance/financeService';
 import { systemConfigService } from '@/services/shared/systemConfigService';
-import { formatCurrency } from '@/utils/formatters';
 import { useGlobalCurrency } from '@/composables/useGlobalCurrency';
 import { useCurrency } from '@/composables/useCurrency';
 import { useVuelidate } from '@vuelidate/core';
@@ -30,6 +29,7 @@ const route = useRoute();
 const { showToast } = useToast();
 const { initialize: initCurrencies, convertBillingItems, getExchangeRate, formatAmount } = useCurrency();
 const { formatCurrencySync } = useGlobalCurrency();
+const formatCurrency = (amount, currency = 'KES') => formatCurrencySync(amount, currency).value;
 
 // Currency conversion state
 const isConverting = ref(false);

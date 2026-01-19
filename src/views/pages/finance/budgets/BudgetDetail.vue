@@ -187,14 +187,18 @@
 </template>
 
 <script setup>
-import { useToast } from '@/composables/useToast';
+import { useToast } from 'primevue/usetoast';
 import { financeService } from '@/services/finance/financeService';
+import { useGlobalCurrency } from '@/composables/useGlobalCurrency';
 import { onMounted, reactive, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import PageBreadcrumb from '@/components/common/PageBreadcrumb.vue';
-import { formatCurrency, formatDate } from '@/utils/formatters';
+import { formatDate } from '@/utils/formatters';
 
-const { showToast } = useToast();
+const { formatCurrencySync } = useGlobalCurrency();
+const formatCurrency = (amount, currency = 'KES') => formatCurrencySync(amount, currency).value;
+
+const toast = useToast();
 const route = useRoute();
 const router = useRouter();
 const id = route.params.id;
@@ -225,7 +229,12 @@ const fetchBudget = async () => {
         budget.value = response.data;
     } catch (error) {
         console.error('Error fetching budget:', error);
-        showToast('error', 'Failed to load budget details');
+        toast.add({
+            severity: 'error',
+            summary: 'Error',
+            detail: 'Failed to load budget details',
+            life: 3000
+        });
     } finally {
         loading.value = false;
     }
@@ -242,7 +251,12 @@ const fetchLines = async () => {
         lines.value = response.data.results || response.data || [];
     } catch (error) {
         console.error('Error fetching budget lines:', error);
-        showToast('error', 'Failed to load budget lines');
+        toast.add({
+            severity: 'error',
+            summary: 'Error',
+            detail: 'Failed to load budget lines',
+            life: 3000
+        });
         lines.value = [];
     } finally {
         loadingLines.value = false;
@@ -270,7 +284,12 @@ const editLine = (line) => {
 
 const saveLine = async () => {
     if (!lineForm.category.trim() || !lineForm.name.trim()) {
-        showToast('error', 'Category and name are required');
+        toast.add({
+            severity: 'error',
+            summary: 'Error',
+            detail: 'Category and name are required',
+            life: 3000
+        });
         return;
     }
 
@@ -280,24 +299,49 @@ const saveLine = async () => {
             // Note: This endpoint might need to be implemented in the backend
             if (financeService.updateBudgetLine) {
                 await financeService.updateBudgetLine(editingLineId.value, lineForm);
-                showToast('success', 'Budget line updated successfully');
+                toast.add({
+                    severity: 'success',
+                    summary: 'Success',
+                    detail: 'Budget line updated successfully',
+                    life: 3000
+                });
             } else {
-                showToast('info', 'Update functionality not yet implemented');
+                toast.add({
+                    severity: 'info',
+                    summary: 'Info',
+                    detail: 'Update functionality not yet implemented',
+                    life: 3000
+                });
             }
         } else {
             // Note: This endpoint might need to be implemented in the backend
             if (financeService.createBudgetLine) {
                 await financeService.createBudgetLine({ ...lineForm, budget: id });
-                showToast('success', 'Budget line created successfully');
+                toast.add({
+                    severity: 'success',
+                    summary: 'Success',
+                    detail: 'Budget line created successfully',
+                    life: 3000
+                });
             } else {
-                showToast('info', 'Create functionality not yet implemented');
+                toast.add({
+                    severity: 'info',
+                    summary: 'Info',
+                    detail: 'Create functionality not yet implemented',
+                    life: 3000
+                });
             }
         }
         closeLineDialog();
         await fetchLines();
     } catch (error) {
         console.error('Error saving budget line:', error);
-        showToast('error', `Failed to ${isEditLine.value ? 'update' : 'create'} budget line`);
+        toast.add({
+            severity: 'error',
+            summary: 'Error',
+            detail: `Failed to ${isEditLine.value ? 'update' : 'create'} budget line`,
+            life: 3000
+        });
     } finally {
         savingLine.value = false;
     }
@@ -310,14 +354,29 @@ const deleteLine = async (lineId) => {
         // Note: This endpoint might need to be implemented in the backend
         if (financeService.deleteBudgetLine) {
             await financeService.deleteBudgetLine(lineId);
-            showToast('success', 'Budget line deleted successfully');
+            toast.add({
+                severity: 'success',
+                summary: 'Success',
+                detail: 'Budget line deleted successfully',
+                life: 3000
+            });
         } else {
-            showToast('info', 'Delete functionality not yet implemented');
+            toast.add({
+                severity: 'info',
+                summary: 'Info',
+                detail: 'Delete functionality not yet implemented',
+                life: 3000
+            });
         }
         await fetchLines();
     } catch (error) {
         console.error('Error deleting budget line:', error);
-        showToast('error', 'Failed to delete budget line');
+        toast.add({
+            severity: 'error',
+            summary: 'Error',
+            detail: 'Failed to delete budget line',
+            life: 3000
+        });
     }
 };
 

@@ -5,11 +5,15 @@ import { useToast } from '@/composables/useToast';
 import { debitNoteService } from '@/services/finance/billingDocumentsService';
 import DocumentStatusBadge from '@/components/finance/shared/DocumentStatusBadge.vue';
 import EmailSendDialog from '@/components/finance/invoicing/EmailSendDialog.vue';
-import { formatCurrency, formatDate } from '@/utils/formatters';
+import { formatDate } from '@/utils/formatters';
+import { useGlobalCurrency } from '@/composables/useGlobalCurrency';
 
 const route = useRoute();
 const router = useRouter();
 const { showToast } = useToast();
+
+const { formatCurrencySync } = useGlobalCurrency();
+const formatCurrency = (amount, currency = 'KES') => formatCurrencySync(amount, currency).value;
 
 const loading = ref(true);
 const debitNote = ref(null);

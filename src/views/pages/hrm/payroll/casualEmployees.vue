@@ -3,16 +3,22 @@ import Payslip from '@/components/hrm/payroll/payslip.vue';
 import { generatePayslip } from '@/components/hrm/payroll/payslipGenerator';
 import Spinner from '@/components/ui/Spinner.vue';
 import { useToast } from '@/composables/useToast';
+import { useGlobalCurrency } from '@/composables/useGlobalCurrency';
+import { useHrmFilters } from '@/composables/useHrmFilters';
 import { payrollService } from '@/services/hrm/payrollService';
-import { formatCurrency } from '@/utils/formatters';
 import { FilterMatchMode } from '@primevue/core/api';
 import moment from 'moment';
-import { useConfirm } from 'primevue/useconfirm'; // PrimeVue confirm dialog
+import { useConfirm } from 'primevue/useconfirm';
 import { computed, onMounted, ref } from 'vue';
-import { useRouter } from 'vue-router'; // Import Vue Router
+import { useRouter } from 'vue-router';
 
 const { showToast } = useToast();
 const router = useRouter(); // Get the router instance
+const { formatCurrencySync } = useGlobalCurrency();
+
+// Helper function for currency formatting
+const formatCurrency = (amount, currency = 'KES') => formatCurrencySync(amount, currency).value;
+
 const isLoading = ref(false);
 const selectedPayslipId = ref();
 const showpayslipDialog = ref(false);
@@ -391,8 +397,6 @@ const applyPayrollAction = (event) => {
 const toggleProcessDropdown = () => {
     processDropdownVisible.value = !processDropdownVisible.value;
 };
-
-// Remove local formatCurrency since we're importing it from utils/formatters
 </script>
 
 <template>

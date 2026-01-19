@@ -7,8 +7,9 @@ import { useFormulaManagement } from '@/composables/useFormulaManagement';
 import { useHrmFilters } from '@/composables/useHrmFilters';
 import { useTaskManager } from '@/composables/useTaskManager';
 import { useToast } from '@/composables/useToast';
+import { useGlobalCurrency } from '@/composables/useGlobalCurrency';
 import { payrollService } from '@/services/hrm/payrollService';
-import { formatCurrency, formatMonthForAPI, getMonthDateRange } from '@/utils/formatters';
+import { formatMonthForAPI, getMonthDateRange } from '@/utils/formatters';
 import { computed, onMounted, onUnmounted, reactive, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 
@@ -17,6 +18,10 @@ const route = useRoute();
 const router = useRouter();
 const routeParams = ref(null);
 const { showToast } = useToast();
+const { formatCurrencySync } = useGlobalCurrency();
+
+// Helper function for currency formatting
+const formatCurrency = (amount, currency = 'KES') => formatCurrencySync(amount, currency).value;
 const { subscribeToTask, unsubscribeFromTask, taskHistory } = useTaskManager();
 
 // Processing states

@@ -2,7 +2,7 @@
 import { useToast } from '@/composables/useToast';
 import { employeeService } from '@/services/hrm/employeeService';
 import { payrollService } from '@/services/hrm/payrollService';
-import { formatCurrency } from '@/utils/formatters';
+import { useGlobalCurrency } from '@/composables/useGlobalCurrency';
 import { computed, onMounted, ref, watch } from 'vue';
 
 // Props
@@ -22,6 +22,10 @@ const emit = defineEmits(['components-updated']);
 
 // Composables
 const toast = useToast();
+const { formatCurrencySync } = useGlobalCurrency();
+
+// Currency formatting helper
+const formatComponentAmount = (amount, currency = 'KES') => formatCurrencySync(amount, currency).value;
 
 // Local state
 const activeTab = ref('deductions');
@@ -399,7 +403,7 @@ const saveComponents = async () => {
                             <div>
                                 <span class="text-gray-600">Paid to Date:</span>
                                 <span class="ml-2 font-medium">
-                                    {{ formatCurrency(component.paid_to_date || 0) }}
+                                    {{ formatComponentAmount(component.paid_to_date || 0) }}
                                 </span>
                             </div>
                             <div v-if="component.component?.non_cash">

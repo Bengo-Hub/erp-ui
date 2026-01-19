@@ -2,7 +2,11 @@
 import { useToast } from '@/composables/useToast';
 import { leaveService } from '@/services/hrm/leaveService';
 import { computed, ref, watch } from 'vue';
-import { formatCurrency, formatDate } from '@/utils/formatters';
+import { useGlobalCurrency } from '@/composables/useGlobalCurrency';
+import { formatDate } from '@/utils/formatters';
+
+const { formatCurrencySync } = useGlobalCurrency();
+const formatCurrency = (amount, currency = 'KES') => formatCurrencySync(amount, currency).value;
 
 const { showToast } = useToast();
 const emit = defineEmits(['submitted', 'cancel']);

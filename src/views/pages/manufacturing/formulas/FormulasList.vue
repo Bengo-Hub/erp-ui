@@ -2,12 +2,18 @@
 import BreadcrumbNav from '@/components/manufacturing/BreadcrumbNav.vue';
 import ManufacturingToolbar from '@/components/manufacturing/ManufacturingToolbar.vue';
 import { useToast } from '@/composables/useToast';
+import { useGlobalCurrency } from '@/composables/useGlobalCurrency';
 import { manufacturingService } from '@/services/manufacturing/manufacturingService';
 import { FilterMatchMode } from '@primevue/core/api';
 import { useConfirm } from 'primevue/useconfirm';
+import IconField from 'primevue/iconfield';
+import InputIcon from 'primevue/inputicon';
 import { onMounted, reactive, ref } from 'vue';
 import { useRouter } from 'vue-router';
-import { formatCurrency, formatDate } from '@/utils/formatters';
+import { formatDate } from '@/utils/formatters';
+
+const { formatCurrencySync } = useGlobalCurrency();
+const formatCurrency = (amount, currency = 'KES') => formatCurrencySync(amount, currency).value;
 
 const router = useRouter();
 const { showToast } = useToast();
@@ -143,23 +149,23 @@ onMounted(() => {
 </script>
 
 <template>
-    <div class="grid">
-        <div class="col-12">
-            <!-- Breadcrumb -->
-            <BreadcrumbNav :items="[{ label: 'Manufacturing', to: '/manufacturing' }, { label: 'Formulas' }]" />
+    <div class="max-w-7xl mx-auto p-6">
+        <!-- Breadcrumb -->
+        <BreadcrumbNav :items="[{ label: 'Manufacturing', to: '/manufacturing' }, { label: 'Formulas' }]" />
 
-            <!-- Toolbar -->
-            <ManufacturingToolbar title="Product Formulas" icon="pi pi-flask">
-                <template #actions>
-                    <span class="p-input-icon-left w-full sm:w-auto">
-                        <i class="pi pi-search" />
-                        <InputText v-model="filters.global.value" placeholder="Search formulas" class="w-full" />
-                    </span>
-                    <Button label="New Formula" icon="pi pi-plus" class="p-button-raised w-full sm:w-auto" @click="navigateToNewFormula" />
-                </template>
-            </ManufacturingToolbar>
+        <!-- Toolbar -->
+        <ManufacturingToolbar title="Product Formulas" icon="pi pi-flask">
+            <template #actions>
+                <IconField iconPosition="left" class="w-full sm:w-auto">
+                    <InputIcon class="pi pi-search" />
+                    <InputText v-model="filters.global.value" placeholder="Search formulas" class="w-full" />
+                </IconField>
+                <Button label="New Formula" icon="pi pi-plus" class="w-full sm:w-auto" @click="navigateToNewFormula" />
+            </template>
+        </ManufacturingToolbar>
 
-            <div class="card shadow-2 border-round-xl p-4">
+        <Card class="mb-6">
+            <template #content>
                 <DataTable
                     :value="formulas"
                     :paginator="true"
@@ -168,9 +174,7 @@ onMounted(() => {
                     :rowsPerPageOptions="[5, 10, 25, 50]"
                     paginatorTemplate="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink CurrentPageReport RowsPerPageDropdown"
                     currentPageReportTemplate="Showing {first} to {last} of {totalRecords} formulas"
-                    responsiveLayout="stack"
-                    breakpoint="960px"
-                    class="p-datatable-sm"
+                    responsiveLayout="scroll"
                     v-model:selection="selectedFormulas"
                     :loading="loading"
                     stripedRows
@@ -230,27 +234,28 @@ onMounted(() => {
                     <Column header="Actions" style="min-width: 12rem">
                         <template #body="slotProps">
                             <div class="flex flex-wrap gap-2">
-                                <Button icon="pi pi-pencil" class="p-button-rounded p-button-text p-button-sm" tooltip="Edit Formula" tooltipOptions="{position:'top'}" @click="editFormula(slotProps.data)" />
-                                <Button icon="pi pi-copy" class="p-button-rounded p-button-text p-button-sm" tooltip="Create New Version" tooltipOptions="{position:'top'}" @click="createNewVersion(slotProps.data)" />
+                                <Button icon="pi pi-pencil" rounded text severity="secondary" v-tooltip.top="'Edit Formula'" @click="editFormula(slotProps.data)" />
+                                <Button icon="pi pi-copy" rounded text severity="info" v-tooltip.top="'Create New Version'" @click="createNewVersion(slotProps.data)" />
                                 <Button
                                     icon="pi pi-cog"
-                                    class="p-button-rounded p-button-text p-button-sm"
-                                    tooltip="Toggle Status"
-                                    tooltipOptions="{position:'top'}"
+                                    rounded
+                                    text
+                                    severity="warning"
+                                    v-tooltip.top="'Toggle Status'"
                                     @click="toggleFormulaStatus(slotProps.data)"
                                     :disabled="!slotProps.data.is_active"
                                 />
-                                <Button icon="pi pi-play" class="p-button-rounded p-button-success p-button-text p-button-sm" tooltip="Create Batch" tooltipOptions="{position:'top'}" @click="createBatch(slotProps.data)" />
+                                <Button icon="pi pi-play" rounded text severity="success" v-tooltip.top="'Create Batch'" @click="createBatch(slotProps.data)" />
                             </div>
                         </template>
                     </Column>
                 </DataTable>
-            </div>
-        </div>
+            </template>
+        </Card>
 
         <!-- Formula Ingredients Preview Dialog -->
-        <Dialog v-model:visible="ingredientsDialog.visible" :header="ingredientsDialog.title" modal style="width: 50vw" :breakpoints="{ '960px': '75vw', '640px': '90vw' }" class="p-dialog-md">
-            <DataTable :value="ingredientsDialog.ingredients" responsiveLayout="stack" breakpoint="960px" class="p-datatable-sm" stripedRows showGridlines>
+        <Dialog v-model:visible="ingredientsDialog.visible" :header="ingredientsDialog.title" modal class="w-full md:w-3/4 lg:w-2/3">
+            <DataTable :value="ingredientsDialog.ingredients" responsiveLayout="scroll" stripedRows showGridlines>
                 <Column field="raw_material_details.product.title" header="Raw Material">
                     <template #body="slotProps">
                         {{ slotProps.data.raw_material_details?.product?.title || 'N/A' }}
@@ -270,19 +275,29 @@ onMounted(() => {
                     </template>
                 </Column>
             </DataTable>
-            <div class="flex flex-column sm:flex-row justify-content-between align-items-start sm:align-items-center gap-3 mt-4">
-                <div>
-                    <div class="text-lg font-bold mb-2">
+            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mt-6">
+                <div class="space-y-2">
+                    <div class="text-lg font-bold text-gray-900 dark:text-gray-100">
                         Total Raw Material Cost:
                         {{ formatCurrency(ingredientsDialog.totalCost) }}
                     </div>
-                    <div>
+                    <div class="text-gray-700 dark:text-gray-300">
                         Suggested Selling Price ({{ markupPercentage }}% markup):
                         {{ formatCurrency(ingredientsDialog.totalCost * (1 + markupPercentage / 100)) }}
                     </div>
                 </div>
-                <Button label="Create Batch" icon="pi pi-play" class="p-button-raised w-full sm:w-auto mt-3 sm:mt-0" @click="createBatchFromDialog" />
+                <Button label="Create Batch" icon="pi pi-play" class="w-full sm:w-auto" @click="createBatchFromDialog" />
             </div>
         </Dialog>
     </div>
 </template>
+
+<style scoped>
+:deep(.p-datatable .p-datatable-thead > tr > th) {
+    @apply bg-gray-50 dark:bg-gray-800;
+}
+
+:deep(.p-datatable .p-datatable-tbody > tr) {
+    @apply hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors;
+}
+</style>

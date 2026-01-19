@@ -29,7 +29,7 @@
                 <Card class="shadow-sm">
                     <template #content>
                         <div class="text-center">
-                            <div class="text-3xl font-bold text-green-600 mb-2">{{ formatCurrency(summary.totalNetPay) }}</div>
+                            <div class="text-3xl font-bold text-green-600 mb-2">{{ formatCurrencySync(summary.totalNetPay) }}</div>
                             <div class="text-sm text-gray-600">Total Net Pay</div>
                         </div>
                     </template>
@@ -45,7 +45,7 @@
                 <Card class="shadow-sm">
                     <template #content>
                         <div class="text-center">
-                            <div class="text-3xl font-bold text-blue-600 mb-2">{{ formatCurrency(summary.avgNetPay) }}</div>
+                            <div class="text-3xl font-bold text-blue-600 mb-2">{{ formatCurrencySync(summary.avgNetPay) }}</div>
                             <div class="text-sm text-gray-600">Average Net Pay</div>
                         </div>
                     </template>
@@ -64,7 +64,7 @@
                 <Column field="bank_name" header="Bank Name" :sortable="true" />
                 <Column field="employee_count" header="Employees" :sortable="true" />
                 <Column field="total_net_pay" header="Total Net Pay" :sortable="true">
-                    <template #body="{ data }">{{ formatCurrency(data.total_net_pay) }}</template>
+                    <template #body="{ data }">{{ formatCurrencySync(data.total_net_pay) }}</template>
                 </Column>
                 <Column field="account_count" header="Accounts" :sortable="true" />
                 <Column field="reference_number" header="Reference Number" :sortable="true" />
@@ -76,8 +76,10 @@
 <script setup>
 import { ReportLayout, ReportFilters, ReportDataTable } from '@/components/hrm/reports';
 import { useToast } from '@/composables/useToast';
+import { useGlobalCurrency } from '@/composables/useGlobalCurrency';
 import { hrmReportsService } from '@/services/reports/reportsService';
-import { formatCurrency } from '@/utils/formatters';
+
+const { formatCurrencySync } = useGlobalCurrency();
 import { buildReportQueryParams, getDefaultReportFilters, validateReportFilters } from '@/utils/reportUtils';
 import { computed, ref } from 'vue';
 

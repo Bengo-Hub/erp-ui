@@ -29,7 +29,7 @@
                 <Card class="shadow-sm">
                     <template #content>
                         <div class="text-center">
-                            <div class="text-3xl font-bold text-green-600 mb-2">{{ formatCurrency(summary.totalNHIF) }}</div>
+                            <div class="text-3xl font-bold text-green-600 mb-2">{{ formatCurrencySync(summary.totalNHIF) }}</div>
                             <div class="text-sm text-gray-600">Total NHIF Contributions</div>
                         </div>
                     </template>
@@ -57,7 +57,7 @@
                 <Column field="employee_pin" header="KRA PIN" :sortable="true" />
                 <Column field="nhif_number" header="NHIF Number" :sortable="true" />
                 <Column field="nhif_contribution" header="NHIF Contribution" :sortable="true">
-                    <template #body="{ data }">{{ formatCurrency(data.nhif_contribution) }}</template>
+                    <template #body="{ data }">{{ formatCurrencySync(data.nhif_contribution) }}</template>
                 </Column>
                 <Column field="coverage_type" header="Coverage Type" :sortable="true" />
             </ReportDataTable>
@@ -68,8 +68,10 @@
 <script setup>
 import { ReportLayout, ReportFilters, ReportDataTable } from '@/components/hrm/reports';
 import { useToast } from '@/composables/useToast';
+import { useGlobalCurrency } from '@/composables/useGlobalCurrency';
 import { hrmReportsService } from '@/services/reports/reportsService';
-import { formatCurrency } from '@/utils/formatters';
+
+const { formatCurrencySync } = useGlobalCurrency();
 import { buildReportQueryParams, getDefaultReportFilters, validateReportFilters } from '@/utils/reportUtils';
 import { computed, ref } from 'vue';
 
@@ -85,7 +87,7 @@ const summary = computed(() => {
     }
 
     const totalNHIF = reportData.value.reduce((sum, item) => sum + (item.nhif_contribution || 0), 0);
-    const avgContribution = reportData.value.length > 0 ? formatCurrency(totalNHIF / reportData.value.length) : 0;
+    const avgContribution = reportData.value.length > 0 ? formatCurrencySync(totalNHIF / reportData.value.length) : 0;
 
     return {
         totalNHIF,

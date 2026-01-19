@@ -4,13 +4,14 @@ import { usePermissions } from '@/composables/usePermissions';
 import { useToast } from '@/composables/useToast';
 import { employeeService } from '@/services/hrm/employeeService';
 import { payrollService } from '@/services/hrm/payrollService';
-import { formatCurrency } from '@/utils/formatters';
+import { useGlobalCurrency } from '@/composables/useGlobalCurrency';
 import moment from 'moment';
 import { computed, onMounted, ref } from 'vue';
 import { useStore } from 'vuex';
 
 const { showToast } = useToast();
 const { hasAnyPermission } = usePermissions();
+const { formatCurrencySync } = useGlobalCurrency();
 const store = useStore();
 
 // Current user
@@ -37,6 +38,9 @@ const employees = ref([]);
 
 // Composables
 const { departments, regions, projects, loadFilters } = useHrmFilters();
+
+// Currency formatting helper
+const formatLossAmount = (amount, currency = 'KES') => formatCurrencySync(amount, currency).value;
 
 // Lifecycle
 onMounted(() => {
@@ -170,9 +174,9 @@ function formatAdvanceData(data) {
         data: {
             monthYear,
             totalLosses: losses.length,
-            totalDamageAmount: formatCurrency(losses.reduce((total, item) => total + Number(item.repay_option.amount), 0)),
-            totalRepaid: formatCurrency(losses.reduce((total, item) => total + Number(item.amount_repaid), 0)),
-            totalbalance: formatCurrency(losses.reduce((total, item) => total + (Number(item.repay_option.amount) - Number(item.amount_repaid)), 0))
+            totalDamageAmount: formatLossAmount(losses.reduce((total, item) => total + Number(item.repay_option.amount), 0)),
+            totalRepaid: formatLossAmount(losses.reduce((total, item) => total + Number(item.amount_repaid), 0)),
+            totalbalance: formatLossAmount(losses.reduce((total, item) => total + (Number(item.repay_option.amount) - Number(item.amount_repaid)), 0))
         },
         children: losses.map((item) => ({
             key: `child_${item.id}`,
@@ -184,9 +188,9 @@ function formatAdvanceData(data) {
                 staffNo: item.employee.staffNo,
                 empid: item.employee.id,
                 name: item.employee.name,
-                damageAmount: new Intl.NumberFormat().format(item.repay_option.amount),
-                amount_repaid: new Intl.NumberFormat().format(item.amount_repaid),
-                balance: new Intl.NumberFormat().format(item.repay_option.amount - item.amount_repaid)
+                damageAmount: formatLossAmount(item.repay_option.amount),
+                amount_repaid: formatLossAmount(item.amount_repaid),
+                balance: formatLossAmount(item.repay_option.amount - item.amount_repaid)
             }
         }))
     }));

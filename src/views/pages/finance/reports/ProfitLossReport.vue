@@ -27,7 +27,7 @@
                     <Card class="shadow-sm">
                         <template #content>
                             <div class="text-center">
-                                <div class="text-3xl font-bold text-green-600 mb-2">{{ formatCurrency(summary.totalRevenue) }}</div>
+                                <div class="text-3xl font-bold text-green-600 mb-2">{{ formatReportAmount(summary.totalRevenue) }}</div>
                                 <div class="text-sm text-gray-600">Total Revenue</div>
                             </div>
                         </template>
@@ -35,7 +35,7 @@
                     <Card class="shadow-sm">
                         <template #content>
                             <div class="text-center">
-                                <div class="text-3xl font-bold text-red-600 mb-2">{{ formatCurrency(summary.totalExpenses) }}</div>
+                                <div class="text-3xl font-bold text-red-600 mb-2">{{ formatReportAmount(summary.totalExpenses) }}</div>
                                 <div class="text-sm text-gray-600">Total Expenses</div>
                             </div>
                         </template>
@@ -44,7 +44,7 @@
                         <template #content>
                             <div class="text-center">
                                 <div :class="`text-3xl font-bold mb-2 ${summary.netProfit >= 0 ? 'text-blue-600' : 'text-red-600'}`">
-                                    {{ formatCurrency(summary.netProfit) }}
+                                    {{ formatReportAmount(summary.netProfit) }}
                                 </div>
                                 <div class="text-sm text-gray-600">Net Profit</div>
                             </div>
@@ -69,31 +69,31 @@
                                     <!-- Revenue Section -->
                                     <tr class="bg-green-50">
                                         <td class="py-3 px-4 font-bold">Revenue</td>
-                                        <td class="text-right py-3 px-4 font-bold">{{ formatCurrency(summary.totalRevenue) }}</td>
+                                        <td class="text-right py-3 px-4 font-bold">{{ formatReportAmount(summary.totalRevenue) }}</td>
                                         <td class="text-right py-3 px-4 font-bold">100.0%</td>
                                     </tr>
                                     <tr v-for="item in reportData.revenue" :key="item.id" class="border-b border-gray-200">
                                         <td class="py-3 px-4 pl-8">{{ item.description }}</td>
-                                        <td class="text-right py-3 px-4">{{ formatCurrency(item.amount) }}</td>
+                                        <td class="text-right py-3 px-4">{{ formatReportAmount(item.amount) }}</td>
                                         <td class="text-right py-3 px-4">{{ (summary.totalRevenue > 0 ? ((item.amount / summary.totalRevenue) * 100).toFixed(1) : '0.0') }}%</td>
                                     </tr>
 
                                     <!-- Expenses Section -->
                                     <tr class="bg-red-50 mt-4">
                                         <td class="py-3 px-4 font-bold">Expenses</td>
-                                        <td class="text-right py-3 px-4 font-bold">{{ formatCurrency(summary.totalExpenses) }}</td>
+                                        <td class="text-right py-3 px-4 font-bold">{{ formatReportAmount(summary.totalExpenses) }}</td>
                                         <td class="text-right py-3 px-4 font-bold">{{ (summary.totalRevenue > 0 ? ((summary.totalExpenses / summary.totalRevenue) * 100).toFixed(1) : '0.0') }}%</td>
                                     </tr>
                                     <tr v-for="item in reportData.expenses" :key="item.id" class="border-b border-gray-200">
                                         <td class="py-3 px-4 pl-8">{{ item.description }}</td>
-                                        <td class="text-right py-3 px-4">{{ formatCurrency(item.amount) }}</td>
+                                        <td class="text-right py-3 px-4">{{ formatReportAmount(item.amount) }}</td>
                                         <td class="text-right py-3 px-4">{{ (summary.totalRevenue > 0 ? ((item.amount / summary.totalRevenue) * 100).toFixed(1) : '0.0') }}%</td>
                                     </tr>
 
                                     <!-- Net Profit Section -->
                                     <tr :class="`font-bold text-lg ${summary.netProfit >= 0 ? 'bg-blue-50' : 'bg-red-100'}`">
                                         <td class="py-3 px-4">Net Profit</td>
-                                        <td class="text-right py-3 px-4">{{ formatCurrency(summary.netProfit) }}</td>
+                                        <td class="text-right py-3 px-4">{{ formatReportAmount(summary.netProfit) }}</td>
                                         <td class="text-right py-3 px-4">{{ (summary.totalRevenue > 0 ? ((summary.netProfit / summary.totalRevenue) * 100).toFixed(1) : '0.0') }}%</td>
                                     </tr>
                                 </tbody>
@@ -121,12 +121,15 @@
 <script setup>
 import { ReportLayout, ReportFilters } from '@/components/hrm/reports';
 import { useToast } from '@/composables/useToast';
+import { useGlobalCurrency } from '@/composables/useGlobalCurrency';
 import { financeReportsService } from '@/services/reports/financeReportsService';
-import { formatCurrency } from '@/utils/formatters';
 import { buildReportQueryParams, getDefaultReportFilters, validateReportFilters } from '@/utils/reportUtils';
 import { computed, ref } from 'vue';
 
 const { showToast } = useToast();
+const { formatCurrencySync } = useGlobalCurrency();
+
+const formatReportAmount = (amount) => formatCurrencySync(amount).value;
 
 const loading = ref(false);
 const reportData = ref(null);

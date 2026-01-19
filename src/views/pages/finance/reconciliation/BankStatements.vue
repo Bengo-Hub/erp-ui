@@ -1,11 +1,14 @@
 <script setup>
-import { useToast } from '@/composables/useToast';
+import { useToast } from 'primevue/usetoast';
 import { financeService } from '@/services/finance/financeService';
-import { formatCurrency, formatDate } from '@/utils/formatters';
+import { useGlobalCurrency } from '@/composables/useGlobalCurrency';
+import { formatDate } from '@/utils/formatters';
 import { onMounted, reactive, ref } from 'vue';
 
 // Composables
-const { toast } = useToast();
+const toast = useToast();
+const { formatCurrencySync } = useGlobalCurrency();
+const formatCurrency = (amount, currency = 'KES') => formatCurrencySync(amount, currency).value;
 
 // Reactive data
 const loading = ref(false);

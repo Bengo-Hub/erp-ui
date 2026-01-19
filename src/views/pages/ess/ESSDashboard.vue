@@ -53,7 +53,7 @@
                         </div>
                         <div>
                             <p class="text-sm text-surface-600 dark:text-surface-400">My Payslips</p>
-                            <p class="text-lg font-semibold text-surface-900 dark:text-surface-0">{{ payslipsCount }} Available</p>
+                            <p class="text-lg font-semibold text-surface-900 dark:text-surface-0">{{ formattedPayslipsCount }} Available</p>
                         </div>
                     </div>
                 </template>
@@ -83,7 +83,7 @@
                         </div>
                         <div>
                             <p class="text-sm text-surface-600 dark:text-surface-400">Leave Balance</p>
-                            <p class="text-lg font-semibold text-surface-900 dark:text-surface-0">{{ leaveBalance }} Days</p>
+                            <p class="text-lg font-semibold text-surface-900 dark:text-surface-0">{{ formattedLeaveBalance }} Days</p>
                         </div>
                     </div>
                 </template>
@@ -331,7 +331,7 @@
                                 <i class="pi pi-check-circle text-green-500"></i>
                             </div>
                             <div class="flex items-center gap-2">
-                                <p class="text-3xl font-bold text-surface-900 dark:text-surface-0">{{ attendanceRate }}%</p>
+                                <p class="text-3xl font-bold text-surface-900 dark:text-surface-0">{{ formattedAttendanceRate }}%</p>
                                 <span class="text-sm text-surface-500">Attendance Rate</span>
                             </div>
                         </div>
@@ -424,9 +424,10 @@ import { useESSPermissions } from '@/composables/useESSPermissions';
 import { usePermissions } from '@/composables/usePermissions';
 import { useSensitiveModules } from '@/composables/useSensitiveModules';
 import { useToast } from '@/composables/useToast';
+import { useGlobalCurrency } from '@/composables/useGlobalCurrency';
 import { payrollService } from '@/services/hrm/payrollService';
 import { getUserAvatarUrl } from '@/utils/avatarHelper';
-import { formatCurrency, formatDate } from '@/utils/formatters';
+import { formatDate, safeNumber } from '@/utils/formatters';
 import { computed, onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { useStore } from 'vuex';
@@ -435,6 +436,10 @@ import PermissionButton from '@/components/common/PermissionButton.vue';
 const router = useRouter();
 const store = useStore();
 const { showToast } = useToast();
+const { formatCurrencySync } = useGlobalCurrency();
+
+// Helper function for currency formatting
+const formatCurrency = (amount, currency = 'KES') => formatCurrencySync(amount, currency).value;
 
 // Use ESS permissions composable
 const {
@@ -471,6 +476,19 @@ const recentLeaveRequests = ref([]);
 const payslipsCount = ref(0);
 const leaveBalance = ref(0);
 const attendanceRate = ref(0);
+
+// Reactive formatted values for summary cards
+const formattedPayslipsCount = computed(() =>
+    safeNumber(payslipsCount.value, 0).toLocaleString()
+);
+
+const formattedLeaveBalance = computed(() =>
+    safeNumber(leaveBalance.value, 0).toLocaleString()
+);
+
+const formattedAttendanceRate = computed(() =>
+    safeNumber(attendanceRate.value, 0).toFixed(0)
+);
 
 // Current user from store
 const currentUser = computed(() => store.state.auth.user);

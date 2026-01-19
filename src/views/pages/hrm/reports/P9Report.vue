@@ -60,7 +60,7 @@
                 <Card class="shadow-sm">
                     <template #content>
                         <div class="text-center">
-                            <div class="text-3xl font-bold text-green-600 mb-2">{{ formatCurrency(summary.totalChargeable) }}</div>
+                            <div class="text-3xl font-bold text-green-600 mb-2">{{ formatReportAmount(summary.totalChargeable) }}</div>
                             <div class="text-sm text-gray-600">Total Chargeable Pay</div>
                         </div>
                     </template>
@@ -68,7 +68,7 @@
                 <Card class="shadow-sm">
                     <template #content>
                         <div class="text-center">
-                            <div class="text-3xl font-bold text-orange-600 mb-2">{{ formatCurrency(summary.totalTax) }}</div>
+                            <div class="text-3xl font-bold text-orange-600 mb-2">{{ formatReportAmount(summary.totalTax) }}</div>
                             <div class="text-sm text-gray-600">Total PAYE Tax</div>
                         </div>
                     </template>
@@ -76,7 +76,7 @@
                 <Card class="shadow-sm">
                     <template #content>
                         <div class="text-center">
-                            <div class="text-3xl font-bold text-blue-600 mb-2">{{ formatCurrency(summary.totalNetPay) }}</div>
+                            <div class="text-3xl font-bold text-blue-600 mb-2">{{ formatReportAmount(summary.totalNetPay) }}</div>
                             <div class="text-sm text-gray-600">Total Net Pay</div>
                         </div>
                     </template>
@@ -98,22 +98,22 @@
                 <Column field="national_id" header="National ID" :sortable="true" />
                 <Column field="total_gross_pay" header="Total Gross Pay" :sortable="true">
                     <template #body="{ data }">
-                        {{ formatCurrency(data.total_gross_pay) }}
+                        {{ formatReportAmount(data.total_gross_pay) }}
                     </template>
                 </Column>
                 <Column field="total_deductions" header="Total Deductions" :sortable="true">
                     <template #body="{ data }">
-                        {{ formatCurrency(data.total_deductions) }}
+                        {{ formatReportAmount(data.total_deductions) }}
                     </template>
                 </Column>
                 <Column field="chargeable_pay" header="Chargeable Pay" :sortable="true">
                     <template #body="{ data }">
-                        {{ formatCurrency(data.chargeable_pay) }}
+                        {{ formatReportAmount(data.chargeable_pay) }}
                     </template>
                 </Column>
                 <Column field="total_tax" header="Total PAYE Tax" :sortable="true">
                     <template #body="{ data }">
-                        {{ formatCurrency(data.total_tax) }}
+                        {{ formatReportAmount(data.total_tax) }}
                     </template>
                 </Column>
                 <Column header="Actions" :exportable="false">
@@ -159,22 +159,22 @@
             <DataTable :value="selectedEmployee.monthly_data" stripedRows class="p-datatable-sm">
                 <Column field="month" header="Month" />
                 <Column field="basic_salary" header="Basic Salary">
-                    <template #body="{ data }">{{ formatCurrency(data.basic_salary) }}</template>
+                    <template #body="{ data }">{{ formatReportAmount(data.basic_salary) }}</template>
                 </Column>
                 <Column field="gross_pay" header="Gross Pay">
-                    <template #body="{ data }">{{ formatCurrency(data.gross_pay) }}</template>
+                    <template #body="{ data }">{{ formatReportAmount(data.gross_pay) }}</template>
                 </Column>
                 <Column field="nssf" header="NSSF">
-                    <template #body="{ data }">{{ formatCurrency(data.nssf) }}</template>
+                    <template #body="{ data }">{{ formatReportAmount(data.nssf) }}</template>
                 </Column>
                 <Column field="nhif" header="NHIF">
-                    <template #body="{ data }">{{ formatCurrency(data.nhif) }}</template>
+                    <template #body="{ data }">{{ formatReportAmount(data.nhif) }}</template>
                 </Column>
                 <Column field="chargeable_pay" header="Chargeable Pay">
-                    <template #body="{ data }">{{ formatCurrency(data.chargeable_pay) }}</template>
+                    <template #body="{ data }">{{ formatReportAmount(data.chargeable_pay) }}</template>
                 </Column>
                 <Column field="paye" header="PAYE Tax">
-                    <template #body="{ data }">{{ formatCurrency(data.paye) }}</template>
+                    <template #body="{ data }">{{ formatReportAmount(data.paye) }}</template>
                 </Column>
             </DataTable>
         </div>
@@ -185,11 +185,15 @@
 import { ReportDataTable, ReportFilters, ReportLayout } from '@/components/hrm/reports';
 import { useToast } from '@/composables/useToast';
 import { hrmReportsService } from '@/services/reports/reportsService';
-import { formatCurrency } from '@/utils/formatters';
+import { useGlobalCurrency } from '@/composables/useGlobalCurrency';
 import { buildReportQueryParams, downloadResponseAsFile, getDefaultReportFilters, validateReportFilters } from '@/utils/reportUtils';
 import { computed, ref } from 'vue';
 
 const { showToast } = useToast();
+const { formatCurrencySync } = useGlobalCurrency();
+
+// Helper function for formatting amounts in reports
+const formatReportAmount = (amount) => formatCurrencySync(amount).value;
 
 // Reactive state
 const loading = ref(false);

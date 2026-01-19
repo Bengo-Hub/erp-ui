@@ -1,37 +1,47 @@
-<script setup>
+<script setup lang="ts">
 import { useToast } from '@/composables/useToast';
 import { useCurrency } from '@/composables/useCurrency';
+import { useGlobalCurrency } from '@/composables/useGlobalCurrency';
 import { financeService } from '@/services/finance/financeService';
 import { getBusinessDetails } from '@/utils/businessBranding';
-import { formatCurrency } from '@/utils/formatters';
 import { computed, onMounted, reactive, ref, watch } from 'vue';
 import PDFPreview from '@/components/shared/PDFPreview.vue';
 import CurrencySelector from '@/components/shared/CurrencySelector.vue';
+import type { BillingDocument, BillingItem, TaxRate } from '@/types/finance/billing';
 
-const props = defineProps({
-    visible: {
-        type: Boolean,
-        default: false
-    },
-    document: {
-        type: Object,
-        default: null
-    }
+const { formatCurrencySync } = useGlobalCurrency();
+
+// Helper function for currency formatting
+const formatCurrency = (amount, currency = 'KES') => formatCurrencySync(amount, currency).value;
+
+interface Props {
+    visible?: boolean;
+    document?: BillingDocument | null;
+}
+
+const props = withDefaults(defineProps<Props>(), {
+    visible: false,
+    document: null
 });
 
-const emit = defineEmits(['update:visible', 'saved']);
+interface Emits {
+    (e: 'update:visible', value: boolean): void;
+    (e: 'saved'): void;
+}
+
+const emit = defineEmits<Emits>();
 
 const { showToast } = useToast();
 const { initialize: initCurrencies, formatAmount, convertBillingItems } = useCurrency();
 
-const loading = ref(false);
-const isConverting = ref(false);
-const previousCurrency = ref('KES');
-const taxRates = ref([]);
-const businessDetails = ref(null);
-const activeTab = ref(0);
-const showPdfModal = ref(false);
-const pdfBlob = ref(null);
+const loading = ref<boolean>(false);
+const isConverting = ref<boolean>(false);
+const previousCurrency = ref<string>('KES');
+const taxRates = ref<TaxRate[]>([]);
+const businessDetails = ref<any>(null);
+const activeTab = ref<number>(0);
+const showPdfModal = ref<boolean>(false);
+const pdfBlob = ref<Blob | null>(null);
 
 const documentTypes = [
     { label: 'Invoice', value: 'invoice', icon: 'pi pi-file-pdf' },
@@ -138,7 +148,7 @@ const initForm = () => {
 };
 
 // Add billing item
-const addBillingItem = () => {
+const addBillingItem = (): void => {
     form.items.push({
         item_name: '',
         quantity: 1,
@@ -149,26 +159,26 @@ const addBillingItem = () => {
 };
 
 // Remove billing item
-const removeBillingItem = (index) => {
+const removeBillingItem = (index: number): void => {
     form.items.splice(index, 1);
 };
 
 // Calculate item total
-const calculateItemTotal = (item) => {
+const calculateItemTotal = (item: BillingItem): number => {
     const subtotal = (item.quantity || 0) * (item.unit_price || 0);
     const taxAmount = subtotal * ((item.tax_rate?.rate || 0) / 100);
     return subtotal + taxAmount;
 };
 
 // Calculate subtotal
-const calculateSubtotal = () => {
+const calculateSubtotal = (): number => {
     return form.items.reduce((sum, item) => {
         return sum + (item.quantity || 0) * (item.unit_price || 0);
     }, 0);
 };
 
 // Calculate tax total
-const calculateTaxTotal = () => {
+const calculateTaxTotal = (): number => {
     return form.items.reduce((sum, item) => {
         const subtotal = (item.quantity || 0) * (item.unit_price || 0);
         const taxAmount = subtotal * ((item.tax_rate?.rate || 0) / 100);
@@ -177,12 +187,12 @@ const calculateTaxTotal = () => {
 };
 
 // Calculate total
-const calculateTotal = () => {
+const calculateTotal = (): number => {
     return calculateSubtotal() + calculateTaxTotal();
 };
 
 // Handle form submission
-const handleSubmit = async () => {
+const handleSubmit = async (): Promise<void> => {
     if (form.items.length === 0) {
         showToast('error', 'Please add at least one billing item');
         return;
@@ -211,7 +221,7 @@ const handleSubmit = async () => {
 };
 
 // Preview document (open PDF in new tab)
-const previewDocument = async (id = null) => {
+const previewDocument = async (id: number | null = null): Promise<void> => {
     try {
         const documentId = id || (props.document && props.document.id);
         if (!documentId) {
@@ -230,7 +240,7 @@ const previewDocument = async (id = null) => {
 };
 
 // Handle currency change - convert all item prices
-const handleCurrencyChange = async (newCurrency) => {
+const handleCurrencyChange = async (newCurrency: string): Promise<void> => {
     const oldCurrency = previousCurrency.value;
 
     if (oldCurrency === newCurrency || form.items.length === 0) {

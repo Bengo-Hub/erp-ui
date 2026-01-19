@@ -1,11 +1,14 @@
 <script setup>
-import { useToast } from '@/composables/useToast';
+import { useToast } from 'primevue/usetoast';
 import { customerService } from '@/services/crm/customerService';
-import { formatCurrency, formatDate } from '@/utils/formatters';
+import { formatDate } from '@/utils/formatters';
+import { useGlobalCurrency } from '@/composables/useGlobalCurrency';
 import { onMounted, ref } from 'vue';
 
 // PrimeVue components
-const { showToast } = useToast();
+const toast = useToast();
+const { formatCurrencySync } = useGlobalCurrency();
+const formatCurrency = (amount, currency = 'KES') => formatCurrencySync(amount, currency).value;
 
 // Reactive data
 const opportunities = ref([]);
@@ -19,7 +22,12 @@ const fetchData = async () => {
         opportunities.value = response.results || response || [];
     } catch (error) {
         console.error('Error fetching opportunities:', error);
-        showToast('error', 'Failed to load opportunities');
+        toast.add({
+            severity: 'error',
+            summary: 'Error',
+            detail: 'Failed to load opportunities',
+            life: 3000
+        });
         opportunities.value = [];
     } finally {
         loading.value = false;

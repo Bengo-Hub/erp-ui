@@ -6,7 +6,7 @@ import { usePermissions } from '@/composables/usePermissions';
 import { useToast } from '@/composables/useToast';
 import { useGlobalCurrency } from '@/composables/useGlobalCurrency';
 import { expenseService } from '@/services/finance/expenseService';
-import { formatCurrency, formatDate } from '@/utils/formatters';
+import { formatDate } from '@/utils/formatters';
 import { computed, onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
 
@@ -14,6 +14,7 @@ const router = useRouter();
 const { showToast } = useToast();
 const { hasPermission } = usePermissions();
 const { formatCurrencySync } = useGlobalCurrency();
+const formatCurrency = (amount, currency = 'KES') => formatCurrencySync(amount, currency).value;
 
 // Use shared filter composable
 const { filters, currentPage, perPage, totalRecords, onPage, onFilter, getFilterParams } = useDocumentFilters();

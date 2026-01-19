@@ -1,35 +1,18 @@
 <script setup>
-import { financeService } from '@/services/finance/financeService';
-import { formatCurrency } from '@/utils/formatters';
-import { onMounted, ref } from 'vue';
+import { useProfitLoss } from '@/composables/finance/useProfitLoss';
+import { onMounted } from 'vue';
+import { useGlobalCurrency } from '@/composables/useGlobalCurrency';
 
-const profitData = ref(null);
-const loading = ref(true);
-const error = ref(null);
+const { formatCurrencySync } = useGlobalCurrency();
+const formatCurrency = (amount, currency = 'KES') => formatCurrencySync(amount, currency).value;
 
-// Responsive design utilities (can be extended for future use)
+// Use composable
+const { profitData, loading, error, fetchData, refreshData } = useProfitLoss();
 
+// Lifecycle
 onMounted(() => {
     fetchData();
 });
-
-const fetchData = async () => {
-    try {
-        loading.value = true;
-        error.value = null;
-        const response = await financeService.getProfitLoss();
-        profitData.value = response.data;
-    } catch (err) {
-        console.error('Error fetching profit and loss data:', err);
-        error.value = 'Failed to load profit data. Please try again.';
-    } finally {
-        loading.value = false;
-    }
-};
-
-const refreshData = () => {
-    fetchData();
-};
 </script>
 
 <template>

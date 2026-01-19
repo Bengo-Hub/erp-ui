@@ -1,10 +1,15 @@
 <script setup>
 import { useToast } from '@/composables/useToast';
 import { financeService } from '@/services/finance/financeService';
-import { formatCurrency, safeNumber } from '@/utils/formatters';
+import { safeNumber } from '@/utils/formatters';
+import { useGlobalCurrency } from '@/composables/useGlobalCurrency';
 import { onMounted, reactive, ref } from 'vue';
 
 const { showToast } = useToast();
+const { formatCurrencySync } = useGlobalCurrency();
+
+// Helper method for currency formatting
+const formatCurrency = (amount) => formatCurrencySync(amount).value;
 
 // State
 const loading = ref(false);

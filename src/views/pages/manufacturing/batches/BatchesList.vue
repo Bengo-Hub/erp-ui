@@ -1,5 +1,6 @@
 <script setup>
 import { useToast } from '@/composables/useToast';
+import { useGlobalCurrency } from '@/composables/useGlobalCurrency';
 import { ref, onMounted, reactive } from 'vue';
 import { useRouter } from 'vue-router';
 import { FilterMatchMode } from '@primevue/core/api';
@@ -7,7 +8,10 @@ import { manufacturingService } from '@/services/manufacturing/manufacturingServ
 import { useConfirm } from 'primevue/useconfirm';
 import BreadcrumbNav from '@/components/manufacturing/BreadcrumbNav.vue';
 import ManufacturingToolbar from '@/components/manufacturing/ManufacturingToolbar.vue';
-import { formatCurrency, formatDate } from '@/utils/formatters';
+import { formatDate } from '@/utils/formatters';
+
+const { formatCurrencySync } = useGlobalCurrency();
+const formatCurrency = (amount, currency = 'KES') => formatCurrencySync(amount, currency).value;
 
 const { showToast } = useToast();
 const router = useRouter();
@@ -225,21 +229,21 @@ onMounted(() => {
 </script>
 
 <template>
-    <div class="grid">
-        <div class="col-12">
-            <!-- Breadcrumb -->
-            <BreadcrumbNav :items="[{ label: 'Manufacturing', to: '/manufacturing' }, { label: 'Batches' }]" />
+    <div class="max-w-7xl mx-auto p-6">
+        <!-- Breadcrumb -->
+        <BreadcrumbNav :items="[{ label: 'Manufacturing', to: '/manufacturing' }, { label: 'Batches' }]" />
 
-            <!-- Toolbar -->
-            <ManufacturingToolbar title="Production Batches" icon="pi pi-box">
-                <template #actions>
-                    <Dropdown v-model="filters.status.value" :options="statusOptions" optionLabel="name" optionValue="value" placeholder="Filter by Status" class="w-full sm:w-auto mr-2" @change="onFilterChange" />
-                    <Calendar v-model="dateRange" selectionMode="range" placeholder="Date Range" class="w-full sm:w-auto mr-2" @date-select="onDateSelect" />
-                    <Button label="New Batch" icon="pi pi-plus" class="p-button-raised w-full sm:w-auto" @click="navigateToNewBatch" />
-                </template>
-            </ManufacturingToolbar>
+        <!-- Toolbar -->
+        <ManufacturingToolbar title="Production Batches" icon="pi pi-box">
+            <template #actions>
+                <Dropdown v-model="filters.status.value" :options="statusOptions" optionLabel="name" optionValue="value" placeholder="Filter by Status" class="w-full sm:w-auto mr-2" @change="onFilterChange" />
+                <Calendar v-model="dateRange" selectionMode="range" placeholder="Date Range" class="w-full sm:w-auto mr-2" @date-select="onDateSelect" />
+                <Button label="New Batch" icon="pi pi-plus" class="w-full sm:w-auto" @click="navigateToNewBatch" />
+            </template>
+        </ManufacturingToolbar>
 
-            <div class="card shadow-2 border-round-xl p-4">
+        <Card class="mb-6">
+            <template #content>
                 <DataTable
                     :value="batches"
                     :paginator="true"
@@ -248,9 +252,7 @@ onMounted(() => {
                     :rowsPerPageOptions="[5, 10, 25, 50]"
                     paginatorTemplate="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink CurrentPageReport RowsPerPageDropdown"
                     currentPageReportTemplate="Showing {first} to {last} of {totalRecords} batches"
-                    responsiveLayout="stack"
-                    breakpoint="960px"
-                    class="p-datatable-sm"
+                    responsiveLayout="scroll"
                     v-model:selection="selectedBatches"
                     :loading="loading"
                     stripedRows
@@ -318,107 +320,88 @@ onMounted(() => {
                     <Column header="Actions" style="min-width: 130px">
                         <template #body="slotProps">
                             <div class="flex flex-wrap gap-2">
-                                <Button icon="pi pi-eye" class="p-button-rounded p-button-text p-button-sm" tooltip="View Details" tooltipOptions="{position:'top'}" @click="viewBatchDetails(slotProps.data)" />
+                                <Button icon="pi pi-eye" rounded text severity="info" v-tooltip.top="'View Details'" @click="viewBatchDetails(slotProps.data)" />
 
                                 <Button
                                     v-if="slotProps.data.status === 'planned'"
                                     icon="pi pi-play"
-                                    class="p-button-rounded p-button-success p-button-text p-button-sm"
-                                    tooltip="Start Batch"
-                                    tooltipOptions="{position:'top'}"
+                                    rounded
+                                    text
+                                    severity="success"
+                                    v-tooltip.top="'Start Batch'"
                                     @click="startBatch(slotProps.data)"
                                 />
 
                                 <Button
                                     v-if="slotProps.data.status === 'in_progress'"
                                     icon="pi pi-check"
-                                    class="p-button-rounded p-button-success p-button-text p-button-sm"
-                                    tooltip="Complete Batch"
-                                    tooltipOptions="{position:'top'}"
+                                    rounded
+                                    text
+                                    severity="success"
+                                    v-tooltip.top="'Complete Batch'"
                                     @click="completeBatch(slotProps.data)"
                                 />
 
                                 <Button
                                     v-if="['planned', 'in_progress'].includes(slotProps.data.status)"
                                     icon="pi pi-times"
-                                    class="p-button-rounded p-button-danger p-button-text p-button-sm"
-                                    tooltip="Cancel Batch"
-                                    tooltipOptions="{position:'top'}"
+                                    rounded
+                                    text
+                                    severity="danger"
+                                    v-tooltip.top="'Cancel Batch'"
                                     @click="cancelBatch(slotProps.data)"
                                 />
                             </div>
                         </template>
                     </Column>
                 </DataTable>
-            </div>
-        </div>
+            </template>
+        </Card>
 
         <!-- Complete Batch Dialog -->
-        <Dialog v-model:visible="completeDialog.visible" :header="'Complete Batch ' + completeDialog.batch?.batch_number" modal style="width: 30vw" :breakpoints="{ '960px': '75vw', '640px': '90vw' }" class="p-dialog-md">
-            <div class="flex flex-column gap-3">
-                <div class="field">
-                    <label for="actual_quantity" class="font-bold">Actual Quantity Produced</label>
-                    <InputNumber id="actual_quantity" v-model="completeDialog.actual_quantity" :min="0" :max="completeDialog.planned_quantity * 1.2" mode="decimal" :minFractionDigits="2" :maxFractionDigits="2" style="width: 100%" />
-                    <small>Planned quantity: {{ formatNumber(completeDialog.planned_quantity) }}</small>
+        <Dialog v-model:visible="completeDialog.visible" :header="'Complete Batch ' + completeDialog.batch?.batch_number" modal class="w-full md:w-1/2 lg:w-1/3">
+            <div class="space-y-4">
+                <div>
+                    <label for="actual_quantity" class="block text-sm font-medium mb-2">Actual Quantity Produced</label>
+                    <InputNumber id="actual_quantity" v-model="completeDialog.actual_quantity" :min="0" :max="completeDialog.planned_quantity * 1.2" mode="decimal" :minFractionDigits="2" :maxFractionDigits="2" class="w-full" />
+                    <small class="text-gray-600 dark:text-gray-400">Planned quantity: {{ formatNumber(completeDialog.planned_quantity) }}</small>
                 </div>
 
-                <div class="field">
-                    <label for="completion_notes" class="font-bold">Notes</label>
-                    <Textarea id="completion_notes" v-model="completeDialog.notes" rows="3" style="width: 100%" />
+                <div>
+                    <label for="completion_notes" class="block text-sm font-medium mb-2">Notes</label>
+                    <Textarea id="completion_notes" v-model="completeDialog.notes" rows="3" class="w-full" />
                 </div>
             </div>
 
             <template #footer>
-                <Button label="Cancel" icon="pi pi-times" class="p-button-text" @click="completeDialog.visible = false" />
+                <Button label="Cancel" icon="pi pi-times" severity="secondary" outlined @click="completeDialog.visible = false" />
                 <Button label="Complete Batch" icon="pi pi-check" @click="confirmCompleteBatch" :disabled="!completeDialog.actual_quantity" />
             </template>
         </Dialog>
 
         <!-- Cancel Batch Dialog -->
-        <Dialog v-model:visible="cancelDialog.visible" :header="'Cancel Batch ' + cancelDialog.batch?.batch_number" modal style="width: 30vw" :breakpoints="{ '960px': '75vw', '640px': '90vw' }" class="p-dialog-md">
-            <div class="flex flex-column gap-3">
-                <div class="field">
-                    <label for="cancel_reason" class="font-bold">Reason for Cancellation</label>
-                    <Textarea id="cancel_reason" v-model="cancelDialog.reason" rows="3" style="width: 100%" />
+        <Dialog v-model:visible="cancelDialog.visible" :header="'Cancel Batch ' + cancelDialog.batch?.batch_number" modal class="w-full md:w-1/2 lg:w-1/3">
+            <div class="space-y-4">
+                <div>
+                    <label for="cancel_reason" class="block text-sm font-medium mb-2">Reason for Cancellation</label>
+                    <Textarea id="cancel_reason" v-model="cancelDialog.reason" rows="3" class="w-full" />
                 </div>
             </div>
 
             <template #footer>
-                <Button label="No, Keep Batch" icon="pi pi-times" class="p-button-text" @click="cancelDialog.visible = false" />
-                <Button label="Yes, Cancel Batch" icon="pi pi-check" class="p-button-danger" @click="confirmCancelBatch" />
+                <Button label="No, Keep Batch" icon="pi pi-times" severity="secondary" outlined @click="cancelDialog.visible = false" />
+                <Button label="Yes, Cancel Batch" icon="pi pi-check" severity="danger" @click="confirmCancelBatch" />
             </template>
         </Dialog>
     </div>
 </template>
 
 <style scoped>
-.p-datatable .p-datatable-thead > tr > th {
-    background-color: #f8f9fa;
+:deep(.p-datatable .p-datatable-thead > tr > th) {
+    @apply bg-gray-50 dark:bg-gray-800;
 }
 
-.p-datatable .p-datatable-tbody > tr {
-    transition: background-color 0.2s;
-}
-
-.p-datatable .p-datatable-tbody > tr:hover {
-    background-color: #f8f9fa;
-}
-
-/* Responsive styles */
-@media screen and (max-width: 640px) {
-    .p-calendar {
-        width: 100%;
-        margin-bottom: 0.5rem;
-    }
-
-    .p-dropdown {
-        width: 100%;
-        margin-bottom: 0.5rem;
-    }
-
-    .p-button.p-button-raised {
-        width: 100%;
-        margin-bottom: 0.5rem;
-    }
+:deep(.p-datatable .p-datatable-tbody > tr) {
+    @apply hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors;
 }
 </style>

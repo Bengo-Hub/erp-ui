@@ -2,6 +2,7 @@
 import { formatCurrency } from '@/components/hrm/payroll/payslipGenerator';
 import Spinner from '@/components/ui/Spinner.vue';
 import { posService } from '@/services/ecommerce/posService';
+import { useGlobalCurrency } from '@/composables/useGlobalCurrency';
 import moment from 'moment';
 import { useConfirm } from 'primevue/useconfirm';
 import { useToast } from 'primevue/usetoast';
@@ -10,6 +11,10 @@ import { defineEmits, onMounted, ref } from 'vue';
 const emit = defineEmits(['resumeSale', 'cancel']);
 const toast = useToast();
 const confirm = useConfirm();
+const { formatCurrencySync } = useGlobalCurrency();
+
+// Helper method for currency formatting
+const formatPOSAmount = (amount) => formatCurrencySync(amount).value;
 
 // Data
 const suspendedSales = ref([]);
@@ -137,7 +142,7 @@ onMounted(() => {
 
             <Column field="total_amount" header="Amount" sortable>
                 <template #body="slotProps">
-                    {{ formatCurrency(slotProps.data.total_amount) }}
+                    {{ formatPOSAmount(slotProps.data.total_amount) }}
                 </template>
             </Column>
 

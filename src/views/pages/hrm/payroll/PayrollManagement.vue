@@ -2,12 +2,17 @@
 import PermissionButton from '@/components/common/PermissionButton.vue';
 import PermissionWrapper from '@/components/common/PermissionWrapper.vue';
 import { usePermissions } from '@/composables/usePermissions';
-import { onMounted, ref } from 'vue';
+import { useGlobalCurrency } from '@/composables/useGlobalCurrency';
+import { formatDate } from '@/utils/formatters';
+import { computed, onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
-import { formatCurrency, formatDate } from '@/utils/formatters';
 
 const router = useRouter();
 const { canRead, canUpdate, canCreate, canDelete } = usePermissions();
+const { formatCurrencySync } = useGlobalCurrency();
+
+// Helper function for currency formatting
+const formatCurrency = (amount, currency = 'KES') => formatCurrencySync(amount, currency).value;
 
 const isLoading = ref(false);
 const stats = ref({

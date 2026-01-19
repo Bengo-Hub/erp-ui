@@ -1,6 +1,7 @@
 <script setup>
 import { useFormulaManagement } from '@/composables/useFormulaManagement';
-import { formatCurrency, formatDate } from '@/utils/formatters';
+import { useGlobalCurrency } from '@/composables/useGlobalCurrency';
+import { formatDate } from '@/utils/formatters';
 import { computed, ref, watch } from 'vue';
 
 // Props
@@ -24,6 +25,10 @@ const emit = defineEmits(['formula-selected']);
 
 // Composables
 const { loadFormulaHistory } = useFormulaManagement();
+const { formatCurrencySync } = useGlobalCurrency();
+
+// Helper function for formatting currency
+const formatFormulaAmount = (amount, currency = 'KES') => formatCurrencySync(amount, currency).value;
 
 // Local state
 const selectedFormulaId = ref(null);
@@ -186,12 +191,12 @@ watch(
                     <DataTable :value="currentFormula.formulaitems" class="p-datatable-sm">
                         <Column field="amount_from" header="From Amount">
                             <template #body="{ data }">
-                                {{ formatCurrency(data.amount_from) }}
+                                {{ formatFormulaAmount(data.amount_from) }}
                             </template>
                         </Column>
                         <Column field="amount_to" header="To Amount">
                             <template #body="{ data }">
-                                {{ data.amount_to ? formatCurrency(data.amount_to) : '∞' }}
+                                {{ data.amount_to ? formatFormulaAmount(data.amount_to) : '∞' }}
                             </template>
                         </Column>
                         <Column field="deduct_percentage" header="Rate (%)">
@@ -199,7 +204,7 @@ watch(
                         </Column>
                         <Column field="deduct_amount" header="Fixed Amount">
                             <template #body="{ data }">
-                                {{ data.deduct_amount ? formatCurrency(data.deduct_amount) : 'N/A' }}
+                                {{ data.deduct_amount ? formatFormulaAmount(data.deduct_amount) : 'N/A' }}
                             </template>
                         </Column>
                     </DataTable>

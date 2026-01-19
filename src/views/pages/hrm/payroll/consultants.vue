@@ -3,11 +3,15 @@ import Payslip from '@/components/hrm/payroll/payslip.vue';
 import Spinner from '@/components/ui/Spinner.vue';
 import { useHrmFilters } from '@/composables/useHrmFilters';
 import { useToast } from '@/composables/useToast';
+import { useGlobalCurrency } from '@/composables/useGlobalCurrency';
 import { payrollService } from '@/services/hrm/payrollService';
+
+const { formatCurrencySync } = useGlobalCurrency();
+const formatCurrency = (amount, currency = 'KES') => formatCurrencySync(amount, currency).value;
 import { FilterMatchMode } from '@primevue/core/api';
 import moment from 'moment';
 import { computed, onMounted, ref } from 'vue';
-import { useRouter } from 'vue-router'; // Import Vue Router
+import { useRouter } from 'vue-router';
 
 const { showToast } = useToast();
 const router = useRouter();
@@ -387,11 +391,6 @@ const toggleProcessDropdown = () => {
     processDropdownVisible.value = !processDropdownVisible.value;
 };
 
-// Remove local formatCurrency since we're importing it
-import { formatCurrency } from '@/utils/formatters';
-// const formatCurrency = (data) => {
-//     return `KES ${data.toLocaleString()}`;
-// };
 </script>
 
 <template>

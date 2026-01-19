@@ -4,7 +4,7 @@ import Spinner from '@/components/ui/Spinner.vue';
 import AddSupplier from '@/components/crm/AddSupplier.vue';
 import AccountForm from '@/components/finance/accounts/AccountForm.vue';
 import PermissionButton from '@/components/common/PermissionButton.vue';
-import { useToast } from '@/composables/useToast';
+import { useToast } from 'primevue/usetoast';
 import { useAddEditModal } from '@/composables/useAddEditModal';
 import { PAYMENT_METHODS } from '@/constants/finance/paymentMethods';
 import { userManagementService } from '@/services/auth/userManagementService';
@@ -12,7 +12,7 @@ import { crmService } from '@/services/crm/crmService';
 import { expenseCategoryService, expenseService } from '@/services/finance/expenseService';
 import { financeService } from '@/services/finance/financeService';
 import { procurementService } from '@/services/procurement/procurementService';
-import { formatCurrency } from '@/utils/formatters';
+import { useGlobalCurrency } from '@/composables/useGlobalCurrency';
 import { useVuelidate } from '@vuelidate/core';
 import { minValue, required } from '@vuelidate/validators';
 import { computed, onMounted, reactive, ref } from 'vue';
@@ -21,7 +21,9 @@ import axios from '@/utils/axiosConfig';
 
 const router = useRouter();
 const route = useRoute();
-const { showToast } = useToast();
+const toast = useToast();
+const { formatCurrencySync } = useGlobalCurrency();
+const formatCurrency = (amount, currency = 'KES') => formatCurrencySync(amount, currency).value;
 
 // Check if edit mode
 const isEditMode = computed(() => !!route.params.id);
@@ -142,14 +144,24 @@ const closeCategoryDialog = () => {
 
 const saveCategory = async () => {
     if (!categoryForm.value.name.trim()) {
-        showToast('error', 'Error', 'Category name is required');
+        toast.add({
+            severity: 'error',
+            summary: 'Error',
+            detail: 'Category name is required',
+            life: 3000
+        });
         return;
     }
 
     try {
         const response = await expenseCategoryService.create(categoryForm.value);
         const newCategory = response.data || response;
-        showToast('success', 'Success', 'Expense category created successfully!');
+        toast.add({
+            severity: 'success',
+            summary: 'Success',
+            detail: 'Expense category created successfully!',
+            life: 3000
+        });
         closeCategoryDialog();
         await loadCategories();
         // Auto-select the newly created category
@@ -158,7 +170,12 @@ const saveCategory = async () => {
         }
     } catch (error) {
         console.error('Error saving expense category:', error);
-        showToast('error', 'Error', 'Failed to save expense category');
+        toast.add({
+            severity: 'error',
+            summary: 'Error',
+            detail: 'Failed to save expense category',
+            life: 3000
+        });
     }
 };
 
@@ -249,7 +266,12 @@ const saveExpense = async (isDraft = false) => {
     // Validate
     const isValid = await v$.value.$validate();
     if (!isValid) {
-        showToast('warn', 'Validation Error', 'Please fill all required fields');
+        toast.add({
+            severity: 'warn',
+            summary: 'Validation Error',
+            detail: 'Please fill all required fields',
+            life: 3000
+        });
         return;
     }
 
@@ -311,11 +333,21 @@ const saveExpense = async (isDraft = false) => {
             response = await expenseService.create(formData);
         }
 
-        showToast('success', 'Success', `Expense ${isEditMode.value ? 'updated' : 'created'} successfully`);
+        toast.add({
+            severity: 'success',
+            summary: 'Success',
+            detail: `Expense ${isEditMode.value ? 'updated' : 'created'} successfully`,
+            life: 3000
+        });
         router.push('/finance/expenses');
     } catch (error) {
         console.error('Error saving expense:', error);
-        showToast('error', 'Error', error.response?.data?.message || 'Failed to save expense');
+        toast.add({
+            severity: 'error',
+            summary: 'Error',
+            detail: error.response?.data?.message || 'Failed to save expense',
+            life: 3000
+        });
     } finally {
         loading.value = false;
     }
@@ -391,7 +423,12 @@ const loadExpense = async (id) => {
         calculateTotals();
     } catch (error) {
         console.error('Error loading expense:', error);
-        showToast('error', 'Error', 'Failed to load expense');
+        toast.add({
+            severity: 'error',
+            summary: 'Error',
+            detail: 'Failed to load expense',
+            life: 3000
+        });
         router.push('/finance/expenses');
     } finally {
         loading.value = false;

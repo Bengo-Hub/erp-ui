@@ -1,13 +1,16 @@
 <script setup>
 import { usePermissions } from '@/composables/usePermissions';
-import { useToast } from '@/composables/useToast';
+import { useToast } from 'primevue/usetoast';
 import { customerService } from '@/services/crm/customerService';
-import { formatCurrency, formatDate } from '@/utils/formatters';
+import { formatDate } from '@/utils/formatters';
+import { useGlobalCurrency } from '@/composables/useGlobalCurrency';
 import { computed, onMounted, ref } from 'vue';
 
 // PrimeVue components
-const { showToast } = useToast();
+const toast = useToast();
 const { hasPermission, hasAnyPermission } = usePermissions();
+const { formatCurrencySync } = useGlobalCurrency();
+const formatCurrency = (amount, currency = 'KES') => formatCurrencySync(amount, currency).value;
 
 // Reactive data
 const leads = ref([]);
@@ -67,7 +70,12 @@ const fetchLeads = async () => {
         leads.value = response.results || response || [];
     } catch (error) {
         console.error('Error fetching leads:', error);
-        showToast('error', 'Error', 'Failed to fetch leads');
+        toast.add({
+            severity: 'error',
+            summary: 'Error',
+            detail: 'Failed to fetch leads',
+            life: 3000
+        });
         leads.value = [];
     } finally {
         loading.value = false;
@@ -120,7 +128,12 @@ const closeDialog = () => {
 
 const saveLead = async () => {
     if (!form.value.contact) {
-        showToast('warn', 'Validation Error', 'Please select a contact');
+        toast.add({
+            severity: 'warn',
+            summary: 'Validation Error',
+            detail: 'Please select a contact',
+            life: 3000
+        });
         return;
     }
 
@@ -128,17 +141,32 @@ const saveLead = async () => {
     try {
         if (isEditing.value) {
             await customerService.updateLead(selectedLeadId.value, form.value);
-            showToast('success', 'Success', 'Lead updated successfully');
+            toast.add({
+                severity: 'success',
+                summary: 'Success',
+                detail: 'Lead updated successfully',
+                life: 3000
+            });
         } else {
             await customerService.createLead(form.value);
-            showToast('success', 'Success', 'Lead created successfully');
+            toast.add({
+                severity: 'success',
+                summary: 'Success',
+                detail: 'Lead created successfully',
+                life: 3000
+            });
         }
 
         closeDialog();
         await fetchLeads();
     } catch (error) {
         console.error('Error saving lead:', error);
-        showToast('error', 'Error', 'Failed to save lead');
+        toast.add({
+            severity: 'error',
+            summary: 'Error',
+            detail: 'Failed to save lead',
+            life: 3000
+        });
     } finally {
         saving.value = false;
     }
@@ -152,11 +180,21 @@ const removeLead = (id) => {
 const confirmDelete = async () => {
     try {
         await customerService.deleteLead(selectedLeadId.value);
-        showToast('success', 'Success', 'Lead deleted successfully');
+        toast.add({
+            severity: 'success',
+            summary: 'Success',
+            detail: 'Lead deleted successfully',
+            life: 3000
+        });
         await fetchLeads();
     } catch (error) {
         console.error('Error deleting lead:', error);
-        showToast('error', 'Error', 'Failed to delete lead');
+        toast.add({
+            severity: 'error',
+            summary: 'Error',
+            detail: 'Failed to delete lead',
+            life: 3000
+        });
     } finally {
         showDeleteDialog.value = false;
         selectedLeadId.value = null;

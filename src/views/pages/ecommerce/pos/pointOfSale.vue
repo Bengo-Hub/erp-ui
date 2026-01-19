@@ -1,5 +1,4 @@
 <script setup>
-import { formatCurrency } from '@/components/hrm/payroll/payslipGenerator';
 import Discount from '@/components/pos/Discount.vue';
 import PosProductCard from '@/components/pos/PosProductCard.vue';
 import RecentTransactions from '@/components/pos/RecentTransactions.vue';
@@ -8,6 +7,7 @@ import ServiceCharge from '@/components/pos/ServiceCharge.vue';
 import Shipping from '@/components/pos/Shipping.vue';
 import StaffAdvanceSale from '@/components/pos/StaffAdvanceSale.vue';
 import SuspendedSales from '@/components/pos/SuspendedSales.vue';
+import { useGlobalCurrency } from '@/composables/useGlobalCurrency';
 import { systemConfigService } from '@/services/shared/systemConfigService';
 import { getProductImage } from '@/utils/productUtils';
 import { debounce } from 'lodash-es';
@@ -21,6 +21,7 @@ import SaleRegister from './register.vue';
 const router = useRouter();
 const confirm = useConfirm();
 const toast = useToast();
+const { formatCurrencySync } = useGlobalCurrency();
 
 // Reactive state
 const business = ref(JSON.parse(sessionStorage.getItem('business')));
@@ -821,7 +822,7 @@ const redirectToOpenRegister = () => {
                             <img :src="getProductImage(item)" :alt="item.product.title" width="40" height="40" />
                             <div class="item-details">
                                 <span class="item-name">{{ item.product.title }}</span>
-                                <span class="item-price">{{ formatCurrency(item.selling_price) }}</span>
+                                <span class="item-price">{{ formatCurrencySync(item.selling_price) }}</span>
                             </div>
                             <div class="item-actions">
                                 <Button icon="pi pi-minus" class="p-button-text p-button-sm" @click="decrementQuantity(item)" />
@@ -839,17 +840,17 @@ const redirectToOpenRegister = () => {
                 <div class="cart-footer">
                     <div class="totals">
                         <span>Subtotal:</span>
-                        <span>{{ formatCurrency(TotalPayableBefortax) }}</span>
+                        <span>{{ formatCurrencySync(TotalPayableBefortax) }}</span>
                         <span>Tax:</span>
-                        <span>{{ formatCurrency(orderTax) }}</span>
+                        <span>{{ formatCurrencySync(orderTax) }}</span>
                         <span>Discount:</span>
-                        <span>{{ formatCurrency(orderDiscount) }}</span>
+                        <span>{{ formatCurrencySync(orderDiscount) }}</span>
                         <span>Service Charge:</span>
-                        <span>{{ formatCurrency(orderPackingCharge) }}</span>
+                        <span>{{ formatCurrencySync(orderPackingCharge) }}</span>
                         <span>Shipping:</span>
-                        <span>{{ formatCurrency(orderShippingCharge) }}</span>
+                        <span>{{ formatCurrencySync(orderShippingCharge) }}</span>
                         <span class="grand-total">Total:</span>
-                        <span class="grand-total">{{ formatCurrency(TotalPayable) }}</span>
+                        <span class="grand-total">{{ formatCurrencySync(TotalPayable) }}</span>
                     </div>
                     <div class="payment-buttons">
                         <Button label="Cash" icon="pi pi-money-bill" class="p-button-success" @click="processPayment('paid', 'Cash')" />

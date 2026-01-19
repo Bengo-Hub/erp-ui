@@ -1,6 +1,6 @@
 <script setup>
 import { useChartOptions } from '@/composables/useChartOptions';
-import { formatCurrency, safeNumber } from '@/utils/formatters';
+import { safeNumber } from '@/utils/formatters';
 import { useGlobalCurrency } from '@/composables/useGlobalCurrency';
 import { useDashboardState } from '@/composables/useDashboardState';
 import { usePermissions } from '@/composables/usePermissions';
@@ -17,6 +17,8 @@ const { currencyChartOptions } = useChartOptions();
 const { state, executeDataFetch } = useDashboardState();
 const { hasAnyPermission } = usePermissions();
 const { formatCurrencySync } = useGlobalCurrency();
+
+const formatCurrency = (amount, currency = 'KES') => formatCurrencySync(amount, currency).value;
 
 const loading = ref(false);
 const period = ref('month');
@@ -56,8 +58,8 @@ const orderTrendsChartData = ref(null);
 const customerGrowthChartData = ref(null);
 
 // Reactive formatted currency values
-const formattedRevenue = formatCurrencySync(computed(() => safeNumber(dashboardData.value.total_revenue, 0)));
-const formattedProfit = formatCurrencySync(computed(() => safeNumber(dashboardData.value.net_profit, 0)));
+const formattedRevenue = computed(() => formatCurrency(safeNumber(dashboardData.value.total_revenue, 0)));
+const formattedProfit = computed(() => formatCurrency(safeNumber(dashboardData.value.net_profit, 0)));
 
 // Load dashboard data
 const loadDashboardData = async () => {

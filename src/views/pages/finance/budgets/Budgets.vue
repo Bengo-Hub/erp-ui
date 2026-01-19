@@ -1,11 +1,15 @@
 <script setup>
-import { useToast } from '@/composables/useToast';
+import { useToast } from 'primevue/usetoast';
 import { financeService } from '@/services/finance/financeService';
-import { formatCurrency, formatDate } from '@/utils/formatters';
+import { useGlobalCurrency } from '@/composables/useGlobalCurrency';
+import { formatDate } from '@/utils/formatters';
 import { onMounted, reactive, ref } from 'vue';
 import { useRouter } from 'vue-router';
 
-const { showToast } = useToast();
+const { formatCurrencySync } = useGlobalCurrency();
+const formatCurrency = (amount, currency = 'KES') => formatCurrencySync(amount, currency).value;
+
+const toast = useToast();
 const router = useRouter();
 
 // State
@@ -42,7 +46,12 @@ const fetchBudgets = async () => {
         budgets.value = response.data.results || response.data || [];
     } catch (error) {
         console.error('Error fetching budgets:', error);
-        showToast('error', 'Failed to load budgets');
+        toast.add({
+            severity: 'error',
+            summary: 'Error',
+            detail: 'Failed to load budgets',
+            life: 3000
+        });
     } finally {
         loading.value = false;
     }
@@ -75,7 +84,12 @@ const viewBudget = (budget) => {
 
 const saveBudget = async () => {
     if (!form.name.trim()) {
-        showToast('error', 'Budget name is required');
+        toast.add({
+            severity: 'error',
+            summary: 'Error',
+            detail: 'Budget name is required',
+            life: 3000
+        });
         return;
     }
 
@@ -83,16 +97,31 @@ const saveBudget = async () => {
     try {
         if (isEdit.value) {
             await financeService.updateBudget(editingId.value, form);
-            showToast('success', 'Budget updated successfully');
+            toast.add({
+                severity: 'success',
+                summary: 'Success',
+                detail: 'Budget updated successfully',
+                life: 3000
+            });
         } else {
             await financeService.createBudget(form);
-            showToast('success', 'Budget created successfully');
+            toast.add({
+                severity: 'success',
+                summary: 'Success',
+                detail: 'Budget created successfully',
+                life: 3000
+            });
         }
         closeDialog();
         await fetchBudgets();
     } catch (error) {
         console.error('Error saving budget:', error);
-        showToast('error', `Failed to ${isEdit.value ? 'update' : 'create'} budget`);
+        toast.add({
+            severity: 'error',
+            summary: 'Error',
+            detail: `Failed to ${isEdit.value ? 'update' : 'create'} budget`,
+            life: 3000
+        });
     } finally {
         saving.value = false;
     }
@@ -103,11 +132,21 @@ const deleteBudget = async (budget) => {
 
     try {
         await financeService.deleteBudget(budget.id);
-        showToast('success', 'Budget deleted successfully');
+        toast.add({
+            severity: 'success',
+            summary: 'Success',
+            detail: 'Budget deleted successfully',
+            life: 3000
+        });
         await fetchBudgets();
     } catch (error) {
         console.error('Error deleting budget:', error);
-        showToast('error', 'Failed to delete budget');
+        toast.add({
+            severity: 'error',
+            summary: 'Error',
+            detail: 'Failed to delete budget',
+            life: 3000
+        });
     }
 };
 

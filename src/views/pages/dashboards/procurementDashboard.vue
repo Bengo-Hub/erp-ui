@@ -4,10 +4,11 @@ import { useDashboardState } from '@/composables/useDashboardState';
 import { usePermissions } from '@/composables/usePermissions';
 import { useToast } from '@/composables/useToast';
 import { dashboardService } from '@/services/shared/dashboardService';
+import { useGlobalCurrency } from '@/composables/useGlobalCurrency';
 import { PERIOD_OPTIONS } from '@/utils/constants';
 import Chart from 'primevue/chart';
-import { formatCurrency, safeNumber } from '@/utils/formatters';
-import { onMounted, ref, watch } from 'vue';
+import { safeNumber } from '@/utils/formatters';
+import { computed, onMounted, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
 
 const router = useRouter();
@@ -15,6 +16,9 @@ const { showToast } = useToast();
 const { currencyChartOptions } = useChartOptions();
 const { state, executeDataFetch } = useDashboardState();
 const { hasPermission } = usePermissions();
+const { formatCurrencySync } = useGlobalCurrency();
+
+const formatCurrency = (amount, currency = 'KES') => formatCurrencySync(amount, currency).value;
 
 const loading = ref(false);
 const period = ref('month');
@@ -38,6 +42,31 @@ const dashboardData = ref({
 const orderTrendsChartData = ref(null);
 const categoryBreakdownChartData = ref(null);
 const spendAnalysisChartData = ref(null);
+
+// Reactive formatted values for summary cards
+const formattedTotalOrders = computed(() =>
+    safeNumber(dashboardData.value.total_orders, 0).toLocaleString()
+);
+
+const formattedTotalSpend = computed(() =>
+    formatCurrency(safeNumber(dashboardData.value.total_spend, 0))
+);
+
+const formattedPendingOrders = computed(() =>
+    safeNumber(dashboardData.value.pending_orders, 0).toLocaleString()
+);
+
+const formattedSupplierCount = computed(() =>
+    safeNumber(dashboardData.value.supplier_count, 0).toLocaleString()
+);
+
+const formattedAverageOrderValue = computed(() =>
+    formatCurrency(safeNumber(dashboardData.value.average_order_value, 0))
+);
+
+const formattedCompletedOrders = computed(() =>
+    safeNumber(dashboardData.value.completed_orders, 0).toLocaleString()
+);
 
 // Load dashboard data
 const loadDashboardData = async () => {
@@ -164,7 +193,7 @@ onMounted(() => {
                     </template>
                     <template #content>
                         <div class="text-3xl font-bold">
-                            {{ dashboardData.total_orders }}
+                            {{ formattedTotalOrders }}
                         </div>
                     </template>
                 </Card>
@@ -178,7 +207,7 @@ onMounted(() => {
                     </template>
                     <template #content>
                         <div class="text-3xl font-bold">
-                            {{ formatCurrency(safeNumber(dashboardData.total_spend, 0)) }}
+                            {{ formattedTotalSpend }}
                         </div>
                     </template>
                 </Card>
@@ -192,7 +221,7 @@ onMounted(() => {
                     </template>
                     <template #content>
                         <div class="text-3xl font-bold">
-                            {{ dashboardData.pending_orders }}
+                            {{ formattedPendingOrders }}
                         </div>
                     </template>
                 </Card>
@@ -206,7 +235,7 @@ onMounted(() => {
                     </template>
                     <template #content>
                         <div class="text-3xl font-bold">
-                            {{ dashboardData.supplier_count }}
+                            {{ formattedSupplierCount }}
                         </div>
                     </template>
                 </Card>

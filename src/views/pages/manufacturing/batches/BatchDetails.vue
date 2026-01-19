@@ -4,9 +4,13 @@ import ManufacturingToolbar from '@/components/manufacturing/ManufacturingToolba
 import { manufacturingService } from '@/services/manufacturing/manufacturingService';
 import { useConfirm } from 'primevue/useconfirm';
 import { useToast } from 'primevue/usetoast';
+import { useGlobalCurrency } from '@/composables/useGlobalCurrency';
 import { onMounted, reactive, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
-import { formatCurrency, formatDate } from '@/utils/formatters';
+import { formatDate } from '@/utils/formatters';
+
+const { formatCurrencySync } = useGlobalCurrency();
+const formatCurrency = (amount, currency = 'KES') => formatCurrencySync(amount, currency).value;
 
 const route = useRoute();
 const router = useRouter();
@@ -157,37 +161,37 @@ const goBack = () => {
 </script>
 
 <template>
-    <div class="grid">
-        <div class="col-12">
-            <!-- Breadcrumb -->
-            <BreadcrumbNav :items="[{ label: 'Manufacturing', to: '/manufacturing' }, { label: 'Batches', to: '/manufacturing/batches' }, { label: 'Batch Details' }]" />
+    <div class="max-w-7xl mx-auto p-6">
+        <!-- Breadcrumb -->
+        <BreadcrumbNav :items="[{ label: 'Manufacturing', to: '/manufacturing' }, { label: 'Batches', to: '/manufacturing/batches' }, { label: 'Batch Details' }]" />
 
-            <!-- Toolbar -->
-            <ManufacturingToolbar title="Batch Details" icon="pi pi-box">
-                <template #actions>
-                    <Button label="Back to Batches" icon="pi pi-arrow-left" outlined @click="goBack" class="w-full sm:w-auto" />
-                </template>
-            </ManufacturingToolbar>
+        <!-- Toolbar -->
+        <ManufacturingToolbar title="Batch Details" icon="pi pi-box">
+            <template #actions>
+                <Button label="Back to Batches" icon="pi pi-arrow-left" outlined @click="goBack" class="w-full sm:w-auto" />
+            </template>
+        </ManufacturingToolbar>
 
-            <div class="card shadow-2 border-round-xl p-4">
-                <div v-if="loading" class="flex justify-content-center">
+        <Card class="mb-6">
+            <template #content>
+                <div v-if="loading" class="flex justify-center">
                     <ProgressSpinner />
                 </div>
 
                 <div v-else>
                     <!-- Batch Header -->
-                    <div class="flex flex-column sm:flex-row align-items-start sm:align-items-center justify-content-between mb-3 gap-3">
+                    <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-4 gap-3">
                         <div>
-                            <div class="text-2xl font-bold">{{ batch.batch_number }}</div>
-                            <div class="text-lg text-500">{{ batch.formula_details?.name }} (v{{ batch.formula_details?.version }})</div>
+                            <div class="text-2xl font-bold text-gray-900 dark:text-gray-100">{{ batch.batch_number }}</div>
+                            <div class="text-lg text-gray-500 dark:text-gray-400">{{ batch.formula_details?.name }} (v{{ batch.formula_details?.version }})</div>
                         </div>
                         <Tag :value="formatStatus(batch.status)" :severity="getStatusSeverity(batch.status)" size="large" />
                     </div>
 
                     <!-- Action Buttons -->
-                    <div class="flex flex-column sm:flex-row justify-content-end mb-4 gap-2">
-                        <Button v-if="batch.status === 'planned'" label="Start Production" icon="pi pi-play" class="p-button-raised w-full sm:w-auto" @click="startBatch(batch)" />
-                        <Button v-if="batch.status === 'in_progress'" label="Complete Batch" icon="pi pi-check" class="p-button-raised p-button-success w-full sm:w-auto" @click="completeBatch" />
+                    <div class="flex flex-col sm:flex-row justify-end mb-4 gap-2">
+                        <Button v-if="batch.status === 'planned'" label="Start Production" icon="pi pi-play" class="w-full sm:w-auto" @click="startBatch(batch)" />
+                        <Button v-if="batch.status === 'in_progress'" label="Complete Batch" icon="pi pi-check" severity="success" class="w-full sm:w-auto" @click="completeBatch" />
                         <Button v-if="['planned', 'in_progress'].includes(batch.status)" label="Cancel Batch" icon="pi pi-times" severity="danger" outlined class="w-full sm:w-auto" @click="cancelBatch" />
                         <Button icon="pi pi-print" label="Print Details" outlined class="w-full sm:w-auto" @click="printBatchDetails" />
                     </div>
@@ -195,66 +199,66 @@ const goBack = () => {
                     <!-- Batch Details Tabs -->
                     <TabView>
                         <TabPanel header="Overview">
-                            <div class="grid flex-column md:flex-row gap-3">
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <!-- Batch Info Column -->
-                                <div class="col-12 md:col-6">
+                                <div>
                                     <Panel header="Batch Information">
-                                        <div class="grid flex-column md:flex-row gap-3">
-                                            <div class="col-12 md:col-4 mb-3">
-                                                <div class="text-500 font-medium mb-1">Status</div>
-                                                <div>{{ formatStatus(batch.status) }}</div>
+                                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                            <div>
+                                                <div class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Status</div>
+                                                <div class="text-gray-900 dark:text-gray-100">{{ formatStatus(batch.status) }}</div>
                                             </div>
-                                            <div class="col-12 md:col-4 mb-3">
-                                                <div class="text-500 font-medium mb-1">Branch</div>
-                                                <div>{{ batch.branch_details?.name }}</div>
+                                            <div>
+                                                <div class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Branch</div>
+                                                <div class="text-gray-900 dark:text-gray-100">{{ batch.branch_details?.name }}</div>
                                             </div>
-                                            <div class="col-12 md:col-y the     4 mb-3">
-                                                <div class="text-500 font-medium mb-1">Scheduled Date</div>
-                                                <div>{{ formatDate(batch.scheduled_date) }}</div>
+                                            <div>
+                                                <div class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Scheduled Date</div>
+                                                <div class="text-gray-900 dark:text-gray-100">{{ formatDate(batch.scheduled_date) }}</div>
                                             </div>
-                                            <div class="col-12 md:col-6 mb-3">
-                                                <div class="text-500 font-medium mb-1">Created By</div>
-                                                <div>{{ batch.created_by_details?.username }}</div>
+                                            <div>
+                                                <div class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Created By</div>
+                                                <div class="text-gray-900 dark:text-gray-100">{{ batch.created_by_details?.username }}</div>
                                             </div>
-                                            <div class="col-12 md:col-6 mb-3">
-                                                <div class="text-500 font-medium mb-1">Supervisor</div>
-                                                <div>{{ batch.supervisor_details?.username || 'N/A' }}</div>
+                                            <div>
+                                                <div class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Supervisor</div>
+                                                <div class="text-gray-900 dark:text-gray-100">{{ batch.supervisor_details?.username || 'N/A' }}</div>
                                             </div>
-                                            <div class="col-12 mb-3">
-                                                <div class="text-500 font-medium mb-1">Notes</div>
-                                                <div>{{ batch.notes || 'No notes available' }}</div>
+                                            <div class="col-span-2">
+                                                <div class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Notes</div>
+                                                <div class="text-gray-900 dark:text-gray-100">{{ batch.notes || 'No notes available' }}</div>
                                             </div>
                                         </div>
                                     </Panel>
                                 </div>
 
                                 <!-- Production Info Column -->
-                                <div class="col-12 md:col-6">
+                                <div>
                                     <Panel header="Production Information">
-                                        <div class="grid">
-                                            <div class="col-12 md:col-6 mb-3">
-                                                <div class="text-500 font-medium mb-1">Planned Quantity</div>
-                                                <div>{{ formatNumber(batch.planned_quantity) }} {{ batch.formula_details?.output_unit_details?.title }}</div>
+                                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                            <div>
+                                                <div class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Planned Quantity</div>
+                                                <div class="text-gray-900 dark:text-gray-100">{{ formatNumber(batch.planned_quantity) }} {{ batch.formula_details?.output_unit_details?.title }}</div>
                                             </div>
-                                            <div class="col-12 md:col-6 mb-3">
-                                                <div class="text-500 font-medium mb-1">Actual Quantity</div>
-                                                <div>{{ batch.actual_quantity ? formatNumber(batch.actual_quantity) : 'N/A' }} {{ batch.actual_quantity ? batch.formula_details?.output_unit_details?.title : '' }}</div>
+                                            <div>
+                                                <div class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Actual Quantity</div>
+                                                <div class="text-gray-900 dark:text-gray-100">{{ batch.actual_quantity ? formatNumber(batch.actual_quantity) : 'N/A' }} {{ batch.actual_quantity ? batch.formula_details?.output_unit_details?.title : '' }}</div>
                                             </div>
-                                            <div class="col-12 md:col-6 mb-3">
-                                                <div class="text-500 font-medium mb-1">Start Date</div>
-                                                <div>{{ formatDate(batch.start_date) || 'Not started' }}</div>
+                                            <div>
+                                                <div class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Start Date</div>
+                                                <div class="text-gray-900 dark:text-gray-100">{{ formatDate(batch.start_date) || 'Not started' }}</div>
                                             </div>
-                                            <div class="col-12 md:col-6 mb-3">
-                                                <div class="text-500 font-medium mb-1">End Date</div>
-                                                <div>{{ formatDate(batch.end_date) || 'Not completed' }}</div>
+                                            <div>
+                                                <div class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">End Date</div>
+                                                <div class="text-gray-900 dark:text-gray-100">{{ formatDate(batch.end_date) || 'Not completed' }}</div>
                                             </div>
-                                            <div class="col-12 md:col-6 mb-3">
-                                                <div class="text-500 font-medium mb-1">Raw Material Cost</div>
-                                                <div>{{ formatCurrency(batch.raw_material_cost) }}</div>
+                                            <div>
+                                                <div class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Raw Material Cost</div>
+                                                <div class="text-gray-900 dark:text-gray-100">{{ formatCurrency(batch.raw_material_cost) }}</div>
                                             </div>
-                                            <div class="col-12 md:col-6 mb-3">
-                                                <div class="text-500 font-medium mb-1">Unit Cost</div>
-                                                <div>{{ formatCurrency(batch.unit_cost) }}</div>
+                                            <div>
+                                                <div class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Unit Cost</div>
+                                                <div class="text-gray-900 dark:text-gray-100">{{ formatCurrency(batch.unit_cost) }}</div>
                                             </div>
                                         </div>
                                     </Panel>
@@ -262,26 +266,26 @@ const goBack = () => {
                             </div>
 
                             <!-- Product Info -->
-                            <Panel header="Product Information" class="mt-3">
-                                <div class="grid">
-                                    <div class="col-12 md:col-4 mb-3">
-                                        <div class="text-500 font-medium mb-1">Product</div>
-                                        <div>{{ batch.formula_details?.final_product_details?.product?.title }}</div>
+                            <Panel header="Product Information" class="mt-4">
+                                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                    <div>
+                                        <div class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Product</div>
+                                        <div class="text-gray-900 dark:text-gray-100">{{ batch.formula_details?.final_product_details?.product?.title }}</div>
                                     </div>
-                                    <div class="col-12 md:col-4 mb-3">
-                                        <div class="text-500 font-medium mb-1">Formula</div>
-                                        <div>{{ batch.formula_details?.name }} (v{{ batch.formula_details?.version }})</div>
+                                    <div>
+                                        <div class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Formula</div>
+                                        <div class="text-gray-900 dark:text-gray-100">{{ batch.formula_details?.name }} (v{{ batch.formula_details?.version }})</div>
                                     </div>
-                                    <div class="col-12 md:col-4 mb-3">
-                                        <div class="text-500 font-medium mb-1">Expected Output</div>
-                                        <div>{{ formatNumber(batch.formula_details?.expected_output_quantity) }} {{ batch.formula_details?.output_unit_details?.title }}</div>
+                                    <div>
+                                        <div class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Expected Output</div>
+                                        <div class="text-gray-900 dark:text-gray-100">{{ formatNumber(batch.formula_details?.expected_output_quantity) }} {{ batch.formula_details?.output_unit_details?.title }}</div>
                                     </div>
                                 </div>
                             </Panel>
                         </TabPanel>
 
                         <TabPanel header="Raw Materials">
-                            <DataTable :value="batch.formula_details.ingredients" responsiveLayout="stack" breakpoint="960px" class="p-datatable-sm" stripedRows showGridlines>
+                            <DataTable :value="batch.formula_details.ingredients" responsiveLayout="scroll" stripedRows showGridlines>
                                 <Column field="raw_material_details.product.title" header="Material">
                                     <template #body="slotProps">
                                         {{ slotProps.data.raw_material_details?.product?.title || 'N/A' }}
@@ -315,7 +319,7 @@ const goBack = () => {
 
                         <TabPanel header="Quality Checks">
                             <div v-if="batch.quality_checks && batch.quality_checks.length">
-                                <DataTable :value="batch.quality_checks" responsiveLayout="scroll" class="p-datatable-sm">
+                                <DataTable :value="batch.quality_checks" responsiveLayout="scroll">
                                     <Column field="check_date" header="Date">
                                         <template #body="slotProps">
                                             <Tag :value="formatDate(slotProps.data.check_date)" :severity="slotProps.data.result === 'pass' ? 'success' : 'danger'" />
@@ -334,38 +338,48 @@ const goBack = () => {
                                     </Column>
                                 </DataTable>
                             </div>
-                            <div v-else class="p-3 text-center text-500">No quality checks recorded for this batch</div>
+                            <div v-else class="p-3 text-center text-gray-500 dark:text-gray-400">No quality checks recorded for this batch</div>
                         </TabPanel>
                     </TabView>
                 </div>
 
                 <!-- Complete Batch Dialog -->
-                <Dialog v-model:visible="completeDialog.visible" header="Complete Batch" modal style="width: 30vw" :breakpoints="{ '960px': '75vw', '640px': '90vw' }" class="p-dialog-md">
-                    <div class="flex flex-column gap-3">
+                <Dialog v-model:visible="completeDialog.visible" header="Complete Batch" modal class="w-full md:w-1/2 lg:w-1/3">
+                    <div class="space-y-4">
                         <div>Enter the actual quantity produced:</div>
                         <InputNumber v-model="completeDialog.actual_quantity" :min="0" :max="batch.planned_quantity * 1.2" class="w-full" />
                     </div>
                     <template #footer>
-                        <Button label="Cancel" icon="pi pi-times" outlined @click="completeDialog.visible = false" />
+                        <Button label="Cancel" icon="pi pi-times" severity="secondary" outlined @click="completeDialog.visible = false" />
                         <Button label="Complete Batch" icon="pi pi-check" @click="confirmCompleteBatch" :disabled="!completeDialog.actual_quantity" />
                     </template>
                 </Dialog>
 
                 <!-- Cancel Batch Dialog -->
-                <Dialog v-model:visible="cancelDialog.visible" header="Cancel Batch" modal style="width: 30vw" :breakpoints="{ '960px': '75vw', '640px': '90vw' }" class="p-dialog-md">
-                    <div class="flex flex-column gap-3">
+                <Dialog v-model:visible="cancelDialog.visible" header="Cancel Batch" modal class="w-full md:w-1/2 lg:w-1/3">
+                    <div class="space-y-4">
                         <div>Are you sure you want to cancel this batch?</div>
                         <div>
-                            <label for="cancel_reason" class="block mb-2">Reason (optional):</label>
+                            <label for="cancel_reason" class="block text-sm font-medium mb-2">Reason (optional):</label>
                             <Textarea id="cancel_reason" v-model="cancelDialog.reason" rows="3" class="w-full" />
                         </div>
                     </div>
                     <template #footer>
-                        <Button label="No, Keep Batch" icon="pi pi-times" outlined @click="cancelDialog.visible = false" />
-                        <Button label="Yes, Cancel Batch" icon="pi pi-check" class="p-button-danger" @click="confirmCancelBatch" />
+                        <Button label="No, Keep Batch" icon="pi pi-times" severity="secondary" outlined @click="cancelDialog.visible = false" />
+                        <Button label="Yes, Cancel Batch" icon="pi pi-check" severity="danger" @click="confirmCancelBatch" />
                     </template>
                 </Dialog>
-            </div>
-        </div>
+            </template>
+        </Card>
     </div>
 </template>
+
+<style scoped>
+:deep(.p-datatable .p-datatable-thead > tr > th) {
+    @apply bg-gray-50 dark:bg-gray-800;
+}
+
+:deep(.p-datatable .p-datatable-tbody > tr) {
+    @apply hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors;
+}
+</style>

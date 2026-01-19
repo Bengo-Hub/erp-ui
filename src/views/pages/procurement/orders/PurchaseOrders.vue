@@ -4,11 +4,17 @@ import PurchaseOrderForm from '@/components/procurement/PurchaseOrderForm.vue';
 import ApprovalWorkflow from '@/components/shared/ApprovalWorkflow.vue';
 import PermissionButton from '@/components/common/PermissionButton.vue';
 import { procurementService } from '@/services/procurement/procurementService';
-import { formatCurrency, formatDate } from '@/utils/formatters';
+import { formatDate } from '@/utils/formatters';
+import { useGlobalCurrency } from '@/composables/useGlobalCurrency';
 import { useConfirm } from 'primevue/useconfirm';
 import { useToast } from 'primevue/usetoast';
 import { computed, onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
+
+const { formatCurrencySync } = useGlobalCurrency();
+
+// Helper function for currency formatting
+const formatCurrency = (amount, currency = 'KES') => formatCurrencySync(amount, currency).value;
 
 const router = useRouter();
 const confirm = useConfirm();

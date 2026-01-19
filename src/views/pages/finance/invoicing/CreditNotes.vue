@@ -5,13 +5,17 @@ import { useDocumentFilters } from '@/composables/finance/useDocumentFilters';
 import { usePermissions } from '@/composables/usePermissions';
 import { useToast } from '@/composables/useToast';
 import { creditNoteService } from '@/services/finance/billingDocumentsService';
-import { formatCurrency, formatDate } from '@/utils/formatters';
+import { formatDate } from '@/utils/formatters';
+import { useGlobalCurrency } from '@/composables/useGlobalCurrency';
 import { computed, onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
 
 const router = useRouter();
 const { showToast } = useToast();
 const { hasPermission } = usePermissions();
+const { formatCurrencySync } = useGlobalCurrency();
+
+const formatCurrency = (amount, currency = 'KES') => formatCurrencySync(amount, currency).value;
 
 // Use shared filter composable
 const { filters, currentPage, perPage, totalRecords, onPage, onFilter, getFilterParams } = useDocumentFilters();
@@ -25,15 +29,6 @@ const selectedCreditNotes = ref([]);
 const canCreate = computed(() => hasPermission('add_creditnote'));
 const canEdit = computed(() => hasPermission('change_creditnote'));
 const canDelete = computed(() => hasPermission('delete_creditnote'));
-
-// Status options for filtering
-const statusOptions = [
-    { label: 'All', value: '' },
-    { label: 'Draft', value: 'draft' },
-    { label: 'Issued', value: 'issued' },
-    { label: 'Applied', value: 'applied' },
-    { label: 'Void', value: 'void' }
-];
 
 // Methods
 const fetchCreditNotes = async () => {
@@ -135,6 +130,15 @@ const deleteCreditNote = async (note) => {
 const getCustomerName = (note) => {
     return note.customer_details?.name || note.customer_details?.business_name || 'N/A';
 };
+
+// Status options for filtering
+const statusOptions = [
+    { label: 'All', value: '' },
+    { label: 'Draft', value: 'draft' },
+    { label: 'Issued', value: 'issued' },
+    { label: 'Applied', value: 'applied' },
+    { label: 'Void', value: 'void' }
+];
 
 // Lifecycle
 onMounted(() => {

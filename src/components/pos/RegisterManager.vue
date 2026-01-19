@@ -1,12 +1,16 @@
 <script setup>
 import { posService } from '@/services/ecommerce/posService';
-import { formatCurrency } from '@/utils/formatters';
+import { useGlobalCurrency } from '@/composables/useGlobalCurrency';
 import { useToast } from 'primevue/usetoast';
 import { computed, onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
 
 const router = useRouter();
 const toast = useToast();
+const { formatCurrencySync } = useGlobalCurrency();
+
+// Helper method for currency formatting
+const formatPOSAmount = (amount) => formatCurrencySync(amount).value;
 
 // Props
 const props = defineProps({
@@ -277,7 +281,7 @@ defineExpose({
                         </div>
                         <div class="text-center">
                             <div class="text-xl font-semibold text-green-600">
-                                {{ formatCurrency(currentBalance) }}
+                                {{ formatPOSAmount(currentBalance) }}
                             </div>
                             <div class="text-sm text-gray-600">Current Balance</div>
                         </div>

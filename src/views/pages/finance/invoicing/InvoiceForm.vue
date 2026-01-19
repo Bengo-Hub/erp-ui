@@ -18,7 +18,6 @@ import { procurementService } from '@/services/procurement/procurementService';
 import { coreService } from '@/services/shared/coreService';
 import { financeService } from '@/services/finance/financeService';
 import { systemConfigService } from '@/services/shared/systemConfigService';
-import { formatCurrency } from '@/utils/formatters';
 import { useGlobalCurrency } from '@/composables/useGlobalCurrency';
 import axios from '@/utils/axiosConfig';
 import { useVuelidate } from '@vuelidate/core';

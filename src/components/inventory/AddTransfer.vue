@@ -2,9 +2,14 @@
 import { coreService } from '@/services/shared/coreService';
 import { inventoryService } from '@/services/ecommerce/inventoryService';
 import { posService } from '@/services/ecommerce/posService';
-import { formatCurrency } from '@/utils/formatters.js';
-import { useToast } from 'primevue/usetoast';
+import { useGlobalCurrency } from '@/composables/useGlobalCurrency';
+import { useToast } from '@/composables/useToast';
 import { computed, onMounted, reactive, ref } from 'vue';
+
+const { formatCurrencySync } = useGlobalCurrency();
+
+// Helper function for currency formatting
+const formatCurrency = (amount, currency = 'KES') => formatCurrencySync(amount, currency).value;
 
 const emit = defineEmits(['save', 'cancel']);
 const props = defineProps({
@@ -14,7 +19,7 @@ const props = defineProps({
     }
 });
 
-const toast = useToast();
+const { showSuccess, showError, showWarning } = useToast();
 
 // Data
 const branches = ref([]);
@@ -55,7 +60,7 @@ const isFormValid = computed(() => {
     return transfer.branch_from && transfer.branch_to && transfer.branch_from !== transfer.branch_to && cart.value.length > 0;
 });
 
-// Methods
+// Helper functions
 const fetchBranches = async () => {
     try {
         loading.value = true;
@@ -76,7 +81,7 @@ const fetchBranches = async () => {
             }
         }
     } catch (error) {
-        showError('Failed to fetch branches', error);
+        handleError('Failed to fetch branches', error);
     } finally {
         loading.value = false;
     }
@@ -93,7 +98,7 @@ const fetchProducts = async () => {
         products.value = response.data.results;
         filteredProducts.value = products.value;
     } catch (error) {
-        showError('Failed to fetch products', error);
+        handleError('Failed to fetch products', error);
     } finally {
         loading.value = false;
     }
@@ -135,7 +140,7 @@ const addToCart = ({ data }) => {
 
     if (existingItem) {
         if (existingItem.quantity + 1 > data.stock_level) {
-            showWarning(`Cannot add more than available stock (${data.stock_level})`);
+            handleWarning(`Cannot add more than available stock (${data.stock_level})`);
             return;
         }
         existingItem.quantity += 1;
@@ -174,10 +179,10 @@ const handleSubmit = async () => {
 
         const response = props.transfer ? await inventoryService.updateStockTransfer(props.transfer.id, transferData) : await inventoryService.createStockTransfer(transferData);
 
-        showSuccess(`Transfer ${props.transfer ? 'updated' : 'created'} successfully`);
+        handleSuccess(`Transfer ${props.transfer ? 'updated' : 'created'} successfully`);
         emit('save', response.data);
     } catch (error) {
-        showError('Failed to save transfer', error);
+        handleError('Failed to save transfer', error);
     } finally {
         loading.value = false;
     }
@@ -187,35 +192,20 @@ const cancel = () => {
     emit('cancel');
 };
 
-const showSuccess = (message) => {
-    toast.add({
-        severity: 'success',
-        summary: 'Success',
-        detail: message,
-        life: 3000
-    });
+const handleSuccess = (message) => {
+    showSuccess(message);
 };
 
-const showError = (message, error) => {
-    console.error(error);
-    toast.add({
-        severity: 'error',
-        summary: 'Error',
-        detail: `${message}: ${error.response?.data?.detail || error.message}`,
-        life: 5000
-    });
+const handleError = (message, error) => {
+    console.error(message, error);
+    const errorDetail = error?.response?.data?.detail || error?.message || message;
+    showError(errorDetail);
 };
 
-const showWarning = (message) => {
-    toast.add({
-        severity: 'warn',
-        summary: 'Warning',
-        detail: message,
-        life: 3000
-    });
+const handleWarning = (message) => {
+    showWarning(message);
 };
 
-// Helper function to get status severity
 const getStatusSeverity = (status) => {
     switch (status) {
         case 'Pending':

@@ -1,45 +1,58 @@
-<script setup>
+<script setup lang="ts">
 import { ref, computed, watch, onMounted } from 'vue';
-import { formatCurrency } from '@/utils/formatters';
+import { useGlobalCurrency } from '@/composables/useGlobalCurrency';
 import { useToast } from '@/composables/useToast';
 import AccountForm from '@/components/finance/accounts/AccountForm.vue';
 import axios from '@/utils/axiosConfig';
+import type { PaymentAccount } from '@/types/finance/accounts';
+import type { Invoice } from '@/types/finance/invoices';
 
-const props = defineProps({
-    visible: {
-        type: Boolean,
-        required: true
-    },
-    document: {
-        type: Object,
-        default: null
-    },
-    documentType: {
-        type: String,
-        default: 'invoice'
-    },
-    loading: {
-        type: Boolean,
-        default: false
-    },
-    paymentAccounts: {
-        type: Array,
-        default: () => []
-    }
+const { formatCurrencySync } = useGlobalCurrency();
+
+// Helper function for currency formatting
+const formatCurrency = (amount, currency = 'KES') => formatCurrencySync(amount, currency).value;
+
+interface PaymentData {
+    amount: number;
+    payment_method: string;
+    payment_account: number | null;
+    reference: string;
+    payment_date: Date;
+    notes: string;
+}
+
+interface Props {
+    visible: boolean;
+    document?: Invoice | null;
+    documentType?: string;
+    loading?: boolean;
+    paymentAccounts?: PaymentAccount[];
+}
+
+const props = withDefaults(defineProps<Props>(), {
+    document: null,
+    documentType: 'invoice',
+    loading: false,
+    paymentAccounts: () => []
 });
 
-const emit = defineEmits(['update:visible', 'record-payment']);
+interface Emits {
+    (e: 'update:visible', value: boolean): void;
+    (e: 'record-payment', data: PaymentData): void;
+}
+
+const emit = defineEmits<Emits>();
 
 const { showToast } = useToast();
 
 // Local accounts state
-const localAccounts = ref([]);
-const loadingAccounts = ref(false);
-const showAccountDialog = ref(false);
-const accountEditMode = ref(false);
-const accountEditData = ref(null);
+const localAccounts = ref<PaymentAccount[]>([]);
+const loadingAccounts = ref<boolean>(false);
+const showAccountDialog = ref<boolean>(false);
+const accountEditMode = ref<boolean>(false);
+const accountEditData = ref<PaymentAccount | null>(null);
 
-const paymentData = ref({
+const paymentData = ref<PaymentData>({
     amount: 0,
     payment_method: 'bank',
     payment_account: null,
@@ -103,7 +116,7 @@ const showReference = computed(() => {
 });
 
 // Methods
-const recordPayment = () => {
+const recordPayment = (): void => {
     if (!isValid.value) {
         return;
     }
@@ -116,16 +129,16 @@ const recordPayment = () => {
     });
 };
 
-const cancel = () => {
+const cancel = (): void => {
     dialogVisible.value = false;
 };
 
-const setFullAmount = () => {
-    paymentData.value.amount = parseFloat(balanceDue.value);
+const setFullAmount = (): void => {
+    paymentData.value.amount = parseFloat(String(balanceDue.value));
 };
 
 // Methods for account management
-const loadPaymentAccounts = async () => {
+const loadPaymentAccounts = async (): Promise<void> => {
     loadingAccounts.value = true;
     try {
         const response = await axios.get('/finance/accounts/paymentaccounts/');
@@ -138,19 +151,19 @@ const loadPaymentAccounts = async () => {
     }
 };
 
-const handleAddAccount = () => {
+const handleAddAccount = (): void => {
     accountEditMode.value = false;
     accountEditData.value = null;
     showAccountDialog.value = true;
 };
 
-const handleEditAccount = (account) => {
+const handleEditAccount = (account: PaymentAccount): void => {
     accountEditMode.value = true;
     accountEditData.value = account;
     showAccountDialog.value = true;
 };
 
-const handleAccountSaved = async (savedAccount) => {
+const handleAccountSaved = async (savedAccount: PaymentAccount): Promise<void> => {
     showAccountDialog.value = false;
     await loadPaymentAccounts();
     // Auto-select the newly created or edited account
