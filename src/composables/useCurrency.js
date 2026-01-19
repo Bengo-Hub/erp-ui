@@ -338,6 +338,34 @@ export function useCurrency() {
     }
 
     /**
+     * Fetch multiple exchange rates in bulk (single API call)
+     * Much more efficient than fetching rates individually
+     *
+     * @param {Array<{from: string, to: string}>} pairs - Array of currency pairs
+     * @returns {Promise<Object>} Object with rates keyed by "FROM_TO"
+     */
+    async function getBulkExchangeRates(pairs) {
+        if (!Array.isArray(pairs) || pairs.length === 0) {
+            return {};
+        }
+
+        try {
+            const response = await coreService.getBulkExchangeRates(pairs);
+            const rates = response.rates || {};
+
+            // Update local cache with fetched rates
+            Object.entries(rates).forEach(([key, rate]) => {
+                exchangeRates.value[key] = rate;
+            });
+
+            return rates;
+        } catch (err) {
+            console.error('Bulk rate fetch failed:', err);
+            return {};
+        }
+    }
+
+    /**
      * Currency options for dropdowns (formatted for PrimeVue Select)
      */
     const currencyOptions = computed(() => {
@@ -388,7 +416,8 @@ export function useCurrency() {
         convertFormAmounts,
         convertBillingItems,
         clearRateCache,
-        preloadCommonRates
+        preloadCommonRates,
+        getBulkExchangeRates
     };
 }
 

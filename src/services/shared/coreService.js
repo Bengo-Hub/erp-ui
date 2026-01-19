@@ -330,6 +330,23 @@ export const coreService = {
         }
     },
 
+    /**
+     * Get multiple exchange rates in a single API call
+     * @param {Array<{from: string, to: string}>} pairs - Array of currency pairs
+     * @returns {Promise<Object>} Object with rates
+     */
+    async getBulkExchangeRates(pairs) {
+        try {
+            const response = await axios.post(`${CORE_BASE_URL}currencies/bulk_rates/`, {
+                pairs
+            });
+            return response.data;
+        } catch (error) {
+            console.error('Error fetching bulk exchange rates:', error);
+            throw error;
+        }
+    },
+
     createExchangeRate(data) {
         return axios.post(`${CORE_BASE_URL}exchange-rates/`, data);
     },
