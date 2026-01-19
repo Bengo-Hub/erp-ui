@@ -290,16 +290,22 @@ let filterDebounce = null;
 // Selected permissions as full objects
 const selectedPermissions = computed({
     get() {
-        return props.permissions.filter(p => props.modelValue.includes(p.id));
+        // Filter out any null/undefined values from modelValue before checking
+        const validIds = props.modelValue.filter(id => id != null);
+        return props.permissions.filter(p => validIds.includes(p.id));
     },
     set(newValue) {
-        emit('update:modelValue', newValue.map(p => p.id));
+        // Filter out any null/undefined permission objects
+        const validPermissions = newValue.filter(p => p != null && p.id != null);
+        emit('update:modelValue', validPermissions.map(p => p.id));
     }
 });
 
 // Available permissions (not selected)
 const availablePermissions = computed(() => {
-    return props.permissions.filter(p => !props.modelValue.includes(p.id));
+    // Filter out any null/undefined values from modelValue before checking
+    const validIds = props.modelValue.filter(id => id != null);
+    return props.permissions.filter(p => !validIds.includes(p.id));
 });
 
 // Filtered available permissions
@@ -410,19 +416,26 @@ const getModuleSeverity = (permission) => {
 
 // Actions
 const addPermission = (permission) => {
-    if (!props.modelValue.includes(permission.id)) {
-        emit('update:modelValue', [...props.modelValue, permission.id]);
+    if (permission && permission.id && !props.modelValue.includes(permission.id)) {
+        // Filter out null values before adding new one
+        const validIds = props.modelValue.filter(id => id != null);
+        emit('update:modelValue', [...validIds, permission.id]);
         highlightPermission(permission.id);
     }
 };
 
 const removePermission = (permission) => {
-    emit('update:modelValue', props.modelValue.filter(id => id !== permission.id));
+    if (permission && permission.id) {
+        // Filter out both the permission being removed and any null values
+        emit('update:modelValue', props.modelValue.filter(id => id != null && id !== permission.id));
+    }
 };
 
 const addAllVisible = () => {
-    const newIds = filteredAvailable.value.map(p => p.id);
-    const combined = [...new Set([...props.modelValue, ...newIds])];
+    const newIds = filteredAvailable.value.filter(p => p && p.id).map(p => p.id);
+    // Filter out null values from modelValue before combining
+    const validIds = props.modelValue.filter(id => id != null);
+    const combined = [...new Set([...validIds, ...newIds])];
     emit('update:modelValue', combined);
     newIds.forEach(id => highlightPermission(id));
 };
@@ -433,8 +446,10 @@ const removeAllSelected = () => {
 
 const selectByModule = (module) => {
     const modulePermissions = props.permissions.filter(p => getModule(p) === module);
-    const newIds = modulePermissions.map(p => p.id);
-    const combined = [...new Set([...props.modelValue, ...newIds])];
+    const newIds = modulePermissions.filter(p => p && p.id).map(p => p.id);
+    // Filter out null values from modelValue before combining
+    const validIds = props.modelValue.filter(id => id != null);
+    const combined = [...new Set([...validIds, ...newIds])];
     emit('update:modelValue', combined);
     newIds.forEach(id => highlightPermission(id));
 };

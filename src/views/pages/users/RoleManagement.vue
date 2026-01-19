@@ -336,9 +336,14 @@ const showAddRoleDialog = () => {
 };
 
 const editRole = (role) => {
+    // Filter out null/undefined permissions and map to IDs
+    const permissionIds = role.permissions
+        ?.filter(p => p != null && p.id != null)
+        .map(p => p.id) || [];
+
     roleForm.value = {
         ...role,
-        permissions: role.permissions?.map(p => p.id) || []
+        permissions: permissionIds
     };
     editMode.value = true;
     submitted.value = false;
