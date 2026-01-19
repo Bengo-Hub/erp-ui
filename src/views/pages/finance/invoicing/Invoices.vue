@@ -9,6 +9,7 @@ import { useApprovalPermissions } from '@/composables/useApprovalPermissions';
 import { useToast } from '@/composables/useToast';
 import { invoiceService } from '@/services/finance/invoiceService';
 import { formatCurrency, formatDate } from '@/utils/formatters';
+import { useGlobalCurrency } from '@/composables/useGlobalCurrency';
 import { computed, onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
 
@@ -16,6 +17,7 @@ const router = useRouter();
 const { showToast } = useToast();
 const { hasPermission } = usePermissions();
 const { isDesignatedApprover } = useApprovalPermissions();
+const { formatCurrencySync } = useGlobalCurrency();
 
 // Use shared filter composable
 const { filters, currentPage, perPage, totalRecords, onPage, onFilter, getFilterParams } = useDocumentFilters();
@@ -44,6 +46,14 @@ const actionLoading = ref(false);
 const canCreate = computed(() => hasPermission('add_billingdocument'));
 const canEdit = computed(() => hasPermission('change_billingdocument'));
 const canDelete = computed(() => hasPermission('delete_billingdocument'));
+
+// Reactive formatted currency values for summary
+const formattedOutstanding = formatCurrencySync(computed(() => summary.value.outstanding_amount || 0));
+
+// Helper methods for formatting currency in data tables (with source currency)
+const formatInvoiceAmount = (amount, currency = 'KES') => {
+    return formatCurrencySync(amount, currency).value;
+};
 
 // Methods
 const fetchInvoices = async () => {
@@ -378,7 +388,7 @@ onMounted(() => {
                             </div>
                             <div>
                                 <p class="text-sm text-surface-600 dark:text-surface-400">Outstanding</p>
-                                <p class="text-2xl font-bold text-surface-900 dark:text-surface-0">{{ formatCurrency(summary.outstanding_amount) }}</p>
+                                <p class="text-2xl font-bold text-surface-900 dark:text-surface-0">{{ formattedOutstanding }}</p>
                             </div>
                         </div>
                     </template>
@@ -517,7 +527,7 @@ onMounted(() => {
                     <Column field="total" header="Amount" sortable>
                         <template #body="{ data }">
                             <div class="text-right">
-                                <p class="font-semibold">{{ formatCurrency(data.total) }}</p>
+                                <p class="font-semibold">{{ formatInvoiceAmount(data.total, data.currency) }}</p>
                                 <p v-if="data.balance_due > 0" class="text-sm text-orange-600">
                                 </p>
                             </div>
@@ -528,7 +538,7 @@ onMounted(() => {
                     <Column field="balance_due" header="Amount Due" sortable>
                         <template #body="{ data }">
                             <div class="text-right">
-                                <p class="font-semibold text-red-600">{{ formatCurrency(data.balance_due || 0) }}</p>
+                                <p class="font-semibold text-red-600">{{ formatInvoiceAmount(data.balance_due || 0, data.currency) }}</p>
                             </div>
                         </template>
                     </Column>

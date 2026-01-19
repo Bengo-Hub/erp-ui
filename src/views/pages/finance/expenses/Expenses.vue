@@ -4,6 +4,7 @@ import PermissionButton from '@/components/common/PermissionButton.vue';
 import { useDocumentFilters } from '@/composables/finance/useDocumentFilters';
 import { usePermissions } from '@/composables/usePermissions';
 import { useToast } from '@/composables/useToast';
+import { useGlobalCurrency } from '@/composables/useGlobalCurrency';
 import { expenseService } from '@/services/finance/expenseService';
 import { formatCurrency, formatDate } from '@/utils/formatters';
 import { computed, onMounted, ref } from 'vue';
@@ -12,6 +13,7 @@ import { useRouter } from 'vue-router';
 const router = useRouter();
 const { showToast } = useToast();
 const { hasPermission } = usePermissions();
+const { formatCurrencySync } = useGlobalCurrency();
 
 // Use shared filter composable
 const { filters, currentPage, perPage, totalRecords, onPage, onFilter, getFilterParams } = useDocumentFilters();
@@ -44,6 +46,14 @@ const canCreate = computed(() => hasPermission('add_expense'));
 const canApprove = computed(() => hasPermission('approve_expense'));
 const canEdit = computed(() => hasPermission('change_expense'));
 const canDelete = computed(() => hasPermission('delete_expense'));
+
+// Reactive formatted currency values
+const formattedTotalAmount = formatCurrencySync(computed(() => summary.value.total_amount || 0));
+
+// Helper for table rows
+const formatExpenseAmount = (amount, currency = 'KES') => {
+    return formatCurrencySync(amount, currency).value;
+};
 
 // Methods
 const fetchExpenses = async () => {
@@ -354,7 +364,7 @@ onMounted(() => {
                     <div class="flex justify-between items-start">
                         <div>
                             <div class="text-surface-600 dark:text-surface-400 text-sm mb-2">Total Amount</div>
-                            <div class="text-2xl font-bold text-primary">{{ formatCurrency(summary.total_amount) }}</div>
+                            <div class="text-2xl font-bold text-primary">{{ formattedTotalAmount }}</div>
                         </div>
                         <div class="bg-primary-100 dark:bg-primary-900 rounded-full p-3">
                             <i class="pi pi-dollar text-primary text-xl"></i>
@@ -483,7 +493,7 @@ onMounted(() => {
                         <!-- Amount -->
                         <Column field="total_amount" header="Amount" sortable>
                             <template #body="{ data }">
-                                <span class="font-semibold">{{ formatCurrency(data.total_amount) }}</span>
+                                <span class="font-semibold">{{ formatExpenseAmount(data.total_amount, data.currency) }}</span>
                             </template>
                         </Column>
 

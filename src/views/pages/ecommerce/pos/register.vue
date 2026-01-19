@@ -1,13 +1,15 @@
 <script setup>
 import { posService } from '@/services/ecommerce/posService';
-import { formatCurrency, formatDate } from '@/utils/formatters';
+import { formatDate } from '@/utils/formatters';
+import { useGlobalCurrency } from '@/composables/useGlobalCurrency';
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
 import moment from 'moment';
 import { useToast } from 'primevue/usetoast';
-import { onMounted, ref } from 'vue';
+import { computed, onMounted, ref } from 'vue';
 
 const toast = useToast();
+const { formatCurrencySync } = useGlobalCurrency();
 
 // Props
 const props = defineProps({
@@ -33,6 +35,9 @@ const spinner_title = ref('Loading...');
 const showCloseModal = ref(false);
 const closingBalance = ref(0);
 const closingNotes = ref('');
+
+// Helper method for currency formatting
+const formatPOSAmount = (amount) => formatCurrencySync(amount).value;
 
 // Methods
 const updatearrays = async () => {
@@ -128,21 +133,21 @@ const generatePDF = () => {
     Object.entries(paymentMethods.value).forEach(([methodName, amount]) => {
         doc.setFontSize(12);
         doc.text(`${methodName}:`, 15, y);
-        doc.text(`${formatCurrency(amount)}`, 100, y);
-        doc.text(`${formatCurrency(0)}`, 160, y); // Expense placeholder
+        doc.text(`${formatPOSAmount(amount)}`, 100, y);
+        doc.text(`${formatPOSAmount(0)}`, 160, y); // Expense placeholder
         y += 10;
     });
 
     // Summary
     y += 10;
     const totalSales = soldItems.value.reduce((sum, item) => sum + (item.total_amount || 0), 0);
-    doc.text(`Total Sales:                                              ${formatCurrency(totalSales)}`, 15, y);
+    doc.text(`Total Sales:                                              ${formatPOSAmount(totalSales)}`, 15, y);
     y += 10;
-    doc.text(`Total Refund:                                           ${formatCurrency(0)}`, 15, y); // Placeholder
+    doc.text(`Total Refund:                                           ${formatPOSAmount(0)}`, 15, y); // Placeholder
     y += 10;
-    doc.text(`Total Payment:                                        ${formatCurrency(totalSales)}`, 15, y);
+    doc.text(`Total Payment:                                        ${formatPOSAmount(totalSales)}`, 15, y);
     y += 10;
-    doc.text(`Credit Sales:                                            ${formatCurrency(0)}`, 15, y); // Placeholder
+    doc.text(`Credit Sales:                                            ${formatPOSAmount(0)}`, 15, y); // Placeholder
     y += 10;
 
     // Details of products sold
@@ -152,7 +157,7 @@ const generatePDF = () => {
 
     // Loop through sold products
     const h1 = ['#', 'SKU', 'Product', 'Quantity', 'Amount'];
-    const b1 = soldItems.value.map((row, index) => [index + 1, row.stock_item__product__sku || 'N/A', row.stock_item__product__title || 'N/A', row.total_quantity || 0, formatCurrency(row.total_amount || 0)]);
+    const b1 = soldItems.value.map((row, index) => [index + 1, row.stock_item__product__sku || 'N/A', row.stock_item__product__title || 'N/A', row.total_quantity || 0, formatPOSAmount(row.total_amount || 0)]);
 
     if (b1.length > 0) {
         doc.autoTable({
@@ -168,7 +173,7 @@ const generatePDF = () => {
         y = doc.autoTable.previous.finalY + 10;
         doc.text('Details of products sold (By Brand)', 15, y);
         const h2 = ['#', 'Brand', 'Quantity', 'Amount'];
-        const b2 = salesByBrand.value.map((row, index) => [index + 1, row.stock_item__product__brand__title || 'N/A', row.total_quantity || 0, formatCurrency(row.total_amount || 0)]);
+        const b2 = salesByBrand.value.map((row, index) => [index + 1, row.stock_item__product__brand__title || 'N/A', row.total_quantity || 0, formatPOSAmount(row.total_amount || 0)]);
         doc.autoTable({
             head: [h2],
             body: b2,
@@ -206,7 +211,7 @@ onMounted(() => {
                         <Column field="method" header="Payment Method"></Column>
                         <Column field="amount" header="Amount">
                             <template #body="{ data }">
-                                {{ formatCurrency(data.amount) }}
+                                {{ formatPOSAmount(data.amount) }}
                             </template>
                         </Column>
                     </DataTable>
@@ -216,15 +221,15 @@ onMounted(() => {
                     <h6 class="text-lg font-semibold">Summary</h6>
                     <div class="grid grid-cols-2 gap-4">
                         <div>Total Sales:</div>
-                        <div class="text-right">{{ formatCurrency(soldItems.reduce((sum, item) => sum + (item.total_amount || 0), 0)) }}</div>
+                        <div class="text-right">{{ formatPOSAmount(soldItems.reduce((sum, item) => sum + (item.total_amount || 0), 0)) }}</div>
                         <div>Total Refund:</div>
-                        <div class="text-right">{{ formatCurrency(0) }}</div>
+                        <div class="text-right">{{ formatPOSAmount(0) }}</div>
                         <div>Total Payment:</div>
-                        <div class="text-right">{{ formatCurrency(soldItems.reduce((sum, item) => sum + (item.total_amount || 0), 0)) }}</div>
+                        <div class="text-right">{{ formatPOSAmount(soldItems.reduce((sum, item) => sum + (item.total_amount || 0), 0)) }}</div>
                         <div>Credit Sales:</div>
-                        <div class="text-right">{{ formatCurrency(0) }}</div>
+                        <div class="text-right">{{ formatPOSAmount(0) }}</div>
                         <div>Total Expense:</div>
-                        <div class="text-right">{{ formatCurrency(0) }}</div>
+                        <div class="text-right">{{ formatPOSAmount(0) }}</div>
                     </div>
                 </div>
 
@@ -243,7 +248,7 @@ onMounted(() => {
                         <Column field="total_quantity" header="Quantity"></Column>
                         <Column field="total_amount" header="Total Amount">
                             <template #body="{ data }">
-                                {{ formatCurrency(data.total_amount) }}
+                                {{ formatPOSAmount(data.total_amount) }}
                             </template>
                         </Column>
                     </DataTable>
@@ -261,7 +266,7 @@ onMounted(() => {
                         <Column field="total_quantity" header="Quantity"></Column>
                         <Column field="total_amount" header="Total Amount">
                             <template #body="{ data }">
-                                {{ formatCurrency(data.total_amount) }}
+                                {{ formatPOSAmount(data.total_amount) }}
                             </template>
                         </Column>
                     </DataTable>

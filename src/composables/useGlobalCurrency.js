@@ -129,22 +129,74 @@ export function useGlobalCurrency() {
     });
 
     /**
-     * Synchronous format (no conversion) - for amounts already in selected currency
+     * Synchronous format with automatic conversion if source currency differs
      * Reactive to currency changes
+     *
+     * @param {number|Ref<number>} amount - Amount to format (can be reactive)
+     * @param {string|object} options - Either currency code string OR options object
+     *   - If string: assumed to be sourceCurrency (e.g., 'KES', 'USD')
+     *   - If object: { sourceCurrency: 'KES', showSymbol: true, showCode: false }
+     * @returns {ComputedRef<string>} Reactive formatted string
      */
     const formatCurrencySync = (amount, options = {}) => {
-        return computed(() => {
-            forceUpdate.value; // Force reactivity
+        // Handle legacy usage: formatCurrencySync(amount, 'KES') or formatCurrencySync(amount)
+        let sourceCurrency = null;
+        let formatOptions = {};
 
+        if (typeof options === 'string') {
+            // Legacy: second param is currency code
+            sourceCurrency = options;
+        } else if (typeof options === 'object') {
+            // New: second param is options object
+            sourceCurrency = options.sourceCurrency || null;
+            formatOptions = { showSymbol: options.showSymbol, showCode: options.showCode };
+        }
+
+        // If no source currency provided, assume it's in the company's base currency (KES)
+        // This allows seamless migration - existing code gets auto-conversion!
+        const defaultBaseCurrency = 'KES';
+        const effectiveSourceCurrency = sourceCurrency || defaultBaseCurrency;
+
+        const formatted = ref('...');
+
+        const updateFormatted = async () => {
             const num = typeof amount === 'object' && amount.value !== undefined ? amount.value : amount;
             const finalAmount = Number(num);
 
             if (!Number.isFinite(finalAmount)) {
-                return baseFormatCurrency(0, currency.selectedCurrency.value, options);
+                formatted.value = baseFormatCurrency(0, currency.selectedCurrency.value, formatOptions);
+                return;
             }
 
-            return baseFormatCurrency(finalAmount, currency.selectedCurrency.value, options);
-        });
+            // If source matches target, just format (no conversion needed)
+            if (effectiveSourceCurrency === currency.selectedCurrency.value) {
+                formatted.value = baseFormatCurrency(finalAmount, currency.selectedCurrency.value, formatOptions);
+                return;
+            }
+
+            // Convert and format
+            try {
+                const converted = await currency.convertAmount(finalAmount, effectiveSourceCurrency, currency.selectedCurrency.value);
+                formatted.value = baseFormatCurrency(converted, currency.selectedCurrency.value, formatOptions);
+            } catch (error) {
+                console.warn('Conversion failed in formatCurrencySync:', error);
+                // Fallback: show in original currency with code
+                formatted.value = baseFormatCurrency(finalAmount, effectiveSourceCurrency, { ...formatOptions, showCode: true });
+            }
+        };
+
+        // Initial format
+        updateFormatted();
+
+        // Watch for currency changes
+        watch(() => forceUpdate.value, updateFormatted);
+
+        // Watch for amount changes if it's reactive
+        if (typeof amount === 'object' && amount.value !== undefined) {
+            watch(amount, updateFormatted);
+        }
+
+        return computed(() => formatted.value);
     };
 
     /**

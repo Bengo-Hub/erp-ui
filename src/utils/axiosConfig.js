@@ -49,7 +49,7 @@ function getBusinessContext() {
     }
 }
 
-// Request interceptor to add auth token, CSRF token, and branch context
+// Request interceptor to add auth token, CSRF token, branch context, and currency
 axiosInstance.interceptors.request.use(
     (config) => {
         // Add authorization token if available
@@ -62,6 +62,12 @@ axiosInstance.interceptors.request.use(
         const csrfToken = getCookie('csrftoken');
         if (csrfToken) {
             config.headers['X-CSRFToken'] = csrfToken;
+        }
+
+        // Add active currency header (syncs with backend)
+        const selectedCurrency = localStorage.getItem('selectedCurrency');
+        if (selectedCurrency) {
+            config.headers['X-Currency'] = selectedCurrency;
         }
 
         // If sending FormData, let the browser set proper multipart boundaries

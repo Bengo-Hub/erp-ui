@@ -1,11 +1,13 @@
 <script setup>
 import { useToast } from '@/composables/useToast';
+import { useGlobalCurrency } from '@/composables/useGlobalCurrency';
 import { financeService } from '@/services/finance/financeService';
 import { formatCurrency, formatDate } from '@/utils/formatters';
 import { debounce } from 'lodash-es';
 import { onMounted, ref, watch } from 'vue';
 
 const { toast } = useToast();
+const { formatCurrencySync } = useGlobalCurrency();
 
 // Data
 const payments = ref([]);
@@ -87,6 +89,9 @@ const customerOptions = ref([]);
 const debouncedSearch = debounce(() => {
     fetchPayments();
 }, 300);
+
+// Helper for formatting payment amounts
+const formatPaymentAmount = (amount, currency = 'KES') => formatCurrencySync(amount, currency).value;
 
 // Methods
 const fetchPayments = async () => {
@@ -417,7 +422,7 @@ watch(
                 <Column field="transaction_id" header="Transaction ID" sortable></Column>
                 <Column field="amount" header="Amount" sortable>
                     <template #body="slotProps">
-                        <span class="font-medium">{{ formatCurrency(slotProps.data.amount) }}</span>
+                        <span class="font-medium">{{ formatPaymentAmount(slotProps.data.amount, slotProps.data.currency) }}</span>
                     </template>
                 </Column>
                 <Column field="payment_method" header="Method" sortable>
