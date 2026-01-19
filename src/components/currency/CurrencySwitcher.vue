@@ -8,7 +8,7 @@
 
             <div class="space-y-1">
                 <button
-                    v-for="curr in currencies"
+                    v-for="curr in displayCurrencies"
                     :key="curr.code"
                     @click="selectCurrency(curr.code)"
                     class="currency-option"
@@ -36,20 +36,31 @@
 </template>
 
 <script setup>
-import { computed } from 'vue';
-import { useStore } from 'vuex';
+import { computed, onMounted } from 'vue';
+import { useCurrency } from '@/composables/useCurrency';
 
-const store = useStore();
+const {
+    currencies,
+    priorityCurrencies,
+    selectedCurrency,
+    setSelectedCurrency,
+    initialize,
+    isInitialized
+} = useCurrency();
 
-// Available currencies (from store)
-const currencies = computed(() => store.state.currency.availableCurrencies);
-
-const selectedCurrency = computed(() => store.state.currency.currentCurrency);
+// Use priority currencies if available, otherwise fall back to all currencies
+const displayCurrencies = computed(() => {
+    if (priorityCurrencies.value && priorityCurrencies.value.length > 0) {
+        return priorityCurrencies.value;
+    }
+    // Fallback: show KES, USD, EUR, GBP
+    return currencies.value.filter(c => ['KES', 'USD', 'EUR', 'GBP'].includes(c.code));
+});
 
 const lastUpdated = computed(() => {
-    const date = store.state.currency.lastRateUpdate;
-    if (!date) return 'Never';
-    return new Date(date).toLocaleDateString('en-GB', {
+    const stored = localStorage.getItem('exchangeRatesLastUpdated');
+    if (!stored) return 'Not synced';
+    return new Date(stored).toLocaleDateString('en-GB', {
         day: '2-digit',
         month: 'short',
         hour: '2-digit',
@@ -58,8 +69,19 @@ const lastUpdated = computed(() => {
 });
 
 const selectCurrency = (code) => {
-    store.dispatch('currency/setCurrentCurrency', code);
+    setSelectedCurrency(code);
+    // Emit custom event for components to react to currency change
+    window.dispatchEvent(new CustomEvent('currency-changed', {
+        detail: { currency: code }
+    }));
 };
+
+// Initialize on mount if not already done
+onMounted(async () => {
+    if (!isInitialized.value) {
+        await initialize();
+    }
+});
 </script>
 
 <style scoped>
