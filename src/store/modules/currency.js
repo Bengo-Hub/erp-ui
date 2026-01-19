@@ -5,7 +5,7 @@
  * Integrates with backend exchange rates API for accurate conversions.
  */
 
-import apiClient from '@/services/api/axiosConfig';
+import axiosInstance from '@/utils/axiosConfig';
 
 const state = {
     // Current display currency (user selection)
@@ -70,9 +70,9 @@ const actions = {
         }));
     },
 
-    async fetchExchangeRates({ commit, state }) {
+    async fetchExchangeRates({ commit }) {
         try {
-            const response = await apiClient.get('/api/exchange-rates/latest/');
+            const response = await axiosInstance.get('/exchange-rates/latest/');
 
             if (response.data && response.data.rates) {
                 commit('SET_EXCHANGE_RATES', response.data.rates);
@@ -100,7 +100,7 @@ const actions = {
         return Math.round(converted * Math.pow(10, decimals)) / Math.pow(10, decimals);
     },
 
-    format({ state, getters }, { amount, currencyCode = null, includeSymbol = true }) {
+    format({ state }, { amount, currencyCode = null, includeSymbol = true }) {
         const currency = currencyCode || state.currentCurrency;
         const currInfo = state.availableCurrencies.find(c => c.code === currency);
         const decimals = currInfo?.decimal_places || 2;
@@ -127,6 +127,20 @@ const actions = {
         if (!getters.ratesAreFresh || Object.keys(state.exchangeRates).length === 0) {
             await dispatch('fetchExchangeRates');
         }
+    }
+};
+
+// Export helper for use in components
+export const useCurrency = (store) => {
+    return {
+        convert: (amount, fromCurrency, toCurrency = null) =>
+            store.dispatch('currency/convert', { amount, fromCurrency, toCurrency }),
+        format: (amount, currencyCode = null, includeSymbol = true) =>
+            store.dispatch('currency/format', { amount, currencyCode, includeSymbol }),
+        setCurrentCurrency: (code) =>
+            store.dispatch('currency/setCurrentCurrency', code),
+        currentCurrency: () => store.state.currency.currentCurrency,
+        currentSymbol: () => store.getters['currency/currentSymbol']
     }
 };
 
