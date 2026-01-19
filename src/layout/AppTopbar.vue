@@ -1,6 +1,8 @@
 <script setup>
 import NotificationPanel from '@/components/notification/NotificationPanel.vue';
+import CurrencySwitcher from '@/components/currency/CurrencySwitcher.vue';
 import { useTheme } from '@/composables/useTheme';
+import { useCurrency } from '@/composables/useCurrency';
 import { useLayout } from '@/layout/composables/layout';
 import { getDashboardRedirectPath } from '@/services/auth/permissionService';
 import { notificationService } from '@/services/notifications/notificationService';
@@ -14,6 +16,7 @@ import AppConfigurator from './AppConfigurator.vue';
 const store = useStore();
 const router = useRouter();
 const { isDarkMode, toggleDarkMode: toggleTheme, initializeTheme } = useTheme();
+const { selectedCurrency, getSymbol, initialize: initializeCurrency, isInitialized: currencyInitialized } = useCurrency();
 const businessDetails = ref(null);
 const notificationPanelRef = ref(null);
 const unreadNotificationCount = ref(0);
@@ -39,10 +42,15 @@ const hasSystemSettingsAccess = computed(() => {
 onMounted(async () => {
     // Initialize theme system
     initializeTheme();
-    
+
+    // Initialize currency system
+    if (!currencyInitialized.value) {
+        await initializeCurrency();
+    }
+
     // Get business details from session storage
     businessDetails.value = getBusinessDetails();
-    
+
     // Fetch unread notification count
     if (currentUser.value) {
         fetchUnreadNotificationCount();
@@ -248,6 +256,27 @@ const { onMenuToggle } = useLayout();
                     </span>
                 </button>
                 <NotificationPanel ref="notificationPanelRef" />
+            </div>
+
+            <!-- Currency Switcher (Always visible) -->
+            <div class="relative">
+                <button
+                    v-styleclass="{
+                        selector: '@next',
+                        enterFromClass: 'hidden',
+                        enterActiveClass: 'animate-scalein',
+                        leaveToClass: 'hidden',
+                        leaveActiveClass: 'animate-fadeout',
+                        hideOnOutsideClick: true
+                    }"
+                    type="button"
+                    class="topbar-icon-btn"
+                    :style="actionButtonStyle"
+                    aria-label="Currency Switcher"
+                >
+                    <span class="currency-code-display">{{ selectedCurrency }}</span>
+                </button>
+                <CurrencySwitcher />
             </div>
 
             <!-- Theme Configurator (Always visible) -->
@@ -673,6 +702,19 @@ body {
     align-items: center;
     justify-content: center;
     border: 2px solid var(--surface-0);
+}
+
+/* Currency Code Display */
+.currency-code-display {
+    font-size: 0.75rem;
+    font-weight: 600;
+    letter-spacing: 0.025em;
+}
+
+@media (min-width: 640px) {
+    .currency-code-display {
+        font-size: 0.8125rem;
+    }
 }
 
 /* ====================
