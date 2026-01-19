@@ -1,9 +1,9 @@
 <script setup>
 import { useToast } from '@/composables/useToast';
+import { useGlobalCurrency } from '@/composables/useGlobalCurrency';
 import { cartService } from '@/services/ecommerce/cartService';
 import { productService } from '@/services/ecommerce/productService';
 import { useBusinessBranding } from '@/utils/businessBranding';
-import { formatCurrency } from '@/utils/formatters';
 import { useConfirm } from 'primevue/useconfirm';
 import { computed, onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
@@ -14,6 +14,7 @@ const store = useStore();
 const router = useRouter();
 const confirm = useConfirm();
 const { applyBusinessBranding } = useBusinessBranding();
+const { formatCurrencySync } = useGlobalCurrency();
 
 // State
 const loading = ref(true);
@@ -230,7 +231,7 @@ const removeSelectedFromWishlist = async () => {
                                                 </div>
 
                                                 <div class="flex justify-content-between align-items-center">
-                                                    <span class="font-semibold text-lg">{{ formatCurrency(slotProps.product.price) }}</span>
+                                                    <span class="font-semibold text-lg">{{ formatCurrencySync(slotProps.product.price) }}</span>
                                                     <Tag v-if="slotProps.data.product.in_stock" value="In Stock" severity="success" />
                                                     <Tag v-else value="Out of Stock" severity="danger" />
                                                 </div>

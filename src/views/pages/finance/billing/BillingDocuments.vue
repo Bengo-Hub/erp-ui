@@ -306,8 +306,12 @@
 import BillingDocumentForm from '@/components/finance/billing/BillingDocumentForm.vue';
 import { useToast } from '@/composables/useToast';
 import { financeService } from '@/services/finance/financeService';
-import { formatCurrency, formatDate } from '@/utils/formatters';
+import { useGlobalCurrency } from '@/composables/useGlobalCurrency';
+import { formatDate } from '@/utils/formatters';
 import { onMounted, reactive, ref } from 'vue';
+
+const { formatCurrencySync } = useGlobalCurrency();
+const formatCurrency = (amount, currency = 'KES') => formatCurrencySync(amount, currency).value;
 
 const { showToast } = useToast();
 
@@ -422,7 +426,7 @@ const submitToKRA = async (document) => {
 // Delete document
 const deleteDocument = async (document) => {
   if (!confirm('Are you sure you want to delete this document?')) return;
-  
+
   try {
     await financeService.deleteBillingDocument(document.id);
     showToast('success', 'Document deleted successfully');
@@ -439,7 +443,7 @@ const onDocumentSaved = () => {
   loadDocuments();
 };
 
-// Utility functions
+// Helper functions for table rows
 const getDocumentTypeLabel = (type) => {
   const option = documentTypeOptions.find(opt => opt.value === type);
   return option ? option.label : type;

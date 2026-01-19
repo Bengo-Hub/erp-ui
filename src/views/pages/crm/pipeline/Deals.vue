@@ -1,11 +1,14 @@
 <script setup>
-import { useToast } from '@/composables/useToast';
+import { useToast } from 'primevue/usetoast';
 import { customerService } from '@/services/crm/customerService';
-import { formatCurrency, formatDate } from '@/utils/formatters';
+import { formatDate } from '@/utils/formatters';
+import { useGlobalCurrency } from '@/composables/useGlobalCurrency';
 import { computed, onMounted, ref } from 'vue';
 
 // PrimeVue components
-const { showToast } = useToast();
+const toast = useToast();
+const { formatCurrencySync } = useGlobalCurrency();
+const formatCurrency = (amount, currency = 'KES') => formatCurrencySync(amount, currency).value;
 
 // Reactive data
 const deals = ref([]);
@@ -53,7 +56,12 @@ const fetchData = async () => {
         stages.value.sort((a, b) => a.order - b.order);
     } catch (error) {
         console.error('Error fetching deals data:', error);
-        showToast('error', 'Error', 'Failed to load deals data', 3000);
+        toast.add({
+            severity: 'error',
+            summary: 'Error',
+            detail: 'Failed to load deals data',
+            life: 3000
+        });
     } finally {
         loading.value = false;
     }
@@ -98,7 +106,12 @@ const closeDialog = () => {
 
 const saveDeal = async () => {
     if (!form.value.title || !form.value.contact || !form.value.stage) {
-        showToast('warn', 'Validation Error', 'Please fill in all required fields', 3000);
+        toast.add({
+            severity: 'warn',
+            summary: 'Validation Error',
+            detail: 'Please fill in all required fields',
+            life: 3000
+        });
         return;
     }
 
@@ -106,17 +119,32 @@ const saveDeal = async () => {
     try {
         if (isEditing.value) {
             await customerService.updateDeal(selectedDealId.value, form.value);
-            showToast('success', 'Success', 'Deal updated successfully', 3000);
+            toast.add({
+                severity: 'success',
+                summary: 'Success',
+                detail: 'Deal updated successfully',
+                life: 3000
+            });
         } else {
             await customerService.createDeal(form.value);
-            showToast('success', 'Success', 'Deal created successfully', 3000);
+            toast.add({
+                severity: 'success',
+                summary: 'Success',
+                detail: 'Deal created successfully',
+                life: 3000
+            });
         }
 
         closeDialog();
         await fetchData();
     } catch (error) {
         console.error('Error saving deal:', error);
-        showToast('error', 'Error', 'Failed to save deal', 3000);
+        toast.add({
+            severity: 'error',
+            summary: 'Error',
+            detail: 'Failed to save deal',
+            life: 3000
+        });
     } finally {
         saving.value = false;
     }
@@ -129,18 +157,33 @@ const moveDealStage = async (deal) => {
 
         const nextStage = stages.value.find((s) => s.order > currentStage.order);
         if (!nextStage) {
-            showToast('info', 'Info', 'Deal is already at the final stage', 3000);
+            toast.add({
+                severity: 'info',
+                summary: 'Info',
+                detail: 'Deal is already at the final stage',
+                life: 3000
+            });
             return;
         }
 
         await customerService.moveDeal(deal.id, nextStage.id);
 
-        showToast('success', 'Success', `Deal moved to ${nextStage.name}`, 3000);
+        toast.add({
+            severity: 'success',
+            summary: 'Success',
+            detail: `Deal moved to ${nextStage.name}`,
+            life: 3000
+        });
 
         await fetchData();
     } catch (error) {
         console.error('Error moving deal:', error);
-        showToast('error', 'Error', 'Failed to move deal', 3000);
+        toast.add({
+            severity: 'error',
+            summary: 'Error',
+            detail: 'Failed to move deal',
+            life: 3000
+        });
     }
 };
 

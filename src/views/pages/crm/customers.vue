@@ -1,13 +1,16 @@
 <script setup>
 import { usePermissions } from '@/composables/usePermissions';
-import { useToast } from '@/composables/useToast';
+import { useToast } from 'primevue/usetoast';
 import { customerService } from '@/services/crm/customerService';
-import { formatCurrency, formatDate } from '@/utils/formatters';
+import { formatDate } from '@/utils/formatters';
+import { useGlobalCurrency } from '@/composables/useGlobalCurrency';
 import { computed, onMounted, ref } from 'vue';
 
 // PrimeVue components
-const { showToast } = useToast();
+const toast = useToast();
 const { hasPermission } = usePermissions();
+const { formatCurrencySync } = useGlobalCurrency();
+const formatCurrency = (amount, currency = 'KES') => formatCurrencySync(amount, currency).value;
 
 // Reactive data
 const customers = ref([]);
@@ -77,7 +80,12 @@ const fetchCustomers = async () => {
         customers.value = response.data?.results || response.data || [];
     } catch (error) {
         console.error('Error fetching customers:', error);
-        showToast('error', 'Failed to load customers');
+        toast.add({
+            severity: 'error',
+            summary: 'Error',
+            detail: 'Failed to load customers',
+            life: 3000
+        });
         customers.value = [];
     } finally {
         loading.value = false;
@@ -143,14 +151,24 @@ const closeDialog = () => {
 const saveCustomer = async () => {
     // Validate email (required for all)
     if (!form.value.email) {
-        showToast('warn', 'Please enter Email (required field)');
+        toast.add({
+            severity: 'warn',
+            summary: 'Validation Error',
+            detail: 'Please enter Email (required field)',
+            life: 3000
+        });
         return;
     }
 
     // Validate account type specific fields
     if (form.value.account_type === 'Business') {
         if (!form.value.business_name || !form.value.business_name.trim()) {
-            showToast('warn', 'Please enter Business Name (required for Business accounts)');
+            toast.add({
+                severity: 'warn',
+                summary: 'Validation Error',
+                detail: 'Please enter Business Name (required for Business accounts)',
+                life: 3000
+            });
             return;
         }
     }
@@ -194,10 +212,20 @@ const saveCustomer = async () => {
 
         if (isEditing.value) {
             await customerService.updateCustomer(selectedCustomerId.value, dataToSend);
-            showToast('success', 'Customer updated successfully');
+            toast.add({
+                severity: 'success',
+                summary: 'Success',
+                detail: 'Customer updated successfully',
+                life: 3000
+            });
         } else {
             await customerService.createCustomer(dataToSend);
-            showToast('success', 'Customer created successfully');
+            toast.add({
+                severity: 'success',
+                summary: 'Success',
+                detail: 'Customer created successfully',
+                life: 3000
+            });
         }
 
         closeDialog();
@@ -205,7 +233,12 @@ const saveCustomer = async () => {
     } catch (error) {
         const backendMsg = error?.response?.data?.message || error?.response?.data?.error_id || error.message;
         console.error('Error saving customer:', error?.response?.data || error);
-        showToast('error', `Failed to save customer: ${backendMsg}`);
+        toast.add({
+            severity: 'error',
+            summary: 'Error',
+            detail: `Failed to save customer: ${backendMsg}`,
+            life: 3000
+        });
     } finally {
         saving.value = false;
     }
@@ -214,11 +247,21 @@ const saveCustomer = async () => {
 const deleteCustomer = async (customerId) => {
     try {
         await customerService.deleteCustomer(customerId);
-        showToast('success', 'Customer deleted successfully');
+        toast.add({
+            severity: 'success',
+            summary: 'Success',
+            detail: 'Customer deleted successfully',
+            life: 3000
+        });
         await fetchCustomers();
     } catch (error) {
         console.error('Error deleting customer:', error);
-        showToast('error', 'Failed to delete customer');
+        toast.add({
+            severity: 'error',
+            summary: 'Error',
+            detail: 'Failed to delete customer',
+            life: 3000
+        });
     }
 };
 

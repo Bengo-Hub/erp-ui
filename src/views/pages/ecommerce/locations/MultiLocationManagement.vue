@@ -1,22 +1,24 @@
 <script setup>
-import { formatCurrency } from '@/utils/formatters';
 import { useToast } from 'primevue/usetoast';
+import { useGlobalCurrency } from '@/composables/useGlobalCurrency';
 import { computed, onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
 
 const router = useRouter();
 const toast = useToast();
+const { formatCurrencySync } = useGlobalCurrency();
+const formatCurrency = (amount, currency = 'KES') => formatCurrencySync(amount, currency).value;
 
 // Data states
 const loading = ref(false);
-const branches = ref([]);
-const selectedBranch = ref(null);
-const branchDialog = ref(false);
-const deleteBranchDialog = ref(false);
+const locations = ref([]);
+const selectedLocation = ref(null);
+const locationDialog = ref(false);
+const deleteLocationDialog = ref(false);
 const inventoryDialog = ref(false);
 
 // Form data
-const branchForm = ref({
+const locationForm = ref({
     name: '',
     code: '',
     address: '',
@@ -39,7 +41,7 @@ const statusFilter = ref(null);
 const typeFilter = ref(null);
 
 // Options
-const branchTypes = ref([
+const locationTypes = ref([
     { label: 'Retail Store', value: 'retail' },
     { label: 'Warehouse', value: 'warehouse' },
     { label: 'Distribution Center', value: 'distribution' },
@@ -69,14 +71,14 @@ const rules = {
 };
 
 // Methods
-const loadBranches = async () => {
+const loadLocations = async () => {
     loading.value = true;
     try {
         // Simulate API call - replace with actual service call
         await new Promise((resolve) => setTimeout(resolve, 1000));
 
         // Mock data - replace with actual API response
-        branches.value = [
+        locations.value = [
             {
                 id: 1,
                 name: 'Nairobi Main Store',
@@ -142,11 +144,11 @@ const loadBranches = async () => {
             }
         ];
     } catch (error) {
-        console.error('Error loading branches:', error);
+        console.error('Error loading locations:', error);
         toast.add({
             severity: 'error',
             summary: 'Error',
-            detail: 'Failed to load branches',
+            detail: 'Failed to load locations',
             life: 3000
         });
     } finally {
@@ -154,8 +156,8 @@ const loadBranches = async () => {
     }
 };
 
-const showAddBranch = () => {
-    branchForm.value = {
+const showAddLocation = () => {
+    locationForm.value = {
         name: '',
         code: '',
         address: '',
@@ -174,55 +176,55 @@ const showAddBranch = () => {
     locationDialog.value = true;
 };
 
-const showEditBranch = (branch) => {
-    branchForm.value = { ...branch };
-    branchDialog.value = true;
+const showEditLocation = (location) => {
+    locationForm.value = { ...location };
+    locationDialog.value = true;
 };
 
-const saveBranch = async () => {
+const saveLocation = async () => {
     loading.value = true;
     try {
         // Simulate API call - replace with actual service call
         await new Promise((resolve) => setTimeout(resolve, 1000));
 
-        if (branchForm.value.id) {
-            // Update existing branch
-            const index = branches.value.findIndex((branch) => branch.id === branchForm.value.id);
+        if (locationForm.value.id) {
+            // Update existing location
+            const index = locations.value.findIndex((location) => location.id === locationForm.value.id);
             if (index !== -1) {
-                branches.value[index] = { ...branchForm.value };
+                locations.value[index] = { ...locationForm.value };
             }
             toast.add({
                 severity: 'success',
                 summary: 'Success',
-                detail: 'Branch updated successfully',
+                detail: 'Location updated successfully',
                 life: 3000
             });
         } else {
-            // Add new branch
-            const newBranch = {
-                ...branchForm.value,
+            // Add new location
+            const newLocation = {
+                ...locationForm.value,
                 id: Date.now(),
                 total_sales: 0,
                 total_orders: 0,
                 inventory_value: 0,
                 employee_count: 0
             };
-            branches.value.push(newBranch);
+            locations.value.push(newLocation);
             toast.add({
                 severity: 'success',
                 summary: 'Success',
-                detail: 'Branch added successfully',
+                detail: 'Location added successfully',
                 life: 3000
             });
         }
 
-        branchDialog.value = false;
+        locationDialog.value = false;
     } catch (error) {
-        console.error('Error saving branch:', error);
+        console.error('Error saving location:', error);
         toast.add({
             severity: 'error',
             summary: 'Error',
-            detail: 'Failed to save branch',
+            detail: 'Failed to save location',
             life: 3000
         });
     } finally {

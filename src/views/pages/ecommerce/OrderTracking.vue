@@ -1,7 +1,8 @@
 <script setup>
+import { useGlobalCurrency } from '@/composables/useGlobalCurrency';
 import { ecommerceService } from '@/services/ecommerce/ecommerceService';
 import { useBusinessBranding } from '@/utils/businessBranding';
-import { formatCurrency, formatDate } from '@/utils/formatters';
+import { formatDate } from '@/utils/formatters';
 import { useToast } from 'primevue/usetoast';
 import { onMounted, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
@@ -10,6 +11,7 @@ const router = useRouter();
 const route = useRoute();
 const toast = useToast();
 const { applyBusinessBranding } = useBusinessBranding();
+const { formatCurrencySync } = useGlobalCurrency();
 
 // State
 const loading = ref(true);
@@ -444,8 +446,8 @@ const downloadInvoice = () => {
                                             <div class="product-details flex-1">
                                                 <div class="product-name font-semibold">{{ item.name }}</div>
                                                 <div class="flex justify-content-between">
-                                                    <span class="text-sm text-gray-700"> {{ item.quantity }} × {{ formatCurrency(item.price) }} </span>
-                                                    <span class="font-semibold">{{ formatCurrency(item.quantity * item.price) }}</span>
+                                                    <span class="text-sm text-gray-700"> {{ item.quantity }} × {{ formatCurrencySync(item.price) }} </span>
+                                                    <span class="font-semibold">{{ formatCurrencySync(item.quantity * item.price) }}</span>
                                                 </div>
                                             </div>
                                         </div>
@@ -453,19 +455,19 @@ const downloadInvoice = () => {
                                         <div class="order-totals mt-3 pt-2">
                                             <div class="flex justify-content-between mb-2">
                                                 <span>Subtotal:</span>
-                                                <span>{{ formatCurrency(order.subtotal) }}</span>
+                                                <span>{{ formatCurrencySync(order.subtotal) }}</span>
                                             </div>
                                             <div class="flex justify-content-between mb-2">
                                                 <span>Shipping:</span>
-                                                <span>{{ formatCurrency(order.shipping_fee) }}</span>
+                                                <span>{{ formatCurrencySync(order.shipping_fee) }}</span>
                                             </div>
                                             <div class="flex justify-content-between mb-2">
                                                 <span>Tax:</span>
-                                                <span>{{ formatCurrency(order.tax) }}</span>
+                                                <span>{{ formatCurrencySync(order.tax) }}</span>
                                             </div>
                                             <div class="flex justify-content-between font-bold mt-3 pt-3 border-top-1 border-gray-200">
                                                 <span>Total:</span>
-                                                <span>{{ formatCurrency(order.total) }}</span>
+                                                <span>{{ formatCurrencySync(order.total) }}</span>
                                             </div>
                                         </div>
                                     </div>

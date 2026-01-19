@@ -1,6 +1,10 @@
 <script setup>
-import { defineProps, defineEmits } from 'vue';
-import { formatCurrency } from '@/utils/formatters.js';
+import { useGlobalCurrency } from '@/composables/useGlobalCurrency';
+
+const { formatCurrencySync } = useGlobalCurrency();
+
+// Helper function for currency formatting
+const formatCurrency = (amount, currency = 'KES') => formatCurrencySync(amount, currency).value;
 
 const props = defineProps({
     stockItem: {
@@ -11,6 +15,7 @@ const props = defineProps({
 
 const emit = defineEmits(['close', 'updated']);
 
+// Helper functions
 const getAvailabilitySeverity = (availability) => {
     switch (availability) {
         case 'In Stock':
@@ -25,7 +30,6 @@ const getAvailabilitySeverity = (availability) => {
 };
 
 const viewHistory = () => {
-    // Emit event to show history in parent component
     emit('updated', {
         action: 'viewHistory',
         stockItem: props.stockItem

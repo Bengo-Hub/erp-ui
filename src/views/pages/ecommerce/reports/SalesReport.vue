@@ -27,7 +27,7 @@
                     <Card class="shadow-sm">
                         <template #content>
                             <div class="text-center">
-                                <div class="text-3xl font-bold text-green-600 mb-2">{{ formatCurrency(summary.totalSales) }}</div>
+                                <div class="text-3xl font-bold text-green-600 mb-2">{{ formatCurrencySync(summary.totalSales) }}</div>
                                 <div class="text-sm text-gray-600">Total Sales</div>
                             </div>
                         </template>
@@ -51,7 +51,7 @@
                     <Card class="shadow-sm">
                         <template #content>
                             <div class="text-center">
-                                <div class="text-3xl font-bold text-orange-600 mb-2">{{ formatCurrency(summary.avgOrderValue) }}</div>
+                                <div class="text-3xl font-bold text-orange-600 mb-2">{{ formatCurrencySync(summary.avgOrderValue) }}</div>
                                 <div class="text-sm text-gray-600">Average Order Value</div>
                             </div>
                         </template>
@@ -75,10 +75,10 @@
                     <Column field="category" header="Category" :sortable="true" />
                     <Column field="quantity" header="Qty" :sortable="true" />
                     <Column field="unit_price" header="Unit Price" :sortable="true">
-                        <template #body="{ data }">{{ formatCurrency(data.unit_price) }}</template>
+                        <template #body="{ data }">{{ formatCurrencySync(data.unit_price) }}</template>
                     </Column>
                     <Column field="total_amount" header="Total Amount" :sortable="true">
-                        <template #body="{ data }">{{ formatCurrency(data.total_amount) }}</template>
+                        <template #body="{ data }">{{ formatCurrencySync(data.total_amount) }}</template>
                     </Column>
                 </ReportDataTable>
 
@@ -100,7 +100,7 @@
                                     <tr v-for="item in reportData.category_breakdown" :key="item.category" class="border-b border-gray-200 hover:bg-gray-50">
                                         <td class="py-3 px-4 font-medium">{{ item.category }}</td>
                                         <td class="text-right py-3 px-4">{{ item.quantity }}</td>
-                                        <td class="text-right py-3 px-4">{{ formatCurrency(item.sales) }}</td>
+                                        <td class="text-right py-3 px-4">{{ formatCurrencySync(item.sales) }}</td>
                                         <td class="text-right py-3 px-4">{{ (summary.totalSales > 0 ? ((item.sales / summary.totalSales) * 100).toFixed(1) : '0.0') }}%</td>
                                     </tr>
                                 </tbody>
@@ -128,12 +128,13 @@
 <script setup>
 import { ReportDataTable, ReportFilters, ReportLayout } from '@/components/hrm/reports';
 import { useToast } from '@/composables/useToast';
+import { useGlobalCurrency } from '@/composables/useGlobalCurrency';
 import { ecommerceReportsService } from '@/services/reports/ecommerceReportsService';
-import { formatCurrency } from '@/utils/formatters';
 import { buildReportQueryParams, getDefaultReportFilters, validateReportFilters } from '@/utils/reportUtils';
 import { computed, ref } from 'vue';
 
 const { showToast } = useToast();
+const { formatCurrencySync } = useGlobalCurrency();
 
 const loading = ref(false);
 const reportData = ref(null);

@@ -6,7 +6,7 @@ import PermissionButton from '@/components/common/PermissionButton.vue';
 import { usePermissions } from '@/composables/usePermissions';
 import { useToast } from '@/composables/useToast';
 import { quotationService } from '@/services/finance/quotationService';
-import { formatCurrency, formatDate } from '@/utils/formatters';
+import { formatDate } from '@/utils/formatters';
 import { useGlobalCurrency } from '@/composables/useGlobalCurrency';
 import { PAYMENT_TERMS } from '@/constants/finance/paymentMethods';
 import { computed, onMounted, ref } from 'vue';
@@ -18,6 +18,7 @@ const router = useRouter();
 const { showToast } = useToast();
 const { hasPermission } = usePermissions();
 const { formatCurrencySync } = useGlobalCurrency();
+const formatCurrency = (amount, currency = 'KES') => formatCurrencySync(amount, currency).value;
 
 // Data
 const quotation = ref(null);

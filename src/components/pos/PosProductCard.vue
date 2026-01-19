@@ -1,12 +1,17 @@
 <script setup>
 import { formatCurrency } from '@/components/hrm/payroll/payslipGenerator';
 import { getProductImage } from '@/utils/productUtils';
+import { useGlobalCurrency } from '@/composables/useGlobalCurrency';
 import { defineEmits, defineProps } from 'vue';
 
 const props = defineProps({
     product: { type: Object, required: true }
 });
 const emit = defineEmits(['add-to-cart']);
+const { formatCurrencySync } = useGlobalCurrency();
+
+// Helper method for currency formatting
+const formatPOSAmount = (amount) => formatCurrencySync(amount).value;
 
 function addToCart() {
     emit('add-to-cart', props.product);
@@ -18,7 +23,7 @@ function addToCart() {
         <img :src="getProductImage(product)" :alt="product.title" class="product-image" />
         <div class="product-info">
             <h3 class="product-title">{{ product.title }}</h3>
-            <p class="product-price">{{ formatCurrency(product.selling_price) }}</p>
+            <p class="product-price">{{ formatPOSAmount(product.selling_price) }}</p>
             <Button v-if="product.stock_level > 0" icon="pi pi-plus" label="Add to Cart" @click="addToCart" />
             <span v-else class="out-of-stock">Out of Stock</span>
         </div>

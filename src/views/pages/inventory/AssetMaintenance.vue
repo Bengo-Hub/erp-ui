@@ -414,6 +414,11 @@ import { ref, onMounted } from 'vue';
 import { useToast } from 'primevue/usetoast';
 import AssetMaintenanceDialog from '@/components/inventory/AssetMaintenanceDialog.vue';
 import assetService from '@/services/assets/assetService';
+import { formatDate } from '@/utils/formatters';
+import { useGlobalCurrency } from '@/composables/useGlobalCurrency';
+
+const { formatCurrencySync } = useGlobalCurrency();
+const formatCurrency = (amount, currency = 'KES') => formatCurrencySync(amount, currency).value;
 
 // Composables
 const toast = useToast();
@@ -495,11 +500,22 @@ const clearFilters = () => {
     loadMaintenance();
 };
 
+const viewMaintenance = (maintenanceData) => {
+    selectedMaintenance.value = { ...maintenanceData };
+    maintenanceDetailsDialog.value = true;
+};
+
+const hideMaintenanceDetails = () => {
+    maintenanceDetailsDialog.value = false;
+    selectedMaintenance.value = null;
+};
+
 const editMaintenance = (maintenanceData) => {
     // For now, just view the maintenance details
     // In a full implementation, this would open an edit dialog
     viewMaintenance(maintenanceData);
 };
+
 const openMaintenanceScheduler = (asset = null) => {
     selectedAssetForMaintenance.value = asset;
     maintenanceSchedulerDialog.value = true;

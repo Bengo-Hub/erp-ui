@@ -179,7 +179,7 @@
                         :sortable="true"
                     >
                         <template v-if="field.format === 'currency'" #body="{ data }">
-                            {{ formatCurrency(data[field.value]) }}
+                            {{ formatCurrencySync(data[field.value]) }}
                         </template>
                         <template v-else-if="field.format === 'date'" #body="{ data }">
                             {{ formatDate(data[field.value]) }}
@@ -204,8 +204,11 @@
 
 <script setup>
 import { useToast } from '@/composables/useToast';
+import { useGlobalCurrency } from '@/composables/useGlobalCurrency';
 import { hrmReportsService } from '@/services/reports/reportsService';
-import { formatCurrency, formatDate } from '@/utils/formatters';
+import { formatDate } from '@/utils/formatters';
+
+const { formatCurrencySync } = useGlobalCurrency();
 import { computed, ref } from 'vue';
 
 const { showToast } = useToast();

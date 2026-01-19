@@ -1,10 +1,11 @@
 <script>
 import { orderService } from '@/services/ecommerce/orderService';
-import { formatCurrency, formatDate } from '@/utils/formatters';
+import { formatDate } from '@/utils/formatters';
 import { useToast } from 'primevue/usetoast';
 import { computed, onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { useStore } from 'vuex';
+import { useGlobalCurrency } from '@/composables/useGlobalCurrency';
 
 export default {
     name: 'UserOrders',
@@ -20,6 +21,10 @@ export default {
         const store = useStore();
         const router = useRouter();
         const toast = useToast();
+        const { formatCurrencySync } = useGlobalCurrency();
+
+        // Helper method for currency formatting
+        const formatCurrency = (amount) => formatCurrencySync(amount).value;
 
         const loading = ref(true);
         const orders = ref([]);

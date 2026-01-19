@@ -2,12 +2,13 @@
 import { useToast } from '@/composables/useToast';
 import { useGlobalCurrency } from '@/composables/useGlobalCurrency';
 import { financeService } from '@/services/finance/financeService';
-import { formatCurrency, formatDate } from '@/utils/formatters';
+import { formatDate } from '@/utils/formatters';
 import { debounce } from 'lodash-es';
 import { onMounted, ref, watch } from 'vue';
 
 const { toast } = useToast();
 const { formatCurrencySync } = useGlobalCurrency();
+const formatCurrency = (amount, currency = 'KES') => formatCurrencySync(amount, currency).value;
 
 // Data
 const payments = ref([]);

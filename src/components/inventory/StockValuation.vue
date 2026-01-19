@@ -1,10 +1,15 @@
 <script setup>
 import { inventoryService } from '@/services/ecommerce/inventoryService';
-import { formatCurrency } from '@/utils/formatters.js';
-import { useToast } from 'primevue/usetoast';
+import { useGlobalCurrency } from '@/composables/useGlobalCurrency';
+import { useToast } from '@/composables/useToast';
 import { onMounted, ref } from 'vue';
 
-const toast = useToast();
+const { formatCurrencySync } = useGlobalCurrency();
+
+// Helper function for currency formatting
+const formatCurrency = (amount, currency = 'KES') => formatCurrencySync(amount, currency).value;
+
+const { showError } = useToast();
 
 const props = defineProps({
     locationId: {
@@ -22,6 +27,7 @@ const valuationData = ref({
 
 const loading = ref(false);
 
+// Helper functions
 const fetchValuation = async () => {
     try {
         loading.value = true;
@@ -31,18 +37,18 @@ const fetchValuation = async () => {
         const response = await inventoryService.getStockValuation(params);
         valuationData.value = response.data;
     } catch (error) {
-        console.error('Error fetching valuation:', error);
-        toast.add({
-            severity: 'error',
-            summary: 'Error',
-            detail: 'Failed to fetch stock valuation data.',
-            life: 3000
-        });
+        handleError('Error fetching valuation', error);
     } finally {
         loading.value = false;
     }
 };
 
+const handleError = (message, error) => {
+    console.error(message, error);
+    showError('Failed to fetch stock valuation data.');
+};
+
+// Lifecycle
 onMounted(() => {
     fetchValuation();
 });

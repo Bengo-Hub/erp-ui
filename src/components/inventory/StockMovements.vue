@@ -2,7 +2,11 @@
 import { ref, onMounted } from 'vue';
 import { useToast } from 'primevue/usetoast';
 import { inventoryService } from '@/services/ecommerce/inventoryService';
-import { formatCurrency } from '@/utils/formatters.js';
+import { formatDate } from '@/utils/formatters.js';
+import { useGlobalCurrency } from '@/composables/useGlobalCurrency';
+
+const { formatCurrencySync } = useGlobalCurrency();
+const formatCurrency = (amount, currency = 'KES') => formatCurrencySync(amount, currency).value;
 
 const toast = useToast();
 const props = defineProps({

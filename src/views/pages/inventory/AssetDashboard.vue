@@ -237,9 +237,12 @@
 import { ref, onMounted } from 'vue';
 import { useToast } from 'primevue/usetoast';
 import Chart from 'primevue/chart';
-import {formatCurrency, formatDateTime, formatDate} from '@/utils/formatters';
-
 import assetService from '@/services/assets/assetService';
+import { formatDateTime, formatDate } from '@/utils/formatters';
+import { useGlobalCurrency } from '@/composables/useGlobalCurrency';
+
+const { formatCurrencySync } = useGlobalCurrency();
+const formatCurrency = (amount, currency = 'KES') => formatCurrencySync(amount, currency).value;
 
 // Composables
 const toast = useToast();

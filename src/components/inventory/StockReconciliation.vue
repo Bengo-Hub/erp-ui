@@ -1,8 +1,13 @@
 <script setup>
 import { inventoryService } from '@/services/ecommerce/inventoryService';
-import { formatCurrency } from '@/utils/formatters.js';
-import { useToast } from 'primevue/usetoast';
+import { useGlobalCurrency } from '@/composables/useGlobalCurrency';
+import { useToast } from '@/composables/useToast';
 import { computed, onMounted, ref } from 'vue';
+
+const { formatCurrencySync } = useGlobalCurrency();
+
+// Helper function for currency formatting
+const formatCurrency = (amount, currency = 'KES') => formatCurrencySync(amount, currency).value;
 
 const props = defineProps({
     branchId: {
@@ -13,7 +18,7 @@ const props = defineProps({
 
 const emit = defineEmits(['close']);
 
-const toast = useToast();
+const { showSuccess, showError } = useToast();
 
 // Data
 const reconciliationItems = ref([]);
@@ -43,7 +48,7 @@ const itemsToAdjust = computed(() => {
     return reconciliationItems.value.filter((item) => item.difference !== 0).length;
 });
 
-// Methods
+// Helper functions
 const fetchStockItems = async () => {
     try {
         loading.value = true;
@@ -60,12 +65,7 @@ const fetchStockItems = async () => {
             reason: ''
         }));
     } catch (error) {
-        toast.add({
-            severity: 'error',
-            summary: 'Error',
-            detail: 'Failed to fetch stock items',
-            life: 3000
-        });
+        handleError('Failed to fetch stock items', error);
     } finally {
         loading.value = false;
     }
@@ -101,20 +101,10 @@ const saveReconciliation = async () => {
             adjustments
         });
 
-        toast.add({
-            severity: 'success',
-            summary: 'Success',
-            detail: 'Stock reconciliation saved successfully',
-            life: 3000
-        });
+        showSuccess('Stock reconciliation saved successfully');
         emit('close');
     } catch (error) {
-        toast.add({
-            severity: 'error',
-            summary: 'Error',
-            detail: 'Failed to save reconciliation',
-            life: 3000
-        });
+        handleError('Failed to save reconciliation', error);
     } finally {
         loading.value = false;
     }
@@ -137,7 +127,12 @@ const exportTemplate = () => {
     document.body.removeChild(link);
 };
 
-// Lifecycle hooks
+const handleError = (message, error) => {
+    console.error(message, error);
+    showError(message);
+};
+
+// Lifecycle
 onMounted(() => {
     fetchStockItems();
 });

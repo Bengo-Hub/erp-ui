@@ -1,17 +1,21 @@
 <script setup>
 import logoImage from '@/assets/images/logos/logo.png';
 import PermissionButton from '@/components/common/PermissionButton.vue';
-// import PermissionWrapper from '@/components/common/PermissionWrapper.vue';
 import Spinner from '@/components/ui/Spinner.vue';
+import { useGlobalCurrency } from '@/composables/useGlobalCurrency';
 import { usePermissions } from '@/composables/usePermissions';
 import { useToast } from '@/composables/useToast';
 import { payrollService } from '@/services/hrm/payrollService';
 import { useConfirm } from 'primevue/useconfirm';
 import { computed, onMounted, reactive, ref, watch } from 'vue';
-import { formatCurrency, formattedMonthYear } from './payslipGenerator';
+import { formattedMonthYear } from './payslipGenerator';
 import PayslipPreview from './PayslipPreview.vue';
 
 const { showToast } = useToast();
+const { formatCurrencySync } = useGlobalCurrency();
+
+// Helper function for currency formatting
+const formatPayslipAmount = (amount, currency = 'KES') => formatCurrencySync(amount, currency).value;
 const confirm = useConfirm();
 const { canRead, canUpdate, hasPermission, userPermissions } = usePermissions();
 const payslipData = ref(null);
@@ -450,19 +454,19 @@ const submitForApproval = () => {
                 <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
                     <Card class="text-center">
                         <template #content>
-                            <div class="text-2xl font-bold text-blue-600">{{ formatCurrency(payslipData.employee?.basic_salary || 0) }}</div>
+                            <div class="text-2xl font-bold text-blue-600">{{ formatPayslipAmount(payslipData.employee?.basic_salary || 0) }}</div>
                             <div class="text-sm text-gray-600">Basic Salary</div>
                         </template>
                     </Card>
                     <Card class="text-center">
                         <template #content>
-                            <div class="text-2xl font-bold text-green-600">{{ formatCurrency(payslipData.gross_pay) }}</div>
+                            <div class="text-2xl font-bold text-green-600">{{ formatPayslipAmount(payslipData.gross_pay) }}</div>
                             <div class="text-sm text-gray-600">Gross Pay</div>
                         </template>
                     </Card>
                     <Card class="text-center">
                         <template #content>
-                            <div class="text-2xl font-bold text-purple-600">{{ formatCurrency(payslipData.net_pay) }}</div>
+                            <div class="text-2xl font-bold text-purple-600">{{ formatPayslipAmount(payslipData.net_pay) }}</div>
                             <div class="text-sm text-gray-600">Net Pay</div>
                         </template>
                     </Card>
@@ -472,19 +476,19 @@ const submitForApproval = () => {
                 <div v-if="payslipData.nssf_employee_tier_1 > 0 || payslipData.nssf_employee_tier_2 > 0" class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
                     <Card class="text-center">
                         <template #content>
-                            <div class="text-2xl font-bold text-orange-600">{{ formatCurrency(payslipData.nssf_employee_tier_1 || 0) }}</div>
+                            <div class="text-2xl font-bold text-orange-600">{{ formatPayslipAmount(payslipData.nssf_employee_tier_1 || 0) }}</div>
                             <div class="text-sm text-gray-600">NSSF Tier 1</div>
                         </template>
                     </Card>
                     <Card class="text-center">
                         <template #content>
-                            <div class="text-2xl font-bold text-orange-600">{{ formatCurrency(payslipData.nssf_employee_tier_2 || 0) }}</div>
+                            <div class="text-2xl font-bold text-orange-600">{{ formatPayslipAmount(payslipData.nssf_employee_tier_2 || 0) }}</div>
                             <div class="text-sm text-gray-600">NSSF Tier 2</div>
                         </template>
                     </Card>
                     <Card class="text-center">
                         <template #content>
-                            <div class="text-2xl font-bold text-orange-700">{{ formatCurrency(Number(payslipData.nssf_employee_tier_1 || 0) + Number(payslipData.nssf_employee_tier_2 || 0)) }}</div>
+                            <div class="text-2xl font-bold text-orange-700">{{ formatPayslipAmount(Number(payslipData.nssf_employee_tier_1 || 0) + Number(payslipData.nssf_employee_tier_2 || 0)) }}</div>
                             <div class="text-sm text-gray-600">Total NSSF</div>
                         </template>
                     </Card>
@@ -500,19 +504,19 @@ const submitForApproval = () => {
                                     <span class="font-medium">{{ earning.earning.title }}</span>
                                     <Tag v-if="earning.earning.non_cash" value="Non-cash" severity="info" size="small" />
                                 </div>
-                                <span class="font-semibold text-green-600">{{ formatCurrency(earning.amount) }}</span>
+                                <span class="font-semibold text-green-600">{{ formatPayslipAmount(earning.amount) }}</span>
                             </div>
                             <div v-for="benefit in payslipData.benefits || []" :key="benefit.benefit.title" class="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
                                 <div class="flex items-center gap-2">
                                     <span class="font-medium">{{ benefit.benefit.title }}</span>
                                     <Tag v-if="benefit.benefit.non_cash" value="Non-cash" severity="info" size="small" />
                                 </div>
-                                <span class="font-semibold text-green-600">{{ formatCurrency(benefit.amount) }}</span>
+                                <span class="font-semibold text-green-600">{{ formatPayslipAmount(benefit.amount) }}</span>
                             </div>
                             <Divider />
                             <div class="flex justify-between items-center p-3 bg-blue-50 rounded-lg">
                                 <span class="font-bold text-lg">Total Earnings & Benefits</span>
-                                <span class="font-bold text-lg text-blue-600">{{ formatCurrency(payslipData.total_earnings) }}</span>
+                                <span class="font-bold text-lg text-blue-600">{{ formatPayslipAmount(payslipData.total_earnings) }}</span>
                             </div>
                         </div>
                     </template>
@@ -526,31 +530,31 @@ const submitForApproval = () => {
                             <!-- NSSF Tier 1 -->
                             <div v-if="payslipData.nssf_employee_tier_1 > 0" class="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
                                 <span class="font-medium">N.S.S.F Tier 1</span>
-                                <span class="font-semibold text-red-600">{{ formatCurrency(payslipData.nssf_employee_tier_1) }}</span>
+                                <span class="font-semibold text-red-600">{{ formatPayslipAmount(payslipData.nssf_employee_tier_1) }}</span>
                             </div>
 
                             <!-- NSSF Tier 2 -->
                             <div v-if="payslipData.nssf_employee_tier_2 > 0" class="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
                                 <span class="font-medium">N.S.S.F Tier 2</span>
-                                <span class="font-semibold text-red-600">{{ formatCurrency(payslipData.nssf_employee_tier_2) }}</span>
+                                <span class="font-semibold text-red-600">{{ formatPayslipAmount(payslipData.nssf_employee_tier_2) }}</span>
                             </div>
 
                             <!-- Total NSSF -->
                             <div v-if="payslipData.nssf_employee_tier_1 > 0 || payslipData.nssf_employee_tier_2 > 0" class="flex justify-between items-center p-3 bg-orange-50 rounded-lg border-l-4 border-orange-400">
                                 <span class="font-bold">Total N.S.S.F</span>
-                                <span class="font-bold text-orange-700">{{ formatCurrency(Number(payslipData.nssf_employee_tier_1 || 0) + Number(payslipData.nssf_employee_tier_2 || 0)) }}</span>
+                                <span class="font-bold text-orange-700">{{ formatPayslipAmount(Number(payslipData.nssf_employee_tier_1 || 0) + Number(payslipData.nssf_employee_tier_2 || 0)) }}</span>
                             </div>
 
                             <!-- SHIF/NHIF -->
                             <div v-if="payslipData.shif_or_nhif_contribution > 0" class="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
                                 <span class="font-medium">{{ isShifEra ? 'S.H.I.F' : 'N.H.I.F' }}</span>
-                                <span class="font-semibold text-red-600">{{ formatCurrency(payslipData.shif_or_nhif_contribution) }}</span>
+                                <span class="font-semibold text-red-600">{{ formatPayslipAmount(payslipData.shif_or_nhif_contribution) }}</span>
                             </div>
 
                             <!-- Housing Levy -->
                             <div v-if="payslipData.housing_levy > 0" class="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
                                 <span class="font-medium">Housing Levy</span>
-                                <span class="font-semibold text-red-600">{{ formatCurrency(payslipData.housing_levy) }}</span>
+                                <span class="font-semibold text-red-600">{{ formatPayslipAmount(payslipData.housing_levy) }}</span>
                             </div>
 
                             <!-- Other Deductions Before Tax (excluding statutory) -->
@@ -560,13 +564,13 @@ const submitForApproval = () => {
                                 class="flex justify-between items-center p-3 bg-gray-50 rounded-lg"
                             >
                                 <span class="font-medium">{{ deduction.deduction.title }}</span>
-                                <span class="font-semibold text-red-600">{{ formatCurrency(deduction.amount) }}</span>
+                                <span class="font-semibold text-red-600">{{ formatPayslipAmount(deduction.amount) }}</span>
                             </div>
 
                             <Divider />
                             <div class="flex justify-between items-center p-3 bg-red-50 rounded-lg">
                                 <span class="font-bold text-lg">Total Deductions Before Tax</span>
-                                <span class="font-bold text-lg text-red-600">{{ formatCurrency(payslipData.deductions_before_tax) }}</span>
+                                <span class="font-bold text-lg text-red-600">{{ formatPayslipAmount(payslipData.deductions_before_tax) }}</span>
                             </div>
                         </div>
                     </template>
@@ -581,11 +585,11 @@ const submitForApproval = () => {
                             <div class="space-y-2">
                                 <div class="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
                                     <span class="font-medium">Taxable Pay</span>
-                                    <span class="font-semibold text-orange-600">{{ formatCurrency(payslipData.taxable_pay) }}</span>
+                                    <span class="font-semibold text-orange-600">{{ formatPayslipAmount(payslipData.taxable_pay) }}</span>
                                 </div>
                                 <div class="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
                                     <span class="font-medium">P.A.Y.E</span>
-                                    <span class="font-semibold text-orange-600">{{ formatCurrency(payslipData.paye) }}</span>
+                                    <span class="font-semibold text-orange-600">{{ formatPayslipAmount(payslipData.paye) }}</span>
                                 </div>
                             </div>
 
@@ -594,16 +598,16 @@ const submitForApproval = () => {
                                 <h4 class="font-bold text-lg text-gray-700">Less Personal Reliefs</h4>
                                 <div class="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
                                     <span class="font-medium">Tax Relief</span>
-                                    <span class="font-semibold text-green-600">{{ formatCurrency(payslipData.tax_relief) }}</span>
+                                    <span class="font-semibold text-green-600">{{ formatPayslipAmount(payslipData.tax_relief) }}</span>
                                 </div>
                                 <div v-if="payslipData.ahl_relief > 0" class="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
                                     <span class="font-medium">AHL Relief</span>
-                                    <span class="font-semibold text-green-600">{{ formatCurrency(payslipData.ahl_relief) }}</span>
+                                    <span class="font-semibold text-green-600">{{ formatPayslipAmount(payslipData.ahl_relief) }}</span>
                                 </div>
                                 <Divider />
                                 <div class="flex justify-between items-center p-3 bg-green-50 rounded-lg">
                                     <span class="font-bold">Total Reliefs</span>
-                                    <span class="font-bold text-green-600">{{ formatCurrency(payslipData.reliefs) }}</span>
+                                    <span class="font-bold text-green-600">{{ formatPayslipAmount(payslipData.reliefs) }}</span>
                                 </div>
                             </div>
 
@@ -611,7 +615,7 @@ const submitForApproval = () => {
                             <div class="flex justify-between items-center p-3 bg-orange-50 rounded-lg">
                                 <span class="font-bold text-lg">P.A.Y.E After Reliefs</span>
                                 <span class="font-bold text-lg text-orange-600">
-                                    {{ formatCurrency(parseInt(payslipData.reliefs) <= parseInt(payslipData.paye) ? parseInt(payslipData.paye) - parseInt(payslipData.reliefs) : 0.0) }}
+                                    {{ formatPayslipAmount(parseInt(payslipData.reliefs) <= parseInt(payslipData.paye) ? parseInt(payslipData.paye) - parseInt(payslipData.reliefs) : 0.0) }}
                                 </span>
                             </div>
                         </div>
@@ -634,13 +638,13 @@ const submitForApproval = () => {
                             <!-- After Tax Deductions -->
                             <div v-for="deduction in (payslipData.deductions || []).filter((x) => x.deduction.deduct_after_taxing === true)" :key="deduction.deduction.title" class="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
                                 <span class="font-medium">{{ deduction.deduction.title }}</span>
-                                <span class="font-semibold text-red-600">{{ formatCurrency(deduction.amount) }}</span>
+                                <span class="font-semibold text-red-600">{{ formatPayslipAmount(deduction.amount) }}</span>
                             </div>
 
                             <!-- Loans -->
                             <div v-for="loan in payslipData.loans || []" :key="loan.id" class="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
                                 <span class="font-medium">{{ loan.loan.title }}</span>
-                                <span class="font-semibold text-red-600">{{ formatCurrency(loan.monthly_installment) }}</span>
+                                <span class="font-semibold text-red-600">{{ formatPayslipAmount(loan.monthly_installment) }}</span>
                             </div>
 
                             <!-- Non-Cash Benefits -->
@@ -661,13 +665,13 @@ const submitForApproval = () => {
                             <!-- Advances -->
                             <div v-for="advance in payslipData.advances || []" :key="advance.id" class="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
                                 <span class="font-medium">Advance Pay - ({{ advance.repay_option.amount }})</span>
-                                <span class="font-semibold text-red-600">{{ formatCurrency(advance.repay_option.installment_amount) }}</span>
+                                <span class="font-semibold text-red-600">{{ formatPayslipAmount(advance.repay_option.installment_amount) }}</span>
                             </div>
 
                             <Divider />
                             <div class="flex justify-between items-center p-3 bg-red-50 rounded-lg">
                                 <span class="font-bold text-lg">Total Deductions After Tax</span>
-                                <span class="font-bold text-lg text-red-600">{{ formatCurrency(payslipData.deductions_after_tax) }}</span>
+                                <span class="font-bold text-lg text-red-600">{{ formatPayslipAmount(payslipData.deductions_after_tax) }}</span>
                             </div>
                         </div>
                     </template>

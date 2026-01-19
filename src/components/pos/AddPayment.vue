@@ -1,7 +1,8 @@
 <script setup>
 import Spinner from '@/components/ui/Spinner.vue';
 import { posService } from '@/services/ecommerce/posService';
-import { formatCurrency, formatDate } from '@/utils/formatters';
+import { formatDate } from '@/utils/formatters';
+import { useGlobalCurrency } from '@/composables/useGlobalCurrency';
 import { useToast } from 'primevue/usetoast';
 import { computed, onMounted, ref } from 'vue';
 
@@ -13,6 +14,10 @@ const props = defineProps({
 const emit = defineEmits(['cancel', 'payment-added']);
 
 const toast = useToast();
+const { formatCurrencySync } = useGlobalCurrency();
+
+// Helper method for currency formatting
+const formatPOSAmount = (amount) => formatCurrencySync(amount).value;
 const isLoading = ref(false);
 const spinnerTitle = ref('Processing payment...');
 const sale = ref(props.sale || null);
@@ -102,7 +107,7 @@ async function processPayment() {
         toast.add({
             severity: 'success',
             summary: 'Payment Successful',
-            detail: `Payment of ${formatCurrency(amount.value)} processed successfully.`,
+            detail: `Payment of ${formatPOSAmount(amount.value)} processed successfully.`,
             life: 3000
         });
 
@@ -154,7 +159,7 @@ async function processSplitPayment() {
         toast.add({
             severity: 'success',
             summary: 'Split Payment Successful',
-            detail: `Split payment of ${formatCurrency(getTotalSplitAmount())} processed successfully.`,
+            detail: `Split payment of ${formatPOSAmount(getTotalSplitAmount())} processed successfully.`,
             life: 3000
         });
 
@@ -252,13 +257,13 @@ onMounted(() => {
                     <div class="col-span-1">{{ sale.customer ? sale.customer.name : 'Walk-in Customer' }}</div>
 
                     <div class="col-span-1 text-gray-600">Total Amount:</div>
-                    <div class="col-span-1 font-semibold">{{ formatCurrency(sale.grand_total) }}</div>
+                    <div class="col-span-1 font-semibold">{{ formatPOSAmount(sale.grand_total) }}</div>
 
                     <div class="col-span-1 text-gray-600">Amount Paid:</div>
-                    <div class="col-span-1 font-semibold text-green-600">{{ formatCurrency(sale.amount_paid) }}</div>
+                    <div class="col-span-1 font-semibold text-green-600">{{ formatPOSAmount(sale.amount_paid) }}</div>
 
                     <div class="col-span-1 text-gray-600">Balance Due:</div>
-                    <div class="col-span-1 font-semibold text-red-600">{{ formatCurrency(sale.grand_total - sale.amount_paid) }}</div>
+                    <div class="col-span-1 font-semibold text-red-600">{{ formatPOSAmount(sale.grand_total - sale.amount_paid) }}</div>
 
                     <div class="col-span-1 text-gray-600">Payment Status:</div>
                     <div class="col-span-1">
@@ -281,7 +286,7 @@ onMounted(() => {
                 <div class="mb-4">
                     <label class="block text-gray-700 text-sm font-bold mb-2" for="amount"> Amount </label>
                     <InputNumber id="amount" v-model="amount" placeholder="Enter amount" :min="0" :max="getMaxAmount()" class="w-full" :disabled="isSplitPayment" />
-                    <small v-if="!isSplitPayment" class="text-gray-500">Maximum amount: {{ formatCurrency(getMaxAmount()) }}</small>
+                    <small v-if="!isSplitPayment" class="text-gray-500">Maximum amount: {{ formatPOSAmount(getMaxAmount()) }}</small>
                 </div>
 
                 <div class="mb-4">
@@ -312,9 +317,9 @@ onMounted(() => {
 
                 <div class="mb-4 flex justify-between items-center">
                     <div>
-                        <Tag severity="info" class="mr-2">Total Due: {{ formatCurrency(sale.grand_total - sale.amount_paid) }}</Tag>
-                        <Tag severity="success">Allocated: {{ formatCurrency(getTotalSplitAmount()) }}</Tag>
-                        <Tag severity="warning" v-if="getRemainingAmount() > 0">Remaining: {{ formatCurrency(getRemainingAmount()) }}</Tag>
+                        <Tag severity="info" class="mr-2">Total Due: {{ formatPOSAmount(sale.grand_total - sale.amount_paid) }}</Tag>
+                        <Tag severity="success">Allocated: {{ formatPOSAmount(getTotalSplitAmount()) }}</Tag>
+                        <Tag severity="warning" v-if="getRemainingAmount() > 0">Remaining: {{ formatPOSAmount(getRemainingAmount()) }}</Tag>
                     </div>
                     <Button icon="pi pi-plus" label="Add Payment Method" @click="addSplitPayment" />
                 </div>
@@ -365,7 +370,7 @@ onMounted(() => {
                     <Column field="payment_method" header="Payment Method" />
                     <Column field="amount" header="Amount">
                         <template #body="slotProps">
-                            {{ formatCurrency(slotProps.data.amount) }}
+                            {{ formatPOSAmount(slotProps.data.amount) }}
                         </template>
                     </Column>
                     <Column field="transaction_id" header="Transaction ID" />

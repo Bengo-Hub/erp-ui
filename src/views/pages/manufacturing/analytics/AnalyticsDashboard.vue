@@ -1,12 +1,15 @@
 <script setup>
 import { ref, onMounted } from 'vue';
 import { useToast } from '@/composables/useToast';
+import { useGlobalCurrency } from '@/composables/useGlobalCurrency';
 import { manufacturingService } from '@/services/manufacturing/manufacturingService';
 import BreadcrumbNav from '@/components/manufacturing/BreadcrumbNav.vue';
 import ManufacturingToolbar from '@/components/manufacturing/ManufacturingToolbar.vue';
 import InsightsPanel from '@/components/manufacturing/InsightsPanel.vue';
 import StatCard from '@/components/manufacturing/StatsCard.vue';
-import { formatCurrency, formatDate } from '@/utils/formatters';
+import { formatDate } from '@/utils/formatters';
+
+const { formatCurrencySync } = useGlobalCurrency();
 
 const { showToast } = useToast();
 
@@ -46,7 +49,7 @@ const costChartOptions = ref({
                 label: (context) => {
                     const label = context.dataset.label || '';
                     const value = context.parsed.y;
-                    return `${label}: ${formatCurrency(value)}`;
+                    return `${label}: ${formatCurrencySync(value)}`;
                 }
             }
         }
@@ -280,16 +283,16 @@ onMounted(() => {
             <StatCard title="Total Production" :value="formatNumber(summaryStats.totalProduction)" unit="units produced" icon="pi pi-box" bgColor="bg-blue-100" textColor="text-blue-500" />
             <StatCard
                 title="Raw Material Cost"
-                :value="formatCurrency(summaryStats.totalRawMaterialCost)"
+                :value="formatCurrencySync(summaryStats.totalRawMaterialCost)"
                 :subtitle="`${summaryStats.rawMaterialCostPercent.toFixed(1)}% of total cost`"
                 icon="pi pi-dollar"
                 bgColor="bg-green-100"
                 textColor="text-green-500"
             />
-            <StatCard title="Average Unit Cost" :value="formatCurrency(summaryStats.avgUnitCost)" unit="per unit produced" icon="pi pi-tag" bgColor="bg-orange-100" textColor="text-orange-500" />
+            <StatCard title="Average Unit Cost" :value="formatCurrencySync(summaryStats.avgUnitCost)" unit="per unit produced" icon="pi pi-tag" bgColor="bg-orange-100" textColor="text-orange-500" />
             <StatCard title="Efficiency Rate" :value="(summaryStats.efficiencyRate * 100).toFixed(1) + '%'" unit="actual vs planned" icon="pi pi-chart-line" bgColor="bg-purple-100" textColor="text-purple-500" />
-            <StatCard title="Labor Cost" :value="formatCurrency(summaryStats.totalLaborCost)" unit="total labor cost" icon="pi pi-users" bgColor="bg-blue-100" textColor="text-blue-500" />
-            <StatCard title="Overhead Cost" :value="formatCurrency(summaryStats.totalOverheadCost)" unit="total overhead cost" icon="pi pi-building" bgColor="bg-yellow-100" textColor="text-yellow-500" />
+            <StatCard title="Labor Cost" :value="formatCurrencySync(summaryStats.totalLaborCost)" unit="total labor cost" icon="pi pi-users" bgColor="bg-blue-100" textColor="text-blue-500" />
+            <StatCard title="Overhead Cost" :value="formatCurrencySync(summaryStats.totalOverheadCost)" unit="total overhead cost" icon="pi pi-building" bgColor="bg-yellow-100" textColor="text-yellow-500" />
         </div>
 
         <!-- Charts and Tables Section -->
@@ -322,7 +325,7 @@ onMounted(() => {
                     </Column>
                     <Column field="cost" header="Total Cost">
                         <template #body="{ data }">
-                            {{ formatCurrency(data.cost) }}
+                            {{ formatCurrencySync(data.cost) }}
                         </template>
                     </Column>
                     <Column field="efficiency" header="Usage Efficiency">
@@ -341,10 +344,10 @@ onMounted(() => {
                         <template #body="{ data }">{{ formatNumber(data.quantity) }}</template>
                     </Column>
                     <Column field="avgCost" header="Avg Cost">
-                        <template #body="{ data }">{{ formatCurrency(data.avgCost) }}</template>
+                        <template #body="{ data }">{{ formatCurrencySync(data.avgCost) }}</template>
                     </Column>
                     <Column field="avgPrice" header="Avg Price">
-                        <template #body="{ data }">{{ formatCurrency(data.avgPrice) }}</template>
+                        <template #body="{ data }">{{ formatCurrencySync(data.avgPrice) }}</template>
                     </Column>
                     <Column field="margin" header="Margin">
                         <template #body="{ data }">

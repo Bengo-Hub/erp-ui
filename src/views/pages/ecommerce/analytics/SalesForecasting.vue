@@ -1,11 +1,12 @@
 <script setup>
 import { useToast } from '@/composables/useToast';
-import { formatCurrency } from '@/utils/formatters';
+import { useGlobalCurrency } from '@/composables/useGlobalCurrency';
 import { computed, onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
 
 const { showToast } = useToast();
 const router = useRouter();
+const { formatCurrencySync } = useGlobalCurrency();
 
 // Data states
 const loading = ref(false);
@@ -252,7 +253,7 @@ const chartOptions = computed(() => ({
             beginAtZero: true,
             ticks: {
                 callback: function (value) {
-                    return formatCurrency(value);
+                    return formatCurrencySync(value);
                 }
             }
         }
@@ -338,7 +339,7 @@ onMounted(() => {
                         </div>
                         <div class="stat-details">
                             <h3 class="stat-value">
-                                {{ formatCurrency(forecastStats.predictedRevenue) }}
+                                {{ formatCurrencySync(forecastStats.predictedRevenue) }}
                             </h3>
                             <p class="stat-label">Predicted Revenue</p>
                             <span class="stat-change positive">+{{ forecastStats.growthRate }}% growth</span>
@@ -447,7 +448,7 @@ onMounted(() => {
                         </Column>
                         <Column field="predictedSales" header="Predicted Sales">
                             <template #body="{ data }">
-                                {{ formatCurrency(data.predictedSales) }}
+                                {{ formatCurrencySync(data.predictedSales) }}
                             </template>
                         </Column>
                         <Column field="confidence" header="Confidence">
@@ -457,7 +458,7 @@ onMounted(() => {
                         </Column>
                         <Column field="actualSales" header="Actual Sales">
                             <template #body="{ data }">
-                                <span v-if="data.actualSales">{{ formatCurrency(data.actualSales) }}</span>
+                                <span v-if="data.actualSales">{{ formatCurrencySync(data.actualSales) }}</span>
                                 <span v-else class="text-gray-400">-</span>
                             </template>
                         </Column>
@@ -478,7 +479,7 @@ onMounted(() => {
                         <Column field="product" header="Product" />
                         <Column field="predictedSales" header="Predicted Sales">
                             <template #body="{ data }">
-                                {{ formatCurrency(data.predictedSales) }}
+                                {{ formatCurrencySync(data.predictedSales) }}
                             </template>
                         </Column>
                         <Column field="growth" header="Growth">

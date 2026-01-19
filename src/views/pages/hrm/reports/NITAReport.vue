@@ -29,7 +29,7 @@
                 <Card class="shadow-sm">
                     <template #content>
                         <div class="text-center">
-                            <div class="text-3xl font-bold text-green-600 mb-2">{{ formatCurrency(summary.totalNITA) }}</div>
+                            <div class="text-3xl font-bold text-green-600 mb-2">{{ formatCurrencySync(summary.totalNITA) }}</div>
                             <div class="text-sm text-gray-600">Total NITA Levy</div>
                         </div>
                     </template>
@@ -56,10 +56,10 @@
                 <Column field="employee_name" header="Employee Name" :sortable="true" />
                 <Column field="employee_pin" header="KRA PIN" :sortable="true" />
                 <Column field="gross_pay" header="Gross Pay" :sortable="true">
-                    <template #body="{ data }">{{ formatCurrency(data.gross_pay) }}</template>
+                    <template #body="{ data }">{{ formatCurrencySync(data.gross_pay) }}</template>
                 </Column>
                 <Column field="nita_levy" header="NITA Levy" :sortable="true">
-                    <template #body="{ data }">{{ formatCurrency(data.nita_levy) }}</template>
+                    <template #body="{ data }">{{ formatCurrencySync(data.nita_levy) }}</template>
                 </Column>
             </ReportDataTable>
         </template>
@@ -69,9 +69,11 @@
 <script setup>
 import { ReportLayout, ReportFilters, ReportDataTable } from '@/components/hrm/reports';
 import { useToast } from '@/composables/useToast';
+import { useGlobalCurrency } from '@/composables/useGlobalCurrency';
 import { hrmReportsService } from '@/services/reports/reportsService';
-import { formatCurrency } from '@/utils/formatters';
 import { buildReportQueryParams, getDefaultReportFilters, validateReportFilters } from '@/utils/reportUtils';
+
+const { formatCurrencySync } = useGlobalCurrency();
 import { computed, ref } from 'vue';
 
 const { showToast } = useToast();

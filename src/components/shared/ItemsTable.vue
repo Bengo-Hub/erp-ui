@@ -1,9 +1,9 @@
 <script setup>
 import { computed, ref, onMounted, watch } from 'vue';
-import { formatCurrency } from '@/utils/formatters';
 import TaxForm from '@/components/finance/taxes/TaxForm.vue';
 import { financeService } from '@/services/finance/financeService';
 import { useCurrency } from '@/composables/useCurrency';
+import { useGlobalCurrency } from '@/composables/useGlobalCurrency';
 
 const props = defineProps({
   items: {
@@ -54,6 +54,10 @@ const props = defineProps({
 
 // Currency conversion helper
 const { convertAmount } = useCurrency();
+const { formatCurrencySync } = useGlobalCurrency();
+
+// Helper method for currency formatting
+const formatAmount = (amount, currencyCode = null) => formatCurrencySync(amount, currencyCode || props.currency).value;
 
 const emit = defineEmits(['update:items', 'add-product', 'edit-product']);
 
@@ -404,7 +408,7 @@ const onTaxSaved = async (newTax) => {
       <Column header="Amount" :headerStyle="showTaxFields ? 'width: 120px' : 'width: 15%'">
         <template #body="{ data }">
           <div class="text-right font-semibold">
-            {{ formatCurrency((data.quantity || 0) * (getUnitPrice(data) || 0), currency) }}
+            {{ formatAmount((data.quantity || 0) * (getUnitPrice(data) || 0)) }}
           </div>
         </template>
       </Column>
@@ -446,10 +450,10 @@ const onTaxSaved = async (newTax) => {
           outlined
         />
       </div>
-      
+
       <div class="total-summary">
         <span class="total-label">Subtotal:</span>
-        <span class="total-amount">{{ formatCurrency(calculateSubtotal(), currency) }}</span>
+        <span class="total-amount">{{ formatAmount(calculateSubtotal()) }}</span>
       </div>
     </div>
   </div>

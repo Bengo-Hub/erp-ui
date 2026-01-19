@@ -10,7 +10,10 @@ import StockValuation from '@/components/inventory/StockValuation.vue';
 import { ecommerceService } from '@/services/ecommerce/ecommerceService';
 import { inventoryService } from '@/services/ecommerce/inventoryService';
 import { coreService } from '@/services/shared/coreService';
-import { formatCurrency } from '@/utils/formatters.js';
+import { useGlobalCurrency } from '@/composables/useGlobalCurrency';
+
+const { formatCurrencySync } = useGlobalCurrency();
+const formatCurrency = (amount, currency = 'KES') => formatCurrencySync(amount, currency).value;
 
 const { showToast } = useToast();
 

@@ -2,7 +2,7 @@
 import { ref, computed, watch, onMounted } from 'vue';
 import { useRoute } from 'vue-router';
 import { useToast } from '@/composables/useToast';
-import { formatCurrency } from '@/utils/formatters';
+import { useGlobalCurrency } from '@/composables/useGlobalCurrency';
 import axios from 'axios';
 
 const props = defineProps({
@@ -24,6 +24,10 @@ const emit = defineEmits(['update:visible', 'payment-initiated']);
 
 const route = useRoute();
 const { showToast } = useToast();
+const { formatCurrencySync } = useGlobalCurrency();
+
+// Helper method for currency formatting
+const formatCurrency = (amount) => formatCurrencySync(amount).value;
 
 // Reactive state
 const paymentMethod = ref('paystack'); // 'mpesa', 'card', 'paystack', 'manual'

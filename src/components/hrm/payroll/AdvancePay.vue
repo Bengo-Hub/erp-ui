@@ -2,9 +2,14 @@
 import { payrollService } from '@/services/hrm/payrollService';
 import { useToast } from 'primevue/usetoast';
 import { computed, onMounted, ref, watch } from 'vue';
-import { formatCurrency } from './payslipGenerator';
+import { useGlobalCurrency } from '@/composables/useGlobalCurrency';
 
 const toast = useToast();
+const { formatCurrencySync } = useGlobalCurrency();
+
+// Helper function for currency formatting
+const formatAdvanceAmount = (amount, currency = 'KES') => formatCurrencySync(amount, currency).value;
+
 const error = ref('');
 const isLoading = ref(false);
 
@@ -46,6 +51,9 @@ const unpaidBalance = computed(() => {
     if (!isEditMode.value || !advance.value) return 0;
     return Number(advance.value.repay_option.amount) - Number(advance.value.amount_repaid);
 });
+
+// Reactive formatted unpaid balance
+const formattedUnpaidBalance = formatCurrencySync(unpaidBalance);
 
 const validInstallments = computed(() => {
     if (!amountBorrowed.value) return [];
@@ -285,7 +293,7 @@ onMounted(() => {
 
             <div class="grid grid-cols-2 gap-6 items-center mb-4" v-if="isEditMode">
                 <label class="text-sm font-medium">Unpaid Balance:</label>
-                <p class="text-gray-700">KES {{ formatCurrency(unpaidBalance) }}</p>
+                <p class="text-gray-700">{{ formattedUnpaidBalance }}</p>
             </div>
 
             <div class="grid grid-cols-2 gap-4 items-center mb-4">
@@ -333,7 +341,7 @@ onMounted(() => {
                 <ul class="border rounded-lg p-2">
                     <li v-for="(installment, index) in installmentPreview" :key="index" class="flex justify-between items-center py-2 px-3 border-b last:border-b-0">
                         <span>Installment {{ index + 1 }}</span>
-                        <span class="font-medium">KES {{ formatCurrency(installment) }}</span>
+                        <span class="font-medium">{{ formatAdvanceAmount(installment) }}</span>
                     </li>
                 </ul>
             </div>

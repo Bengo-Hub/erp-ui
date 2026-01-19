@@ -3,9 +3,11 @@ import { ref, onMounted } from 'vue';
 import { useToast } from 'primevue/usetoast';
 import ProductForm from '@/components/products/ProductForm.vue';
 import ProductDetail from '@/components/products/ProductDetail.vue';
+import { useGlobalCurrency } from '@/composables/useGlobalCurrency';
 import { ecommerceService } from '@/services/ecommerce/ecommerceService';
 
 const toast = useToast();
+const { formatCurrencySync } = useGlobalCurrency();
 
 // Data
 const products = ref([]);
@@ -269,14 +271,10 @@ const showError = (message) => {
     });
 };
 
-const formatCurrency = (value) => {
-    if (value === null || value === undefined) return '-';
-    try {
-        // Use Intl to format numbers consistently
-        return Number(value).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-    } catch (e) {
-        return value;
-    }
+// Helper for table rows - formats with reactive currency
+const formatProductPrice = (amount) => {
+    if (amount === null || amount === undefined) return '-';
+    return formatCurrencySync(amount).value;
 };
 </script>
 
@@ -326,15 +324,15 @@ const formatCurrency = (value) => {
                     <Column field="selling_price" header="Price" :sortable="true" style="min-width:120px">
                         <template #body="{ data }">
                             <div>
-                                <span v-if="data.selling_price !== null">{{ formatCurrency(data.selling_price) }}</span>
-                                <span v-else-if="data.default_price !== null">{{ formatCurrency(data.default_price) }}</span>
+                                <span v-if="data.selling_price !== null">{{ formatProductPrice(data.selling_price) }}</span>
+                                <span v-else-if="data.default_price !== null">{{ formatProductPrice(data.default_price) }}</span>
                                 <span v-else>—</span>
                             </div>
                         </template>
                     </Column>
                     <Column field="default_price" header="Default" :sortable="true" style="min-width:120px">
                         <template #body="{ data }">
-                            <span>{{ data.default_price !== null ? formatCurrency(data.default_price) : '-' }}</span>
+                            <span>{{ data.default_price !== null ? formatProductPrice(data.default_price) : '-' }}</span>
                         </template>
                     </Column>
                     <Column field="stock_level" header="Stock" :sortable="true" style="min-width:100px">

@@ -2,6 +2,7 @@
 import { formatCurrency } from '@/components/hrm/payroll/payslipGenerator';
 import Spinner from '@/components/ui/Spinner.vue';
 import { posService } from '@/services/ecommerce/posService';
+import { useGlobalCurrency } from '@/composables/useGlobalCurrency';
 import { useToast } from 'primevue/usetoast';
 import { computed, defineEmits, defineProps, onMounted, ref, watch } from 'vue';
 
@@ -18,6 +19,10 @@ const props = defineProps({
 
 const emit = defineEmits(['processSale', 'cancel']);
 const toast = useToast();
+const { formatCurrencySync } = useGlobalCurrency();
+
+// Helper method for currency formatting
+const formatPOSAmount = (amount) => formatCurrencySync(amount).value;
 
 // Data
 const staffMembers = ref([]);
@@ -172,7 +177,7 @@ onMounted(() => {
                         </div>
                         <div>
                             <label class="block text-sm font-medium text-gray-700">Total Sale Amount:</label>
-                            <div class="text-xl font-bold">KES {{ formatCurrency(totalCartAmount) }}</div>
+                            <div class="text-xl font-bold">KES {{ formatPOSAmount(totalCartAmount) }}</div>
                         </div>
                     </div>
 
@@ -183,7 +188,7 @@ onMounted(() => {
                         </div>
                         <div>
                             <label class="block text-sm font-medium text-gray-700">Current Advance Balance:</label>
-                            <div class="text-xl" :class="getBalanceClass(staffAdvanceBalance)">KES {{ formatCurrency(staffAdvanceBalance) }}</div>
+                            <div class="text-xl" :class="getBalanceClass(staffAdvanceBalance)">KES {{ formatPOSAmount(staffAdvanceBalance) }}</div>
                         </div>
                         <div>
                             <label class="block text-sm font-medium text-gray-700">Installments:</label>
@@ -204,7 +209,7 @@ onMounted(() => {
                         </div>
                         <div>
                             <label class="block text-sm font-medium text-gray-700">Installment Amount:</label>
-                            <div class="text-xl font-semibold">KES {{ formatCurrency(installmentAmount) }}</div>
+                            <div class="text-xl font-semibold">KES {{ formatPOSAmount(installmentAmount) }}</div>
                         </div>
                     </div>
 

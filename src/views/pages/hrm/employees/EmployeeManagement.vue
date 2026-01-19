@@ -217,8 +217,12 @@
 import PermissionButton from '@/components/common/PermissionButton.vue';
 import PermissionWrapper from '@/components/common/PermissionWrapper.vue';
 import { usePermissions } from '@/composables/usePermissions';
+import { useGlobalCurrency } from '@/composables/useGlobalCurrency';
 import { onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
+
+const { formatCurrencySync } = useGlobalCurrency();
+const formatCurrency = (amount, currency = 'KES') => formatCurrencySync(amount, currency).value;
 
 const router = useRouter();
 const { canRead, canUpdate, canCreate, canDelete } = usePermissions();
@@ -275,7 +279,6 @@ const exportEmployees = () => {
 
 const importEmployees = () => {
     // Implement import logic
-import { formatCurrency, formatDate } from '@/utils/formatters';
     console.log('Import employees');
 };
 

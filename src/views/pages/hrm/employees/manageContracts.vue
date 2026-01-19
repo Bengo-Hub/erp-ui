@@ -3,7 +3,11 @@ import BulkContractActions from '@/components/hrm/contracts/BulkContractActions.
 import ContractForm from '@/components/hrm/contracts/ContractForm.vue';
 import Spinner from '@/components/ui/Spinner.vue';
 import { employeeService } from '@/services/hrm/employeeService';
-import { formatCurrency, formatDate } from '@/utils/formatters';
+import { useGlobalCurrency } from '@/composables/useGlobalCurrency';
+import { formatDate } from '@/utils/formatters';
+
+const { formatCurrencySync } = useGlobalCurrency();
+const formatCurrency = (amount, currency = 'KES') => formatCurrencySync(amount, currency).value;
 import { FilterMatchMode, FilterOperator } from '@primevue/core/api';
 import IconField from 'primevue/iconfield';
 import InputIcon from 'primevue/inputicon';

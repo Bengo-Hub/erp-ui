@@ -4,10 +4,10 @@ import { useDashboardState } from '@/composables/useDashboardState';
 import { usePermissions } from '@/composables/usePermissions';
 import { useToast } from '@/composables/useToast';
 import { dashboardService } from '@/services/shared/dashboardService';
+import { useGlobalCurrency } from '@/composables/useGlobalCurrency';
 import { PERIOD_OPTIONS } from '@/utils/constants';
 import Chart from 'primevue/chart';
-import { formatCurrency, safeNumber } from '@/utils/formatters';
-import { useGlobalCurrency } from '@/composables/useGlobalCurrency';
+import { safeNumber } from '@/utils/formatters';
 import { computed, onMounted, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
 
@@ -17,6 +17,8 @@ const { currencyChartOptions, barChartOptions } = useChartOptions();
 const { state, executeDataFetch } = useDashboardState();
 const { hasPermission } = usePermissions();
 const { formatCurrencySync } = useGlobalCurrency();
+
+const formatCurrency = (amount, currency = 'KES') => formatCurrencySync(amount, currency).value;
 
 const loading = ref(false);
 const period = ref('month');
@@ -43,9 +45,9 @@ const topProductsChartData = ref(null);
 const topStaffChartData = ref(null);
 
 // Reactive formatted currency values
-const formattedTotalSales = formatCurrencySync(computed(() => safeNumber(dashboardData.value.total_sales, 0)));
-const formattedAvgTransaction = formatCurrencySync(computed(() => safeNumber(dashboardData.value.average_transaction_value, 0)));
-const formattedDiscount = formatCurrencySync(computed(() => safeNumber(dashboardData.value.discount_given, 0)));
+const formattedTotalSales = computed(() => formatCurrency(safeNumber(dashboardData.value.total_sales, 0)));
+const formattedAvgTransaction = computed(() => formatCurrency(safeNumber(dashboardData.value.average_transaction_value, 0)));
+const formattedDiscount = computed(() => formatCurrency(safeNumber(dashboardData.value.discount_given, 0)));
 
 // Load dashboard data
 const loadDashboardData = async () => {

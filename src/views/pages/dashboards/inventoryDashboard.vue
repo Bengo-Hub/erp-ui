@@ -2,16 +2,20 @@
 import { useChartOptions } from '@/composables/useChartOptions';
 import { useDashboardState } from '@/composables/useDashboardState';
 import { useToast } from '@/composables/useToast';
+import { useGlobalCurrency } from '@/composables/useGlobalCurrency';
 import { PERIOD_OPTIONS } from '@/utils/constants';
 import Chart from 'primevue/chart';
-import { formatCurrency, safeNumber } from '@/utils/formatters';
-import { onMounted, ref, watch } from 'vue';
+import { safeNumber } from '@/utils/formatters';
+import { computed, onMounted, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
 
 const router = useRouter();
 const { showToast } = useToast();
 const { barChartOptions } = useChartOptions();
 const { state, executeDataFetch } = useDashboardState();
+const { formatCurrencySync } = useGlobalCurrency();
+
+const formatCurrency = (amount, currency = 'KES') => formatCurrencySync(amount, currency).value;
 
 const loading = ref(false);
 const period = ref('month');
@@ -35,6 +39,31 @@ const dashboardData = ref({
 const stockMovementsChartData = ref(null);
 const categoryBreakdownChartData = ref(null);
 const stockLevelsChartData = ref(null);
+
+// Reactive formatted values for summary cards
+const formattedTotalProducts = computed(() =>
+    safeNumber(dashboardData.value.total_products, 0).toLocaleString()
+);
+
+const formattedTotalStockValue = computed(() =>
+    formatCurrency(safeNumber(dashboardData.value.total_stock_value, 0))
+);
+
+const formattedLowStockItems = computed(() =>
+    safeNumber(dashboardData.value.low_stock_items, 0).toLocaleString()
+);
+
+const formattedOutOfStockItems = computed(() =>
+    safeNumber(dashboardData.value.out_of_stock_items, 0).toLocaleString()
+);
+
+const formattedStockTurnoverRate = computed(() =>
+    safeNumber(dashboardData.value.stock_turnover_rate, 0).toFixed(2)
+);
+
+const formattedAverageStockLevel = computed(() =>
+    safeNumber(dashboardData.value.average_stock_level, 0).toLocaleString()
+);
 
 // Load dashboard data
 const loadDashboardData = async () => {
@@ -176,7 +205,7 @@ onMounted(() => {
                     </template>
                     <template #content>
                         <div class="text-3xl font-bold">
-                            {{ dashboardData.total_products.toLocaleString() }}
+                            {{ formattedTotalProducts }}
                         </div>
                     </template>
                 </Card>
@@ -190,7 +219,7 @@ onMounted(() => {
                     </template>
                     <template #content>
                         <div class="text-3xl font-bold">
-                            {{ formatCurrency(safeNumber(dashboardData.total_stock_value, 0)) }}
+                            {{ formattedTotalStockValue }}
                         </div>
                     </template>
                 </Card>
@@ -204,7 +233,7 @@ onMounted(() => {
                     </template>
                     <template #content>
                         <div class="text-3xl font-bold">
-                            {{ dashboardData.low_stock_items }}
+                            {{ formattedLowStockItems }}
                         </div>
                     </template>
                 </Card>
@@ -218,7 +247,7 @@ onMounted(() => {
                     </template>
                     <template #content>
                         <div class="text-3xl font-bold">
-                            {{ dashboardData.out_of_stock_items }}
+                            {{ formattedOutOfStockItems }}
                         </div>
                     </template>
                 </Card>
@@ -235,7 +264,7 @@ onMounted(() => {
                     </template>
                     <template #content>
                         <div class="text-3xl font-bold">
-                            {{ dashboardData.stock_turnover_rate.toFixed(2) }}
+                            {{ formattedStockTurnoverRate }}
                         </div>
                         <div class="text-sm opacity-75">times per year</div>
                     </template>
@@ -250,7 +279,7 @@ onMounted(() => {
                     </template>
                     <template #content>
                         <div class="text-3xl font-bold">
-                            {{ dashboardData.average_stock_level.toLocaleString() }}
+                            {{ formattedAverageStockLevel }}
                         </div>
                         <div class="text-sm opacity-75">units</div>
                     </template>

@@ -1,5 +1,6 @@
 <script setup>
 import { useToast } from '@/composables/useToast';
+import { useGlobalCurrency } from '@/composables/useGlobalCurrency';
 import { ref, reactive, computed, onMounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useVuelidate } from '@vuelidate/core';
@@ -7,7 +8,10 @@ import { required, minValue } from '@vuelidate/validators';
 import { manufacturingService } from '@/services/manufacturing/manufacturingService';
 import { ecommerceService } from '@/services/ecommerce/ecommerceService';
 import ProductForm from '@/components/products/ProductForm.vue';
-import { formatCurrency, formatDate } from '@/utils/formatters';
+import { formatDate } from '@/utils/formatters';
+
+const { formatCurrencySync } = useGlobalCurrency();
+const formatCurrency = (amount, currency = 'KES') => formatCurrencySync(amount, currency).value;
 
 const { showToast } = useToast();
 const route = useRoute();
@@ -250,66 +254,62 @@ onMounted(() => {
 </script>
 
 <template>
-    <div class="grid">
-        <div class="col-12">
-            <div class="card">
-                <div class="flex justify-content-between align-items-center mb-4">
-                    <h5 class="m-0">{{ isEditMode ? 'Edit Formula' : 'Create Formula' }}</h5>
+    <div class="max-w-7xl mx-auto p-6">
+        <Card class="mb-6">
+            <template #content>
+                <div class="flex justify-between items-center mb-6">
+                    <h2 class="text-2xl font-bold text-gray-900 dark:text-gray-100 m-0">{{ isEditMode ? 'Edit Formula' : 'Create Formula' }}</h2>
                     <Button label="Back to Formulas" icon="pi pi-arrow-left" outlined @click="goBack" />
                 </div>
 
-                <div class="formgrid grid">
-                    <div class="field col-12 md:col-6">
-                        <label for="name" class="font-bold">Formula Name*</label>
-                        <InputText id="name" v-model="formula.name" :class="{ 'p-invalid': v$.name.$invalid && submitted }" class="w-full" />
-                        <small v-if="v$.name.$invalid && submitted" class="p-error">Formula name is required</small>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label for="name" class="block text-sm font-medium mb-2">Formula Name*</label>
+                        <InputText id="name" v-model="formula.name" :invalid="v$.name.$invalid && submitted" class="w-full" />
+                        <small v-if="v$.name.$invalid && submitted" class="text-red-500">Formula name is required</small>
                     </div>
 
-                    <div class="field col-12 md:col-6">
-                        <label for="final_product" class="font-bold">Final Product*</label>
-                        <!-- Dropdown for selecting final product, make thr dropdown searchable -->
-
+                    <div>
+                        <label for="final_product" class="block text-sm font-medium mb-2">Final Product*</label>
                         <Dropdown
                             id="final_product"
                             v-model="formula.final_product"
                             :options="products"
                             optionLabel="title"
-                            searchable
                             :filter="true"
                             :showClear="true"
-                            :class="{ 'p-invalid': v$.final_product.$invalid && submitted }"
+                            :invalid="v$.final_product.$invalid && submitted"
                             placeholder="Select a product"
                             class="w-full"
                         />
-                        <small v-if="v$.final_product.$invalid && submitted" class="p-error">Final product is required</small>
-                        <!-- Add Final Product if not in list -->
-                        <Button icon="pi pi-plus" class="p-button-rounded p-button-text p-button-sm mt-2" @click="openProductDialog" label="Add Product" />
+                        <small v-if="v$.final_product.$invalid && submitted" class="text-red-500">Final product is required</small>
+                        <Button icon="pi pi-plus" rounded text size="small" class="mt-2" @click="openProductDialog" label="Add Product" />
                     </div>
 
-                    <div class="field col-12 md:col-6">
-                        <label for="expected_output_quantity" class="font-bold">Expected Output Quantity*</label>
-                        <InputNumber id="expected_output_quantity" v-model="formula.expected_output_quantity" :class="{ 'p-invalid': v$.expected_output_quantity.$invalid && submitted }" class="w-full" />
-                        <small v-if="v$.expected_output_quantity.$invalid && submitted" class="p-error">Output quantity is required</small>
+                    <div>
+                        <label for="expected_output_quantity" class="block text-sm font-medium mb-2">Expected Output Quantity*</label>
+                        <InputNumber id="expected_output_quantity" v-model="formula.expected_output_quantity" :invalid="v$.expected_output_quantity.$invalid && submitted" class="w-full" />
+                        <small v-if="v$.expected_output_quantity.$invalid && submitted" class="text-red-500">Output quantity is required</small>
                     </div>
 
-                    <div class="field col-12 md:col-6">
-                        <label for="output_unit" class="font-bold">Output Unit*</label>
-                        <Dropdown id="output_unit" v-model="formula.output_unit" :options="units" optionLabel="title" :class="{ 'p-invalid': v$.output_unit.$invalid && submitted }" placeholder="Select unit" class="w-full" />
-                        <small v-if="v$.output_unit.$invalid && submitted" class="p-error">Output unit is required</small>
+                    <div>
+                        <label for="output_unit" class="block text-sm font-medium mb-2">Output Unit*</label>
+                        <Dropdown id="output_unit" v-model="formula.output_unit" :options="units" optionLabel="title" :invalid="v$.output_unit.$invalid && submitted" placeholder="Select unit" class="w-full" />
+                        <small v-if="v$.output_unit.$invalid && submitted" class="text-red-500">Output unit is required</small>
                     </div>
 
-                    <div class="field col-12">
-                        <label for="description" class="font-bold">Description</label>
+                    <div class="col-span-2">
+                        <label for="description" class="block text-sm font-medium mb-2">Description</label>
                         <Textarea id="description" v-model="formula.description" rows="3" class="w-full" />
                     </div>
                 </div>
 
-                <h5>Formula Ingredients</h5>
-                <div class="mb-3 flex justify-content-end">
+                <h3 class="text-lg font-bold text-gray-900 dark:text-gray-100 mt-6 mb-4">Formula Ingredients</h3>
+                <div class="mb-4 flex justify-end">
                     <Button label="Add Ingredient" icon="pi pi-plus" @click="openIngredientDialog" />
                 </div>
 
-                <DataTable :value="formula.ingredients" responsiveLayout="scroll" class="p-datatable-sm">
+                <DataTable :value="formula.ingredients" responsiveLayout="scroll" stripedRows showGridlines>
                     <Column field="raw_material.product.title" header="Raw Material">
                         <template #body="slotProps">
                             {{ slotProps.data.raw_material?.title || 'N/A' }}
@@ -334,69 +334,71 @@ onMounted(() => {
 
                     <Column header="Actions" style="width: 8rem">
                         <template #body="slotProps">
-                            <div class="flex">
-                                <Button icon="pi pi-pencil" class="p-button-rounded p-button-text p-button-sm mr-2" @click="editIngredient(slotProps.data, slotProps.index)" />
-                                <Button icon="pi pi-trash" class="p-button-rounded p-button-text p-button-danger p-button-sm" @click="removeIngredient(slotProps.index)" />
+                            <div class="flex gap-2">
+                                <Button icon="pi pi-pencil" rounded text severity="secondary" @click="editIngredient(slotProps.data, slotProps.index)" />
+                                <Button icon="pi pi-trash" rounded text severity="danger" @click="removeIngredient(slotProps.index)" />
                             </div>
                         </template>
                     </Column>
                 </DataTable>
 
-                <div class="flex justify-content-between mt-4">
-                    <div>
-                        <div class="text-lg font-bold mb-2">
+                <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mt-6">
+                    <div class="space-y-2">
+                        <div class="text-lg font-bold text-gray-900 dark:text-gray-100">
                             Total Raw Material Cost:
                             {{ formatCurrency(calculateTotalCost()) }}
                         </div>
-                        <div class="text-lg">
+                        <div class="text-gray-700 dark:text-gray-300">
                             Suggested Selling Price ({{ markupPercentage }}% markup):
                             {{ formatCurrency(calculateTotalCost() * (1 + markupPercentage / 100)) }}
                         </div>
                     </div>
-                    <div class="flex">
-                        <Button label="Cancel" icon="pi pi-times" outlined class="mr-2" @click="goBack" />
+                    <div class="flex gap-2">
+                        <Button label="Cancel" icon="pi pi-times" severity="secondary" outlined @click="goBack" />
                         <Button label="Save Formula" icon="pi pi-save" @click="saveFormula" :loading="saving" />
                     </div>
                 </div>
-            </div>
-        </div>
+            </template>
+        </Card>
 
         <!-- Ingredient Dialog -->
-        <Dialog v-model:visible="ingredientDialog.visible" :header="ingredientDialog.isEdit ? 'Edit Ingredient' : 'Add Ingredient'" modal style="width: 450px" :breakpoints="{ '960px': '75vw', '640px': '90vw' }">
-            <div class="formgrid grid">
-                <div class="field col-12">
-                    <label for="raw_material" class="font-bold">Raw Material*</label>
+        <Dialog v-model:visible="ingredientDialog.visible" :header="ingredientDialog.isEdit ? 'Edit Ingredient' : 'Add Ingredient'" modal class="w-full md:w-1/2 lg:w-1/3">
+            <div class="space-y-4">
+                <div>
+                    <label for="raw_material" class="block text-sm font-medium mb-2">Raw Material*</label>
                     <Dropdown id="raw_material" v-model="ingredientDialog.item.raw_material" :options="rawMaterials" optionLabel="title" placeholder="Select raw material" class="w-full" />
                 </div>
 
-                <div class="field col-12 md:col-6">
-                    <label for="quantity" class="font-bold">Quantity*</label>
-                    <InputNumber id="quantity" v-model="ingredientDialog.item.quantity" class="w-full" />
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label for="quantity" class="block text-sm font-medium mb-2">Quantity*</label>
+                        <InputNumber id="quantity" v-model="ingredientDialog.item.quantity" class="w-full" />
+                    </div>
+
+                    <div>
+                        <label for="unit" class="block text-sm font-medium mb-2">Unit*</label>
+                        <Dropdown id="unit" v-model="ingredientDialog.item.unit" :options="units" optionLabel="title" placeholder="Select unit" class="w-full" />
+                    </div>
                 </div>
 
-                <div class="field col-12 md:col-6">
-                    <label for="unit" class="font-bold">Unit*</label>
-                    <Dropdown id="unit" v-model="ingredientDialog.item.unit" :options="units" optionLabel="title" placeholder="Select unit" class="w-full" />
-                </div>
-
-                <div class="field col-12">
-                    <label for="notes" class="font-bold">Notes</label>
+                <div>
+                    <label for="notes" class="block text-sm font-medium mb-2">Notes</label>
                     <Textarea id="notes" v-model="ingredientDialog.item.notes" rows="2" class="w-full" />
                 </div>
             </div>
             <template #footer>
-                <Button label="Cancel" icon="pi pi-times" outlined @click="closeIngredientDialog" />
+                <Button label="Cancel" icon="pi pi-times" severity="secondary" outlined @click="closeIngredientDialog" />
                 <Button label="Save" icon="pi pi-check" @click="saveIngredient" />
             </template>
         </Dialog>
+
         <!-- New Product Dialog -->
         <Dialog
             v-model:visible="productDialog"
             :header="editMode ? 'Edit Product' : 'Add Product'"
             :modal="true"
             editMode="editMode"
-            :style="{ width: '70vw' }"
-            :breakpoints="{ '960px': '75vw', '640px': '90vw' }"
+            class="w-full md:w-3/4"
             :closeOnEscape="true"
             :maximizable="true"
             @hide="resetForm"
@@ -405,3 +407,13 @@ onMounted(() => {
         </Dialog>
     </div>
 </template>
+
+<style scoped>
+:deep(.p-datatable .p-datatable-thead > tr > th) {
+    @apply bg-gray-50 dark:bg-gray-800;
+}
+
+:deep(.p-datatable .p-datatable-tbody > tr) {
+    @apply hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors;
+}
+</style>

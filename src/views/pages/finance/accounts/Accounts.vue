@@ -1,12 +1,16 @@
 <script setup>
 import AccountForm from '@/components/finance/accounts/AccountForm.vue';
 import AccountDetail from '@/views/pages/finance/cashflow/AccountDetail.vue';
-import { useToast } from '@/composables/useToast';
+import { useToast } from 'primevue/usetoast';
 import { financeService } from '@/services/finance/financeService';
-import { formatCurrency, formatDate } from '@/utils/formatters';
+import { useGlobalCurrency } from '@/composables/useGlobalCurrency';
+import { formatDate } from '@/utils/formatters';
 import { onMounted, reactive, ref } from 'vue';
 
-const { showToast } = useToast();
+const { formatCurrencySync } = useGlobalCurrency();
+const formatCurrency = (amount, currency = 'KES') => formatCurrencySync(amount, currency).value;
+
+const toast = useToast();
 
 // State
 const loading = ref(false);
@@ -73,7 +77,12 @@ const loadAccounts = async () => {
         totalRecords.value = response.data.count || accounts.value.length;
     } catch (error) {
         console.error('Error loading accounts:', error);
-        showToast('error', 'Failed to load accounts');
+        toast.add({
+            severity: 'error',
+            summary: 'Error',
+            detail: 'Failed to load accounts',
+            life: 3000
+        });
     } finally {
         loading.value = false;
     }
@@ -117,7 +126,12 @@ const loadTransactions = async (accountId) => {
         transactions.value = response.data.results || response.data || [];
     } catch (error) {
         console.error('Error loading transactions:', error);
-        showToast('error', 'Failed to load transactions');
+        toast.add({
+            severity: 'error',
+            summary: 'Error',
+            detail: 'Failed to load transactions',
+            life: 3000
+        });
     } finally {
         transactionsLoading.value = false;
     }
@@ -135,11 +149,21 @@ const deleteAccount = async (account) => {
 
     try {
         await financeService.deletePaymentAccount(account.id);
-        showToast('success', 'Account deleted successfully');
+        toast.add({
+            severity: 'success',
+            summary: 'Success',
+            detail: 'Account deleted successfully',
+            life: 3000
+        });
         loadAccounts();
     } catch (error) {
         console.error('Error deleting account:', error);
-        showToast('error', 'Failed to delete account');
+        toast.add({
+            severity: 'error',
+            summary: 'Error',
+            detail: 'Failed to delete account',
+            life: 3000
+        });
     }
 };
 

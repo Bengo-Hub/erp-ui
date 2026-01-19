@@ -2,7 +2,8 @@
 import { ref, computed, onMounted, watch } from 'vue';
 import { ecommerceService } from '@/services/ecommerce/ecommerceService';
 import { useToast } from 'primevue/usetoast';
-import { formatCurrency, formatDate } from '@/utils/formatters';
+import { formatDate } from '@/utils/formatters';
+import { useGlobalCurrency } from '@/composables/useGlobalCurrency';
 
 const props = defineProps({
     cartId: {
@@ -30,6 +31,9 @@ const props = defineProps({
 const emit = defineEmits(['apply-coupon', 'remove-coupon', 'coupon-error', 'coupon-success']);
 
 const toast = useToast();
+const { formatCurrencySync } = useGlobalCurrency();
+const formatCurrency = (amount, currency = 'KES') => formatCurrencySync(amount, currency).value;
+
 const couponCodeInput = ref(props.appliedCouponCode || '');
 const loading = ref(false);
 const availableCoupons = ref([]);

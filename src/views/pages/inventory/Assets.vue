@@ -290,6 +290,10 @@ import AssetDialog from '@/components/inventory/AssetDialog.vue';
 import AssetMaintenanceDialog from '@/components/inventory/AssetMaintenanceDialog.vue';
 import AssetTransferDialog from '@/components/inventory/AssetTransferDialog.vue';
 import assetService from '@/services/assets/assetService';
+import { useGlobalCurrency } from '@/composables/useGlobalCurrency';
+
+const { formatCurrencySync } = useGlobalCurrency();
+const formatCurrency = (amount, currency = 'KES') => formatCurrencySync(amount, currency).value;
 
 // Composables
 const toast = useToast();

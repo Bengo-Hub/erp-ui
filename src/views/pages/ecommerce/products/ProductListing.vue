@@ -1,8 +1,8 @@
 <script setup>
 import { useToast } from '@/composables/useToast';
+import { useGlobalCurrency } from '@/composables/useGlobalCurrency';
 import { cartService } from '@/services/ecommerce/cartService';
 import { ecommerceService } from '@/services/ecommerce/ecommerceService';
-import { formatCurrency } from '@/utils/formatters';
 import { computed, onMounted, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 
@@ -11,7 +11,7 @@ import ProductCard from '@/components/ecommerce/ProductCard.vue';
 const route = useRoute();
 const router = useRouter();
 const { showToast } = useToast();
-//const { applyBusinessTheme } = useBusinessBranding();
+const { formatCurrencySync } = useGlobalCurrency();
 
 // Apply business theming
 onMounted(() => {
@@ -797,8 +797,8 @@ onMounted(() => {
                         <h4 class="font-medium mb-2">Price Range (KSh)</h4>
                         <Slider v-model="priceRange" range class="mt-4 mb-3" :min="0" :max="100000" />
                         <div class="flex justify-between">
-                            <span>{{ formatCurrency(priceRange[0]) }}</span>
-                            <span>{{ formatCurrency(priceRange[1]) }}</span>
+                            <span>{{ formatCurrencySync(priceRange[0]) }}</span>
+                            <span>{{ formatCurrencySync(priceRange[1]) }}</span>
                         </div>
                         <div class="flex mt-2 gap-2">
                             <InputNumber v-model="priceRange[0]" mode="currency" currency="KSh" locale="en-US" :min="0" :max="priceRange[1]" class="flex-1" />
@@ -941,8 +941,8 @@ onMounted(() => {
                     <!-- Price and Availability -->
                     <div class="flex items-center justify-between mb-4">
                         <div class="flex items-baseline gap-2">
-                            <span class="text-2xl font-bold text-primary">KSh {{ formatCurrency(selectedProduct.selling_price) }}</span>
-                            <span v-if="selectedProduct.buying_price" class="text-gray-400 text-sm line-through">KSh {{ formatCurrency(selectedProduct.buying_price) }}</span>
+                            <span class="text-2xl font-bold text-primary">{{ formatCurrencySync(selectedProduct.selling_price) }}</span>
+                            <span v-if="selectedProduct.buying_price" class="text-gray-400 text-sm line-through">{{ formatCurrencySync(selectedProduct.buying_price) }}</span>
                         </div>
                         <Tag :severity="selectedProduct.stock_level > 0 ? 'success' : 'danger'" :value="selectedProduct.stock_level > 0 ? 'In Stock' : 'Out of Stock'" />
                     </div>

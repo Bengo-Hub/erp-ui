@@ -1,7 +1,13 @@
 <script setup>
 import { computed, defineProps, defineEmits, onMounted } from 'vue';
 import { useToast } from 'primevue/usetoast';
-import { formatDate, formatCurrency } from '@/utils/formatters';
+import { formatDate } from '@/utils/formatters';
+import { useGlobalCurrency } from '@/composables/useGlobalCurrency';
+
+const { formatCurrencySync } = useGlobalCurrency();
+
+// Helper function for currency formatting
+const formatCurrency = (amount, currency = 'KES') => formatCurrencySync(amount, currency).value;
 
 const props = defineProps({
     requisition: {

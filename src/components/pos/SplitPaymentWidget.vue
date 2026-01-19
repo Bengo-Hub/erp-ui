@@ -1,5 +1,5 @@
 <script setup>
-import { formatCurrency } from '@/utils/formatters';
+import { useGlobalCurrency } from '@/composables/useGlobalCurrency';
 import { useToast } from 'primevue/usetoast';
 import { onMounted, ref } from 'vue';
 
@@ -13,6 +13,10 @@ const props = defineProps({
 const emit = defineEmits(['cancel', 'payment-complete']);
 
 const toast = useToast();
+const { formatCurrencySync } = useGlobalCurrency();
+
+// Helper method for currency formatting
+const formatPOSAmount = (amount) => formatCurrencySync(amount).value;
 const payments = ref([]);
 
 // Payment method options
@@ -116,8 +120,8 @@ onMounted(() => {
             <div class="flex justify-between items-center">
                 <h3 class="text-lg font-semibold">Split Payment</h3>
                 <div>
-                    <Tag severity="info" class="mr-2">Total Due: {{ formatCurrency(totalDue) }}</Tag>
-                    <Tag :severity="getRemainingAmount() === 0 ? 'success' : 'warning'"> Remaining: {{ formatCurrency(getRemainingAmount()) }} </Tag>
+                    <Tag severity="info" class="mr-2">Total Due: {{ formatPOSAmount(totalDue) }}</Tag>
+                    <Tag :severity="getRemainingAmount() === 0 ? 'success' : 'warning'"> Remaining: {{ formatPOSAmount(getRemainingAmount()) }} </Tag>
                 </div>
             </div>
         </div>

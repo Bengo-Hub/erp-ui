@@ -3,6 +3,7 @@ import { formatCurrency } from '@/components/hrm/payroll/payslipGenerator';
 import { posService } from '@/services/ecommerce/posService';
 import { coreService } from '@/services/shared/coreService';
 import Receipt from '@/views/pages/ecommerce/pos/printReceipt.vue';
+import { useGlobalCurrency } from '@/composables/useGlobalCurrency';
 import { useToast } from 'primevue/usetoast';
 import { computed, defineEmits, defineProps, onMounted, ref } from 'vue';
 
@@ -15,6 +16,10 @@ const props = defineProps({
 
 const emit = defineEmits(['cancel', 'printReceipt', 'update-array']);
 const toast = useToast();
+const { formatCurrencySync } = useGlobalCurrency();
+
+// Helper method for currency formatting
+const formatPOSAmount = (amount) => formatCurrencySync(amount).value;
 
 // Data
 const receiptHeaders = ref([
@@ -215,7 +220,7 @@ onMounted(() => {
                     <div class="bg-green-50 p-5 rounded-lg shadow-sm border border-green-200 transition-all hover:shadow-md">
                         <h4 class="mb-2 font-semibold text-gray-700">
                             <i class="pi pi-money-bill mr-2 text-green-500"></i>
-                            Total Amount: <span class="font-bold text-green-700 text-lg">{{ formatCurrency(sale.return_amount_due) }}</span>
+                            Total Amount: <span class="font-bold text-green-700 text-lg">{{ formatPOSAmount(sale.return_amount_due) }}</span>
                         </h4>
                         <h4 class="font-semibold text-gray-700">
                             <i class="pi pi-info-circle mr-2 text-blue-500"></i>
@@ -242,7 +247,7 @@ onMounted(() => {
                             <div class="flex items-center text-blue-800">
                                 <i class="pi pi-info-circle mr-2 text-lg"></i>
                                 <p>
-                                    The customer is eligible for a refund of <span class="font-bold text-green-700">{{ formatCurrency(sale.return_amount_due) }}</span> for this return.
+                                    The customer is eligible for a refund of <span class="font-bold text-green-700">{{ formatPOSAmount(sale.return_amount_due) }}</span> for this return.
                                 </p>
                             </div>
                         </div>

@@ -6,9 +6,12 @@ import { useEmployeeMapping } from '@/composables/useEmployeeMapping';
 import { useHrmFilters } from '@/composables/useHrmFilters';
 import { usePermissions } from '@/composables/usePermissions';
 import { useToast } from '@/composables/useToast';
+import { useGlobalCurrency } from '@/composables/useGlobalCurrency';
 import { employeeService } from '@/services/hrm/employeeService';
 import { payrollService } from '@/services/hrm/payrollService';
-import { formatCurrency } from '@/utils/formatters';
+
+const { formatCurrencySync } = useGlobalCurrency();
+const formatCurrency = (amount, currency = 'KES') => formatCurrencySync(amount, currency).value;
 import { FilterMatchMode } from '@primevue/core/api';
 import moment from 'moment';
 import { computed, onMounted, ref } from 'vue';

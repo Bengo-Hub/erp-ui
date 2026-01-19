@@ -8,11 +8,14 @@ import { crmService } from '@/services/crm/crmService';
 import { financeService } from '@/services/finance/financeService';
 import ItemsTable from '@/components/shared/ItemsTable.vue';
 import { ecommerceService } from '@/services/ecommerce/ecommerceService';
-import { formatCurrency } from '@/utils/formatters';
+import { useGlobalCurrency } from '@/composables/useGlobalCurrency';
 
 const route = useRoute();
 const router = useRouter();
 const { showToast } = useToast();
+
+const { formatCurrencySync } = useGlobalCurrency();
+const formatInvoiceAmount = (amount, currency = 'KES') => formatCurrencySync(amount, currency).value;
 
 const loading = ref(false);
 const saving = ref(false);
@@ -423,11 +426,11 @@ onMounted(async () => {
                     <div class="w-full md:w-96 space-y-2 p-4 bg-surface-50 dark:bg-surface-800 rounded-lg">
                         <div class="flex justify-between">
                             <span>Subtotal:</span>
-                            <span class="font-semibold">{{ formatCurrency(form.subtotal) }}</span>
+                            <span class="font-semibold">{{ formatInvoiceAmount(form.subtotal) }}</span>
                         </div>
                         <div class="flex justify-between">
                             <span>Tax:</span>
-                            <span class="font-semibold">{{ formatCurrency(form.tax_amount) }}</span>
+                            <span class="font-semibold">{{ formatInvoiceAmount(form.tax_amount) }}</span>
                         </div>
                         <div class="flex items-center gap-2 flex-wrap">
                             <Dropdown
@@ -463,7 +466,7 @@ onMounted(async () => {
                         <Divider />
                         <div class="flex justify-between text-lg">
                             <span class="font-bold">Debit Total:</span>
-                            <span class="font-bold text-green-600">+{{ formatCurrency(form.total) }}</span>
+                            <span class="font-bold text-green-600">+{{ formatInvoiceAmount(form.total) }}</span>
                         </div>
                     </div>
                 </div>

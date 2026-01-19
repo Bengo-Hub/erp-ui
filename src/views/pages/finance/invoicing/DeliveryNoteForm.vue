@@ -7,11 +7,15 @@ import { invoiceService } from '@/services/finance/invoiceService';
 import { crmService } from '@/services/crm/crmService';
 import ItemsTable from '@/components/shared/ItemsTable.vue';
 import { ecommerceService } from '@/services/ecommerce/ecommerceService';
-import { formatCurrency, formatDate } from '@/utils/formatters';
+import { formatDate } from '@/utils/formatters';
+import { useGlobalCurrency } from '@/composables/useGlobalCurrency';
 
 const route = useRoute();
 const router = useRouter();
 const { showToast } = useToast();
+
+const { formatCurrencySync } = useGlobalCurrency();
+const formatCurrency = (amount, currency = 'KES') => formatCurrencySync(amount, currency).value;
 
 const loading = ref(false);
 const saving = ref(false);

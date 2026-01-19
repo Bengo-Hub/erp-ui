@@ -1,34 +1,45 @@
-<script setup>
+<script setup lang="ts">
 import { useToast } from '@/composables/useToast';
+import { useGlobalCurrency } from '@/composables/useGlobalCurrency';
 import { financeService } from '@/services/finance/financeService';
 import AccountForm from '@/components/finance/accounts/AccountForm.vue';
 import { getBusinessDetails } from '@/utils/businessBranding';
-import { formatCurrency } from '@/utils/formatters';
 import { computed, onMounted, reactive, ref, watch } from 'vue';
 import axios from '@/utils/axiosConfig';
+import type { Voucher, VoucherItem } from '@/types/finance/vouchers';
+import type { PaymentAccount } from '@/types/finance/accounts';
 
-const props = defineProps({
-    visible: {
-        type: Boolean,
-        default: false
-    },
-    voucher: {
-        type: Object,
-        default: null
-    }
+const { formatCurrencySync } = useGlobalCurrency();
+
+// Helper function for currency formatting
+const formatCurrency = (amount, currency = 'KES') => formatCurrencySync(amount, currency).value;
+
+interface Props {
+    visible?: boolean;
+    voucher?: Voucher | null;
+}
+
+const props = withDefaults(defineProps<Props>(), {
+    visible: false,
+    voucher: null
 });
 
-const emit = defineEmits(['update:visible', 'saved']);
+interface Emits {
+    (e: 'update:visible', value: boolean): void;
+    (e: 'saved'): void;
+}
+
+const emit = defineEmits<Emits>();
 
 const { showToast } = useToast();
 
-const loading = ref(false);
-const accounts = ref([]);
-const businessDetails = ref(null);
-const activeTab = ref(0);
-const showAccountDialog = ref(false);
-const accountEditMode = ref(false);
-const accountEditData = ref(null);
+const loading = ref<boolean>(false);
+const accounts = ref<PaymentAccount[]>([]);
+const businessDetails = ref<any>(null);
+const activeTab = ref<number>(0);
+const showAccountDialog = ref<boolean>(false);
+const accountEditMode = ref<boolean>(false);
+const accountEditData = ref<PaymentAccount | null>(null);
 
 const voucherTypes = [
     { label: 'Payment Voucher', value: 'payment', icon: 'pi pi-credit-card', severity: 'success' },
@@ -79,7 +90,7 @@ const loadBusinessDetails = () => {
 };
 
 // Load accounts for voucher items
-const loadAccounts = async () => {
+const loadAccounts = async (): Promise<void> => {
     try {
         const response = await axios.get('/finance/accounts/paymentaccounts/');
         accounts.value = response.data?.results || response.data || [];
@@ -90,19 +101,19 @@ const loadAccounts = async () => {
 };
 
 // Account management methods
-const handleAddAccount = () => {
+const handleAddAccount = (): void => {
     accountEditMode.value = false;
     accountEditData.value = null;
     showAccountDialog.value = true;
 };
 
-const handleEditAccount = (account) => {
+const handleEditAccount = (account: PaymentAccount): void => {
     accountEditMode.value = true;
     accountEditData.value = account;
     showAccountDialog.value = true;
 };
 
-const handleAccountSaved = async (savedAccount) => {
+const handleAccountSaved = async (savedAccount: PaymentAccount): Promise<void> => {
     showAccountDialog.value = false;
     await loadAccounts();
 };
@@ -152,7 +163,7 @@ const initForm = () => {
 };
 
 // Add voucher item
-const addVoucherItem = () => {
+const addVoucherItem = (): void => {
     form.items.push({
         account: null,
         debit: 0,
@@ -162,29 +173,29 @@ const addVoucherItem = () => {
 };
 
 // Remove voucher item
-const removeVoucherItem = (index) => {
+const removeVoucherItem = (index: number): void => {
     form.items.splice(index, 1);
 };
 
 // Calculate total debits
-const calculateTotalDebits = () => {
+const calculateTotalDebits = (): number => {
     return form.items.reduce((sum, item) => sum + (item.debit || 0), 0);
 };
 
 // Calculate total credits
-const calculateTotalCredits = () => {
+const calculateTotalCredits = (): number => {
     return form.items.reduce((sum, item) => sum + (item.credit || 0), 0);
 };
 
 // Check if voucher is balanced
-const isVoucherBalanced = () => {
+const isVoucherBalanced = (): boolean => {
     const totalDebit = calculateTotalDebits();
     const totalCredit = calculateTotalCredits();
     return Math.abs(totalDebit - totalCredit) < 0.01;
 };
 
 // Auto-balance voucher items
-const autoBalanceVoucher = () => {
+const autoBalanceVoucher = (): void => {
     if (form.items.length === 0) return;
     
     const totalDebit = calculateTotalDebits();
@@ -206,7 +217,7 @@ const autoBalanceVoucher = () => {
 };
 
 // Handle form submission
-const handleSubmit = async () => {
+const handleSubmit = async (): Promise<void> => {
     if (form.items.length === 0) {
         showToast('error', 'Please add at least one voucher item');
         return;
@@ -238,7 +249,7 @@ const handleSubmit = async () => {
 };
 
 // Preview voucher
-const previewVoucher = () => {
+const previewVoucher = (): void => {
     showToast('info', 'Voucher preview feature coming soon');
 };
 

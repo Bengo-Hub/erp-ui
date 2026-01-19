@@ -34,7 +34,7 @@
                 <Card class="shadow-sm">
                     <template #content>
                         <div class="text-center">
-                            <div class="text-3xl font-bold text-orange-600 mb-2">{{ formatCurrency(summary.totalWithholding) }}</div>
+                            <div class="text-3xl font-bold text-orange-600 mb-2">{{ formatReportAmount(summary.totalWithholding) }}</div>
                             <div class="text-sm text-gray-600">Total Withholding Tax</div>
                         </div>
                     </template>
@@ -42,7 +42,7 @@
                 <Card class="shadow-sm">
                     <template #content>
                         <div class="text-center">
-                            <div class="text-3xl font-bold text-blue-600 mb-2">{{ formatCurrency(summary.netAmount) }}</div>
+                            <div class="text-3xl font-bold text-blue-600 mb-2">{{ formatReportAmount(summary.netAmount) }}</div>
                             <div class="text-sm text-gray-600">Net Amount Paid</div>
                         </div>
                     </template>
@@ -62,16 +62,16 @@
                 <Column field="payee_name" header="Payee Name" :sortable="true" />
                 <Column field="payment_type" header="Payment Type" :sortable="true" />
                 <Column field="gross_amount" header="Gross Amount" :sortable="true">
-                    <template #body="{ data }">{{ formatCurrency(data.gross_amount) }}</template>
+                    <template #body="{ data }">{{ formatReportAmount(data.gross_amount) }}</template>
                 </Column>
                 <Column field="withholding_rate" header="Rate %" :sortable="true">
                     <template #body="{ data }">{{ data.withholding_rate }}%</template>
                 </Column>
                 <Column field="withholding_tax" header="Withholding Tax" :sortable="true">
-                    <template #body="{ data }">{{ formatCurrency(data.withholding_tax) }}</template>
+                    <template #body="{ data }">{{ formatReportAmount(data.withholding_tax) }}</template>
                 </Column>
                 <Column field="net_payment" header="Net Payment" :sortable="true">
-                    <template #body="{ data }">{{ formatCurrency(data.net_payment) }}</template>
+                    <template #body="{ data }">{{ formatReportAmount(data.net_payment) }}</template>
                 </Column>
             </ReportDataTable>
         </template>
@@ -82,11 +82,15 @@
 import { ReportLayout, ReportFilters, ReportDataTable } from '@/components/hrm/reports';
 import { useToast } from '@/composables/useToast';
 import { hrmReportsService } from '@/services/reports/reportsService';
-import { formatCurrency } from '@/utils/formatters';
+import { useGlobalCurrency } from '@/composables/useGlobalCurrency';
 import { buildReportQueryParams, getDefaultReportFilters, validateReportFilters } from '@/utils/reportUtils';
 import { computed, ref } from 'vue';
 
 const { showToast } = useToast();
+const { formatCurrencySync } = useGlobalCurrency();
+
+// Helper function for formatting amounts in reports
+const formatReportAmount = (amount) => formatCurrencySync(amount).value;
 
 const loading = ref(false);
 const reportData = ref([]);

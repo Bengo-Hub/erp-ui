@@ -1,12 +1,12 @@
 <script setup>
 import AdvancePay from '@/components/hrm/payroll/AdvancePay.vue';
 import { useEmployeeFilters } from '@/composables/useEmployeeFilters';
+import { useGlobalCurrency } from '@/composables/useGlobalCurrency';
 import { useHrmFilters } from '@/composables/useHrmFilters';
 import { usePermissions } from '@/composables/usePermissions';
 import { useToast } from '@/composables/useToast';
 import { employeeService } from '@/services/hrm/employeeService';
 import { payrollService } from '@/services/hrm/payrollService';
-import { formatCurrency } from '@/utils/formatters';
 import moment from 'moment';
 import { computed, onMounted, ref } from 'vue';
 import { useStore } from 'vuex';
@@ -35,7 +35,11 @@ const { departments, regions, projects, loadFilters } = useHrmFilters();
 const { buildEmployeeFilterParams } = useEmployeeFilters();
 const { showToast } = useToast();
 const { hasAnyPermission } = usePermissions();
+const { formatCurrencySync } = useGlobalCurrency();
 const store = useStore();
+
+// Currency formatting helper
+const formatAdvanceAmount = (amount, currency = 'KES') => formatCurrencySync(amount, currency).value;
 
 // Current user
 const currentUser = computed(() => store.state.auth.user);
@@ -93,9 +97,9 @@ const fetchAdvances = async () => {
             data: {
                 monthYear,
                 totalAdvances: monthAdvances.length,
-                totalIssued: formatCurrency(monthAdvances.reduce((sum, adv) => sum + Number(adv.repay_option.amount), 0)),
-                totalRepaid: formatCurrency(monthAdvances.reduce((sum, adv) => sum + Number(adv.amount_repaid), 0)),
-                totalbalance: formatCurrency(monthAdvances.reduce((sum, adv) => sum + (Number(adv.repay_option.amount) - Number(adv.amount_repaid)), 0))
+                totalIssued: formatAdvanceAmount(monthAdvances.reduce((sum, adv) => sum + Number(adv.repay_option.amount), 0)),
+                totalRepaid: formatAdvanceAmount(monthAdvances.reduce((sum, adv) => sum + Number(adv.amount_repaid), 0)),
+                totalbalance: formatAdvanceAmount(monthAdvances.reduce((sum, adv) => sum + (Number(adv.repay_option.amount) - Number(adv.amount_repaid)), 0))
             },
             children: monthAdvances.map((advance) => ({
                 key: `adv_${advance.id}`,
@@ -105,9 +109,9 @@ const fetchAdvances = async () => {
                     name: advance.employee.name,
                     issue_date: moment(advance.issue_date).format('DD/MM/YYYY'),
                     next_payment_date: moment(advance.next_payment_date).format('DD/MM/YYYY'),
-                    amount_issued: formatCurrency(advance.repay_option.amount),
-                    amount_repaid: formatCurrency(advance.amount_repaid),
-                    balance: formatCurrency(advance.repay_option.amount - advance.amount_repaid)
+                    amount_issued: formatAdvanceAmount(advance.repay_option.amount),
+                    amount_repaid: formatAdvanceAmount(advance.amount_repaid),
+                    balance: formatAdvanceAmount(advance.repay_option.amount - advance.amount_repaid)
                 }
             }))
         }));

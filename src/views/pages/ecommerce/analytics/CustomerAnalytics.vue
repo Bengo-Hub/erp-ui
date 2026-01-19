@@ -1,11 +1,12 @@
 <script setup>
 import { useToast } from '@/composables/useToast';
+import { useGlobalCurrency } from '@/composables/useGlobalCurrency';
 import { ref, onMounted, computed } from 'vue';
 import { useRouter } from 'vue-router';
-import { formatCurrency } from '@/utils/formatters';
 
 const { showToast } = useToast();
 const router = useRouter();
+const { formatCurrencySync } = useGlobalCurrency();
 
 // Data states
 const loading = ref(false);
@@ -265,7 +266,7 @@ onMounted(() => {
                             <i class="pi pi-shopping-cart text-xl"></i>
                         </div>
                         <div class="stat-details">
-                            <h3 class="stat-value">{{ formatCurrency(customerStats.averageOrderValue) }}</h3>
+                            <h3 class="stat-value">{{ formatCurrencySync(customerStats.averageOrderValue) }}</h3>
                             <p class="stat-label">Average Order Value</p>
                             <span class="stat-change positive">+12% vs last month</span>
                         </div>
@@ -280,7 +281,7 @@ onMounted(() => {
                             <i class="pi pi-dollar text-xl"></i>
                         </div>
                         <div class="stat-details">
-                            <h3 class="stat-value">{{ formatCurrency(customerStats.customerLifetimeValue) }}</h3>
+                            <h3 class="stat-value">{{ formatCurrencySync(customerStats.customerLifetimeValue) }}</h3>
                             <p class="stat-label">Customer Lifetime Value</p>
                             <span class="stat-change positive">+8% vs last month</span>
                         </div>
@@ -344,7 +345,7 @@ onMounted(() => {
                         </Column>
                         <Column field="totalSpent" header="Total Spent">
                             <template #body="{ data }">
-                                {{ formatCurrency(data.totalSpent) }}
+                                {{ formatCurrencySync(data.totalSpent) }}
                             </template>
                         </Column>
                         <Column field="orders" header="Orders" />
@@ -388,7 +389,7 @@ onMounted(() => {
                         </Column>
                         <Column field="avgOrderValue" header="Avg Order Value">
                             <template #body="{ data }">
-                                {{ formatCurrency(data.avgOrderValue) }}
+                                {{ formatCurrencySync(data.avgOrderValue) }}
                             </template>
                         </Column>
                     </DataTable>

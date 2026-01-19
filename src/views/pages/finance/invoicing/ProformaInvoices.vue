@@ -5,13 +5,17 @@ import { useDocumentFilters } from '@/composables/finance/useDocumentFilters';
 import { usePermissions } from '@/composables/usePermissions';
 import { useToast } from '@/composables/useToast';
 import { proformaInvoiceService } from '@/services/finance/billingDocumentsService';
-import { formatCurrency, formatDate } from '@/utils/formatters';
+import { formatDate } from '@/utils/formatters';
+import { useGlobalCurrency } from '@/composables/useGlobalCurrency';
 import { computed, onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
 
 const router = useRouter();
 const { showToast } = useToast();
 const { hasPermission } = usePermissions();
+const { formatCurrencySync } = useGlobalCurrency();
+
+const formatCurrency = (amount, currency = 'KES') => formatCurrencySync(amount, currency).value;
 
 // Use shared filter composable
 const { filters, currentPage, perPage, totalRecords, onPage, onFilter, getFilterParams } = useDocumentFilters();
@@ -25,17 +29,6 @@ const selectedProformaInvoices = ref([]);
 const canCreate = computed(() => hasPermission('add_proformainvoice'));
 const canEdit = computed(() => hasPermission('change_proformainvoice'));
 const canDelete = computed(() => hasPermission('delete_proformainvoice'));
-
-// Status options for filtering
-const statusOptions = [
-    { label: 'All', value: '' },
-    { label: 'Draft', value: 'draft' },
-    { label: 'Sent', value: 'sent' },
-    { label: 'Accepted', value: 'accepted' },
-    { label: 'Converted', value: 'converted' },
-    { label: 'Expired', value: 'expired' },
-    { label: 'Cancelled', value: 'cancelled' }
-];
 
 // Methods
 const fetchProformaInvoices = async () => {
@@ -164,6 +157,17 @@ const getExpiryStatus = (proforma) => {
     if (proforma.days_until_expiry <= 7) return { label: `${proforma.days_until_expiry} days left`, class: 'text-orange-600' };
     return { label: formatDate(proforma.valid_until), class: 'text-surface-600' };
 };
+
+// Status options for filtering
+const statusOptions = [
+    { label: 'All', value: '' },
+    { label: 'Draft', value: 'draft' },
+    { label: 'Sent', value: 'sent' },
+    { label: 'Accepted', value: 'accepted' },
+    { label: 'Converted', value: 'converted' },
+    { label: 'Expired', value: 'expired' },
+    { label: 'Cancelled', value: 'cancelled' }
+];
 
 // Lifecycle
 onMounted(() => {

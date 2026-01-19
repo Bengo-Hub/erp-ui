@@ -2,7 +2,12 @@
 import { payrollService } from '@/services/hrm/payrollService';
 import { useToast } from 'primevue/usetoast';
 import { computed, onMounted, ref, watch } from 'vue';
-import { formatCurrency } from './payslipGenerator';
+import { useGlobalCurrency } from '@/composables/useGlobalCurrency';
+
+const { formatCurrencySync } = useGlobalCurrency();
+
+// Helper function for currency formatting
+const formatDamageAmount = (amount, currency = 'KES') => formatCurrencySync(amount, currency).value;
 
 const toast = useToast();
 const props = defineProps({
@@ -290,7 +295,7 @@ function closeModal() {
                     <ul class="space-y-2">
                         <li v-for="(installment, index) in installmentDetails" :key="index" class="flex justify-between items-center p-3 bg-gray-50 rounded">
                             <span>Installment {{ index + 1 }} (Due {{ installment.dueDate }})</span>
-                            <span class="font-medium">KES {{ formatCurrency(installment.amount) }}</span>
+                            <span class="font-medium">{{ formatDamageAmount(installment.amount) }}</span>
                         </li>
                     </ul>
                 </div>
