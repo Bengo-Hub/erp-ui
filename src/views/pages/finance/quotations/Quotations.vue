@@ -5,12 +5,14 @@ import { usePermissions } from '@/composables/usePermissions';
 import { useToast } from '@/composables/useToast';
 import { quotationService } from '@/services/finance/quotationService';
 import { formatCurrency, formatDate } from '@/utils/formatters';
+import { useGlobalCurrency } from '@/composables/useGlobalCurrency';
 import { computed, onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
 
 const router = useRouter();
 const { showToast } = useToast();
 const { hasPermission } = usePermissions();
+const { formatCurrencySync } = useGlobalCurrency();
 
 // Data
 const quotations = ref([]);
@@ -48,6 +50,14 @@ const conversionData = ref({
     invoice_date: new Date(),
     custom_message: ''
 });
+
+// Helper for formatting currency in data tables
+const formatQuotationAmount = (amount, currency = 'KES') => {
+    return formatCurrencySync(amount, currency).value;
+};
+
+// Reactive formatted currency values for summary
+const formattedTotalValue = formatCurrencySync(computed(() => summary.value.total_value || 0));
 
 // Options
 const statusOptions = [
@@ -322,7 +332,7 @@ onMounted(() => {
                     <template #content>
                         <div class="text-center">
                             <p class="text-sm text-surface-600 dark:text-surface-400">Total Value</p>
-                            <p class="text-2xl font-bold text-surface-900 dark:text-surface-0 mt-2">{{ formatCurrency(summary.total_value) }}</p>
+                            <p class="text-2xl font-bold text-surface-900 dark:text-surface-0 mt-2">{{ formattedTotalValue }}</p>
                         </div>
                     </template>
                 </Card>
@@ -462,7 +472,7 @@ onMounted(() => {
                     <Column field="total" header="Amount" sortable>
                         <template #body="{ data }">
                             <div class="text-right font-semibold">
-                                {{ formatCurrency(data.total) }}
+                                {{ formatQuotationAmount(data.total, data.currency) }}
                             </div>
                         </template>
                     </Column>

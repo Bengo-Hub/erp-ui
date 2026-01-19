@@ -7,7 +7,8 @@ import { dashboardService } from '@/services/shared/dashboardService';
 import { PERIOD_OPTIONS } from '@/utils/constants';
 import Chart from 'primevue/chart';
 import { formatCurrency, safeNumber } from '@/utils/formatters';
-import { onMounted, ref, watch } from 'vue';
+import { useGlobalCurrency } from '@/composables/useGlobalCurrency';
+import { computed, onMounted, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
 
 const router = useRouter();
@@ -15,6 +16,7 @@ const { showToast } = useToast();
 const { currencyChartOptions, barChartOptions } = useChartOptions();
 const { state, executeDataFetch } = useDashboardState();
 const { hasPermission } = usePermissions();
+const { formatCurrencySync } = useGlobalCurrency();
 
 const loading = ref(false);
 const period = ref('month');
@@ -39,6 +41,11 @@ const paymentMethodsChartData = ref(null);
 const salesByTimeChartData = ref(null);
 const topProductsChartData = ref(null);
 const topStaffChartData = ref(null);
+
+// Reactive formatted currency values
+const formattedTotalSales = formatCurrencySync(computed(() => safeNumber(dashboardData.value.total_sales, 0)));
+const formattedAvgTransaction = formatCurrencySync(computed(() => safeNumber(dashboardData.value.average_transaction_value, 0)));
+const formattedDiscount = formatCurrencySync(computed(() => safeNumber(dashboardData.value.discount_given, 0)));
 
 // Load dashboard data
 const loadDashboardData = async () => {
@@ -177,7 +184,7 @@ onMounted(() => {
                     </template>
                     <template #content>
                         <div class="text-3xl font-bold">
-                            {{ formatCurrency(safeNumber(dashboardData.total_sales, 0)) }}
+                            {{ formattedTotalSales }}
                         </div>
                     </template>
                 </Card>
@@ -205,7 +212,7 @@ onMounted(() => {
                     </template>
                     <template #content>
                         <div class="text-3xl font-bold">
-                            {{ formatCurrency(safeNumber(dashboardData.average_transaction_value, 0)) }}
+                            {{ formattedAvgTransaction }}
                         </div>
                     </template>
                 </Card>
@@ -219,7 +226,7 @@ onMounted(() => {
                     </template>
                     <template #content>
                         <div class="text-3xl font-bold">
-                            {{ formatCurrency(safeNumber(dashboardData.discount_given, 0)) }}
+                            {{ formattedDiscount }}
                         </div>
                     </template>
                 </Card>

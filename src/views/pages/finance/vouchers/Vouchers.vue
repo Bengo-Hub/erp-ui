@@ -2,12 +2,17 @@
 import VoucherForm from '@/components/finance/vouchers/VoucherForm.vue';
 import { useToast } from '@/composables/useToast';
 import { useApprovalPermissions } from '@/composables/useApprovalPermissions';
+import { useGlobalCurrency } from '@/composables/useGlobalCurrency';
 import { financeService } from '@/services/finance/financeService';
-import { formatCurrency, formatDate } from '@/utils/formatters';
+import { formatDate } from '@/utils/formatters';
 import { onMounted, reactive, ref } from 'vue';
 
 const { showToast } = useToast();
 const { isDesignatedApprover } = useApprovalPermissions();
+const { formatCurrencySync } = useGlobalCurrency();
+
+// Helper to format voucher amounts
+const formatVoucherAmount = (amount, currency = 'KES') => formatCurrencySync(amount, currency).value;
 
 // Helper to check if current user can approve a voucher
 const canApproveVoucher = (voucher) => {
@@ -250,7 +255,7 @@ onMounted(() => {
 
                     <Column field="amount" header="Amount" sortable>
                         <template #body="{ data }">
-                            <span class="font-medium">{{ formatCurrency(data.amount) }}</span>
+                            <span class="font-medium">{{ formatVoucherAmount(data.amount, data.currency) }}</span>
                         </template>
                     </Column>
 
@@ -309,7 +314,7 @@ onMounted(() => {
                     </div>
                     <div>
                         <label class="block text-sm font-medium text-gray-700">Amount</label>
-                        <p class="text-lg font-bold">{{ formatCurrency(selectedVoucher.amount) }}</p>
+                        <p class="text-lg font-bold">{{ formatVoucherAmount(selectedVoucher.amount, selectedVoucher.currency) }}</p>
                     </div>
                     <div>
                         <label class="block text-sm font-medium text-gray-700">Description</label>
@@ -328,12 +333,12 @@ onMounted(() => {
                         </Column>
                         <Column field="debit" header="Debit">
                             <template #body="{ data }">
-                                <span class="text-red-600 font-medium">{{ formatCurrency(data.debit) }}</span>
+                                <span class="text-red-600 font-medium">{{ formatVoucherAmount(data.debit, selectedVoucher.currency) }}</span>
                             </template>
                         </Column>
                         <Column field="credit" header="Credit">
                             <template #body="{ data }">
-                                <span class="text-green-600 font-medium">{{ formatCurrency(data.credit) }}</span>
+                                <span class="text-green-600 font-medium">{{ formatVoucherAmount(data.credit, selectedVoucher.currency) }}</span>
                             </template>
                         </Column>
                         <Column field="description" header="Description">
@@ -349,16 +354,16 @@ onMounted(() => {
                     <div class="w-64 space-y-2">
                         <div class="flex justify-between">
                             <span class="font-medium">Total Debits:</span>
-                            <span class="text-red-600 font-bold">{{ formatCurrency(calculateTotalDebits()) }}</span>
+                            <span class="text-red-600 font-bold">{{ formatVoucherAmount(calculateTotalDebits(), selectedVoucher.currency) }}</span>
                         </div>
                         <div class="flex justify-between">
                             <span class="font-medium">Total Credits:</span>
-                            <span class="text-green-600 font-bold">{{ formatCurrency(calculateTotalCredits()) }}</span>
+                            <span class="text-green-600 font-bold">{{ formatVoucherAmount(calculateTotalCredits(), selectedVoucher.currency) }}</span>
                         </div>
                         <div class="flex justify-between text-lg font-bold border-t pt-2">
                             <span>Balance:</span>
                             <span :class="calculateBalance() === 0 ? 'text-green-600' : 'text-red-600'">
-                                {{ formatCurrency(calculateBalance()) }}
+                                {{ formatVoucherAmount(calculateBalance(), selectedVoucher.currency) }}
                             </span>
                         </div>
                     </div>

@@ -18,6 +18,7 @@ import { coreService } from '@/services/shared/coreService';
 import { financeService } from '@/services/finance/financeService';
 import { systemConfigService } from '@/services/shared/systemConfigService';
 import { formatCurrency } from '@/utils/formatters';
+import { useGlobalCurrency } from '@/composables/useGlobalCurrency';
 import { useCurrency } from '@/composables/useCurrency';
 import { useVuelidate } from '@vuelidate/core';
 import { minLength, required } from '@vuelidate/validators';
@@ -28,6 +29,7 @@ const router = useRouter();
 const route = useRoute();
 const { showToast } = useToast();
 const { initialize: initCurrencies, convertBillingItems, getExchangeRate, formatAmount } = useCurrency();
+const { formatCurrencySync } = useGlobalCurrency();
 
 // Currency conversion state
 const isConverting = ref(false);
@@ -229,6 +231,12 @@ const grandTotal = computed(() => {
     const tax = Number(form.tax_amount) || 0;
     return Math.max(0, subtotal - discountAmt + shipping + tax);
 });
+
+// Reactive formatted currency values
+const formattedSubtotal = formatCurrencySync(computed(() => form.subtotal));
+const formattedTaxAmount = formatCurrencySync(computed(() => form.tax_amount));
+const formattedDiscount = formatCurrencySync(computed(() => form.discount_amount));
+const formattedGrandTotal = formatCurrencySync(grandTotal);
 
 const showCustomValidity = computed(() => form.validity_period === 'custom');
 
@@ -1004,12 +1012,12 @@ const loadQuotation = async (id) => {
                                     <div class="space-y-3">
                                         <div class="flex justify-between">
                                             <span class="text-surface-700 dark:text-surface-300">Subtotal:</span>
-                                            <span class="font-semibold">{{ formatCurrency(form.subtotal) }}</span>
+                                            <span class="font-semibold">{{ formattedSubtotal }}</span>
                                         </div>
                                         
                                         <div class="flex justify-between">
                                             <span class="text-surface-700 dark:text-surface-300">Tax:</span>
-                                            <span class="font-semibold">{{ formatCurrency(form.tax_amount) }}</span>
+                                            <span class="font-semibold">{{ formattedTaxAmount }}</span>
                                         </div>
 
                                         <div class="flex items-center gap-2">
@@ -1044,7 +1052,7 @@ const loadQuotation = async (id) => {
                                                 </div>
                                             </div>
                                             <div class="flex justify-end">
-                                                <span class="text-sm text-red-600">-{{ formatCurrency(form.discount_amount) }}</span>
+                                                <span class="text-sm text-red-600">-{{ formattedDiscount }}</span>
                                             </div>
                                         </div>
                                         
@@ -1064,7 +1072,7 @@ const loadQuotation = async (id) => {
                                         
                                         <div class="flex justify-between items-center">
                                             <span class="text-xl font-bold text-surface-900 dark:text-surface-0">Total:</span>
-                                            <span class="text-2xl font-bold text-primary">{{ formatCurrency(grandTotal) }}</span>
+                                            <span class="text-2xl font-bold text-primary">{{ formattedGrandTotal }}</span>
                                         </div>
                                     </div>
                                 </template>

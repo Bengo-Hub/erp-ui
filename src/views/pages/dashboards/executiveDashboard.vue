@@ -1,13 +1,14 @@
 <script setup>
 import { useChartOptions } from '@/composables/useChartOptions';
 import { formatCurrency, safeNumber } from '@/utils/formatters';
+import { useGlobalCurrency } from '@/composables/useGlobalCurrency';
 import { useDashboardState } from '@/composables/useDashboardState';
 import { usePermissions } from '@/composables/usePermissions';
 import { useToast } from '@/composables/useToast';
 import { dashboardService } from '@/services/shared/dashboardService';
 import { PERIOD_OPTIONS } from '@/utils/constants';
 import Chart from 'primevue/chart';
-import { onMounted, ref, watch } from 'vue';
+import { computed, onMounted, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
 
 const router = useRouter();
@@ -15,6 +16,7 @@ const { showToast } = useToast();
 const { currencyChartOptions } = useChartOptions();
 const { state, executeDataFetch } = useDashboardState();
 const { hasAnyPermission } = usePermissions();
+const { formatCurrencySync } = useGlobalCurrency();
 
 const loading = ref(false);
 const period = ref('month');
@@ -52,6 +54,10 @@ const revenueTrendsChartData = ref(null);
 const profitTrendsChartData = ref(null);
 const orderTrendsChartData = ref(null);
 const customerGrowthChartData = ref(null);
+
+// Reactive formatted currency values
+const formattedRevenue = formatCurrencySync(computed(() => safeNumber(dashboardData.value.total_revenue, 0)));
+const formattedProfit = formatCurrencySync(computed(() => safeNumber(dashboardData.value.net_profit, 0)));
 
 // Load dashboard data
 const loadDashboardData = async () => {
@@ -215,7 +221,7 @@ onMounted(() => {
                     </template>
                     <template #content>
                         <div class="text-3xl font-bold">
-                            {{ formatCurrency(safeNumber(dashboardData.total_revenue, 0)) }}
+                            {{ formattedRevenue }}
                         </div>
                     </template>
                 </Card>
@@ -229,7 +235,7 @@ onMounted(() => {
                     </template>
                     <template #content>
                         <div class="text-3xl font-bold">
-                            {{ formatCurrency(safeNumber(dashboardData.net_profit, 0)) }}
+                            {{ formattedProfit }}
                         </div>
                         <div class="text-sm opacity-75">Margin: {{ (Number.isFinite(Number(dashboardData.profit_margin)) ? (Number(dashboardData.profit_margin) * 100).toFixed(1) : '0.0') }}%</div>
                     </template>

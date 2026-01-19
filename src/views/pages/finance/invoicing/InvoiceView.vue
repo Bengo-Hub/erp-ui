@@ -10,6 +10,7 @@ import { useToast } from '@/composables/useToast';
 import { invoiceService } from '@/services/finance/invoiceService';
 import { creditNoteService, debitNoteService, deliveryNoteService } from '@/services/finance/billingDocumentsService';
 import { formatCurrency, formatDate } from '@/utils/formatters';
+import { useGlobalCurrency } from '@/composables/useGlobalCurrency';
 import { computed, onMounted, onUnmounted, ref } from 'vue';
 import PDFPreview from '@/components/shared/PDFPreview.vue';
 import { useRoute, useRouter } from 'vue-router';
@@ -19,6 +20,7 @@ const router = useRouter();
 const { showToast } = useToast();
 const { hasPermission } = usePermissions();
 const { isDesignatedApprover } = useApprovalPermissions();
+const { formatCurrencySync } = useGlobalCurrency();
 
 // Reactive state
 const invoice = ref(null);
@@ -74,6 +76,15 @@ const daysOverdue = computed(() => {
     const days = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
     return days > 0 ? days : 0;
 });
+
+// Reactive formatted currency values
+const formattedTotal = formatCurrencySync(computed(() => invoice.value?.total || 0), computed(() => invoice.value?.currency || 'KES'));
+
+// Helper method for formatting payment amounts in the timeline
+const formatPaymentAmount = (amount) => {
+    const sourceCurrency = invoice.value?.currency || 'KES';
+    return formatCurrencySync(amount, sourceCurrency).value;
+};
 
 // Bulk selection on single invoice view (used for bulk actions UI in list)
 const selectedForBulk = ref(false);
@@ -517,7 +528,7 @@ onUnmounted(() => {
                                         <div v-if="isOverdue" class="text-sm text-orange-600 font-semibold uppercase">OVERDUE BY {{ daysOverdue }} DAYS</div>
                                     </div>
                                 </div>
-                                <div class="text-lg font-semibold">{{ formatCurrency(invoice.total) }}</div>
+                                <div class="text-lg font-semibold">{{ formattedTotal }}</div>
                             </div>
                         </div>
                     </template>
@@ -623,7 +634,7 @@ onUnmounted(() => {
                                 </template>
                                 <template #content="slotProps">
                                     <div>
-                                        <div class="font-semibold text-green-600">{{ formatCurrency(slotProps.item.amount) }}</div>
+                                        <div class="font-semibold text-green-600">{{ formatPaymentAmount(slotProps.item.amount) }}</div>
                                         <div class="text-sm text-surface-600">
                                             {{ slotProps.item.payment_method }} 
                                             <span v-if="slotProps.item.reference">- {{ slotProps.item.reference }}</span>

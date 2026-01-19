@@ -7,6 +7,7 @@ import { usePermissions } from '@/composables/usePermissions';
 import { useToast } from '@/composables/useToast';
 import { quotationService } from '@/services/finance/quotationService';
 import { formatCurrency, formatDate } from '@/utils/formatters';
+import { useGlobalCurrency } from '@/composables/useGlobalCurrency';
 import { PAYMENT_TERMS } from '@/constants/finance/paymentMethods';
 import { computed, onMounted, ref } from 'vue';
 import PDFPreview from '@/components/shared/PDFPreview.vue';
@@ -16,6 +17,7 @@ const route = useRoute();
 const router = useRouter();
 const { showToast } = useToast();
 const { hasPermission } = usePermissions();
+const { formatCurrencySync } = useGlobalCurrency();
 
 // Data
 const quotation = ref(null);
@@ -60,6 +62,14 @@ const isExpired = computed(() => {
     if (!quotation.value?.valid_until || quotation.value?.status === 'accepted') return false;
     return new Date(quotation.value.valid_until) < new Date();
 });
+
+// Helper for formatting currency in table rows
+const formatQuotationAmount = (amount, currency = 'KES') => {
+    return formatCurrencySync(amount, currency).value;
+};
+
+// Reactive formatted currency values
+const formattedTotal = formatCurrencySync(computed(() => quotation.value?.total || 0), computed(() => quotation.value?.currency || 'KES'));
 
 const daysUntilExpiry = computed(() => {
     if (!quotation.value?.valid_until) return null;
@@ -539,17 +549,17 @@ onMounted(() => {
                                     </Column>
                                     <Column field="unit_price" header="Unit Price">
                                         <template #body="{ data }">
-                                            {{ formatCurrency(data.unit_price) }}
+                                            {{ formatQuotationAmount(data.unit_price, quotation.currency) }}
                                         </template>
                                     </Column>
                                     <Column field="tax_amount" header="Tax">
                                         <template #body="{ data }">
-                                            {{ formatCurrency(data.tax_amount) }}
+                                            {{ formatQuotationAmount(data.tax_amount, quotation.currency) }}
                                         </template>
                                     </Column>
                                     <Column field="total" header="Total">
                                         <template #body="{ data }">
-                                            <span class="font-semibold">{{ formatCurrency(data.total) }}</span>
+                                            <span class="font-semibold">{{ formatQuotationAmount(data.total, quotation.currency) }}</span>
                                         </template>
                                     </Column>
                                 </DataTable>
@@ -559,24 +569,24 @@ onMounted(() => {
                                     <div class="w-80 space-y-2">
                                         <div class="flex justify-between">
                                             <span>Subtotal:</span>
-                                            <span>{{ formatCurrency(quotation.subtotal || subtotal) }}</span>
+                                            <span>{{ formatQuotationAmount(quotation.subtotal || subtotal, quotation.currency) }}</span>
                                         </div>
                                         <div class="flex justify-between">
                                             <span>Tax:</span>
-                                            <span>{{ formatCurrency(quotation.tax_amount || taxTotal) }}</span>
+                                            <span>{{ formatQuotationAmount(quotation.tax_amount || taxTotal, quotation.currency) }}</span>
                                         </div>
                                         <div v-if="quotation.discount_amount > 0" class="flex justify-between text-orange-600">
                                             <span>Discount:</span>
-                                            <span>-{{ formatCurrency(quotation.discount_amount) }}</span>
+                                            <span>-{{ formatQuotationAmount(quotation.discount_amount, quotation.currency) }}</span>
                                         </div>
                                         <div v-if="quotation.shipping_cost > 0" class="flex justify-between">
                                             <span>Shipping:</span>
-                                            <span>{{ formatCurrency(quotation.shipping_cost) }}</span>
+                                            <span>{{ formatQuotationAmount(quotation.shipping_cost, quotation.currency) }}</span>
                                         </div>
                                         <Divider />
                                         <div class="flex justify-between text-2xl font-bold">
                                             <span>Total:</span>
-                                            <span class="text-primary">{{ formatCurrency(quotation.total) }}</span>
+                                            <span class="text-primary">{{ formattedTotal }}</span>
                                         </div>
                                     </div>
                                 </div>
@@ -785,7 +795,7 @@ onMounted(() => {
                     <Divider />
                     <div class="flex justify-between items-center">
                         <span class="text-lg font-semibold">Total Amount:</span>
-                        <span class="text-2xl font-bold text-primary">{{ formatCurrency(quotation.total) }}</span>
+                        <span class="text-2xl font-bold text-primary">{{ formattedTotal }}</span>
                     </div>
                 </div>
 

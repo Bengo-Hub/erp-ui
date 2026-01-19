@@ -8,8 +8,9 @@ import PermissionButton from '@/components/common/PermissionButton.vue';
 import { usePermissions } from '@/composables/usePermissions';
 import { useApprovalPermissions } from '@/composables/useApprovalPermissions';
 import { useToast } from '@/composables/useToast';
+import { useGlobalCurrency } from '@/composables/useGlobalCurrency';
 import { expenseService } from '@/services/finance/expenseService';
-import { formatCurrency, formatDate } from '@/utils/formatters';
+import { formatDate } from '@/utils/formatters';
 import { computed, onMounted, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 
@@ -18,6 +19,7 @@ const router = useRouter();
 const { showToast } = useToast();
 const { hasPermission } = usePermissions();
 const { isDesignatedApprover } = useApprovalPermissions();
+const { formatCurrencySync } = useGlobalCurrency();
 
 // Data
 const expense = ref(null);
@@ -49,6 +51,14 @@ const taxTotal = computed(() => {
     if (!expense.value?.items) return 0;
     return expense.value.items.reduce((sum, item) => sum + parseFloat(item.tax_amount || 0), 0);
 });
+
+// Reactive formatted currency value
+const formattedTotal = formatCurrencySync(computed(() => expense.value?.total_amount || 0), computed(() => expense.value?.currency || 'KES'));
+
+// Helper for formatting amounts in tables
+const formatExpenseAmount = (amount, currency = 'KES') => {
+    return formatCurrencySync(amount, currency).value;
+};
 
 // Methods
 const fetchExpense = async () => {
@@ -322,7 +332,7 @@ onMounted(() => {
                                     </div>
                                     <div>
                                         <label class="text-sm text-surface-600 dark:text-surface-400">Total Amount</label>
-                                        <p class="text-2xl font-bold text-primary">{{ formatCurrency(expense.total_amount) }}</p>
+                                        <p class="text-2xl font-bold text-primary">{{ formattedTotal }}</p>
                                     </div>
                                     <div v-if="expense.expense_for_user" class="md:col-span-2">
                                         <label class="text-sm text-surface-600 dark:text-surface-400">Expense For</label>
@@ -356,17 +366,17 @@ onMounted(() => {
                                     </Column>
                                     <Column field="unit_price" header="Unit Price">
                                         <template #body="{ data }">
-                                            {{ formatCurrency(data.unit_price) }}
+                                            {{ formatExpenseAmount(data.unit_price, expense.currency) }}
                                         </template>
                                     </Column>
                                     <Column field="tax_amount" header="Tax">
                                         <template #body="{ data }">
-                                            {{ formatCurrency(data.tax_amount) }}
+                                            {{ formatExpenseAmount(data.tax_amount, expense.currency) }}
                                         </template>
                                     </Column>
                                     <Column field="total" header="Total">
                                         <template #body="{ data }">
-                                            <span class="font-semibold">{{ formatCurrency(data.total) }}</span>
+                                            <span class="font-semibold">{{ formatExpenseAmount(data.total, expense.currency) }}</span>
                                         </template>
                                     </Column>
                                 </DataTable>
@@ -376,16 +386,16 @@ onMounted(() => {
                                     <div class="w-64 space-y-2">
                                         <div class="flex justify-between">
                                             <span>Subtotal:</span>
-                                            <span>{{ formatCurrency(subtotal) }}</span>
+                                            <span>{{ formatExpenseAmount(subtotal, expense.currency) }}</span>
                                         </div>
                                         <div class="flex justify-between">
                                             <span>Tax:</span>
-                                            <span>{{ formatCurrency(taxTotal) }}</span>
+                                            <span>{{ formatExpenseAmount(taxTotal, expense.currency) }}</span>
                                         </div>
                                         <Divider />
                                         <div class="flex justify-between text-xl font-bold">
                                             <span>Total:</span>
-                                            <span class="text-primary">{{ formatCurrency(expense.total_amount) }}</span>
+                                            <span class="text-primary">{{ formattedTotal }}</span>
                                         </div>
                                     </div>
                                 </div>
@@ -402,9 +412,9 @@ onMounted(() => {
                                     </template>
                                     <template #content="slotProps">
                                         <div>
-                                            <div class="font-semibold">{{ formatCurrency(slotProps.item.amount) }}</div>
+                                            <div class="font-semibold">{{ formatExpenseAmount(slotProps.item.amount, expense.currency) }}</div>
                                             <div class="text-sm text-surface-600">
-                                                {{ slotProps.item.payment_method }} 
+                                                {{ slotProps.item.payment_method }}
                                                 <span v-if="slotProps.item.reference">- {{ slotProps.item.reference }}</span>
                                             </div>
                                         </div>
