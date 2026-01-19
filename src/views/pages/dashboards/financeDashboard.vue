@@ -3,11 +3,12 @@ import { useChartOptions } from '@/composables/useChartOptions';
 import { useDashboardState } from '@/composables/useDashboardState';
 import { usePermissions } from '@/composables/usePermissions';
 import { useToast } from '@/composables/useToast';
+import { useGlobalCurrency } from '@/composables/useGlobalCurrency';
 import { dashboardService } from '@/services/shared/dashboardService';
 import { PERIOD_OPTIONS } from '@/utils/constants';
 import Chart from 'primevue/chart';
-import { formatCurrency, safeNumber } from '@/utils/formatters';
-import { onMounted, ref, watch } from 'vue';
+import { safeNumber } from '@/utils/formatters';
+import { onMounted, ref, watch, computed } from 'vue';
 import { useRouter } from 'vue-router';
 
 const router = useRouter();
@@ -15,6 +16,9 @@ const { showToast } = useToast();
 const { currencyChartOptions } = useChartOptions();
 const { state, executeDataFetch } = useDashboardState();
 const { hasPermission, hasAnyPermission } = usePermissions();
+
+// Global currency formatting - automatically updates when currency changes
+const { formatCurrencySync } = useGlobalCurrency();
 
 const loading = ref(false);
 const period = ref('month');
@@ -33,6 +37,12 @@ const dashboardData = ref({
     revenue_trends: [],
     cash_flow_data: []
 });
+
+// Reactive currency formatting - auto-updates when currency switcher changes
+const formattedRevenue = formatCurrencySync(computed(() => safeNumber(dashboardData.value.total_revenue, 0)));
+const formattedExpenses = formatCurrencySync(computed(() => safeNumber(dashboardData.value.total_expenses, 0)));
+const formattedProfit = formatCurrencySync(computed(() => safeNumber(dashboardData.value.net_profit, 0)));
+const formattedCashFlow = formatCurrencySync(computed(() => safeNumber(dashboardData.value.cash_flow, 0)));
 
 // Chart data
 const revenueChartData = ref(null);
@@ -166,7 +176,7 @@ onMounted(() => {
                     </template>
                     <template #content>
                         <div class="text-3xl font-bold">
-                            {{ formatCurrency(safeNumber(dashboardData.total_revenue, 0)) }}
+                            {{ formattedRevenue }}
                         </div>
                     </template>
                 </Card>
@@ -180,7 +190,7 @@ onMounted(() => {
                     </template>
                     <template #content>
                         <div class="text-3xl font-bold">
-                            {{ formatCurrency(safeNumber(dashboardData.total_expenses, 0)) }}
+                            {{ formattedExpenses }}
                         </div>
                     </template>
                 </Card>
@@ -194,7 +204,7 @@ onMounted(() => {
                     </template>
                     <template #content>
                         <div class="text-3xl font-bold">
-                            {{ formatCurrency(safeNumber(dashboardData.net_profit, 0)) }}
+                            {{ formattedProfit }}
                         </div>
                     </template>
                 </Card>
@@ -208,7 +218,7 @@ onMounted(() => {
                     </template>
                     <template #content>
                         <div class="text-3xl font-bold">
-                            {{ formatCurrency(safeNumber(dashboardData.cash_flow, 0)) }}
+                            {{ formattedCashFlow }}
                         </div>
                     </template>
                 </Card>
