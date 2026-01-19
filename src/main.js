@@ -1,4 +1,5 @@
 import permissionsPlugin from '@/plugins/permissions';
+import currencyPlugin from '@/plugins/currency';
 import store from '@/store/index'; // import your store
 import Aura from '@primevue/themes/aura';
 import 'primeicons/primeicons.css';
@@ -253,6 +254,7 @@ app.component('TreeTable', TreeTable);
 app.use(ToastService);
 app.use(ConfirmationService);
 app.use(permissionsPlugin);
+app.use(currencyPlugin);
 app.use(store);
 
 app.mount('#app');
