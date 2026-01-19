@@ -14,10 +14,13 @@
                     class="currency-option"
                     :class="{ 'active': selectedCurrency === curr.code }"
                 >
-                    <div class="flex items-center gap-2 flex-1">
-                        <span class="currency-symbol">{{ curr.symbol }}</span>
-                        <div class="flex flex-col">
-                            <span class="currency-code">{{ curr.code }}</span>
+                    <div class="flex items-center gap-3 flex-1">
+                        <span class="currency-flag">{{ getFlagEmoji(curr.code) }}</span>
+                        <div class="flex flex-col flex-1">
+                            <div class="flex items-center gap-2">
+                                <span class="currency-code">{{ curr.code }}</span>
+                                <span class="currency-symbol-badge">{{ curr.symbol }}</span>
+                            </div>
                             <span class="currency-name">{{ curr.name }}</span>
                         </div>
                     </div>
@@ -76,6 +79,28 @@ const selectCurrency = (code) => {
     }));
 };
 
+// Map currency codes to flag emojis
+const getFlagEmoji = (currencyCode) => {
+    const flagMap = {
+        'KES': '🇰🇪', // Kenya
+        'USD': '🇺🇸', // United States
+        'EUR': '🇪🇺', // European Union
+        'GBP': '🇬🇧', // United Kingdom
+        'UGX': '🇺🇬', // Uganda
+        'TZS': '🇹🇿', // Tanzania
+        'ZAR': '🇿🇦', // South Africa
+        'NGN': '🇳🇬', // Nigeria
+        'GHS': '🇬🇭', // Ghana
+        'RWF': '🇷🇼', // Rwanda
+        'ETB': '🇪🇹', // Ethiopia
+        'AED': '🇦🇪', // UAE
+        'INR': '🇮🇳', // India
+        'CNY': '🇨🇳', // China
+        'JPY': '🇯🇵'  // Japan
+    };
+    return flagMap[currencyCode] || '🌍';
+};
+
 // Initialize on mount if not already done
 onMounted(async () => {
     if (!isInitialized.value) {
@@ -131,21 +156,45 @@ onMounted(async () => {
     color: var(--primary-300);
 }
 
-.currency-symbol {
-    font-size: 1.25rem;
-    font-weight: 600;
-    min-width: 2rem;
-    text-align: center;
+.currency-flag {
+    font-size: 1.5rem;
+    line-height: 1;
+    flex-shrink: 0;
 }
 
 .currency-code {
     font-size: 0.875rem;
+    font-weight: 700;
+    letter-spacing: 0.025em;
+}
+
+.currency-symbol-badge {
+    font-size: 0.75rem;
     font-weight: 600;
+    padding: 0.125rem 0.375rem;
+    background: var(--surface-100);
+    border-radius: 0.25rem;
+    color: var(--text-color-secondary);
+}
+
+.dark .currency-symbol-badge {
+    background: var(--surface-800);
+}
+
+.currency-option.active .currency-symbol-badge {
+    background: var(--primary-100);
+    color: var(--primary);
+}
+
+.dark .currency-option.active .currency-symbol-badge {
+    background: var(--primary-800);
+    color: var(--primary-300);
 }
 
 .currency-name {
     font-size: 0.75rem;
     color: var(--text-color-secondary);
+    margin-top: 0.125rem;
 }
 
 .currency-option.active .currency-name {
