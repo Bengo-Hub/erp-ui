@@ -8,6 +8,7 @@ import { usePermissions } from '@/composables/usePermissions';
 import { useApprovalPermissions } from '@/composables/useApprovalPermissions';
 import { useToast } from '@/composables/useToast';
 import { invoiceService } from '@/services/finance/invoiceService';
+import { financeService } from '@/services/finance/financeService';
 import { creditNoteService, debitNoteService, deliveryNoteService } from '@/services/finance/billingDocumentsService';
 import { formatDate } from '@/utils/formatters';
 import { useGlobalCurrency } from '@/composables/useGlobalCurrency';
@@ -201,7 +202,7 @@ const fetchInvoice = async () => {
 const fetchPaymentAccounts = async () => {
     paymentAccountsLoading.value = true;
     try {
-        const response = await invoiceService.getPaymentAccounts();
+        const response = await financeService.getPaymentAccounts();
         // Handle both direct array and APIResponse with data nested
         paymentAccounts.value = Array.isArray(response) ? response : (response.data || response.results || []);
     } catch (error) {

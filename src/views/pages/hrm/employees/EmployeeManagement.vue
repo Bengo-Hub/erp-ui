@@ -218,14 +218,19 @@ import PermissionButton from '@/components/common/PermissionButton.vue';
 import PermissionWrapper from '@/components/common/PermissionWrapper.vue';
 import { usePermissions } from '@/composables/usePermissions';
 import { useGlobalCurrency } from '@/composables/useGlobalCurrency';
+import { useToast } from '@/composables/useToast';
+import { employeeService } from '@/services/hrm/employeeService';
 import { onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
+import { useConfirm } from 'primevue/useconfirm';
 
 const { formatCurrencySync } = useGlobalCurrency();
 const formatCurrency = (amount, currency = 'KES') => formatCurrencySync(amount, currency).value;
 
 const router = useRouter();
 const { canRead, canUpdate, canCreate, canDelete } = usePermissions();
+const { showToast } = useToast();
+const confirm = useConfirm();
 
 const isLoading = ref(false);
 const filters = ref({ global: null });
@@ -267,19 +272,46 @@ const viewPayslips = (id) => {
     router.push(`/hrm/employees/${id}/payslips`);
 };
 
-const deleteEmployee = (id) => {
-    // Implement delete logic
-    console.log('Delete employee:', id);
+const deleteEmployee = async (id) => {
+    confirm.require({
+        message: 'Are you sure you want to delete this employee? This action cannot be undone.',
+        header: 'Confirm Deletion',
+        icon: 'pi pi-exclamation-triangle',
+        acceptClass: 'p-button-danger',
+        accept: async () => {
+            try {
+                await employeeService.deleteEmployee(id);
+                showToast('success', 'Success', 'Employee deleted successfully');
+                await loadEmployees();
+                await loadStats();
+            } catch (error) {
+                console.error('Error deleting employee:', error);
+                showToast('error', 'Error', 'Failed to delete employee');
+            }
+        }
+    });
 };
 
-const exportEmployees = () => {
-    // Implement export logic
-    console.log('Export employees');
+const exportEmployees = async () => {
+    try {
+        // Export employees as CSV
+        const response = await employeeService.getEmployees({ format: 'csv' });
+        const blob = new Blob([response.data], { type: 'text/csv' });
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `employees-${new Date().toISOString().split('T')[0]}.csv`;
+        a.click();
+        window.URL.revokeObjectURL(url);
+        showToast('success', 'Success', 'Employees exported successfully');
+    } catch (error) {
+        console.error('Error exporting employees:', error);
+        showToast('error', 'Error', 'Failed to export employees');
+    }
 };
 
 const importEmployees = () => {
-    // Implement import logic
-    console.log('Import employees');
+    router.push('/hrm/employees/import');
 };
 
 const refreshData = () => {
@@ -288,43 +320,49 @@ const refreshData = () => {
 };
 
 const loadStats = async () => {
-    // Load employee statistics
-    stats.value = {
-        totalEmployees: 150,
-        activeEmployees: 140,
-        onLeave: 8,
-        newThisMonth: 5
-    };
+    try {
+        const response = await employeeService.getEmployeeStatus();
+        const statusData = response.data || response;
+        stats.value = {
+            totalEmployees: statusData.total || 0,
+            activeEmployees: statusData.active || 0,
+            onLeave: statusData.on_leave || 0,
+            newThisMonth: statusData.new_this_month || 0
+        };
+    } catch (error) {
+        console.error('Error loading employee stats:', error);
+        // Set defaults on error
+        stats.value = {
+            totalEmployees: employees.value.length,
+            activeEmployees: employees.value.filter(e => e.status === 'active').length,
+            onLeave: employees.value.filter(e => e.status === 'on_leave').length,
+            newThisMonth: 0
+        };
+    }
 };
 
 const loadEmployees = async () => {
     isLoading.value = true;
     try {
-        // Load employees from API
-        employees.value = [
-            {
-                id: 1,
-                employee_id: 'EMP001',
-                name: 'John Doe',
-                email: 'john.doe@company.com',
-                department: 'IT',
-                position: 'Software Developer',
-                status: 'active',
-                salary: 75000,
-                avatar: null
-            },
-            {
-                id: 2,
-                employee_id: 'EMP002',
-                name: 'Jane Smith',
-                email: 'jane.smith@company.com',
-                department: 'HR',
-                position: 'HR Manager',
-                status: 'active',
-                salary: 85000,
-                avatar: null
-            }
-        ];
+        const response = await employeeService.getEmployees();
+        const data = response.data || response;
+        // Handle paginated or direct response
+        const employeeList = data.results || data;
+        employees.value = employeeList.map(emp => ({
+            id: emp.id,
+            employee_id: emp.employee_id || emp.job_or_staff_number || `EMP${emp.id}`,
+            name: `${emp.user?.first_name || ''} ${emp.user?.last_name || ''}`.trim() || emp.name || 'N/A',
+            email: emp.user?.email || emp.email || 'N/A',
+            department: emp.department?.name || emp.department_name || emp.department || 'N/A',
+            position: emp.job_title || emp.position || 'N/A',
+            status: emp.status || 'active',
+            salary: emp.salary || emp.monthly_salary || 0,
+            avatar: emp.user?.pic || emp.passport_photo || null
+        }));
+    } catch (error) {
+        console.error('Error loading employees:', error);
+        showToast('error', 'Error', 'Failed to load employees');
+        employees.value = [];
     } finally {
         isLoading.value = false;
     }

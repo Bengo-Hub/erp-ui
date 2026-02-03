@@ -55,18 +55,6 @@ export const userManagementService = {
         try {
             const form = new FormData();
             form.append('pic', file);
-            // Let axios/browser set proper multipart headers (interceptor removes JSON content-type)
-            return await axios.patch(`/auth/listusers/${id}/`, form);
-        } catch (error) {
-            console.error(`Failed to upload profile picture for user ${id}:`, error);
-            throw error;
-        }
-    },
-    
-    uploadUserPic: async (id, file) => {
-        try {
-            const form = new FormData();
-            form.append('pic', file);
             return await axios.patch(`/auth/listusers/${id}/`, form, {
                 headers: {
                     'Content-Type': 'multipart/form-data'
@@ -74,6 +62,21 @@ export const userManagementService = {
             });
         } catch (error) {
             console.error(`Failed to upload profile picture for user ${id}:`, error);
+            throw error;
+        }
+    },
+
+    uploadUserSignature: async (id, file) => {
+        try {
+            const form = new FormData();
+            form.append('signature', file);
+            return await axios.patch(`/auth/listusers/${id}/`, form, {
+                headers: {
+                    'Content-Type': 'multipart/form-data'
+                }
+            });
+        } catch (error) {
+            console.error(`Failed to upload signature for user ${id}:`, error);
             throw error;
         }
     },

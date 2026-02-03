@@ -93,6 +93,27 @@
                                                 @uploader="onPicUploader"
                                             />
                                         </div>
+                                        <div class="field">
+                                            <label class="block text-sm font-medium mb-2">Digital Signature</label>
+                                            <p class="text-xs text-surface-500 dark:text-surface-400 mb-2">
+                                                Upload your digital signature for document approvals (PNG with transparent background recommended)
+                                            </p>
+                                            <div class="flex items-center gap-4">
+                                                <div v-if="currentUser?.signature" class="border rounded p-2 bg-surface-50 dark:bg-surface-800">
+                                                    <img :src="currentUser.signature" alt="Current Signature" class="max-h-12 max-w-32 object-contain" />
+                                                </div>
+                                                <FileUpload
+                                                    mode="basic"
+                                                    accept="image/png,image/jpeg,image/webp"
+                                                    :maxFileSize="2097152"
+                                                    auto
+                                                    customUpload
+                                                    chooseLabel="Upload Signature"
+                                                    class="flex-1"
+                                                    @uploader="onSignatureUploader"
+                                                />
+                                            </div>
+                                        </div>
                                         <div class="flex items-center gap-2 pt-4">
                                             <Button 
                                                 label="Save Changes" 
@@ -479,6 +500,7 @@ import { useToast } from '@/composables/useToast';
 import { userManagementService } from '@/services/auth/userManagementService';
 import { UserService } from '@/services/auth/userService';
 import { getUserAvatarUrl } from '@/utils/avatarHelper';
+import { scanSignatureFile, scanProfileImage } from '@/utils/fileSecurity';
 import { formatDate } from '@/utils/formatters';
 import { computed, onMounted, reactive, ref } from 'vue';
 import { useRouter } from 'vue-router';
@@ -729,6 +751,23 @@ const onPicUploader = async (event) => {
         showToast('error', 'Invalid file', 'Please select a valid image file');
         return;
     }
+    
+    // Security scan before upload
+    try {
+        const scanResult = await scanProfileImage(file);
+        if (!scanResult.isSafe) {
+            showToast('error', 'Security Check Failed', scanResult.errors.join('; '));
+            return;
+        }
+        if (scanResult.warnings.length > 0) {
+            console.warn('File security warnings:', scanResult.warnings);
+        }
+    } catch (scanError) {
+        console.error('Error scanning file:', scanError);
+        showToast('error', 'Error', 'Failed to validate file security');
+        return;
+    }
+    
     try {
         await userManagementService.uploadUserPic(currentUser.value.id, file);
         // Refresh store user
@@ -737,6 +776,50 @@ const onPicUploader = async (event) => {
     } catch (error) {
         console.error('Error uploading profile image:', error);
         showToast('error', 'Error', 'Failed to upload profile image');
+    }
+};
+
+const onSignatureUploader = async (event) => {
+    const file = (event?.files && event.files[0]) || null;
+    if (!file) return;
+    
+    // Validate file type (prefer PNG for transparent backgrounds)
+    const validTypes = ['image/png', 'image/jpeg', 'image/webp'];
+    if (!validTypes.includes(file.type)) {
+        showToast('error', 'Invalid file', 'Please select a valid image file (PNG, JPEG, or WebP)');
+        return;
+    }
+    
+    // Validate file size (max 2MB)
+    if (file.size > 2 * 1024 * 1024) {
+        showToast('error', 'File too large', 'Signature image must be less than 2MB');
+        return;
+    }
+    
+    // Security scan before upload
+    try {
+        const scanResult = await scanSignatureFile(file);
+        if (!scanResult.isSafe) {
+            showToast('error', 'Security Check Failed', scanResult.errors.join('; '));
+            return;
+        }
+        if (scanResult.warnings.length > 0) {
+            console.warn('File security warnings:', scanResult.warnings);
+        }
+    } catch (scanError) {
+        console.error('Error scanning file:', scanError);
+        showToast('error', 'Error', 'Failed to validate file security');
+        return;
+    }
+    
+    try {
+        await userManagementService.uploadUserSignature(currentUser.value.id, file);
+        // Refresh store user
+        await store.dispatch('auth/refreshUser');
+        showToast('success', 'Success', 'Signature uploaded successfully');
+    } catch (error) {
+        console.error('Error uploading signature:', error);
+        showToast('error', 'Error', 'Failed to upload signature');
     }
 };
 const loadProfileForm = () => {
