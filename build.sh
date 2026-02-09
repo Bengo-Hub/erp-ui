@@ -290,6 +290,14 @@ if [[ "$DEPLOY" == "true" ]]; then
 
         # Helm values update using centralized script
         if [[ -n "${KUBE_CONFIG:-}" ]]; then
+            # Clone devops-k8s repo (needed for helm values update)
+            if [[ ! -d "$DEVOPS_DIR" ]]; then
+              TOKEN="${GH_PAT:-}"
+              CLONE_URL="https://github.com/${DEVOPS_REPO}.git"
+              [[ -n $TOKEN ]] && CLONE_URL="https://x-access-token:${TOKEN}@github.com/${DEVOPS_REPO}.git"
+              git clone "$CLONE_URL" "$DEVOPS_DIR" || log_warning "Unable to clone devops repo for helm values update"
+            fi
+
             log_step "Updating Helm values..."
             source "${HOME}/devops-k8s/scripts/helm/update-values.sh" 2>/dev/null || {
               log_warning "Centralized helm update script not available"
