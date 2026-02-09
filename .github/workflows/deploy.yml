@@ -23,8 +23,6 @@ jobs:
           _REGISTRY_USERNAME: ${{ secrets.REGISTRY_USERNAME }}
           _REGISTRY_PASSWORD: ${{ secrets.REGISTRY_PASSWORD }}
           _REGISTRY_EMAIL: ${{ secrets.REGISTRY_EMAIL }}
-          _GIT_TOKEN: ${{ secrets.GIT_TOKEN }}
-          _GIT_SECRET: ${{ secrets.GIT_SECRET }}
           _KUBE_CONFIG: ${{ secrets.KUBE_CONFIG }}
           _SSH_HOST: ${{ secrets.SSH_HOST }}
           _SSH_USER: ${{ secrets.SSH_USER }}
@@ -36,7 +34,7 @@ jobs:
           _CONTABO_API_PASSWORD: ${{ secrets.CONTABO_API_PASSWORD }}
         run: |
           # Tier 1 (frontend) + Tier 3 (SSH/Contabo for ERP VPS deployment)
-          REQUIRED_SECRETS="REGISTRY_USERNAME REGISTRY_PASSWORD REGISTRY_EMAIL GIT_TOKEN GIT_SECRET KUBE_CONFIG SSH_HOST SSH_USER SSH_PRIVATE_KEY DOCKER_SSH_KEY CONTABO_CLIENT_ID CONTABO_CLIENT_SECRET CONTABO_API_USERNAME CONTABO_API_PASSWORD"
+ REQUIRED_SECRETS="REGISTRY_USERNAME REGISTRY_PASSWORD REGISTRY_EMAIL KUBE_CONFIG SSH_HOST SSH_USER SSH_PRIVATE_KEY DOCKER_SSH_KEY CONTABO_CLIENT_ID CONTABO_CLIENT_SECRET CONTABO_API_USERNAME CONTABO_API_PASSWORD"
 
           # Step 1: Delete any secrets that exist but have empty values.
           # gh secret list reports empty-value secrets as "existing", so the
@@ -199,7 +197,6 @@ jobs:
         check_secret "REGISTRY_USERNAME"  5    "$REGISTRY_USERNAME"
         check_secret "REGISTRY_PASSWORD"  20   "$REGISTRY_PASSWORD"
         check_secret "KUBE_CONFIG"        1000 "$KUBE_CONFIG"
-        check_secret "GIT_TOKEN"          20   "$GIT_TOKEN"
 
         if [[ $FAIL -eq 1 ]]; then
           echo ""
@@ -225,7 +222,6 @@ jobs:
         REGISTRY_USERNAME: ${{ secrets.REGISTRY_USERNAME }}
         REGISTRY_PASSWORD: ${{ secrets.REGISTRY_PASSWORD }}
         KUBE_CONFIG: ${{ secrets.KUBE_CONFIG }}
-        GIT_TOKEN: ${{ secrets.GIT_TOKEN }}
 
     - name: Run production deployment
       if: needs.sync-secrets.outputs.result != 'synced'
