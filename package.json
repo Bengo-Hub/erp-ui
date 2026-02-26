@@ -1,8 +1,8 @@
 {
-    "name": "procurepro",
+    "name": "bengobox-erp-ui",
     "version": "4.1.0",
     "scripts": {
-        "serve": "vite",
+        "dev": "vite",
         "build": "vite build",
         "preview": "vite preview",
         "start": "node server.js",
