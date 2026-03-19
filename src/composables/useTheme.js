@@ -112,16 +112,29 @@ export function useTheme() {
     };
 
     /**
-     * Load branding from API (for login pages - no auth required)
+     * Load branding from API (for login pages - no auth required).
+     * @param {string} [orgCode] - Optional business code/slug from ?org= query param.
+     *   If provided, fetches branding for that specific org.
+     *   If not, resolves from hostname (mss for masterspace.co.ke, demo for codevertexitsolutions.com).
      */
-    const loadPublicBranding = async () => {
+    const loadPublicBranding = async (orgCode) => {
         try {
-            // Use fetch for public endpoint (no auth)
-            const response = await fetch('/api/v1/business/public-branding/', {
+            // Resolve default org from hostname if not provided
+            let resolvedOrg = orgCode;
+            if (!resolvedOrg && typeof window !== 'undefined') {
+                const host = window.location.hostname.toLowerCase();
+                if (host.includes('masterspace.co.ke')) resolvedOrg = 'mss';
+                else if (host.includes('codevertexitsolutions.com')) resolvedOrg = 'demo';
+                // localhost: no default — use CodeVertex fallback
+            }
+
+            const url = resolvedOrg
+                ? `/api/v1/business/public-branding/?org=${encodeURIComponent(resolvedOrg)}`
+                : '/api/v1/business/public-branding/';
+
+            const response = await fetch(url, {
                 method: 'GET',
-                headers: {
-                    'Content-Type': 'application/json'
-                }
+                headers: { 'Content-Type': 'application/json' }
             });
 
             if (response.ok) {
@@ -130,13 +143,11 @@ export function useTheme() {
                 applyBusinessBranding();
                 return data;
             } else {
-                // Use defaults if API fails
                 applyAllBranding(null, DEFAULT_BRANDING);
                 return null;
             }
         } catch (error) {
             console.error('Error loading public branding:', error);
-            // Use defaults if API fails
             applyAllBranding(null, DEFAULT_BRANDING);
             return null;
         }

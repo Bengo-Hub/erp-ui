@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { PLATFORM_OWNER_BUSINESS_NAME } from './businessBranding';
 
 // Get base URL from window object or use default
 const getBaseURL = () => {
@@ -77,22 +78,19 @@ axiosInstance.interceptors.request.use(
         }
 
         // Add business and branch context headers
+        // Platform owners (CodeVertex business) don't send tenant headers — cross-tenant access
         const businessContext = getBusinessContext();
         if (businessContext) {
-            // Add business ID header
-            if (businessContext.id) {
-                config.headers['X-Business-ID'] = businessContext.id.toString();
+            const isPlatformOwner = businessContext.name?.toLowerCase() === PLATFORM_OWNER_BUSINESS_NAME ||
+                                    businessContext.business__name?.toLowerCase() === PLATFORM_OWNER_BUSINESS_NAME;
+            if (!isPlatformOwner) {
+                if (businessContext.id) {
+                    config.headers['X-Business-ID'] = businessContext.id.toString();
+                }
+                if (businessContext.branch_code) {
+                    config.headers['X-Branch-ID'] = businessContext.branch_code;
+                }
             }
-
-            // Add branch ID header (use branch_code as branch ID)
-            if (businessContext.branch_code) {
-                config.headers['X-Branch-ID'] = businessContext.branch_code;
-                console.log('Setting X-Branch-ID header:', businessContext.branch_code);
-            } else {
-                console.log('No branch_code found in business context:', businessContext);
-            }
-        } else {
-            console.log('No business context found in sessionStorage');
         }
 
         // Note: CORS headers are set by the backend, not the frontend

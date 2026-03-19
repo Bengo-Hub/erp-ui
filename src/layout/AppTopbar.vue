@@ -74,8 +74,8 @@ const refreshNotifications = () => {
     }
 };
 
-// Default logo path (from public folder)
-const DEFAULT_LOGO = '/logo.png';
+// Default logo path (CodeVertex ERP SVG from public folder)
+const DEFAULT_LOGO = '/codevertex-erp-logo.svg';
 
 // Computed property for business logo with fallback
 const businessLogo = computed(() => {
