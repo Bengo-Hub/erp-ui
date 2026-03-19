@@ -1,18 +1,17 @@
 <script setup>
-import logoImage from '@/assets/images/logos/logo.png';
 import FloatingConfigurator from '@/components/ui/FloatingConfigurator.vue';
 import Spinner from '@/components/ui/Spinner.vue';
 import { useTheme } from '@/composables/useTheme';
 import { authService } from '@/services/auth/authService';
 import { getDashboardRedirectPath as getDashboardPath } from '@/services/auth/permissionService';
 import { computed, onMounted, ref } from 'vue';
-import { useRouter } from 'vue-router';
+import { useRoute, useRouter } from 'vue-router';
 import { useStore } from 'vuex';
 
 const { loadPublicBranding, businessBranding, isDarkMode } = useTheme();
 
-const logo = ref(logoImage);
-const businessName = ref('BengoBox ERP');
+const logo = ref('/codevertex-erp-logo.svg');
+const businessName = ref('CodeVertex ERP');
 const businessLogo = ref(null);
 
 const form = ref({
@@ -32,14 +31,17 @@ const activeStep = ref(0);
 
 const store = useStore();
 const router = useRouter();
+const route = useRoute();
 
 // Load public branding on mount (no auth required)
+// Reads ?org= query param for tenant-specific branding (e.g. /auth/login?org=mss)
+// Falls back: masterspace.co.ke → mss, codevertexitsolutions.com → demo, localhost → CodeVertex defaults
 onMounted(async () => {
-    // Load public branding first
-    const publicBranding = await loadPublicBranding();
-    
+    const orgCode = route.query?.org || '';
+    const publicBranding = await loadPublicBranding(orgCode);
+
     if (publicBranding) {
-        businessName.value = publicBranding.business__name || publicBranding.name || 'BengoBox ERP';
+        businessName.value = publicBranding.business__name || publicBranding.name || 'CodeVertex ERP';
         businessLogo.value = publicBranding.business__logo || publicBranding.logo;
         document.title = businessName.value;
     }

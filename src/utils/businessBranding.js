@@ -153,12 +153,15 @@ export function resetBranding(defaults = {}) {
     localStorage.removeItem('primevue-theme-settings');
 }
 
-// Default branding values
+// Platform owner org name — users in this business don't send tenant headers
+export const PLATFORM_OWNER_BUSINESS_NAME = 'codevertex it solutions';
+
+// Default branding values (CodeVertex platform fallback)
 export const DEFAULT_BRANDING = {
-    name: 'BengoBox ERP',
-    logoUrl: '/logo.png', // Default logo from public folder
-    primaryColor: '#1976D2',
-    secondaryColor: '#FF5722',
+    name: 'CodeVertex ERP',
+    logoUrl: '/codevertex-erp-logo.svg',
+    primaryColor: '#5B1C4D',
+    secondaryColor: '#ea8022',
     textColor: '#212121',
     backgroundColor: '#FFFFFF',
     // PrimeVue theme defaults
