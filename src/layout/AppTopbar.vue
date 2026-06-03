@@ -1,6 +1,9 @@
 <script setup>
 import NotificationPanel from '@/components/notification/NotificationPanel.vue';
 import CurrencySwitcher from '@/components/currency/CurrencySwitcher.vue';
+import OutletFilter from '@/components/outlet/OutletFilter.vue';
+import TenantFilter from '@/components/outlet/TenantFilter.vue';
+import { isSSOEnabled } from '@/services/auth/ssoService';
 import { useTheme } from '@/composables/useTheme';
 import { useCurrency } from '@/composables/useCurrency';
 import { useLayout } from '@/layout/composables/layout';
@@ -20,6 +23,9 @@ const { selectedCurrency, getSymbol, initialize: initializeCurrency, isInitializ
 const businessDetails = ref(null);
 const notificationPanelRef = ref(null);
 const unreadNotificationCount = ref(0);
+
+// Outlet/Tenant filters only apply in SSO (multi-tenant) mode.
+const ssoEnabled = isSSOEnabled();
 
 // Get current user
 const currentUser = computed(() => store.state.auth.user);
@@ -130,10 +136,13 @@ const highlightButtonStyle = computed(() => {
     };
 });
 
-// Logout function
+// Logout function. In SSO mode the store redirects to the auth-service logout
+// (full page navigation), so we skip the local router.push.
 const logout = async () => {
     await store.dispatch('auth/logout');
-    router.push({ name: 'login' });
+    if (!isSSOEnabled()) {
+        router.push({ name: 'login' });
+    }
 };
 
 const navigateToAccount = () => {
@@ -233,6 +242,14 @@ const { onMenuToggle } = useLayout();
 
         <!-- Right Section: Actions -->
         <div class="layout-topbar-right">
+            <!-- Tenant + Outlet filters (SSO mode). TenantFilter renders only for
+                 platform owners; OutletFilter renders a dropdown for HQ/admin and
+                 a read-only badge for pinned staff. -->
+            <div v-if="ssoEnabled" class="hidden md:flex items-center gap-2 mr-1">
+                <TenantFilter />
+                <OutletFilter />
+            </div>
+
             <!-- Notifications (Always visible) -->
             <div class="relative">
                 <button

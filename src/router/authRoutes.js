@@ -6,6 +6,20 @@ export const authRoutes = [
         meta: { requiresAuth: false },
         component: () => import('@/views/pages/Landing.vue')
     },
+    // Service-level outlet selector (post-login). Tenant-aware path per
+    // sso-integration-guide → Outlet/Branch Context. No layout; requires auth.
+    {
+        path: '/:orgSlug/auth/select-outlet',
+        name: 'selectOutlet',
+        meta: { requiresAuth: true, title: 'Select Outlet' },
+        component: () => import('@/views/pages/auth/SelectOutlet.vue')
+    },
+    {
+        path: '/auth/select-outlet',
+        name: 'selectOutletNoSlug',
+        meta: { requiresAuth: true, title: 'Select Outlet' },
+        component: () => import('@/views/pages/auth/SelectOutlet.vue')
+    },
     {
         path: '/auth/login',
         name: 'login',

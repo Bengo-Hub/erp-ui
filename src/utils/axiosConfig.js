@@ -63,9 +63,24 @@ axiosInstance.interceptors.request.use(
             }
             const tenantId = localStorage.getItem('tenant_id');
             const tenantSlug = localStorage.getItem('tenant_slug');
-            const outletId = localStorage.getItem('outlet_id');
-            if (tenantId) config.headers['X-Tenant-ID'] = tenantId;
-            if (tenantSlug) config.headers['X-Tenant-Slug'] = tenantSlug;
+            // Canonical outlet header is X-Outlet-ID (erp-selected-outlet-id key,
+            // legacy 'outlet_id' kept in sync by ssoService.setOutletId).
+            const outletId = localStorage.getItem('erp-selected-outlet-id') || localStorage.getItem('outlet_id');
+
+            // Platform owners omit X-Tenant-ID/X-Tenant-Slug and instead drill into
+            // a tenant via ?tenantId=<uuid> (TenantFilter selection). When "All
+            // Tenants" is selected, no param/header is sent → cross-tenant data.
+            // (TRINITY-AUTHORIZATION-PATTERN.md → Backend Tenant Override.)
+            const isPlatformOwner = localStorage.getItem('is_platform_owner') === 'true';
+            if (isPlatformOwner) {
+                const selectedTenantId = localStorage.getItem('platform-selected-tenant-id');
+                if (selectedTenantId) {
+                    config.params = { ...(config.params || {}), tenantId: selectedTenantId };
+                }
+            } else {
+                if (tenantId) config.headers['X-Tenant-ID'] = tenantId;
+                if (tenantSlug) config.headers['X-Tenant-Slug'] = tenantSlug;
+            }
             if (outletId) config.headers['X-Outlet-ID'] = outletId;
         } else {
             const token = sessionStorage.getItem('token') || localStorage.getItem('token');
@@ -144,6 +159,14 @@ axiosInstance.interceptors.response.use(
         // SSO mode: try a one-time token refresh on 401 before giving up.
         if (status === 401 && isSSOEnabled()) {
             const original = error.config || {};
+            // Skip the logout/redirect path for /auth/me (JIT sync delay) — the
+            // user may simply not be provisioned yet. We still attempt one
+            // refresh, but never bounce to SSO from these calls.
+            const skipLogout = original._skipAuthLogout === true || /\/auth\/me\/?($|\?)/.test(original.url || '');
+            // Grace period: just signed in (token still propagating) → don't logout.
+            const lastAuth = Number(localStorage.getItem('lastAuthenticatedAt') || 0);
+            const withinGrace = lastAuth && Date.now() - lastAuth < 15000;
+
             if (!original._retried) {
                 original._retried = true;
                 try {
@@ -152,10 +175,12 @@ axiosInstance.interceptors.response.use(
                     original.headers.Authorization = `Bearer ${newToken}`;
                     return axiosInstance(original);
                 } catch (refreshError) {
+                    if (skipLogout || withinGrace) return Promise.reject(refreshError);
                     await loginRedirect(window.location.pathname);
                     return Promise.reject(refreshError);
                 }
             }
+            if (skipLogout || withinGrace) return Promise.reject(error);
             await loginRedirect(window.location.pathname);
             return Promise.reject(error);
         }
