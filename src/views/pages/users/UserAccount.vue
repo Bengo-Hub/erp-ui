@@ -437,16 +437,6 @@
                     <EmployeeCoreForm :employee-id="currentUser?.employee_id" />
                 </TabPanel>
 
-                <!-- Addresses Tab -->
-                <TabPanel header="Addresses">
-                    <AddressManager />
-                </TabPanel>
-
-                <!-- Orders Tab -->
-                <TabPanel header="Orders">
-                    <UserOrders :userType="currentUser?.is_staff ? 'staff' : 'customer'" />
-                </TabPanel>
-
                 <!-- Activity Tab -->
                 <TabPanel header="Activity">
                     <Card>
@@ -492,9 +482,7 @@
 
 <script setup>
 import RoleChip from '@/components/Auth/RoleChip.vue';
-import AddressManager from '@/components/ecommerce/AddressManager.vue';
 import EmployeeCoreForm from '@/components/hrm/employees/EmployeeCoreForm.vue';
-import UserOrders from '@/components/shared/UserOrders.vue';
 import { useEmployeeMapping } from '@/composables/useEmployeeMapping';
 import { useToast } from '@/composables/useToast';
 import { userManagementService } from '@/services/auth/userManagementService';

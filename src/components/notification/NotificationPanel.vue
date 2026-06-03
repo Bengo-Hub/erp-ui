@@ -198,17 +198,6 @@ defineExpose({ fetchNotifications, unreadCount });
                 </div>
             </div>
         </div>
-
-        <!-- Footer -->
-        <div class="p-3 border-t border-surface text-center">
-            <Button
-                label="View All Notifications"
-                text
-                size="small"
-                @click="router.push('/notifications')"
-                class="w-full"
-            />
-        </div>
     </div>
 </template>
 

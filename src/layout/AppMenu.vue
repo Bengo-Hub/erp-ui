@@ -1,4 +1,5 @@
 <script setup>
+import { EXTERNAL_SERVICES } from '@/config/externalServices';
 import { filterMenuItems } from '@/services/auth/permissionService';
 import { onBeforeMount, ref } from 'vue';
 import AppMenuItem from './AppMenuItem.vue';
@@ -476,492 +477,75 @@ const originalModel = ref([
         ]
     },
     {
-        label: 'Finance',
-        icon: 'pi pi-dollar',
-        permission: 'view_transaction',
+        // Other business domains now live in their own microservice frontends.
+        // These entries open the owning service's UI in a new browser tab.
+        label: 'EXTERNAL SERVICES',
         items: [
             {
-                label: 'Dashboard',
-                icon: 'pi pi-chart-line',
-                to: '/finance',
-                permission: 'view_transaction'
+                label: 'Finance',
+                icon: 'pi pi-fw pi-dollar',
+                url: EXTERNAL_SERVICES.finance,
+                target: '_blank'
             },
             {
-                label: 'Core Operations',
-                icon: 'pi pi-cog',
-                items: [
-                    {
-                        label: 'Invoices',
-                        icon: 'pi pi-file',
-                        to: '/finance/invoices',
-                        permission: 'view_billingdocument'
-                    },
-                    {
-                        label: 'Quotations',
-                        icon: 'pi pi-file-edit',
-                        to: '/finance/quotations',
-                        permission: 'view_billingdocument'
-                    },
-                    {
-                        label: 'Proforma Invoices',
-                        icon: 'pi pi-file-pdf',
-                        to: '/finance/proforma-invoices',
-                        permission: 'view_billingdocument'
-                    },
-                    {
-                        label: 'Credit Notes',
-                        icon: 'pi pi-minus-circle',
-                        to: '/finance/credit-notes',
-                        permission: 'view_billingdocument'
-                    },
-                    {
-                        label: 'Debit Notes',
-                        icon: 'pi pi-plus-circle',
-                        to: '/finance/debit-notes',
-                        permission: 'view_billingdocument'
-                    },
-                    {
-                        label: 'Delivery Notes',
-                        icon: 'pi pi-truck',
-                        to: '/finance/delivery-notes',
-                        permission: 'view_billingdocument'
-                    },
-                    {
-                        label: 'Accounts',
-                        icon: 'pi pi-wallet',
-                        to: '/finance/accounts',
-                        permission: 'view_paymentaccounts'
-                    },
-                    {
-                        label: 'Vouchers',
-                        icon: 'pi pi-file-edit',
-                        to: '/finance/vouchers',
-                        permission: 'view_voucher'
-                    }
-                ]
+                label: 'CRM',
+                icon: 'pi pi-fw pi-users',
+                url: EXTERNAL_SERVICES.crm,
+                target: '_blank'
             },
             {
-                label: 'Financial Management',
-                icon: 'pi pi-chart-pie',
-                items: [
-                    {
-                        label: 'Taxes',
-                        icon: 'pi pi-percentage',
-                        to: '/finance/taxes',
-                        permission: 'view_tax'
-                    },  
-                    {
-                        label: 'Payments',
-                        icon: 'pi pi-credit-card',
-                        to: '/finance/payments',
-                        permission: 'view_payment'
-                    },
-                    {
-                        label: 'Expenses',
-                        icon: 'pi pi-shopping-cart',
-                        to: '/finance/expenses',
-                        permission: 'view_expense'
-                    },
-                    {
-                        label: 'Budgets',
-                        icon: 'pi pi-chart-pie',
-                        to: '/finance/budgets',
-                        permission: 'view_budget'
-                    }
-                ]
+                label: 'Inventory & Products',
+                icon: 'pi pi-fw pi-box',
+                url: EXTERNAL_SERVICES.inventory,
+                target: '_blank'
             },
             {
-                label: 'Reports & Analytics',
-                icon: 'pi pi-chart-bar',
-                items: [
-                    {
-                        label: 'Cash Flow',
-                        icon: 'pi pi-chart-line',
-                        items: [
-                            {
-                                label: 'Summary',
-                                to: '/finance/cashflow',
-                                permission: 'view_transaction'
-                            },
-                            {
-                                label: 'Trial Balance',
-                                to: '/finance/cashflow/trial-balance',
-                                permission: 'view_transaction'
-                            },
-                            {
-                                label: 'Balance Sheet',
-                                to: '/finance/cashflow/balance-sheet',
-                                permission: 'view_transaction'
-                            },
-                            {
-                                label: 'Profit & Loss',
-                                to: '/finance/cashflow/profit',
-                                permission: 'view_transaction'
-                            }
-                        ]
-                    },
-                    {
-                        label: 'Reconciliation',
-                        icon: 'pi pi-refresh',
-                        to: '/finance/reconciliation',
-                        permission: 'view_transaction'
-                    },
-                    {
-                        label: 'Analytics',
-                        icon: 'pi pi-chart-line',
-                        to: '/finance/analytics',
-                        permission: 'view_transaction'
-                    }
-                ]
-            }
-        ]
-    },
-    {
-        label: 'INVENTORY',
-        items: [
-            {
-                label: 'Dashboard',
-                icon: 'pi pi-fw pi-chart-line',
-                permission: 'view_stockinventory',
-                to: '/inventory'
-            },
-            {
-                label: 'Manage Inventory',
-                icon: 'pi pi-fw pi-wrench',
-                permission: 'view_stockinventory',
-                items: [
-                    {
-                        label: 'Stock Inventory',
-                        permission: 'view_stockinventory',
-                        icon: 'pi pi-fw pi-box',
-                        to: '/inventory/ManageStock'
-                    },
-                    {
-                        label: 'Stock Transfers',
-                        permission: 'view_stocktransfer',
-                        icon: 'pi pi-fw pi-truck',
-                        to: '/inventory/StockTransfers'
-                    },
-                ]
-            },
-            {
-                        label: 'Asset Management',
-                        icon: 'pi pi-fw pi-desktop',
-                        permission: 'change_asset',
-                        items: [
-                            {
-                                label: 'Dashboard',
-                                permission: 'change_asset',
-                                icon: 'pi pi-fw pi-chart-line',
-                                to: '/inventory/assets/AssetDashboard'
-                            },
-                            {
-                                label: 'Assets',
-                                permission: 'change_asset',
-                                icon: 'pi pi-fw pi-desktop',
-                                to: '/inventory/assets'
-                            },
-                            {
-                                label: 'Asset Categories',
-                                permission: 'change_assetcategory',
-                                icon: 'pi pi-fw pi-tags',
-                                to: '/inventory/assets/categories'
-                            },
-                            {
-                                label: 'Asset Transfers',
-                                permission: 'change_assettransfer',
-                                icon: 'pi pi-fw pi-eject',
-                                to: '/inventory/assets/transfers'
-                            },
-                            {
-                                label: 'Maintenance',
-                                permission: 'change_assetmaintenance',
-                                icon: 'pi pi-fw pi-cog',
-                                to: '/inventory/assets/maintenance'
-                            }
-                        ]
-                    }
-        ]
-    },
-    {
-        label: 'PROCUREMENT',
-        items: [
-            {
-                label: 'Dashboard',
-                icon: 'pi pi-fw pi-chart-line',
-                permission: 'view_purchase',
-                to: '/procurement'
-            },
-            {
-                label: 'Requisitions',
-                icon: 'pi pi-fw pi-file-edit',
-                permission: 'view_procurementrequest',
-                items: [
-                    {
-                        label: 'Requisitions',
-                        permission: 'view_procurementrequest',
-                        icon: 'pi pi-fw pi-file-edit',
-                        to: '/procurement/requisitions/ProcurementRequisitions'
-                    },
-                    {
-                        label: 'Reports',
-                        permission: 'view_procurementrequest',
-                        icon: 'pi pi-fw pi-chart-bar',
-                        to: '/procurement/reports'
-                    }
-                ]
-            },
-            {
-                label: 'Purchase Orders',
+                label: 'Procurement',
                 icon: 'pi pi-fw pi-shopping-bag',
-                permission: 'view_purchaseorder',
-                items: [
-                    {
-                        label: 'Orders',
-                        permission: 'view_purchaseorder',
-                        icon: 'pi pi-fw pi-file-edit',
-                        to: '/procurement/orders/PurchaseOrders'
-                    },
-                    {
-                        label: 'Reports',
-                        permission: 'view_purchaseorder',
-                        icon: 'pi pi-fw pi-chart-bar',
-                        to: '/procurement/reports'
-                    }
-                ]
+                url: EXTERNAL_SERVICES.inventory,
+                target: '_blank'
             },
-            {
-                label: 'Purchasing',
-                icon: 'pi pi-fw pi-shopping-bag',
-                permission: 'view_purchase',
-                items: [
-                    {
-                        label: 'Purchases',
-                        permission: 'view_purchase',
-                        icon: 'pi pi-fw pi-file-edit',
-                        to: '/procurement/purchasing/Purchases'
-                    },
-                    {
-                        label: 'Purchase Returns',
-                        permission: 'view_purchasereturn',
-                        icon: 'pi pi-fw pi-sync',
-                        to: '/procurement/purchasing/PurchaseReturns'
-                    },
-                    {
-                        label: 'Suppliers',
-                        permission: 'view_vendor',
-                        icon: 'pi pi-fw pi-truck',
-                        to: '/procurement/suppliers/suppliers'
-                    },
-                    {
-                        label: 'Reports',
-                        permission: 'view_supplierperformance',
-                        icon: 'pi pi-fw pi-chart-bar',
-                        to: '/procurement/reports'
-                    }
-                ]
-            }
-        ]
-    },
-    {
-        label: 'MANUFACTURING',
-        items: [
             {
                 label: 'Manufacturing',
                 icon: 'pi pi-fw pi-cog',
-                permission: 'view_productionbatch',
-                items: [
-                    {
-                        label: 'Dashboard',
-                        permission: 'view_productionbatch',
-                        icon: 'pi pi-fw pi-chart-line',
-                        to: '/manufacturing/dashboard'
-                    },
-                    {
-                        label: 'Analytics',
-                        permission: 'view_manufacturinganalytics',
-                        icon: 'pi pi-fw pi-chart-bar',
-                        to: '/manufacturing/analytics'
-                    },
-                    {
-                        label: 'Material Forecasting',
-                        permission: 'view_rawmaterialusage',
-                        icon: 'pi pi-fw pi-calculator',
-                        to: '/manufacturing/material-forecasting'
-                    },
-                    {
-                        label: 'Product Formulas',
-                        permission: 'view_formulas',
-                        icon: 'pi pi-fw pi-file',
-                        to: '/manufacturing/formulas'
-                    },
-                    {
-                        label: 'Production Batches',
-                        permission: 'view_productionbatch',
-                        icon: 'pi pi-fw pi-th-large',
-                        to: '/manufacturing/batches'
-                    },
-                    {
-                        label: 'Quality Checks',
-                        permission: 'view_qualitycheck',
-                        icon: 'pi pi-fw pi-check-circle',
-                        to: '/manufacturing/quality-checks'
-                    }
-                ]
-            }
-        ]
-    },
-    {
-        label: 'CRM',
-        items: [
-            {
-                label: 'Lead Management',
-                icon: 'pi pi-fw pi-users',
-                permission: 'view_lead',
-                items: [
-                    {
-                        label: 'Leads',
-                        permission: 'view_lead',
-                        icon: 'pi pi-fw pi-wallet',
-                        to: '/crm/leads'
-                    },
-                    {
-                        label: 'Follow ups',
-                        permission: 'view_lead',
-                        icon: 'pi pi-fw pi-wallet',
-                        to: '/crm/leads'
-                    },
-                    {
-                        label: 'Campaigns',
-                        permission: 'view_campaign',
-                        icon: 'pi pi-fw pi-wallet',
-                        to: '/crm/campaigns'
-                    },
-                    {
-                        label: 'Reports',
-                        permission: 'view_campaignperformance',
-                        icon: 'pi pi-fw pi-wallet',
-                        to: '/crm/reports'
-                    }
-                ]
+                url: EXTERNAL_SERVICES.inventory,
+                target: '_blank'
             },
             {
-                label: 'Contacts',
-                icon: 'pi pi-fw pi-users',
-                permission: 'view_contact',
-                items: [
-                    {
-                        label: 'Customers',
-                        permission: 'view_contact',
-                        icon: 'pi pi-fw pi-user',
-                        to: '/crm/customers'
-                    },
-                    {
-                        label: 'Customer Groups',
-                        permission: 'view_customergroup',
-                        icon: 'pi pi-fw pi-wallet',
-                        to: '/crm/customers'
-                    }
-                ]
+                label: 'Assets',
+                icon: 'pi pi-fw pi-desktop',
+                url: EXTERNAL_SERVICES.inventory,
+                target: '_blank'
             },
             {
-                label: 'Pipeline',
-                icon: 'pi pi-fw pi-sitemap',
-                permission: 'view_deal',
-                items: [
-                    {
-                        label: 'Deals',
-                        permission: 'view_deal',
-                        icon: 'pi pi-fw pi-briefcase',
-                        to: '/crm/pipeline'
-                    },
-                    {
-                        label: 'Pipeline Stages',
-                        permission: 'view_pipelinestage',
-                        icon: 'pi pi-fw pi-sitemap',
-                        to: '/crm/pipeline/stages'
-                    }
-                ]
-            }
-        ]
-    },
-    {
-        label: 'COMMERCE',
-        items: [
-            {
-                label: 'Dashboard',
-                icon: 'pi pi-fw pi-chart-line',
-                permission: 'view_sales',
-                to: '/pos'
-            },
-            {
-                label: 'POS & Sales',
+                label: 'Point of Sale',
                 icon: 'pi pi-fw pi-shopping-cart',
-                permission: 'view_sales',
-                items: [
-                    {
-                        label: 'Point Of Sale',
-                        permission: 'view_sales',
-                        icon: 'pi pi-fw pi-dollar',
-                        to: '/ecommerce/pos/pointOfSale'
-                    },
-                    {
-                        label: 'Sales Orders',
-                        permission: 'view_sales',
-                        icon: 'pi pi-fw pi-list',
-                        to: '/ecommerce/pos/Sales'
-                    },
-                    {
-                        label: 'Returns',
-                        permission: 'view_salesreturn',
-                        icon: 'pi pi-fw pi-sync',
-                        to: '/ecommerce/pos/saleReturns'
-                    }
-                ]
+                url: EXTERNAL_SERVICES.pos,
+                target: '_blank'
             },
             {
-                label: 'Online Shop',
-                icon: 'pi pi-fw pi-shopping-bag',
-                permission: 'view_products',
-                items: [
-                    {
-                        label: 'Shop',
-                        permission: 'view_products',
-                        icon: 'pi pi-fw pi-shopping-cart',
-                        to: '/ecommerce/shop'
-                    },
-                    {
-                        label: 'Wishlist',
-                        permission: 'view_products',
-                        icon: 'pi pi-fw pi-heart',
-                        to: '/ecommerce/shop/wishlist'
-                    },
-                    {
-                        label: 'Orders',
-                        permission: 'view_sales',
-                        icon: 'pi pi-fw pi-list',
-                        to: '/ecommerce/shop/account?tab=orders'
-                    }
-                ]
+                label: 'Orders & Shop',
+                icon: 'pi pi-fw pi-shopping-cart',
+                url: EXTERNAL_SERVICES.ordering,
+                target: '_blank'
             },
             {
-                label: 'Products & Brands',
-                icon: 'pi pi-fw pi-box',
-                permission: 'view_products',
-                items: [
-                    {
-                        label: 'Manage Products',
-                        permission: 'view_products',
-                        icon: 'pi pi-fw pi-box',
-                        to: '/ecommerce/products/ManageProducts'
-                    },
-                    {
-                        label: 'Manage Categories & Brands',
-                        permission: 'view_category',
-                        icon: 'pi pi-fw pi-list',
-                        to: '/ecommerce/products/ManageProductDependencies'
-                    }
-                ]
+                label: 'Notifications',
+                icon: 'pi pi-fw pi-bell',
+                url: EXTERNAL_SERVICES.notifications,
+                target: '_blank'
+            },
+            {
+                label: 'Projects',
+                icon: 'pi pi-fw pi-folder',
+                url: EXTERNAL_SERVICES.projects,
+                target: '_blank'
+            },
+            {
+                label: 'Billing & Subscriptions',
+                icon: 'pi pi-fw pi-credit-card',
+                url: EXTERNAL_SERVICES.billing,
+                target: '_blank'
             }
         ]
     },
@@ -1155,13 +739,7 @@ const originalModel = ref([
                         permission: 'view_mpesasettings',
                         icon: 'pi pi-fw pi-credit-card',
                         to: '/settings/integrations/payment'
-                    },
-                    {
-                        label: 'Notifications Settings',
-                        permission: 'view_smsconfiguration',
-                        icon: 'pi pi-fw pi-mobile',
-                        to: '/settings/notifications'
-                    },
+                    }
                 ]
             }
         ]

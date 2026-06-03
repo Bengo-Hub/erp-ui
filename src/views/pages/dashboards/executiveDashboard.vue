@@ -161,34 +161,19 @@ const processChartData = () => {
 };
 
 // Navigation functions
-const navigateToFinance = () => {
-    router.push('/finance');
-};
-
-const navigateToSales = () => {
-    router.push('/pos');
-};
-
 const navigateToHRM = () => {
     router.push('/hrm');
 };
 
-const navigateToProcurement = () => {
-    router.push('/procurement');
-};
-
-const navigateToManufacturing = () => {
-    router.push('/manufacturing');
-};
-
-// Role/module-based visibility
+// Role/module-based visibility.
+// These gate aggregate KPI cards sourced from the executive dashboard endpoint.
+// The non-HR domains now live in their own microservice frontends, so the
+// dashboard no longer links into them directly.
 const canFinance = hasAnyPermission(['view_payment', 'view_expense', 'view_budget', 'view_tax', 'view_transaction']);
 const canSales = hasAnyPermission(['view_sales']);
 const canHRM = hasAnyPermission(['view_employee', 'view_payslip']);
 const canCRM = hasAnyPermission(['view_contact', 'view_customergroup', 'view_customersegment']);
 const canProcurement = hasAnyPermission(['view_purchaseorder', 'view_procurementrequest', 'view_purchase']);
-const canManufacturing = hasAnyPermission(['view_productionbatch', 'view_formulas', 'view_qualitycheck']);
-const canAnalytics = hasAnyPermission(['view_analyticssnapshot']);
 
 // Watch for period changes
 watch(period, () => {
@@ -378,16 +363,11 @@ onMounted(() => {
             </div>
 
             <!-- Module Navigation -->
-            <Card>
+            <Card v-if="canHRM">
                 <template #title>Module Access</template>
                 <template #content>
                     <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-                        <Button v-if="canFinance" label="Finance" icon="pi pi-dollar" class="p-button-outlined" @click="navigateToFinance" />
-                        <Button v-if="canSales" label="Sales" icon="pi pi-shopping-cart" class="p-button-outlined" @click="navigateToSales" />
-                        <Button v-if="canHRM" label="HRM" icon="pi pi-users" class="p-button-outlined" @click="navigateToHRM" />
-                        <Button v-if="canProcurement" label="Procurement" icon="pi pi-shopping-bag" class="p-button-outlined" @click="navigateToProcurement" />
-                        <Button v-if="canManufacturing" label="Manufacturing" icon="pi pi-cog" class="p-button-outlined" @click="navigateToManufacturing" />
-                        <Button v-if="canAnalytics" label="Analytics" icon="pi pi-chart-bar" class="p-button-outlined" @click="() => router.push('/analytics')" />
+                        <Button label="HRM" icon="pi pi-users" class="p-button-outlined" @click="navigateToHRM" />
                     </div>
                 </template>
             </Card>
