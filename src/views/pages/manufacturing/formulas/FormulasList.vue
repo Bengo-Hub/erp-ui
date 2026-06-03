@@ -293,6 +293,8 @@ onMounted(() => {
 </template>
 
 <style scoped>
+@reference '@/assets/tailwind.css';
+
 :deep(.p-datatable .p-datatable-thead > tr > th) {
     @apply bg-gray-50 dark:bg-gray-800;
 }

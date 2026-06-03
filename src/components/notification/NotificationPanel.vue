@@ -148,7 +148,7 @@ defineExpose({ fetchNotifications, unreadCount });
                 >
                     <div class="flex gap-3">
                         <!-- Icon -->
-                        <div :class="['flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center', !notification.is_read ? 'bg-primary-100 dark:bg-primary-900/50' : 'bg-surface-100 dark:bg-surface-800']">
+                        <div :class="['shrink-0 w-10 h-10 rounded-full flex items-center justify-center', !notification.is_read ? 'bg-primary-100 dark:bg-primary-900/50' : 'bg-surface-100 dark:bg-surface-800']">
                             <i :class="['pi', getNotificationIcon(notification.notification_type), getNotificationColor(notification.notification_type)]"></i>
                         </div>
 
@@ -192,7 +192,7 @@ defineExpose({ fetchNotifications, unreadCount });
                             rounded
                             size="small"
                             @click.stop="deleteNotification(notification.id)"
-                            class="flex-shrink-0"
+                            class="shrink-0"
                         />
                     </div>
                 </div>

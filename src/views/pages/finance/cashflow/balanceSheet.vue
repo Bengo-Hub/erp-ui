@@ -491,6 +491,8 @@ watch(selectedDate, () => {
 </template>
 
 <style scoped>
+@reference '@/assets/tailwind.css';
+
 .balance-sheet-dashboard {
     @apply p-6 space-y-6;
 }

@@ -690,7 +690,7 @@ const navigateToOrderDetails = () => {
                                 <div class="flex flex-col space-y-3">
                                     <div class="delivery-option border rounded-lg p-3 cursor-pointer flex items-start" :class="{ 'border-primary bg-primary-50': deliveryMethod === 'doorDelivery' }" @click="selectDeliveryMethod('doorDelivery')">
                                         <RadioButton id="doorDelivery" name="deliveryMethod" value="doorDelivery" v-model="deliveryMethod" class="mt-1" />
-                                        <label for="doorDelivery" class="ml-3 flex-grow cursor-pointer">
+                                        <label for="doorDelivery" class="ml-3 grow cursor-pointer">
                                             <div class="font-medium">Door Delivery</div>
                                             <div class="text-sm text-gray-500 mb-2">Delivery to your home or office address</div>
                                             <div class="text-xs font-medium text-primary bg-primary-lightest inline-block px-2 py-1 rounded">Delivery Fee: KSh {{ doorDeliveryFee || currentShippingFee || 200 }}</div>
@@ -699,7 +699,7 @@ const navigateToOrderDetails = () => {
 
                                     <div class="delivery-option border rounded-lg p-3 cursor-pointer flex items-start" :class="{ 'border-primary bg-primary-50': deliveryMethod === 'pickupStation' }" @click="selectDeliveryMethod('pickupStation')">
                                         <RadioButton id="pickupStation" name="deliveryMethod" value="pickupStation" v-model="deliveryMethod" class="mt-1" />
-                                        <label for="pickupStation" class="ml-3 flex-grow cursor-pointer">
+                                        <label for="pickupStation" class="ml-3 grow cursor-pointer">
                                             <div class="font-medium">Pickup Station</div>
                                             <div class="text-sm text-gray-500 mb-2">Collect your order from a nearby pickup station</div>
                                             <div class="text-xs font-medium text-primary bg-primary-lightest inline-block px-2 py-1 rounded">Pickup Fee: KSh {{ pickupStationFee || 50 }}</div>
@@ -809,7 +809,7 @@ const navigateToOrderDetails = () => {
                     <div v-if="activeIndex === 2" class="confirmation-step bg-white p-4 rounded shadow-sm">
                         <div class="py-6">
                             <div class="flex flex-col md:flex-row items-center mb-6">
-                                <div class="flex-shrink-0 bg-green-100 rounded-full p-4 mb-4 md:mb-0 md:mr-6">
+                                <div class="shrink-0 bg-green-100 rounded-full p-4 mb-4 md:mb-0 md:mr-6">
                                     <i class="pi pi-check-circle text-5xl text-green-500"></i>
                                 </div>
                                 <div class="text-center md:text-left">

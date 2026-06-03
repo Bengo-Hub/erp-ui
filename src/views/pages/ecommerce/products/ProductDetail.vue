@@ -1321,9 +1321,9 @@ watch(
                 </div>
 
                 <!-- Gallery Content -->
-                <div class="flex-grow flex flex-col md:flex-row gap-3 p-3 overflow-hidden">
+                <div class="grow flex flex-col md:flex-row gap-3 p-3 overflow-hidden">
                     <!-- Main Image -->
-                    <div class="flex-grow flex items-center justify-center bg-gray-50 rounded-lg overflow-hidden">
+                    <div class="grow flex items-center justify-center bg-gray-50 rounded-lg overflow-hidden">
                         <img :src="galleryActiveImage || mainImage || defaultImage" :alt="productData.title" class="max-w-full max-h-full object-contain" />
                     </div>
 
@@ -1332,7 +1332,7 @@ watch(
                         <div
                             v-for="(image, index) in productImages"
                             :key="index"
-                            class="flex-shrink-0 w-16 h-16 md:w-24 md:h-24 border-2 rounded-lg p-1 cursor-pointer transition-all"
+                            class="shrink-0 w-16 h-16 md:w-24 md:h-24 border-2 rounded-lg p-1 cursor-pointer transition-all"
                             :class="{ 'border-primary': galleryActiveImage === image.image }"
                             @click="galleryActiveImage = image.image"
                         >

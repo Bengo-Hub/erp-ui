@@ -70,6 +70,8 @@ defineEmits(['go-to-step']);
 </script>
 
 <style scoped>
+@reference '@/assets/tailwind.css';
+
 .process-payroll-steps {
     @apply w-full;
 }

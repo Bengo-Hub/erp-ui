@@ -474,6 +474,8 @@ const applyFilters = () => {
 </script>
 
 <style scoped>
+@reference '@/assets/tailwind.css';
+
 .dual-list-selector {
     @apply flex flex-col gap-4;
 }

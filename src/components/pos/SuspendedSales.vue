@@ -109,7 +109,7 @@ onMounted(() => {
             filterDisplay="menu"
             :loading="loading"
             stripedRows
-            class="p-datatable-sm flex-grow"
+            class="p-datatable-sm grow"
         >
             <template #empty>
                 <div class="text-center p-4">No suspended sales found.</div>
@@ -172,7 +172,7 @@ onMounted(() => {
     height: 100%;
 }
 
-.flex-grow {
+.grow {
     flex-grow: 1;
 }
 

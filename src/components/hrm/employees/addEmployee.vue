@@ -1122,6 +1122,8 @@ onMounted(async () => {
 </template>
 
 <style scoped>
+@reference '@/assets/tailwind.css';
+
 .employee-form {
   @apply bg-surface-0 dark:bg-surface-900;
 }

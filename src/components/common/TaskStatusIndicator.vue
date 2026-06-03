@@ -200,6 +200,8 @@ const formatTime = (date) => {
 </template>
 
 <style scoped>
+@reference '@/assets/tailwind.css';
+
 .task-status-indicator {
     @apply flex items-center space-x-2;
 }

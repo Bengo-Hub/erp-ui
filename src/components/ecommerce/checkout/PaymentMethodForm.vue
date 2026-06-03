@@ -427,7 +427,7 @@ const timeoutMpesaPayment = () => {
                     <div class="flex items-center p-3 border rounded cursor-pointer" :class="{ 'border-primary bg-primary-lightest': selectedMethod === method.id }" @click="selectMethod(method.id)">
                         <RadioButton :inputId="'method_' + method.id" name="paymentMethod" :value="method.id" v-model="selectedMethod" />
 
-                        <label :for="'method_' + method.id" class="ml-2 cursor-pointer flex-grow">
+                        <label :for="'method_' + method.id" class="ml-2 cursor-pointer grow">
                             <div class="flex items-center">
                                 <img :src="method.icon" :alt="method.name" class="w-10 h-10 object-contain mr-3" />
                                 <div>

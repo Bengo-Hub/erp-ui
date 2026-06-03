@@ -727,6 +727,8 @@ const submitForApproval = () => {
 </template>
 
 <style scoped>
+@reference '@/assets/tailwind.css';
+
 .payslip-container {
     @apply max-w-6xl mx-auto p-4 bg-gray-50 min-h-screen;
 }

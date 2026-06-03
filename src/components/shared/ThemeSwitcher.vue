@@ -25,6 +25,8 @@ const { isDarkMode, toggleDarkMode } = useTheme();
 </script>
 
 <style scoped>
+@reference '@/assets/tailwind.css';
+
 .theme-switcher {
     @apply inline-flex;
 }

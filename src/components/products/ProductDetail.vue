@@ -106,6 +106,8 @@ defineProps({
 </template>
 
 <style scoped>
+@reference '@/assets/tailwind.css';
+
 .border {
     @apply border-gray-200;
 }

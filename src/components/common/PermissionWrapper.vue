@@ -65,6 +65,8 @@ const hasAccess = computed(() => {
 </template>
 
 <style scoped>
+@reference '@/assets/tailwind.css';
+
 .permission-denied {
     @apply flex flex-col items-center justify-center text-center;
 }

@@ -79,6 +79,8 @@ const chipClass = computed(() => {
 </script>
 
 <style scoped>
+@reference '@/assets/tailwind.css';
+
 :deep(.p-chip) {
     @apply transition-all duration-200;
 }

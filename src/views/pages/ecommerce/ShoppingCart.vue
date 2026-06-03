@@ -249,12 +249,12 @@ const proceedToCheckout = () => {
                         <div v-for="item in cartItems" :key="item.id" class="cart-item border-b pb-4 mb-4">
                             <div class="flex flex-col md:flex-row">
                                 <!-- Product Image -->
-                                <div class="md:w-24 flex-shrink-0 mb-3 md:mb-0" @click="navigateToProduct(item.stock.product_id)">
+                                <div class="md:w-24 shrink-0 mb-3 md:mb-0" @click="navigateToProduct(item.stock.product_id)">
                                     <img :src="item.stock.product_image != null ? item.stock.product_image : defaultImage" :alt="item.stock.product_id" class="w-full h-24 object-contain cursor-pointer" />
                                 </div>
 
                                 <!-- Product Details -->
-                                <div class="flex-grow md:ml-4">
+                                <div class="grow md:ml-4">
                                     <div class="flex justify-between items-start">
                                         <h3 class="text-base font-medium cursor-pointer" @click="navigateToProduct(item.stock.product_id)">
                                             {{ item.stock.product_title }}

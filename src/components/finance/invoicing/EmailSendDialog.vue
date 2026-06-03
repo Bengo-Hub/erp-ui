@@ -240,7 +240,7 @@ watch(() => props.document, (newDoc) => {
 
                 <div v-if="!customerPhone" class="bg-amber-50 dark:bg-amber-900 p-3 rounded border border-amber-200">
                     <div class="flex gap-2">
-                        <i class="pi pi-exclamation-triangle text-amber-600 flex-shrink-0"></i>
+                        <i class="pi pi-exclamation-triangle text-amber-600 shrink-0"></i>
                         <p class="text-sm text-amber-700 dark:text-amber-300">Customer phone number not found. Please enter it below.</p>
                     </div>
                 </div>

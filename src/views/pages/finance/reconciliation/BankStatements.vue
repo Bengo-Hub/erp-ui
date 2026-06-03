@@ -275,6 +275,8 @@ onMounted(async () => {
 </template>
 
 <style scoped>
+@reference '@/assets/tailwind.css';
+
 .bank-reconciliation-dashboard {
     @apply p-6 space-y-6;
 }

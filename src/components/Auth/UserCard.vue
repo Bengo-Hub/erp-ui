@@ -137,6 +137,8 @@ const getUserInitials = (user) => {
 </script>
 
 <style scoped>
+@reference '@/assets/tailwind.css';
+
 .user-card {
     @apply h-full;
 }

@@ -107,7 +107,7 @@ const viewAllResults = () => {
 <template>
     <div class="search-bar relative w-full max-w-xl mx-auto">
         <div class="flex items-stretch w-full">
-            <span class="p-input-icon-left flex-grow">
+            <span class="p-input-icon-left grow">
                 <InputText
                     v-model="searchQuery"
                     placeholder="Search for products..."
@@ -129,7 +129,7 @@ const viewAllResults = () => {
             <div v-for="item in searchResults" :key="`${item.id}-${item.variation.id}`" class="search-result-item p-3 border-b border-gray-100 hover:bg-gray-50 cursor-pointer" @click="navigateToProduct(item.product.id, item.variation.id)">
                 <div class="flex items-center">
                     <img :src="getProductImage(item)" :alt="item.product.title" class="w-12 h-12 object-contain mr-3 rounded" />
-                    <div class="flex-grow min-w-0">
+                    <div class="grow min-w-0">
                         <div class="font-medium truncate flex items-center">
                             {{ item.product.title }}
                             <span v-if="item.variation.title !== 'Standard Piece(s)'" class="text-xs text-gray-500 ml-2"> ({{ item.variation.title }}) </span>

@@ -261,6 +261,8 @@ onMounted(() => {
 </script>
 
 <style scoped>
+@reference '@/assets/tailwind.css';
+
 .security-dashboard {
     @apply max-w-7xl mx-auto p-6;
 }

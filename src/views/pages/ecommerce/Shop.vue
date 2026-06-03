@@ -483,7 +483,7 @@ const generateMockTrendingProducts = () => {
                         <li v-for="mainCategory in mainCategories" :key="mainCategory.id" class="category-item flex items-center hover:bg-gray-100 relative" @mouseenter="setHoveredCategory(mainCategory.id)" @mouseleave="clearHoveredCategory()">
                             <router-link :to="`/ecommerce/shop/category/${mainCategory.id}`" class="flex items-center px-4 py-3 w-full hover:text-primary">
                                 <i :class="[mainCategory.icon || getMainCategoryIcon(mainCategory.name), 'mr-2']"></i>
-                                <div class="flex-grow">
+                                <div class="grow">
                                     {{ mainCategory.name }}
                                 </div>
                                 <i v-if="mainCategory.categories && mainCategory.categories.length" class="pi pi-angle-right ml-2 text-gray-500"></i>
@@ -520,13 +520,13 @@ const generateMockTrendingProducts = () => {
                 </div>
             </div>
             <!-- Banner Carousel -->
-            <div ref="carouselEl" class="banner-section flex-grow w-full my-2">
+            <div ref="carouselEl" class="banner-section grow w-full my-2">
                 <Carousel :value="banners" :numVisible="1" :numScroll="1" :circular="true" :autoplayInterval="5000" class="w-full h-full carousel-container" :responsiveOptions="carouselResponsiveOptions">
                     <template #item="slotProps">
                         <router-link :to="slotProps.data.link" class="block w-full h-full">
                             <div class="banner-item relative w-full h-full overflow-hidden rounded-lg">
                                 <img :src="slotProps.data.image" :alt="slotProps.data.title" class="w-full h-full object-cover md:object-contain" />
-                                <div class="banner-content absolute bottom-0 left-0 right-0 md:bottom-10 md:left-10 md:right-auto bg-white bg-opacity-90 p-2 md:p-4 md:rounded-lg shadow-sm">
+                                <div class="banner-content absolute bottom-0 left-0 right-0 md:bottom-10 md:left-10 md:right-auto bg-white/90 p-2 md:p-4 md:rounded-lg shadow-sm">
                                     <h3 class="text-lg md:text-2xl font-bold text-primary">{{ slotProps.data.title }}</h3>
                                     <p class="text-sm md:text-base text-gray-700 hidden md:block">{{ slotProps.data.description }}</p>
                                     <Button label="Shop Now" class="mt-2 p-button-sm md:p-button-md" @click.prevent="routeTo(slotProps.data.link)" />
