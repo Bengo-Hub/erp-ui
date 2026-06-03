@@ -884,7 +884,7 @@ function getUserName(userId) {
             :style="{ width: '450px' }"
         >
             <div class="flex items-start gap-4">
-                <div class="w-12 h-12 rounded-full bg-red-100 dark:bg-red-900/20 flex items-center justify-center flex-shrink-0">
+                <div class="w-12 h-12 rounded-full bg-red-100 dark:bg-red-900/20 flex items-center justify-center shrink-0">
                     <i class="pi pi-exclamation-triangle text-2xl text-red-500"></i>
                 </div>
                 <div>
@@ -1035,7 +1035,7 @@ function getUserName(userId) {
             :style="{ width: '450px' }"
         >
             <div class="flex items-start gap-4">
-                <div class="w-12 h-12 rounded-full bg-red-100 dark:bg-red-900/20 flex items-center justify-center flex-shrink-0">
+                <div class="w-12 h-12 rounded-full bg-red-100 dark:bg-red-900/20 flex items-center justify-center shrink-0">
                     <i class="pi pi-exclamation-triangle text-2xl text-red-500"></i>
                 </div>
                 <div>

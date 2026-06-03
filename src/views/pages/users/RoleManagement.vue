@@ -439,6 +439,8 @@ onMounted(() => {
 </script>
 
 <style scoped>
+@reference '@/assets/tailwind.css';
+
 .role-management-container {
     @apply max-w-7xl mx-auto p-6;
 }

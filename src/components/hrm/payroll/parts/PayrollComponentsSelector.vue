@@ -434,6 +434,8 @@ const saveComponents = async () => {
 </template>
 
 <style scoped>
+@reference '@/assets/tailwind.css';
+
 .payroll-components-selector {
     @apply space-y-6;
 }

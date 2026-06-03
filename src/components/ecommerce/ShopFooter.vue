@@ -98,7 +98,7 @@ const subscribe = async () => {
                     </div>
                     <div>
                         <div class="flex flex-col sm:flex-row">
-                            <InputText v-model="userEmail" placeholder="Your email address" class="flex-grow mb-2 sm:mb-0 sm:mr-2" :class="{ 'p-invalid': v$.userEmail.$invalid && submitted }" />
+                            <InputText v-model="userEmail" placeholder="Your email address" class="grow mb-2 sm:mb-0 sm:mr-2" :class="{ 'p-invalid': v$.userEmail.$invalid && submitted }" />
                             <Button label="Subscribe" @click="subscribe" />
                         </div>
                         <small v-if="v$.userEmail.$invalid && submitted" class="p-error">{{ v$.userEmail.$errors[0].$message }}</small>

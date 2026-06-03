@@ -201,7 +201,7 @@ const getCategoryIcon = (categoryName) => {
                 <button @click="$emit('toggle-menu')" class="text-gray-700">
                     <i class="pi pi-bars text-xl"></i>
                 </button>
-                <div class="flex-grow">
+                <div class="grow">
                     <SearchBar />
                 </div>
                 <button @click="navigateToCart()" class="text-gray-700 relative">
@@ -305,7 +305,7 @@ const getCategoryIcon = (categoryName) => {
             <div class="container mx-auto">
                 <div class="flex items-center justify-between">
                     <!-- Hover-based Main Category Navigation -->
-                    <div class="main-nav overflow-x-auto py-0 flex-grow">
+                    <div class="main-nav overflow-x-auto py-0 grow">
                         <div class="flex items-center space-x-0">
                             <!-- All Categories Link -->
                             <router-link to="/ecommerce/shop/all-categories" class="nav-link text-white px-3 py-2 block whitespace-nowrap hover:bg-primary-dark">

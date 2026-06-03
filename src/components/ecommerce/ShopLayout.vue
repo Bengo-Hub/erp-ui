@@ -420,7 +420,7 @@ const getMockMainCategories = () => {
                 <div v-else class="favorite-products">
                     <div v-for="stock in favorites" :key="stock.id" class="favorite-item flex items-center p-2 border-b">
                         <img :src="stock.product.image || '@/assets/images/products/default.png'" :alt="stock.product.title" class="w-16 h-16 object-contain mr-3" />
-                        <div class="flex-grow">
+                        <div class="grow">
                             <div class="font-medium line-clamp-2">{{ stock.product.title }}</div>
                             <div class="text-primary font-medium">KSh {{ formatPrice(stock.product.selling_price) }}</div>
                         </div>

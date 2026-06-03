@@ -249,7 +249,7 @@ const onFileSelect = (event) => {
                 <!-- Added min-w-0 to prevent overflow -->
                 <div class="flex items-center gap-4 flex-wrap">
                     <!-- Added flex-wrap -->
-                    <div class="flex-shrink-0">
+                    <div class="shrink-0">
                         <!-- Wrapped InputNumber -->
                         <InputText v-model="businessDays" class="w-full md:w-24" readonly mode="number" />
                     </div>

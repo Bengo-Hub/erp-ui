@@ -62,6 +62,8 @@ const handleClick = (event) => {
 </template>
 
 <style scoped>
+@reference '@/assets/tailwind.css';
+
 .permission-disabled {
     @apply opacity-50 cursor-not-allowed;
 }

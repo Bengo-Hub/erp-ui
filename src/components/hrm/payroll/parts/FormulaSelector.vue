@@ -246,6 +246,8 @@ watch(
 </template>
 
 <style scoped>
+@reference '@/assets/tailwind.css';
+
 .formula-selector {
     @apply space-y-4;
 }

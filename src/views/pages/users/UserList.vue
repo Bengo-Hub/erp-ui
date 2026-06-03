@@ -962,6 +962,8 @@ onMounted(() => {
 </script>
 
 <style scoped>
+@reference '@/assets/tailwind.css';
+
 .user-list-container {
     @apply max-w-7xl mx-auto p-6;
 }

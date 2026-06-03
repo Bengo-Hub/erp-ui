@@ -170,7 +170,7 @@ const emailDocs = async () => {
                         <div class="bg-gradient-to-r from-blue-600 to-indigo-600 px-6 py-4">
                             <div class="flex items-center justify-between">
                                 <div class="flex items-center">
-                                    <div class="w-10 h-10 bg-white bg-opacity-20 rounded-lg flex items-center justify-center mr-3">
+                                    <div class="w-10 h-10 bg-white/20 rounded-lg flex items-center justify-center mr-3">
                                         <i class="pi pi-users text-white text-xl"></i>
                                     </div>
                                     <div>
@@ -335,7 +335,7 @@ const emailDocs = async () => {
                         <div class="bg-white rounded-xl shadow-lg border border-gray-200 overflow-hidden">
                             <div class="bg-gradient-to-r from-green-600 to-emerald-600 px-6 py-4">
                                 <div class="flex items-center">
-                                    <div class="w-10 h-10 bg-white bg-opacity-20 rounded-lg flex items-center justify-center mr-3">
+                                    <div class="w-10 h-10 bg-white/20 rounded-lg flex items-center justify-center mr-3">
                                         <i class="pi pi-calendar text-white text-xl"></i>
                                     </div>
                                     <div>
@@ -372,7 +372,7 @@ const emailDocs = async () => {
                             <div class="bg-gradient-to-r from-purple-600 to-pink-600 px-6 py-4">
                                 <div class="flex items-center justify-between">
                                     <div class="flex items-center">
-                                        <div class="w-10 h-10 bg-white bg-opacity-20 rounded-lg flex items-center justify-center mr-3">
+                                        <div class="w-10 h-10 bg-white/20 rounded-lg flex items-center justify-center mr-3">
                                             <i class="pi pi-envelope text-white text-xl"></i>
                                         </div>
                                         <div>

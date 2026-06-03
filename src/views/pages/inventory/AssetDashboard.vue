@@ -158,7 +158,7 @@
                     <div class="space-y-4">
                         <div v-for="activity in recentActivity.slice(0, 5)" :key="activity.id"
                              class="flex items-center space-x-4 p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
-                            <div class="flex-shrink-0">
+                            <div class="shrink-0">
                                 <div :class="getActivityIconClass(activity.type)">
                                     <i :class="getActivityIcon(activity.type)"></i>
                                 </div>
@@ -167,7 +167,7 @@
                                 <p class="text-sm font-medium text-gray-900">{{ activity.description }}</p>
                                 <p class="text-sm text-gray-500">{{ activity.user }} • {{ formatDateTime(activity.date) }}</p>
                             </div>
-                            <div class="flex-shrink-0">
+                            <div class="shrink-0">
                                 <Tag :value="activity.type" :severity="getActivitySeverity(activity.type)" />
                             </div>
                         </div>

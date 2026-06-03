@@ -1,5 +1,6 @@
 import axios from 'axios';
 import { PLATFORM_OWNER_BUSINESS_NAME } from './businessBranding';
+import { isSSOEnabled, getAccessToken, refreshAccessToken, loginRedirect } from '@/services/auth/ssoService';
 
 // Get base URL from window object or use default
 const getBaseURL = () => {
@@ -53,10 +54,24 @@ function getBusinessContext() {
 // Request interceptor to add auth token, CSRF token, branch context, and currency
 axiosInstance.interceptors.request.use(
     (config) => {
-        // Add authorization token if available
-        const token = sessionStorage.getItem('token') || localStorage.getItem('token');
-        if (token) {
-            config.headers.Authorization = `Token ${token}`;
+        // Add authorization token. SSO mode uses Bearer JWT + tenant context headers;
+        // legacy mode uses DRF Token auth. (shared-docs/sso-integration-guide.md)
+        if (isSSOEnabled()) {
+            const accessToken = getAccessToken();
+            if (accessToken) {
+                config.headers.Authorization = `Bearer ${accessToken}`;
+            }
+            const tenantId = localStorage.getItem('tenant_id');
+            const tenantSlug = localStorage.getItem('tenant_slug');
+            const outletId = localStorage.getItem('outlet_id');
+            if (tenantId) config.headers['X-Tenant-ID'] = tenantId;
+            if (tenantSlug) config.headers['X-Tenant-Slug'] = tenantSlug;
+            if (outletId) config.headers['X-Outlet-ID'] = outletId;
+        } else {
+            const token = sessionStorage.getItem('token') || localStorage.getItem('token');
+            if (token) {
+                config.headers.Authorization = `Token ${token}`;
+            }
         }
 
         // Add CSRF token for Django
@@ -107,16 +122,46 @@ axiosInstance.interceptors.response.use(
     (response) => {
         return response;
     },
-    (error) => {
+    async (error) => {
         // Handle CORS errors
         if (error.message === 'Network Error' || error.code === 'ERR_NETWORK') {
             console.error('Network/CORS Error:', error);
             // You can show a user-friendly message here
         }
 
-        // Handle 401 Unauthorized
-        if (error.response?.status === 401) {
-            // Clear invalid token and redirect to login
+        const status = error.response?.status;
+        const data = error.response?.data;
+
+        // Subscription gating: 403 with code=subscription_inactive must show an upgrade
+        // prompt, NOT a login redirect. (shared-docs/subscription-gating-guide.md)
+        if (status === 403 && (data?.code === 'subscription_inactive' || data?.upgrade === true)) {
+            if (typeof window !== 'undefined') {
+                window.dispatchEvent(new CustomEvent('subscription:inactive', { detail: data }));
+            }
+            return Promise.reject(error);
+        }
+
+        // SSO mode: try a one-time token refresh on 401 before giving up.
+        if (status === 401 && isSSOEnabled()) {
+            const original = error.config || {};
+            if (!original._retried) {
+                original._retried = true;
+                try {
+                    const newToken = await refreshAccessToken();
+                    original.headers = original.headers || {};
+                    original.headers.Authorization = `Bearer ${newToken}`;
+                    return axiosInstance(original);
+                } catch (refreshError) {
+                    await loginRedirect(window.location.pathname);
+                    return Promise.reject(refreshError);
+                }
+            }
+            await loginRedirect(window.location.pathname);
+            return Promise.reject(error);
+        }
+
+        // Legacy 401 handling
+        if (status === 401) {
             sessionStorage.removeItem('token');
             localStorage.removeItem('token');
             localStorage.clear();

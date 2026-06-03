@@ -276,6 +276,8 @@ onMounted(async () => {
 </script>
 
 <style scoped>
+@reference '@/assets/tailwind.css';
+
 .formula-management {
     @apply space-y-4;
 }

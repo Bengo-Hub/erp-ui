@@ -355,7 +355,7 @@ export default {
                                     </div>
                                 </div>
 
-                                <div class="address-details flex-grow-1">
+                                <div class="address-details grow-1">
                                     <p class="m-0 mb-1">
                                         <strong>{{ address.full_name }}</strong>
                                     </p>

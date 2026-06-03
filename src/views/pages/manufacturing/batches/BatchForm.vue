@@ -626,6 +626,8 @@ onMounted(async () => {
 </template>
 
 <style scoped>
+@reference '@/assets/tailwind.css';
+
 .whitespace-pre-wrap {
     white-space: pre-wrap;
 }

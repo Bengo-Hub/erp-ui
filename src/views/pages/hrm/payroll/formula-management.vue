@@ -67,6 +67,8 @@ const exportFormulas = () => {
 </template>
 
 <style scoped>
+@reference '@/assets/tailwind.css';
+
 .formula-management-page {
     @apply min-h-screen bg-gray-50 dark:bg-gray-900 p-6;
 }

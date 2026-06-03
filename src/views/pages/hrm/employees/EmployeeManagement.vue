@@ -375,6 +375,8 @@ onMounted(() => {
 </script>
 
 <style scoped>
+@reference '@/assets/tailwind.css';
+
 .employee-management {
     @apply max-w-7xl mx-auto p-6;
 }

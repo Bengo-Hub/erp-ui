@@ -330,7 +330,7 @@ const updateData = () => {
         <Dialog v-model:visible="showpayslipDialog" header="Pay Slip" :style="{ width: '1200px' }" :modal="true">
             <div class="container-fluid flex">
                 <!-- Payslip Section -->
-                <div class="flex-grow p-4 w-6/10">
+                <div class="grow p-4 w-6/10">
                     <!-- 60% width -->
                     <Payslip :id="selectedPayslipId" @payslip-info="getPaySlipInfo" ref="payslipRef" />
                 </div>

@@ -122,6 +122,13 @@ const routes = [
             }
         ]
     },
+    //#################### SSO CALLBACK (no layout) ###########################
+    {
+        path: '/auth/callback',
+        name: 'sso-callback',
+        component: () => import('@/views/pages/auth/AuthCallback.vue'),
+        meta: { title: 'Signing in' }
+    },
     //#################### AUTH ROUTES #########################################
     ...authRoutes,
     //#################### PUBLIC ROUTES (No layout wrapper) ####################

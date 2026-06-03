@@ -280,6 +280,8 @@ watch(dateRange, () => {
 </template>
 
 <style scoped>
+@reference '@/assets/tailwind.css';
+
 .finance-dashboard {
     @apply p-6 space-y-6;
 }

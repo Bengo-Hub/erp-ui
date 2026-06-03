@@ -1181,6 +1181,8 @@ const handleApproval = (action) => {
 </template>
 
 <style scoped>
+@reference '@/assets/tailwind.css';
+
 .payroll-processor {
     @apply min-h-screen bg-gray-50 dark:bg-gray-900 p-6;
 }
@@ -1348,10 +1350,6 @@ const handleApproval = (action) => {
 
 :deep(.p-datatable .p-datatable-tbody > tr > td) {
     @apply dark:border-gray-600 dark:text-gray-100;
-}
-
-:deep(.p-tag) {
-    @apply dark:bg-opacity-80;
 }
 
 :deep(.p-inputswitch) {

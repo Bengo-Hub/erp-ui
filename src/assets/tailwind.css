@@ -1,3 +1,4 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+/* Tailwind CSS v4 entry. The existing JS config (theme, screens, animations,
+   darkMode '.app-dark', tailwindcss-primeui plugin) is preserved via @config. */
+@import 'tailwindcss';
+@config '../../tailwind.config.js';

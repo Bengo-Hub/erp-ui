@@ -144,10 +144,10 @@ const onCouponSuccess = (message) => {
             <div class="order-items mt-6 border-t pt-4">
                 <h4 class="font-medium mb-3">Items in Order</h4>
                 <div v-for="item in items" :key="item.id" class="order-item flex mb-3 pb-3 border-b">
-                    <div class="w-16 flex-shrink-0">
+                    <div class="w-16 shrink-0">
                         <img :src="item.stock?.product_image || defaultImage" :alt="item.stock?.product_title || 'Product'" class="w-full h-16 object-contain" />
                     </div>
-                    <div class="ml-3 flex-grow">
+                    <div class="ml-3 grow">
                         <h5 class="text-sm font-medium line-clamp-1">{{ item.stock?.product_title || 'Product' }}</h5>
                         <div class="text-xs text-gray-500">Qty: {{ item.quantity }}</div>
                         <div class="text-sm font-medium">KSh {{ formatPrice(item.item_total) }}</div>
