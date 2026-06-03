@@ -1,6 +1,5 @@
 <script setup>
 import { useToast } from '@/composables/useToast';
-import { financeService } from '@/services/finance/financeService';
 import { systemConfigService } from '@/services/shared/systemConfigService';
 import { useConfirm } from 'primevue/useconfirm';
 import { computed, onMounted, ref } from 'vue';
@@ -8,7 +7,9 @@ import { computed, onMounted, ref } from 'vue';
 const { showToast } = useToast();
 const confirm = useConfirm();
 
-// Tax rates (loaded from finance module for dropdown)
+// Tax rates for the default-tax dropdown. The finance/treasury microservice now
+// owns tax definitions, so this is left empty here (the dropdown shows no options
+// until/unless this list is populated from a generic source).
 const taxRates = ref([]);
 
 // Breadcrumb items
@@ -190,22 +191,9 @@ onMounted(async () => {
         loadPrefixSettings(),
         loadDocumentSequences(),
         loadProductSettings(),
-        loadSaleSettings(),
-        loadTaxRates()
+        loadSaleSettings()
     ]);
 });
-
-// Load tax rates from finance module for default_tax dropdown
-async function loadTaxRates() {
-    try {
-        const response = await financeService.getTaxRates();
-        if (response.data) {
-            taxRates.value = response.data.results || response.data || [];
-        }
-    } catch (error) {
-        console.error('Error loading tax rates:', error);
-    }
-}
 
 // Business Details Methods
 async function loadBusinessDetails() {

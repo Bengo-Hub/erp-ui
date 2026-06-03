@@ -185,15 +185,7 @@ export const settingsRoutes = [
         meta: { requiresAuth: true },
         component: () => import('@/views/pages/settings/branding.vue')
     },
-    
-    // Finance Settings
-    {
-        path: '/settings/finance/taxes',
-        name: 'taxSettings',
-        meta: { requiresAuth: true },
-        component: () => import('@/views/pages/settings/finance/Taxes.vue')
-    },
-    
+
     // Integration Settings
     {
         path: '/settings/integrations/kra',
@@ -206,25 +198,5 @@ export const settingsRoutes = [
         name: 'paymentGatewaySettings',
         meta: { requiresAuth: true },
         component: () => import('@/views/pages/settings/integrations/PaymentGateways.vue')
-    },
-    {
-        // SMS settings handled in notification settings
-        path: '/settings/integrations/sms',
-        name: 'smsSettings',
-        redirect: '/settings/notifications'
-    },
-    {
-        // Email settings handled in notification settings
-        path: '/settings/integrations/email',
-        name: 'emailSettings',
-        redirect: '/settings/notifications'
-    },
-
-    // Notification Settings
-    {
-        path: '/settings/notifications',
-        name: 'notificationSettings',
-        meta: { requiresAuth: true },
-        component: () => import('@/views/pages/settings/notifications.vue')
     }
 ];
