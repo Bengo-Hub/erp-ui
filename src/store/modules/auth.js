@@ -1,6 +1,8 @@
 import { employeeService } from '@/services/hrm/employeeService';
 import axios from '@/utils/axiosConfig';
 import { applyAllBranding, applyPrimeVueTheme, DEFAULT_BRANDING, resetBranding, saveThemeSettings } from '@/utils/businessBranding';
+import { loadMergedProfile, clearProfileCache } from '@/services/auth/meService';
+import { ssoLogoutRedirect, isSSOEnabled, getAccessToken } from '@/services/auth/ssoService';
 
 const state = {
     isAuthenticated: false,
@@ -167,6 +169,62 @@ const actions = {
         }
     },
 
+    /**
+     * SSO profile load (two-step /auth/me) — used after the SSO callback and on
+     * app rehydration when running in SSO mode. Replaces the legacy
+     * /auth/security/login/ permission load. See:
+     *   shared-docs/sso-integration-guide.md  (Profile, two-step enrichment)
+     *   shared-docs/TRINITY-AUTHORIZATION-PATTERN.md (Service auth/me endpoint)
+     *
+     * (a) SSO  GET /api/v1/auth/me  → identity + global roles
+     * (b) ERP  GET /api/v1/auth/me/ → service role + service permissions
+     * Merged so usePermissions.js continues to read user.permissions/roles.
+     */
+    async loadSsoProfile({ commit }, opts = {}) {
+        try {
+            const merged = await loadMergedProfile({ force: opts.force });
+            if (!merged) return null;
+
+            commit('SET_AUTHENTICATED', true);
+            commit('SET_USER', merged);
+
+            // Persist so checkAuthentication()/usePermissions hydrate after reload.
+            sessionStorage.setItem('user', JSON.stringify(merged));
+            sessionStorage.setItem('isAuthenticated', 'true');
+            if (Array.isArray(merged.permissions)) {
+                localStorage.setItem('userPermissions', JSON.stringify(merged.permissions));
+            }
+            // Platform-owner flag drives axios header behaviour (?tenantId vs
+            // X-Tenant-ID) — persisted so the interceptor can read it cheaply.
+            localStorage.setItem('is_platform_owner', String(merged.is_platform_owner === true));
+
+            // Build a lightweight business context for the axios tenant headers /
+            // platform-owner detection (mirrors the legacy `business` shape).
+            const business = {
+                business__name: merged.tenant_slug || 'BengoBox ERP',
+                name: merged.tenant_slug || '',
+                id: merged.tenant_id || null,
+                tenant_id: merged.tenant_id || null,
+                tenant_slug: merged.tenant_slug || null,
+                is_platform_owner: merged.is_platform_owner === true
+            };
+            commit('SET_BUSINESS', business);
+            sessionStorage.setItem('business', JSON.stringify(business));
+
+            // Best-effort: resolve employee mapping so ESS links work for staff.
+            try {
+                if (!merged.employee_id) {
+                    await this.dispatch('auth/resolveEmployeeMapping');
+                }
+            } catch (_) {}
+
+            return merged;
+        } catch (error) {
+            console.error('Error loading SSO profile:', error);
+            throw error;
+        }
+    },
+
     async logout({ commit }) {
         try {
             await axios.post(
@@ -180,6 +238,7 @@ const actions = {
         } catch (_) {
             // Ignore network/CORS failures and proceed with local cleanup to ensure UX
         } finally {
+            clearProfileCache();
             sessionStorage.removeItem('token');
             sessionStorage.removeItem('user');
             sessionStorage.removeItem('business');
@@ -194,6 +253,14 @@ const actions = {
 
             // Reset to default branding
             resetBranding(DEFAULT_BRANDING);
+
+            // SSO mode: clear tokens + outlet/tenant context and bounce through
+            // the auth-service logout so the shared session cookie is cleared.
+            // (sso-integration-guide → Logout flow.) This redirects the page, so
+            // it must run last.
+            if (isSSOEnabled()) {
+                ssoLogoutRedirect();
+            }
         }
     },
 
@@ -202,6 +269,29 @@ const actions = {
         const userStr = sessionStorage.getItem('user');
         const businessStr = sessionStorage.getItem('business');
         const addressesStr = sessionStorage.getItem('addresses');
+
+        // SSO mode: there is no legacy DRF token. Rehydrate from the persisted
+        // merged profile and refresh it in the background (two-step /auth/me).
+        if (isSSOEnabled()) {
+            if (getAccessToken()) {
+                if (userStr) {
+                    try {
+                        commit('SET_USER', JSON.parse(userStr));
+                    } catch (_) {}
+                }
+                if (businessStr) {
+                    try {
+                        commit('SET_BUSINESS', JSON.parse(businessStr));
+                    } catch (_) {}
+                }
+                commit('SET_AUTHENTICATED', true);
+                // Refresh the profile (cached, ~5min staleTime) without blocking.
+                this.dispatch('auth/loadSsoProfile').catch(() => {});
+            } else {
+                resetBranding(DEFAULT_BRANDING);
+            }
+            return;
+        }
 
         if (token && userStr) {
             const user = JSON.parse(userStr);
