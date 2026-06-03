@@ -7,19 +7,24 @@
  *
  * Required env:
  *   VITE_SSO_ENABLED=true
- *   VITE_AUTH_API_URL   e.g. https://sso.codevertexitsolutions.com
+ *   VITE_SSO_URL        e.g. https://sso.codevertexitsolutions.com   (preferred)
+ *   VITE_AUTH_API_URL   legacy alias for VITE_SSO_URL (still honoured)
  *   VITE_SSO_CLIENT_ID  e.g. erp-ui
  */
 
 const cfg = () => ({
     enabled: String(import.meta.env.VITE_SSO_ENABLED || 'false').toLowerCase() === 'true',
-    authApi: (import.meta.env.VITE_AUTH_API_URL || '').replace(/\/$/, ''),
+    // VITE_SSO_URL is the documented var; VITE_AUTH_API_URL is the legacy alias.
+    authApi: (import.meta.env.VITE_SSO_URL || import.meta.env.VITE_AUTH_API_URL || '').replace(/\/$/, ''),
     clientId: import.meta.env.VITE_SSO_CLIENT_ID || 'erp-ui',
     redirectUri: `${window.location.origin}/auth/callback`,
     scope: 'openid profile email offline_access'
 });
 
 export const isSSOEnabled = () => cfg().enabled;
+
+/** Base URL of the SSO/auth-service (no trailing slash). */
+export const ssoBaseUrl = () => cfg().authApi;
 
 // --- PKCE helpers ---------------------------------------------------------
 function randomString(len = 64) {
@@ -43,11 +48,38 @@ async function sha256Challenge(verifier) {
 // --- token storage --------------------------------------------------------
 const TOK = { access: 'access_token', refresh: 'refresh_token', id: 'id_token' };
 
+// Canonical outlet key for the ERP UI (matches the {service}-selected-outlet-id
+// convention in shared-docs/sso-integration-guide.md → Outlet/Branch Context).
+export const OUTLET_STORAGE_KEY = 'erp-selected-outlet-id';
+
 export function getAccessToken() {
     return localStorage.getItem(TOK.access) || sessionStorage.getItem(TOK.access);
 }
 export function getRefreshToken() {
     return localStorage.getItem(TOK.refresh);
+}
+
+// --- outlet context -------------------------------------------------------
+// The axios interceptor reads the selected outlet from localStorage and sends
+// it as X-Outlet-ID on every request. These helpers are the canonical setter/
+// getter so components don't poke localStorage directly.
+export function getOutletId() {
+    return localStorage.getItem(OUTLET_STORAGE_KEY) || localStorage.getItem('outlet_id') || null;
+}
+
+/** Set (or clear) the active outlet. Pass null/'' for "All Outlets". */
+export function setOutletId(outletId) {
+    if (outletId) {
+        localStorage.setItem(OUTLET_STORAGE_KEY, outletId);
+        // Keep the legacy key in sync for any code still reading 'outlet_id'.
+        localStorage.setItem('outlet_id', outletId);
+    } else {
+        localStorage.removeItem(OUTLET_STORAGE_KEY);
+        localStorage.removeItem('outlet_id');
+    }
+    if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('outlet:changed', { detail: { outletId: outletId || null } }));
+    }
 }
 function setTokens({ access_token, refresh_token, id_token }) {
     if (access_token) localStorage.setItem(TOK.access, access_token);
@@ -121,8 +153,18 @@ export async function handleCallback() {
     const claims = parseJwt(data.access_token || '');
     if (claims.tenant_id) localStorage.setItem('tenant_id', claims.tenant_id);
     if (claims.tenant_slug) localStorage.setItem('tenant_slug', claims.tenant_slug);
-    if (claims.outlet_id) localStorage.setItem('outlet_id', claims.outlet_id);
+    // is_hq_user controls whether the outlet selector is shown (HQ users pick an
+    // outlet per-request; single-outlet staff are pinned to their JWT outlet).
+    localStorage.setItem('is_hq_user', String(claims.is_hq_user === true));
+    // Outlet preselection per sso-integration-guide step 11: single-outlet staff
+    // (outlet_id present AND is_hq_user=false) are auto-pinned to their outlet.
+    if (claims.outlet_id && claims.is_hq_user !== true) {
+        setOutletId(claims.outlet_id);
+    }
     sessionStorage.setItem('isAuthenticated', 'true');
+    // Grace period: skip the 401 logout for ~15s after a fresh sign-in so the
+    // JIT /auth/me sync delay does not bounce the user back to SSO.
+    localStorage.setItem('lastAuthenticatedAt', String(Date.now()));
 
     sessionStorage.removeItem('pkce_verifier');
     sessionStorage.removeItem('oauth_state');
@@ -151,4 +193,26 @@ export function ssoLogout() {
     localStorage.removeItem('tenant_id');
     localStorage.removeItem('tenant_slug');
     localStorage.removeItem('outlet_id');
+    localStorage.removeItem(OUTLET_STORAGE_KEY);
+    localStorage.removeItem('is_hq_user');
+    localStorage.removeItem('is_platform_owner');
+    localStorage.removeItem('platform-selected-tenant-id');
+    localStorage.removeItem('platform-selected-tenant-slug');
+    localStorage.removeItem('lastAuthenticatedAt');
+}
+
+/**
+ * Full SSO logout: clear local state then redirect to the auth-service logout
+ * endpoint so the shared session cookie is cleared too. (sso-integration-guide
+ * → Logout flow.)
+ */
+export function ssoLogoutRedirect() {
+    const c = cfg();
+    ssoLogout();
+    if (c.authApi) {
+        const url = `${c.authApi}/api/v1/auth/logout?post_logout_redirect_uri=${encodeURIComponent(window.location.origin)}`;
+        window.location.href = url;
+    } else {
+        window.location.href = '/auth/login';
+    }
 }

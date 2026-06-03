@@ -1,6 +1,8 @@
 <script setup>
 import { useToast } from '@/composables/useToast';
 import { systemConfigService } from '@/services/shared/systemConfigService';
+import { isSSOEnabled } from '@/services/auth/ssoService';
+import { brandingSettingsUrl } from '@/services/auth/tenantBrandingService';
 import { computed, onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { useStore } from 'vuex';
@@ -10,6 +12,15 @@ const store = useStore();
 const { showToast } = useToast();
 const loading = ref(false);
 const saving = ref(false);
+
+// In SSO/multi-tenant mode, branding is owned by auth-ui (single source of
+// truth, fetched from auth-api). We do NOT edit branding in-app — link out
+// instead. (shared-docs/sso-integration-guide.md → Tenant branding.)
+const ssoEnabled = isSSOEnabled();
+const openAuthBranding = () => {
+    const url = brandingSettingsUrl();
+    if (url) window.open(url, '_blank', 'noopener');
+};
 
 const business = computed(() => store.state.auth.business);
 
@@ -184,6 +195,8 @@ const applyBrandingToUI = (settings) => {
 };
 
 onMounted(() => {
+    // SSO mode owns branding via auth-ui; skip the legacy in-app fetch/editor.
+    if (ssoEnabled) return;
     fetchBrandingSettings();
 });
 </script>
@@ -199,7 +212,18 @@ onMounted(() => {
             <p class="text-surface-600 dark:text-surface-400">Customize your application's branding, logos, and appearance</p>
         </div>
 
-        <div v-if="loading" class="text-center py-8"><ProgressSpinner /></div>
+        <!-- SSO mode: branding is managed centrally in auth-ui (auth-api is the
+             single source of truth). The in-app editor is disabled; link out. -->
+        <div v-if="ssoEnabled" class="border border-surface-200 dark:border-surface-700 rounded-lg p-6 text-center">
+            <i class="pi pi-palette text-4xl text-primary mb-3"></i>
+            <h3 class="text-lg font-semibold mb-2 text-surface-900 dark:text-surface-0">Branding is managed in your account settings</h3>
+            <p class="text-surface-600 dark:text-surface-400 mb-4">
+                Logos and theme colours are configured once in your organisation account and applied across all BengoBox apps automatically.
+            </p>
+            <Button label="Open branding settings" icon="pi pi-external-link" @click="openAuthBranding" />
+        </div>
+
+        <div v-else-if="loading" class="text-center py-8"><ProgressSpinner /></div>
 
         <div v-else class="flex flex-col gap-6">
             <!-- Branding & Identity -->
