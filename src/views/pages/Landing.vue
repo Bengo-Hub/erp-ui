@@ -1,4 +1,12 @@
 <script setup>
+import { computed } from 'vue';
+import { useRoute } from 'vue-router';
+import { orgPath, resolveOrgSlug } from '@/utils/tenantContext';
+
+const route = useRoute();
+// Tenant-scoped login link for the public landing page.
+const loginPath = computed(() => orgPath(resolveOrgSlug(route.params?.orgSlug), '/auth/login'));
+
 function smoothScroll(id) {
     document.body.click();
     document.querySelector(id).scrollIntoView({
@@ -64,8 +72,8 @@ function smoothScroll(id) {
                         </li>
                     </ul>
                     <div class="flex border-t lg:border-t-0 border-surface py-4 lg:py-0 mt-4 lg:mt-0 gap-2">
-                        <Button label="Login" text as="router-link" to="/auth/login" rounded></Button>
-                        <Button label="Register" to="/auth/login" rounded></Button>
+                        <Button label="Login" text as="router-link" :to="loginPath" rounded></Button>
+                        <Button label="Register" :to="loginPath" rounded></Button>
                     </div>
                 </div>
             </div>

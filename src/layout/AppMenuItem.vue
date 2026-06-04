@@ -1,6 +1,7 @@
 <script setup>
 import { useLayout } from '@/layout/composables/layout';
-import { onBeforeMount, ref, watch } from 'vue';
+import { orgPath, resolveOrgSlug } from '@/utils/tenantContext';
+import { computed, onBeforeMount, ref, watch } from 'vue';
 import { useRoute } from 'vue-router';
 
 const route = useRoute();
@@ -28,6 +29,29 @@ const props = defineProps({
 
 const isActiveMenu = ref(false);
 const itemKey = ref(null);
+
+// Tenant-scope the menu target so links point directly at /{orgSlug}/… instead
+// of the unprefixed path (which would otherwise force a guard redirect hop).
+// String paths are prefixed via orgPath; named/location objects get the orgSlug
+// merged into params; absolute external urls are left untouched.
+const resolvedTo = computed(() => {
+    const to = props.item.to;
+    if (!to) return to;
+    if (typeof to === 'string') {
+        return to.startsWith('/') ? orgPath(resolveOrgSlug(route.params?.orgSlug), to) : to;
+    }
+    if (typeof to === 'object') {
+        // Named routes resolve against the org-scoped route table (names are
+        // prefixed with `org-`); ensure the orgSlug param is present.
+        const slug = resolveOrgSlug(route.params?.orgSlug);
+        const params = { ...(to.params || {}) };
+        if (!params.orgSlug) params.orgSlug = slug;
+        const next = { ...to, params };
+        if (to.name && !String(to.name).startsWith('org-')) next.name = `org-${to.name}`;
+        return next;
+    }
+    return to;
+});
 
 onBeforeMount(() => {
     itemKey.value = props.parentItemKey ? props.parentItemKey + '-' + props.index : String(props.index);
@@ -64,7 +88,11 @@ function itemClick(event, item) {
 }
 
 function checkActiveRoute(item) {
-    return route.path === item.to;
+    if (typeof item.to !== 'string') return false;
+    // Compare against both the scoped and unscoped forms so the active state is
+    // correct regardless of how the route was reached.
+    const scoped = item.to.startsWith('/') ? orgPath(resolveOrgSlug(route.params?.orgSlug), item.to) : item.to;
+    return route.path === item.to || route.path === scoped;
 }
 </script>
 
@@ -78,7 +106,7 @@ function checkActiveRoute(item) {
             <span class="layout-menuitem-text">{{ item.label }}</span>
             <i class="pi pi-fw pi-angle-down layout-submenu-toggler" v-if="item.items"></i>
         </a>
-        <router-link v-if="item.to && !item.items && item.visible !== false" @click="itemClick($event, item, index)" :class="[item.class, { 'active-route': checkActiveRoute(item) }]" tabindex="0" :to="item.to">
+        <router-link v-if="item.to && !item.items && item.visible !== false" @click="itemClick($event, item, index)" :class="[item.class, { 'active-route': checkActiveRoute(item) }]" tabindex="0" :to="resolvedTo">
             <i :class="item.icon" class="layout-menuitem-icon"></i>
             <span class="layout-menuitem-text">{{ item.label }}</span>
             <i class="pi pi-fw pi-angle-down layout-submenu-toggler" v-if="item.items"></i>

@@ -1,10 +1,12 @@
 <script setup>
 import { ref, computed } from 'vue';
-import { useRouter } from 'vue-router';
+import { useRoute, useRouter } from 'vue-router';
 import { useToast } from '@/composables/useToast';
 import { authService } from '@/services/auth/authService';
+import { orgPath, resolveOrgSlug } from '@/utils/tenantContext';
 
 const router = useRouter();
+const route = useRoute();
 const { showToast } = useToast();
 
 // State
@@ -43,7 +45,7 @@ const handleSubmit = async () => {
 };
 
 const goToLogin = () => {
-    router.push('/auth/login');
+    router.push(orgPath(resolveOrgSlug(route.params?.orgSlug), '/auth/login'));
 };
 
 const resetForm = () => {

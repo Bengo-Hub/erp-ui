@@ -11,12 +11,17 @@
  * can reload that tenant's outlets.
  */
 import { fetchTenants, getSelectedTenantId, setSelectedTenant } from '@/services/auth/tenantService';
+import { isPlatformOwnerUser } from '@/utils/tenantContext';
 import { computed, onMounted, ref } from 'vue';
+import { useRoute } from 'vue-router';
 import { useStore } from 'vuex';
 
 const store = useStore();
+const route = useRoute();
 const user = computed(() => store.state.auth.user);
-const isPlatformOwner = computed(() => user.value?.is_platform_owner === true);
+// Platform owner = is_platform_owner claim OR active org slug is 'codevertex'
+// (mirrors ordering-frontend). Drives the cross-tenant TenantFilter visibility.
+const isPlatformOwner = computed(() => isPlatformOwnerUser(user.value, route.params?.orgSlug));
 
 const ALL = { id: null, name: 'All Tenants', slug: null };
 

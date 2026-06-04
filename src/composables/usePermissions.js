@@ -1,5 +1,6 @@
 import { computed } from 'vue';
 import { useStore } from 'vuex';
+import { isPlatformOwnerUser } from '@/utils/tenantContext';
 
 // Permission categories for better organization
 export const PERMISSION_CATEGORIES = {
@@ -163,13 +164,19 @@ export function usePermissions() {
     const isSuperuser = computed(() => {
         const user = currentUser.value;
         if (!user) return false;
-        
+
         const roles = Array.isArray(user.roles) ? user.roles.map((r) => String(r).toLowerCase()) : [];
-        return user.is_superuser === true || 
-               user.isSuperuser === true || 
+        return user.is_superuser === true ||
+               user.isSuperuser === true ||
                roles.includes('superusers') ||
                userPermissions.value.includes('is_superuser');
     });
+
+    // Platform owner (CodeVertex) — mirrors ordering-frontend's isPlatformOwner.
+    // True when the is_platform_owner claim is set OR the active org slug is the
+    // platform-owner slug ('codevertex'). Platform owners get the TenantFilter and
+    // cross-tenant access (axios sends ?tenantId instead of X-Tenant-* headers).
+    const isPlatformOwner = computed(() => isPlatformOwnerUser(currentUser.value));
 
     // Check if user has specific permission
     const hasPermission = (permission) => {
@@ -304,6 +311,7 @@ export function usePermissions() {
         userPermissions,
         currentUser,
         isSuperuser,
+        isPlatformOwner,
         hasPermission,
         hasAnyPermission,
         hasAllPermissions,
