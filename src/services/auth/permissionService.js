@@ -87,6 +87,15 @@ export const PERMISSION_CATEGORIES = {
 };
 
 /**
+ * Reduce a permission code to its bare codename, e.g. "employees.view_employee" -> "view_employee".
+ * The service /auth/me historically returned either form; the UI gates on bare codenames.
+ */
+const bareCode = (code) => String(code || '').split('.').pop();
+
+/** Build a Set of the user's permissions as bare codenames (so both formats match). */
+const barePermSet = (userPermissions) => new Set((userPermissions || []).map(bareCode));
+
+/**
  * Check if user has specific permission
  * @param {Array|Object} userPermissionsOrUser - Array of user permissions or user object
  * @param {string} requiredPermission - Permission to check
@@ -97,16 +106,17 @@ export const hasPermission = (userPermissionsOrUser, requiredPermission) => {
     if (isSuperUser(userPermissionsOrUser)) {
         return true;
     }
-    
+
     // Extract permissions array from object or use as-is
-    const userPermissions = Array.isArray(userPermissionsOrUser) 
-        ? userPermissionsOrUser 
+    const userPermissions = Array.isArray(userPermissionsOrUser)
+        ? userPermissionsOrUser
         : (userPermissionsOrUser?.permissions || []);
-    
+
     if (!userPermissions || !Array.isArray(userPermissions)) {
         return false;
     }
-    return userPermissions.includes(requiredPermission);
+    if (userPermissions.includes('*')) return true;
+    return barePermSet(userPermissions).has(bareCode(requiredPermission));
 };
 
 /**
@@ -129,7 +139,9 @@ export const hasAnyPermission = (userPermissionsOrUser, requiredPermissions) => 
     if (!userPermissions || !Array.isArray(userPermissions)) {
         return false;
     }
-    return requiredPermissions.some(permission => userPermissions.includes(permission));
+    if (userPermissions.includes('*')) return true;
+    const set = barePermSet(userPermissions);
+    return requiredPermissions.some(permission => set.has(bareCode(permission)));
 };
 
 /**
@@ -152,7 +164,9 @@ export const hasAllPermissions = (userPermissionsOrUser, requiredPermissions) =>
     if (!userPermissions || !Array.isArray(userPermissions)) {
         return false;
     }
-    return requiredPermissions.every(permission => userPermissions.includes(permission));
+    if (userPermissions.includes('*')) return true;
+    const set = barePermSet(userPermissions);
+    return requiredPermissions.every(permission => set.has(bareCode(permission)));
 };
 
 /**
@@ -206,8 +220,10 @@ export const hasModuleAccess = (userPermissionsOrUser, module) => {
     }
     
     // Check if user has any permission in the module
+    if (userPermissions.includes('*')) return true;
+    const set = barePermSet(userPermissions);
     const allModulePermissions = Object.values(modulePermissions).flat();
-    return allModulePermissions.some(permission => userPermissions.includes(permission));
+    return allModulePermissions.some(permission => set.has(bareCode(permission)));
 };
 
 /**
@@ -348,13 +364,14 @@ export const isSuperUser = (user) => {
         return user.is_superuser === true ||
                user.isSuperuser === true ||
                roles.includes('superusers') ||
+               roles.includes('superuser') ||
+               permissions.includes('*') ||           // service /auth/me superuser marker
                permissions.includes('is_superuser');
     }
 
     // If passed an array (permissions array - legacy support)
-    // Only check for explicit superuser permission, not arbitrary count
     if (Array.isArray(user)) {
-        return user.includes('is_superuser');
+        return user.includes('*') || user.includes('is_superuser');
     }
 
     return false;

@@ -697,20 +697,6 @@ function getSequenceSeverity(docType) {
                                 <Button type="button" label="Cancel" severity="secondary" outlined @click="resetBusinessDetails" class="w-full sm:w-auto" />
                                 <Button type="submit" label="Save Registration Settings" icon="pi pi-check" :loading="savingBusinessDetails" class="w-full sm:w-auto" />
                             </div>
-
-                            <!-- KRA eTIMS Info Box -->
-                            <div class="mt-6 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
-                                <div class="flex gap-3">
-                                    <i class="pi pi-info-circle text-blue-500 mt-0.5"></i>
-                                    <div>
-                                        <p class="text-sm text-blue-700 dark:text-blue-300 m-0 font-medium">KRA eTIMS Integration</p>
-                                        <p class="text-sm text-blue-600 dark:text-blue-400 m-0 mt-1">
-                                            To configure KRA eTIMS API integration for electronic tax invoicing, go to
-                                            <router-link to="/settings/integrations/kra" class="text-primary font-medium hover:underline">Settings → Integrations → KRA eTIMS</router-link>
-                                        </p>
-                                    </div>
-                                </div>
-                            </div>
                         </form>
                     </div>
                 </TabPanel>

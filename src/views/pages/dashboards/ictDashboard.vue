@@ -42,18 +42,7 @@
                     </button>
                 </template>
             </Card>
-            <Card v-if="canViewIntegrations">
-                <template #title>Integrations</template>
-                <template #content>
-                    <button class="flex items-center gap-3" @click="navigateTo('/settings/integrations/kra')">
-                        <i class="pi pi-cog text-purple-500 text-3xl"></i>
-                        <div>
-                            <p class="text-sm text-surface-500">KRA eTIMS</p>
-                            <p class="text-lg font-semibold">Configure Integration</p>
-                        </div>
-                    </button>
-                </template>
-            </Card>
+            <!-- KRA eTIMS integration card removed — owned by treasury-api/UI (decomposed). -->
         </div>
 
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-4 mt-4">
