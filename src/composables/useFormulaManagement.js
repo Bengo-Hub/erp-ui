@@ -56,7 +56,7 @@ export function useFormulaManagement() {
             const [incomeRes, nssfRes, shifRes, levyRes] = await Promise.all([
                 payrollService.getFormulasByType('income'),
                 payrollService.getFormulasByType('deduction', { category: 'social_security_fund' }),
-                payrollService.getFormulasByType('deduction', { title: 's.h.i.f' }),
+                payrollService.getFormulasByType('deduction', { category: 'shif' }),
                 payrollService.getFormulasByType('levy')
             ]);
 

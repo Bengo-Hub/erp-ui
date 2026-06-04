@@ -740,17 +740,17 @@ const handleApproval = (action) => {
 
                     <div class="form-group">
                         <label class="form-label">Department</label>
-                        <MultiSelect v-model="selectedDepartment" :options="departments" optionLabel="title" optionValue="id" placeholder="All Departments" class="w-full" :filter="true" filterPlaceholder="Search departments" :disabled="disableDepartment" />
+                        <MultiSelect v-model="selectedDepartment" :options="departments" optionLabel="title" optionValue="id" placeholder="All Departments" class="w-full" :filter="true" filterPlaceholder="Search departments" />
                     </div>
 
                     <div class="form-group">
                         <label class="form-label">Region</label>
-                        <Dropdown v-model="selectedRegion" :options="regions" optionLabel="title" optionValue="id" placeholder="All Regions" class="w-full" :filter="true" filterPlaceholder="Search regions" :disabled="disableRegion" />
+                        <Dropdown v-model="selectedRegion" :options="regions" optionLabel="title" optionValue="id" placeholder="All Regions" class="w-full" :filter="true" filterPlaceholder="Search regions" />
                     </div>
 
                     <div class="form-group">
                         <label class="form-label">Project</label>
-                        <Dropdown v-model="selectedProject" :options="projects" optionLabel="name" optionValue="id" placeholder="All Projects" class="w-full" :filter="true" filterPlaceholder="Search projects" :disabled="disableProject" />
+                        <Dropdown v-model="selectedProject" :options="projects" optionLabel="name" optionValue="id" placeholder="All Projects" class="w-full" :filter="true" filterPlaceholder="Search projects" />
                     </div>
 
                     <div class="form-group">
