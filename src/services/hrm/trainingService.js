@@ -30,6 +30,12 @@ export const trainingService = {
     deleteEnrollment(id) {
         return axios.delete(`${TRAINING_BASE}/enrollments/${id}/`);
     },
+    completeEnrollment(id) {
+        return axios.post(`${TRAINING_BASE}/enrollments/${id}/complete/`);
+    },
+    cancelEnrollment(id) {
+        return axios.post(`${TRAINING_BASE}/enrollments/${id}/cancel/`);
+    },
 
     // Evaluations
     listEvaluations(params = {}) {

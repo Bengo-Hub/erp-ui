@@ -77,6 +77,19 @@ const confirmDelete = (id) => {
     });
 };
 
+const setEnrollmentStatus = async (enrollment, action) => {
+    try {
+        if (action === 'complete') await trainingService.completeEnrollment(enrollment.id);
+        else await trainingService.cancelEnrollment(enrollment.id);
+        await fetchEnrollments();
+        showToast('success', 'Success', `Enrollment ${action === 'complete' ? 'completed' : 'cancelled'}`, 3000);
+    } catch (error) {
+        showToast('error', 'Error', error?.response?.data?.detail || `Failed to ${action} enrollment`, 5000);
+    }
+};
+
+const statusSeverity = (s) => ({ enrolled: 'info', completed: 'success', cancelled: 'danger' }[s] || 'secondary');
+
 onMounted(() => {
     fetchEnrollments();
 });
@@ -92,9 +105,16 @@ onMounted(() => {
             <Column field="employee.name" header="Employee" />
             <Column field="course.title" header="Course" />
             <Column field="enrollment_date" header="Enrollment Date" />
+            <Column header="Status">
+                <template #body="{ data }">
+                    <Tag :value="data.status" :severity="statusSeverity(data.status)" />
+                </template>
+            </Column>
             <Column header="Actions">
                 <template #body="{ data }">
-                    <Button label="Delete" size="small" severity="danger" @click="confirmDelete(data.id)" />
+                    <Button v-if="data.status === 'enrolled'" label="Complete" size="small" text severity="success" @click="setEnrollmentStatus(data, 'complete')" />
+                    <Button v-if="data.status === 'enrolled'" label="Cancel" size="small" text severity="warning" @click="setEnrollmentStatus(data, 'cancel')" />
+                    <Button label="Delete" size="small" text severity="danger" @click="confirmDelete(data.id)" />
                 </template>
             </Column>
         </DataTable>
