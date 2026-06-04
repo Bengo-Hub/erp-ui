@@ -1,8 +1,12 @@
 <script setup>
 import { usePermissions } from '@/composables/usePermissions';
 import { getDashboardRedirectPath } from '@/services/auth/permissionService';
+import { orgPath, resolveOrgSlug } from '@/utils/tenantContext';
 import { computed } from 'vue';
+import { useRoute } from 'vue-router';
 import { useStore } from 'vuex';
+
+const route = useRoute();
 
 const { hasPermission, hasAnyPermission } = usePermissions();
 const store = useStore();
@@ -56,21 +60,25 @@ const baseItems = [
     { label: 'Attendance', icon: 'pi pi-check-circle', to: '/hrm/attendance/records', permission: 'view_attendancerecord' }
 ];
 
-// Only include items user can view (or that have no explicit permission)
+// Only include items user can view (or that have no explicit permission).
+// Tenant-scope each `to` so links point at /{orgSlug}/… directly.
 const items = computed(() => {
-    const filtered = baseItems.filter((item) => !item.permission || hasPermission(item.permission));
-    
+    const slug = resolveOrgSlug(route.params?.orgSlug);
+    const filtered = baseItems
+        .filter((item) => !item.permission || hasPermission(item.permission))
+        .map((item) => ({ ...item, to: orgPath(slug, item.to) }));
+
     // Add "Back to Admin Dashboard" at the end if user has admin access
     if (hasAdminAccess.value) {
         const adminDashboardPath = getDashboardRedirectPath(currentUser.value);
         filtered.push({
             label: 'Back to Admin Dashboard',
             icon: 'pi pi-arrow-left',
-            to: adminDashboardPath,
+            to: orgPath(slug, adminDashboardPath),
             isAdminLink: true
         });
     }
-    
+
     return filtered;
 });
 </script>
