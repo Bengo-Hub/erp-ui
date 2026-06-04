@@ -3,6 +3,7 @@ import { ref, computed, onMounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useToast } from '@/composables/useToast';
 import { authService } from '@/services/auth/authService';
+import { orgPath, resolveOrgSlug } from '@/utils/tenantContext';
 import IconField from 'primevue/iconfield';
 import InputIcon from 'primevue/inputicon';
 
@@ -111,11 +112,11 @@ const handleSubmit = async () => {
 };
 
 const goToLogin = () => {
-    router.push('/auth/login');
+    router.push(orgPath(resolveOrgSlug(route.params?.orgSlug), '/auth/login'));
 };
 
 const requestNewLink = () => {
-    router.push('/auth/forgot-password');
+    router.push(orgPath(resolveOrgSlug(route.params?.orgSlug), '/auth/forgot-password'));
 };
 
 // Lifecycle
