@@ -295,6 +295,12 @@ const originalModel = ref([
                 permission: 'view_attendancerecord',
                 items: [
                     {
+                        label: 'Shift Planner',
+                        permission: 'view_workshift',
+                        icon: 'pi pi-fw pi-th-large',
+                        to: '/hrm/attendance/shift-planner'
+                    },
+                    {
                         label: 'Attendance Records',
                         permission: 'view_attendancerecord',
                         icon: 'pi pi-fw pi-calendar',
