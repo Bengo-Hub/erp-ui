@@ -792,6 +792,12 @@ export const employeeService = {
     createApplication(data) {
         return axios.post(`${RECRUITMENT_ROOT}/applications/`, data);
     },
+    advanceApplication(id) {
+        return axios.post(`${RECRUITMENT_ROOT}/applications/${id}/advance/`);
+    },
+    rejectApplication(id, data = {}) {
+        return axios.post(`${RECRUITMENT_ROOT}/applications/${id}/reject/`, data);
+    },
 
     // Approval Settings
     async getApprovalSettings(params = {}) {

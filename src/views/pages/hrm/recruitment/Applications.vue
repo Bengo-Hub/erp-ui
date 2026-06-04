@@ -47,6 +47,29 @@ const createApplication = async () => {
     }
 };
 
+const advanceApplication = async (app) => {
+    try {
+        await employeeService.advanceApplication(app.id);
+        showToast('success', 'Success', 'Application advanced to next stage', 3000);
+        await fetchApplications();
+    } catch (error) {
+        showToast('error', 'Error', error?.response?.data?.detail || 'Cannot advance application', 3000);
+    }
+};
+
+const rejectApplication = async (app) => {
+    try {
+        await employeeService.rejectApplication(app.id);
+        showToast('success', 'Success', 'Application rejected', 3000);
+        await fetchApplications();
+    } catch (error) {
+        showToast('error', 'Error', error?.response?.data?.detail || 'Failed to reject application', 3000);
+    }
+};
+
+const statusSeverity = (s) => ({ applied: 'secondary', screening: 'info', interview: 'info', offered: 'warning', hired: 'success', rejected: 'danger' }[s] || 'secondary');
+const isFinal = (s) => s === 'hired' || s === 'rejected';
+
 onMounted(() => {
     fetchApplications();
 });
@@ -61,7 +84,17 @@ onMounted(() => {
         <DataTable :value="applications" :loading="loading" dataKey="id" class="w-full">
             <Column field="job" header="Job" />
             <Column field="candidate" header="Candidate" />
-            <Column field="status" header="Status" />
+            <Column header="Status">
+                <template #body="{ data }">
+                    <Tag :value="data.status" :severity="statusSeverity(data.status)" />
+                </template>
+            </Column>
+            <Column header="Actions">
+                <template #body="{ data }">
+                    <Button v-if="!isFinal(data.status)" label="Advance" size="small" text icon="pi pi-arrow-right" @click="advanceApplication(data)" />
+                    <Button v-if="!isFinal(data.status)" label="Reject" size="small" text severity="danger" icon="pi pi-times" @click="rejectApplication(data)" />
+                </template>
+            </Column>
         </DataTable>
 
         <Dialog v-model:visible="showDialog" header="Create Application" :modal="true" :style="{ width: '32rem' }">
