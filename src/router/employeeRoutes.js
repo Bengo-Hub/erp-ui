@@ -89,6 +89,12 @@ export const employeeRoutes = [
         component: () => import('@/views/pages/hrm/attendance/ShiftRotationEditor.vue')
     },
     {
+        path: '/hrm/attendance/shift-planner',
+        name: 'shift-planner',
+        meta: { requiresAuth: true, permission: 'view_workshift' },
+        component: () => import('@/views/pages/hrm/attendance/ShiftPlanner.vue')
+    },
+    {
         path: '/hrm/attendance/off-days',
         name: 'off-days',
         meta: { requiresAuth: true, permission: 'view_offday' },
