@@ -4,6 +4,8 @@ import Spinner from '@/components/ui/Spinner.vue';
 import { useTheme } from '@/composables/useTheme';
 import { authService } from '@/services/auth/authService';
 import { getDashboardRedirectPath as getDashboardPath } from '@/services/auth/permissionService';
+import { isSSOEnabled, loginRedirect } from '@/services/auth/ssoService';
+import { orgPath, resolveOrgSlug } from '@/utils/tenantContext';
 import { computed, onMounted, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useStore } from 'vuex';
@@ -33,11 +35,40 @@ const store = useStore();
 const router = useRouter();
 const route = useRoute();
 
-// Load public branding on mount (no auth required)
-// Reads ?org= query param for tenant-specific branding (e.g. /auth/login?org=mss)
-// Falls back: masterspace.co.ke → mss, codevertexitsolutions.com → demo, localhost → CodeVertex defaults
+// --- SSO --------------------------------------------------------------------
+// When VITE_SSO_ENABLED === 'true' the primary CTA is "Sign in with SSO", which
+// kicks off the OIDC + PKCE flow in ssoService, scoped to the current org slug.
+// The legacy email/password form is kept as a fallback (shown by default when
+// SSO is off, or behind a "use email instead" toggle when SSO is on).
+const ssoEnabled = isSSOEnabled();
+const showLegacyForm = ref(!ssoEnabled);
+
+// Org slug from the tenant-scoped route (/{orgSlug}/auth/login), falling back to
+// the persisted tenant. Drives the SSO `tenant` hint + post-login redirect.
+const orgSlug = computed(() => resolveOrgSlug(route.params?.orgSlug));
+
+const handleSSOLogin = async () => {
+    isLoading.value = true;
+    spinner_title.value = 'Redirecting to secure sign-in…';
+    errorMessage.value = '';
+    try {
+        const returnTo = route.query?.redirect || orgPath(orgSlug.value, '/');
+        await loginRedirect(returnTo, orgSlug.value);
+        // loginRedirect performs a full-page navigation; nothing runs after it.
+    } catch (error) {
+        console.error('SSO sign-in failed to start:', error);
+        errorMessage.value = 'Could not start SSO sign-in. Please try again or use email.';
+        showLegacyForm.value = true;
+        isLoading.value = false;
+    }
+};
+
+// Load public branding on mount (no auth required).
+// Prefers the org slug from the tenant-scoped path (/{orgSlug}/auth/login), then
+// the legacy ?org= query param. Falls back inside loadPublicBranding by hostname.
 onMounted(async () => {
-    const orgCode = route.query?.org || '';
+    const pathSlug = route.params?.orgSlug;
+    const orgCode = (pathSlug && pathSlug !== 'codevertex' ? pathSlug : '') || route.query?.org || '';
     const publicBranding = await loadPublicBranding(orgCode);
 
     if (publicBranding) {
@@ -93,15 +124,15 @@ const handleLogin = async () => {
         } else if (response && response.success) {
             // Force password change flow
             if (response.password_change_required) {
-                router.push('/users/account');
+                router.push(orgPath(orgSlug.value, '/users/account'));
                 return;
             }
             // Login successful (store hydrated by authService.login)
             localStorage.setItem('lastLoginEmail', email);
 
-            // Redirect based on user role
+            // Redirect based on user role (tenant-scoped).
             const user = store.state.auth.user;
-            const redirectPath = getDashboardPath(user);
+            const redirectPath = orgPath(orgSlug.value, getDashboardPath(user));
             router.push(redirectPath);
         } else {
             // Handle error cases
@@ -135,9 +166,9 @@ const handle2FAVerification = async () => {
             // Login successful with 2FA (store hydrated by authService.login)
             localStorage.setItem('lastLoginEmail', form.value.email);
 
-            // Redirect based on user role
+            // Redirect based on user role (tenant-scoped).
             const user = store.state.auth.user;
-            const redirectPath = getDashboardPath(user);
+            const redirectPath = orgPath(orgSlug.value, getDashboardPath(user));
             router.push(redirectPath);
         } else {
             errorMessage.value = 'Invalid 2FA code';
@@ -177,7 +208,7 @@ const getDashboardRedirectPathForUser = (user) => {
                 <div class="w-full bg-surface-0 dark:bg-surface-900 py-20 px-8 sm:px-20" style="border-radius: 53px">
                     <div class="text-center mb-8">
                         <div class="text-surface-900 dark:text-surface-0 text-3xl font-medium mb-4">
-                            <router-link to="/" class="layout-topbar-logo flex items-center justify-center space-x-2">
+                            <router-link :to="orgPath(orgSlug, '/')" class="layout-topbar-logo flex items-center justify-center space-x-2">
                                 <img :src="appLogoSrc" alt="Logo" class="h-20 w-30 object-contain" />
                             </router-link>
                             <h3>Welcome to {{ businessName }}!</h3>
@@ -192,21 +223,54 @@ const getDashboardRedirectPathForUser = (user) => {
                     </div>
 
                     <div v-if="!requires2FA && !accountLocked">
-                        <label for="email1" class="block text-surface-900 dark:text-surface-0 text-xl font-medium mb-2">Email</label>
-                        <InputText id="email1" type="text" placeholder="Email address" class="w-full md:w-[30rem] mb-2" v-model="form.email" />
-                        <div v-if="errorMessage" class="text-red-600 mb-4">{{ errorMessage }}</div>
+                        <!-- Primary CTA: Sign in with SSO (shown when VITE_SSO_ENABLED === 'true'). -->
+                        <div v-if="ssoEnabled" class="mb-2">
+                            <Button
+                                label="Sign in with SSO"
+                                icon="pi pi-shield"
+                                @click="handleSSOLogin"
+                                class="w-full md:w-[30rem]"
+                                size="large"
+                            ></Button>
+                            <p class="text-center text-sm text-muted-color mt-3">Use your CodeVertex single sign-on account.</p>
+                            <div v-if="errorMessage" class="text-red-600 text-center mt-2">{{ errorMessage }}</div>
 
-                        <label for="password1" class="block text-surface-900 dark:text-surface-0 font-medium text-xl mb-2">Password</label>
-                        <Password id="password1" v-model="form.password" placeholder="Password" :toggleMask="true" class="mb-4" fluid :feedback="false"></Password>
-
-                        <div class="flex items-center justify-between mt-2 mb-8 gap-8">
-                            <div class="flex items-center">
-                                <Checkbox v-model="form.remember" id="rememberme1" class="mr-2"></Checkbox>
-                                <label for="rememberme1">Remember me</label>
+                            <!-- Divider + toggle to the legacy email/password fallback. -->
+                            <div class="flex items-center gap-3 my-5">
+                                <span class="flex-1 h-px bg-surface-200 dark:bg-surface-700"></span>
+                                <span class="text-xs text-muted-color uppercase tracking-wide">or</span>
+                                <span class="flex-1 h-px bg-surface-200 dark:bg-surface-700"></span>
                             </div>
-                            <router-link to="/auth/forgot-password" class="font-medium no-underline ml-2 text-right cursor-pointer text-primary hover:underline">Forgot password?</router-link>
+                            <Button
+                                v-if="!showLegacyForm"
+                                label="Sign in with email instead"
+                                icon="pi pi-envelope"
+                                severity="secondary"
+                                outlined
+                                @click="showLegacyForm = true"
+                                class="w-full md:w-[30rem]"
+                            ></Button>
                         </div>
-                        <Button label="Sign In" @click="handleLogin" class="w-full"></Button>
+
+                        <!-- Legacy email/password form. Default when SSO is off; behind a
+                             toggle when SSO is on. Kept so legacy login still works. -->
+                        <div v-if="showLegacyForm">
+                            <label for="email1" class="block text-surface-900 dark:text-surface-0 text-xl font-medium mb-2">Email</label>
+                            <InputText id="email1" type="text" placeholder="Email address" class="w-full md:w-[30rem] mb-2" v-model="form.email" />
+                            <div v-if="errorMessage && !ssoEnabled" class="text-red-600 mb-4">{{ errorMessage }}</div>
+
+                            <label for="password1" class="block text-surface-900 dark:text-surface-0 font-medium text-xl mb-2">Password</label>
+                            <Password id="password1" v-model="form.password" placeholder="Password" :toggleMask="true" class="mb-4" fluid :feedback="false"></Password>
+
+                            <div class="flex items-center justify-between mt-2 mb-8 gap-8">
+                                <div class="flex items-center">
+                                    <Checkbox v-model="form.remember" id="rememberme1" class="mr-2"></Checkbox>
+                                    <label for="rememberme1">Remember me</label>
+                                </div>
+                                <router-link :to="orgPath(orgSlug, '/auth/forgot-password')" class="font-medium no-underline ml-2 text-right cursor-pointer text-primary hover:underline">Forgot password?</router-link>
+                            </div>
+                            <Button label="Sign In" @click="handleLogin" class="w-full"></Button>
+                        </div>
                     </div>
 
                     <!-- 2FA Step -->

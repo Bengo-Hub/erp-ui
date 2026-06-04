@@ -1,8 +1,11 @@
 <script setup>
+import { usePermissions } from '@/composables/usePermissions';
 import { EXTERNAL_SERVICES } from '@/config/externalServices';
 import { filterMenuItems } from '@/services/auth/permissionService';
 import { onBeforeMount, ref } from 'vue';
 import AppMenuItem from './AppMenuItem.vue';
+
+const { isPlatformOwner } = usePermissions();
 
 const originalModel = ref([
     {
@@ -748,10 +751,40 @@ const originalModel = ref([
 
 const model = ref([]);
 
+// Platform-admin-only section. Mirrors ordering-frontend's "Platform Admin" entry
+// (user-menu-drawer.tsx) — visible ONLY to platform owners (CodeVertex). Platform
+// owners administer tenants cross-tenant via the auth-service UI; the in-app
+// TenantFilter (header) scopes API reads to a chosen tenant via ?tenantId.
+const platformAdminSection = {
+    label: 'PLATFORM ADMIN',
+    items: [
+        {
+            label: 'Tenant Management',
+            icon: 'pi pi-fw pi-building-columns',
+            url: EXTERNAL_SERVICES.auth,
+            target: '_blank'
+        },
+        {
+            label: 'All Tenants',
+            icon: 'pi pi-fw pi-globe',
+            url: EXTERNAL_SERVICES.auth ? `${EXTERNAL_SERVICES.auth}/tenants` : EXTERNAL_SERVICES.auth,
+            target: '_blank'
+        },
+        {
+            label: 'Subscriptions',
+            icon: 'pi pi-fw pi-credit-card',
+            url: EXTERNAL_SERVICES.billing,
+            target: '_blank'
+        }
+    ]
+};
+
 onBeforeMount(() => {
     const user = JSON.parse(sessionStorage.getItem('user') || '{}');
     // Pass the full user object so isSuperUser check can access roles
-    model.value = filterMenuItems(originalModel.value, user);
+    const filtered = filterMenuItems(originalModel.value, user);
+    // Surface the platform-admin section only for platform owners.
+    model.value = isPlatformOwner.value ? [platformAdminSection, ...filtered] : filtered;
 });
 </script>
 

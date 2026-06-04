@@ -11,13 +11,17 @@ import { getDashboardRedirectPath } from '@/services/auth/permissionService';
 import { notificationService } from '@/services/notifications/notificationService';
 import { getUserAvatarUrl } from '@/utils/avatarHelper';
 import { getBusinessDetails } from '@/utils/businessBranding';
+import { orgPath, resolveOrgSlug } from '@/utils/tenantContext';
 import { computed, onMounted, ref } from 'vue';
-import { useRouter } from 'vue-router';
+import { useRoute, useRouter } from 'vue-router';
 import { useStore } from 'vuex';
 import AppConfigurator from './AppConfigurator.vue';
 
 const store = useStore();
 const router = useRouter();
+const route = useRoute();
+// Active org slug for tenant-scoped navigation from the topbar.
+const orgSlug = computed(() => resolveOrgSlug(route.params?.orgSlug));
 const { isDarkMode, toggleDarkMode: toggleTheme, initializeTheme } = useTheme();
 const { selectedCurrency, getSymbol, initialize: initializeCurrency, isInitialized: currencyInitialized } = useCurrency();
 const businessDetails = ref(null);
@@ -141,16 +145,17 @@ const highlightButtonStyle = computed(() => {
 const logout = async () => {
     await store.dispatch('auth/logout');
     if (!isSSOEnabled()) {
-        router.push({ name: 'login' });
+        // Tenant-scoped login page.
+        router.push({ name: 'login', params: { orgSlug: orgSlug.value } });
     }
 };
 
 const navigateToAccount = () => {
-    router.push('/users/account');
+    router.push(orgPath(orgSlug.value, '/users/account'));
 };
 
 const navigateToSettings = () => {
-    router.push('/settings');
+    router.push(orgPath(orgSlug.value, '/settings'));
 };
 
 const navigateToDashboard = () => {
@@ -158,13 +163,13 @@ const navigateToDashboard = () => {
     // For employees (users with employee_id), always go to ESS dashboard
     // For superusers and other users, use the getDashboardRedirectPath logic
     const redirectPath = getDashboardRedirectPath(currentUser.value);
-    router.push(redirectPath);
+    router.push(orgPath(orgSlug.value, redirectPath));
 };
 
 const hasEmployeeMapping = computed(() => !!(currentUser.value?.employee_id));
 
 const navigateToESS = () => {
-    router.push('/ess');
+    router.push(orgPath(orgSlug.value, '/ess'));
 };
 
 const profileItems = computed(() => {
@@ -357,7 +362,7 @@ const { onMenuToggle } = useLayout();
                         <div class="space-y-1">
                             <!-- Calendar -->
                             <button 
-                                @click="router.push('/calendar')" 
+                                @click="router.push(orgPath(orgSlug, '/calendar'))" 
                                 class="menu-item"
                             >
                                 <i class="pi pi-calendar text-lg"></i>
@@ -366,7 +371,7 @@ const { onMenuToggle } = useLayout();
                             
                             <!-- Messages -->
                             <button 
-                                @click="router.push('/messages')" 
+                                @click="router.push(orgPath(orgSlug, '/messages'))" 
                                 class="menu-item"
                             >
                                 <i class="pi pi-inbox text-lg"></i>
@@ -437,7 +442,7 @@ const { onMenuToggle } = useLayout();
                     type="button" 
                     class="topbar-icon-btn" 
                     :style="actionButtonStyle"
-                    @click="router.push('/calendar')"
+                    @click="router.push(orgPath(orgSlug, '/calendar'))"
                     aria-label="Calendar"
                 >
                     <i class="pi pi-calendar"></i>
@@ -448,7 +453,7 @@ const { onMenuToggle } = useLayout();
                     type="button" 
                     class="topbar-icon-btn" 
                     :style="actionButtonStyle"
-                    @click="router.push('/messages')"
+                    @click="router.push(orgPath(orgSlug, '/messages'))"
                     aria-label="Messages"
                 >
                     <i class="pi pi-inbox"></i>

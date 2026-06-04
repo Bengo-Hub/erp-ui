@@ -17,9 +17,33 @@ const cfg = () => ({
     // VITE_SSO_URL is the documented var; VITE_AUTH_API_URL is the legacy alias.
     authApi: (import.meta.env.VITE_SSO_URL || import.meta.env.VITE_AUTH_API_URL || '').replace(/\/$/, ''),
     clientId: import.meta.env.VITE_SSO_CLIENT_ID || 'erp-ui',
+    // Default (unscoped) callback. loginRedirect() builds a tenant-scoped callback
+    // (/{orgSlug}/auth/callback) when an org slug is known, mirroring
+    // ordering-frontend's per-org callback URL.
     redirectUri: `${window.location.origin}/auth/callback`,
     scope: 'openid profile email offline_access'
 });
+
+/**
+ * Resolve the org slug to scope the SSO flow to. Tries (in order) an explicit
+ * argument, the first path segment of the current URL, then the persisted
+ * tenant_slug. Reserved first segments (auth, landing, …) are ignored.
+ */
+function resolveOrgSlugForSSO(explicit) {
+    if (explicit && typeof explicit === 'string') return explicit;
+    try {
+        const first = window.location.pathname.split('/').filter(Boolean)[0];
+        const reserved = new Set(['auth', 'landing', 'unauthorized', 'assets', 'images', 'media']);
+        if (first && !reserved.has(first)) return first;
+    } catch (_) {
+        /* no-op */
+    }
+    try {
+        return localStorage.getItem('tenant_slug') || '';
+    } catch (_) {
+        return '';
+    }
+}
 
 export const isSSOEnabled = () => cfg().enabled;
 
@@ -103,24 +127,51 @@ export function parseJwt(token) {
 }
 
 // --- flows ----------------------------------------------------------------
-/** Begin the SSO login: redirect to auth-service /authorize with PKCE. */
-export async function loginRedirect(returnTo) {
+/**
+ * Begin the SSO login: redirect to auth-service /authorize with PKCE.
+ *
+ * @param {string} [returnTo] Path to return to after login (defaults to current path).
+ * @param {string} [orgSlug]  Tenant org slug to scope the login to. When present
+ *   it is sent as `tenant` on the authorize request (so auth-api mints a token
+ *   for the right org) and used to build a tenant-scoped callback URI
+ *   (/{orgSlug}/auth/callback) — mirroring ordering-frontend's redirectToSSO.
+ */
+export async function loginRedirect(returnTo, orgSlug) {
     const c = cfg();
+    const slug = resolveOrgSlugForSSO(orgSlug);
     const verifier = randomString(64);
     const challenge = await sha256Challenge(verifier);
     const state = randomString(16);
     sessionStorage.setItem('pkce_verifier', verifier);
     sessionStorage.setItem('oauth_state', state);
     sessionStorage.setItem('post_login_redirect', returnTo || window.location.pathname);
+    if (slug) {
+        // Persist so the callback page + axios know the tenant before /auth/me.
+        try {
+            localStorage.setItem('tenant_slug', slug);
+        } catch (_) {
+            /* no-op */
+        }
+    }
+
+    // Tenant-scoped callback so the callback page can read orgSlug from the path.
+    const redirectUri = slug ? `${window.location.origin}/${slug}/auth/callback` : c.redirectUri;
+    // Remember which redirect_uri we used — the token exchange must send the same one.
+    sessionStorage.setItem('sso_redirect_uri', redirectUri);
 
     const url = new URL(`${c.authApi}/api/v1/authorize`);
     url.searchParams.set('response_type', 'code');
     url.searchParams.set('client_id', c.clientId);
-    url.searchParams.set('redirect_uri', c.redirectUri);
+    url.searchParams.set('redirect_uri', redirectUri);
     url.searchParams.set('scope', c.scope);
     url.searchParams.set('state', state);
     url.searchParams.set('code_challenge', challenge);
     url.searchParams.set('code_challenge_method', 'S256');
+    // Tenant hint for auth-api (org-scoped token). auth-api ignores it if unknown.
+    if (slug) {
+        url.searchParams.set('tenant', slug);
+        url.searchParams.set('org', slug);
+    }
     window.location.href = url.toString();
 }
 
@@ -134,6 +185,9 @@ export async function handleCallback() {
     if (state !== sessionStorage.getItem('oauth_state')) throw new Error('Invalid state (possible CSRF)');
 
     const verifier = sessionStorage.getItem('pkce_verifier');
+    // Use the SAME redirect_uri that was sent to /authorize (tenant-scoped when an
+    // org slug was known) — the token endpoint requires an exact match.
+    const redirectUri = sessionStorage.getItem('sso_redirect_uri') || c.redirectUri;
     const res = await fetch(`${c.authApi}/api/v1/token`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -142,7 +196,7 @@ export async function handleCallback() {
             code,
             code_verifier: verifier,
             client_id: c.clientId,
-            redirect_uri: c.redirectUri
+            redirect_uri: redirectUri
         })
     });
     if (!res.ok) throw new Error(`Token exchange failed (${res.status})`);
@@ -152,7 +206,14 @@ export async function handleCallback() {
     // Persist tenant context from the JWT for downstream API headers.
     const claims = parseJwt(data.access_token || '');
     if (claims.tenant_id) localStorage.setItem('tenant_id', claims.tenant_id);
-    if (claims.tenant_slug) localStorage.setItem('tenant_slug', claims.tenant_slug);
+    // Prefer the JWT tenant_slug; fall back to the org slug already captured from
+    // the /{orgSlug}/auth/callback path (set by loginRedirect / the router guard).
+    if (claims.tenant_slug) {
+        localStorage.setItem('tenant_slug', claims.tenant_slug);
+    } else {
+        const pathSlug = resolveOrgSlugForSSO();
+        if (pathSlug) localStorage.setItem('tenant_slug', pathSlug);
+    }
     // is_hq_user controls whether the outlet selector is shown (HQ users pick an
     // outlet per-request; single-outlet staff are pinned to their JWT outlet).
     localStorage.setItem('is_hq_user', String(claims.is_hq_user === true));
@@ -168,6 +229,7 @@ export async function handleCallback() {
 
     sessionStorage.removeItem('pkce_verifier');
     sessionStorage.removeItem('oauth_state');
+    sessionStorage.removeItem('sso_redirect_uri');
     return { tokens: data, claims, redirect: sessionStorage.getItem('post_login_redirect') || '/' };
 }
 

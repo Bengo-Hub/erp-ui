@@ -1,6 +1,7 @@
 import axios from 'axios';
 import { PLATFORM_OWNER_BUSINESS_NAME } from './businessBranding';
 import { isSSOEnabled, getAccessToken, refreshAccessToken, loginRedirect } from '@/services/auth/ssoService';
+import { isPlatformOwnerContext, resolveOrgSlug } from '@/utils/tenantContext';
 
 // Get base URL from window object or use default
 const getBaseURL = () => {
@@ -71,7 +72,9 @@ axiosInstance.interceptors.request.use(
             // a tenant via ?tenantId=<uuid> (TenantFilter selection). When "All
             // Tenants" is selected, no param/header is sent → cross-tenant data.
             // (TRINITY-AUTHORIZATION-PATTERN.md → Backend Tenant Override.)
-            const isPlatformOwner = localStorage.getItem('is_platform_owner') === 'true';
+            // Detection mirrors ordering-frontend: the is_platform_owner claim OR
+            // the active org slug being the platform-owner slug ('codevertex').
+            const isPlatformOwner = isPlatformOwnerContext();
             if (isPlatformOwner) {
                 const selectedTenantId = localStorage.getItem('platform-selected-tenant-id');
                 if (selectedTenantId) {
@@ -189,9 +192,12 @@ axiosInstance.interceptors.response.use(
         if (status === 401) {
             sessionStorage.removeItem('token');
             localStorage.removeItem('token');
+            // Capture the org slug BEFORE clearing storage so we bounce to the
+            // tenant-scoped login page (/{orgSlug}/auth/login).
+            const slug = resolveOrgSlug();
             localStorage.clear();
             if (typeof window !== 'undefined') {
-                window.location.href = '/auth/login';
+                window.location.href = `/${slug}/auth/login`;
             }
         }
 

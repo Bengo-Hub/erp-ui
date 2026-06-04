@@ -1,11 +1,13 @@
 <script setup>
 import { handleCallback, getOutletId } from '@/services/auth/ssoService';
 import { loadTenantBranding } from '@/services/auth/tenantBrandingService';
+import { orgPath, resolveOrgSlug, splitOrgPath } from '@/utils/tenantContext';
 import { onMounted, ref } from 'vue';
-import { useRouter } from 'vue-router';
+import { useRoute, useRouter } from 'vue-router';
 import { useStore } from 'vuex';
 
 const router = useRouter();
+const route = useRoute();
 const store = useStore();
 const error = ref('');
 const statusText = ref('Signing you in…');
@@ -19,20 +21,29 @@ const statusText = ref('Signing you in…');
  *    service-level select-outlet page.
  */
 function resolveDestination(claims, intended) {
-    const slug = claims.tenant_slug || localStorage.getItem('tenant_slug') || '';
-    const selectOutletPath = slug ? `/${slug}/auth/select-outlet` : '/auth/select-outlet';
+    // Org slug precedence: route param → JWT claim → captured tenant_slug.
+    const slug = resolveOrgSlug(route.params?.orgSlug || claims.tenant_slug);
+    const selectOutletPath = `/${slug}/auth/select-outlet`;
+
+    // Scope an unprefixed intended destination to the tenant; leave already-scoped
+    // paths untouched (avoid double-prefixing /{slug}/{slug}/…).
+    const home = orgPath(slug, '/');
+    let scopedIntended = home;
+    if (intended && intended !== '/') {
+        scopedIntended = splitOrgPath(intended).orgSlug ? intended : orgPath(slug, intended);
+    }
 
     // Already pinned (single-outlet staff) — handleCallback stored it.
     if (claims.outlet_id && claims.is_hq_user !== true) {
-        return intended || '/';
+        return scopedIntended;
     }
     // HQ user or no outlet in JWT: if we have a stored outlet, keep using it.
     if (getOutletId()) {
-        return intended || '/';
+        return scopedIntended;
     }
     // Otherwise force outlet selection first; remember where we were headed.
     if (intended && intended !== '/') {
-        sessionStorage.setItem('post_outlet_redirect', intended);
+        sessionStorage.setItem('post_outlet_redirect', scopedIntended);
     }
     return selectOutletPath;
 }
