@@ -123,13 +123,23 @@ const statusTabs = computed(() => [
     { label: `Disapproved (${countStatus('disapproved')})`, value: 'disapproved' }
 ]);
 
+// Collect leaf payslips from the (possibly nested) tree structure.
+const collectLeafPayslips = () => {
+    const out = [];
+    const walk = (nodes) => {
+        (nodes || []).forEach((n) => {
+            if (n && n.approval_status !== undefined) out.push(n);
+            if (n && n.children) walk(n.children);
+        });
+    };
+    walk(payslips.value);
+    return out;
+};
+
 // Function to count payslips by status
 const countStatus = (status) => {
-    if (status === 'all') {
-        return payslips.value.payslips.length;
-    } else {
-        return payslips.value.payslips.filter((payslip) => payslip.approval_status === status).length;
-    }
+    const leaves = collectLeafPayslips();
+    return status === 'all' ? leaves.length : leaves.filter((p) => p.approval_status === status).length;
 };
 
 // Filter payslips by the selected status

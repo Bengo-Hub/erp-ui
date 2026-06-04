@@ -17,7 +17,10 @@ const editingCategory = ref(null);
 const categoryForm = ref({
     name: '',
     description: '',
-    is_active: true
+    is_active: true,
+    default_annual_days: 0,
+    allow_carryover: false,
+    max_carryover_days: 0
 });
 
 // Fetch categories
@@ -83,7 +86,10 @@ const editCategory = (category) => {
     categoryForm.value = {
         name: category.name,
         description: category.description,
-        is_active: category.is_active
+        is_active: category.is_active,
+        default_annual_days: category.default_annual_days ?? 0,
+        allow_carryover: category.allow_carryover ?? false,
+        max_carryover_days: category.max_carryover_days ?? 0
     };
     showAddDialog.value = true;
 };
@@ -101,7 +107,10 @@ const closeDialog = () => {
     categoryForm.value = {
         name: '',
         description: '',
-        is_active: true
+        is_active: true,
+        default_annual_days: 0,
+        allow_carryover: false,
+        max_carryover_days: 0
     };
 };
 
@@ -111,6 +120,15 @@ const refreshData = () => {
 };
 
 // Format date
+const formatDate = (value) => {
+    if (!value) return '';
+    try {
+        return new Date(value).toLocaleDateString();
+    } catch {
+        return value;
+    }
+};
+
 // Get category severity
 const getCategorySeverity = (name) => {
     switch (name) {
@@ -189,6 +207,13 @@ onMounted(() => {
                             </template>
                         </Column>
 
+                        <Column header="Accrual">
+                            <template #body="{ data }">
+                                <span class="text-gray-600">{{ Number(data.default_annual_days || 0) }} days/yr</span>
+                                <Tag v-if="data.allow_carryover" :value="`carry-over ≤ ${Number(data.max_carryover_days || 0)}`" severity="info" class="ml-2 text-xs" />
+                            </template>
+                        </Column>
+
                         <Column field="is_active" header="Status" :sortable="true">
                             <template #body="{ data }">
                                 <Tag :value="data.is_active ? 'Active' : 'Inactive'" :severity="data.is_active ? 'success' : 'danger'" />
@@ -222,6 +247,22 @@ onMounted(() => {
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-1">Description</label>
                         <Textarea v-model="categoryForm.description" class="w-full" rows="3" placeholder="Enter category description" />
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Default annual days</label>
+                            <InputNumber v-model="categoryForm.default_annual_days" class="w-full" :min="0" :max="366" showButtons />
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Max carry-over days</label>
+                            <InputNumber v-model="categoryForm.max_carryover_days" class="w-full" :min="0" :max="366" showButtons :disabled="!categoryForm.allow_carryover" />
+                        </div>
+                    </div>
+
+                    <div class="flex items-center gap-2">
+                        <InputSwitch v-model="categoryForm.allow_carryover" />
+                        <label class="text-sm font-medium text-gray-700">Allow carry-over of unused balance to next year</label>
                     </div>
 
                     <div>

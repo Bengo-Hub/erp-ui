@@ -332,6 +332,12 @@ const originalModel = ref([
                 permission: 'view_appraisal',
                 items: [
                     {
+                        label: 'Performance Reviews',
+                        permission: 'view_performancereview',
+                        icon: 'pi pi-fw pi-chart-line',
+                        to: '/hrm/performance/reviews'
+                    },
+                    {
                         label: 'Appraisal List',
                         permission: 'view_appraisal',
                         icon: 'pi pi-fw pi pi-list',

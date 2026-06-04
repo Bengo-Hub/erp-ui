@@ -145,6 +145,12 @@ export const employeeRoutes = [
     },
     // Performance (reusing appraisals)
     {
+        path: '/hrm/performance/reviews',
+        name: 'performance-reviews',
+        meta: { requiresAuth: true, permission: 'view_performancereview' },
+        component: () => import('@/views/pages/hrm/performance/PerformanceReviews.vue')
+    },
+    {
         path: '/hrm/performance/appraisals',
         name: 'performance-appraisals',
         meta: { requiresAuth: true, permission: 'view_appraisal' },
