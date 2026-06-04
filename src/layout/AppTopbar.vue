@@ -87,9 +87,19 @@ const refreshNotifications = () => {
 // Default logo path (CodeVertex ERP SVG from public folder)
 const DEFAULT_LOGO = '/codevertex-erp-logo.svg';
 
-// Computed property for business logo with fallback
+// Read the tenant-branding logo (set as a CSS var by tenantBrandingService) if present.
+const tenantLogo = () => {
+    try {
+        const v = getComputedStyle(document.documentElement).getPropertyValue('--tenant-logo-url').trim();
+        return v ? v.replace(/^["']|["']$/g, '') : '';
+    } catch (_) {
+        return '';
+    }
+};
+
+// Computed property for business logo with fallback: tenant branding > business > default.
 const businessLogo = computed(() => {
-    return businessDetails.value?.business__logo || DEFAULT_LOGO;
+    return tenantLogo() || businessDetails.value?.business__logo || DEFAULT_LOGO;
 });
 
 // State for logo loading error

@@ -162,32 +162,7 @@
                     </template>
                 </Card>
 
-                <!-- KRA eTIMS Integration -->
-                <Card v-if="canIntegrations" class="hover:shadow-lg transition-shadow cursor-pointer" @click="navigateTo('/settings/integrations/kra')">
-                    <template #header>
-                        <div class="bg-gradient-to-r from-red-500 to-red-700 p-6">
-                            <i class="pi pi-globe text-white text-4xl"></i>
-                        </div>
-                    </template>
-                    <template #title>
-                        <h3 class="text-xl font-semibold text-gray-900 dark:text-gray-100">KRA eTIMS Integration</h3>
-                    </template>
-                    <template #content>
-                        <p class="text-gray-600 dark:text-gray-400 text-sm">
-                            Configure KRA eTIMS credentials and endpoint settings
-                        </p>
-                        <div class="mt-4 flex flex-wrap gap-2">
-                            <Badge value="Credentials" severity="info" />
-                            <Badge value="Endpoints" severity="info" />
-                        </div>
-                    </template>
-                    <template #footer>
-                        <div class="flex items-center text-primary-600 dark:text-primary-400 text-sm font-medium">
-                            <span>Setup</span>
-                            <i class="pi pi-arrow-right ml-2"></i>
-                        </div>
-                    </template>
-                </Card>
+                <!-- KRA eTIMS Integration removed — owned by treasury-api/UI (decomposed). -->
 
                 <!-- HRM Appraisal Config -->
                 <Card v-if="canAppraisals" class="hover:shadow-lg transition-shadow cursor-pointer" @click="navigateTo('/settings/hrm/appraisals/configuration')">

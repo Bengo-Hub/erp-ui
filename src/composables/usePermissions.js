@@ -160,6 +160,11 @@ export function usePermissions() {
         return user && user.permissions ? user.permissions : [];
     });
 
+    // Reduce a permission code to its bare codename ("employees.view_employee" -> "view_employee").
+    const bareCode = (code) => String(code || '').split('.').pop();
+    // The user's permissions as a Set of bare codenames (matches both bare + app_label.codename).
+    const userPermSet = computed(() => new Set((userPermissions.value || []).map(bareCode)));
+
     // Check if current user is a superuser
     const isSuperuser = computed(() => {
         const user = currentUser.value;
@@ -169,6 +174,8 @@ export function usePermissions() {
         return user.is_superuser === true ||
                user.isSuperuser === true ||
                roles.includes('superusers') ||
+               roles.includes('superuser') ||
+               userPermissions.value.includes('*') ||
                userPermissions.value.includes('is_superuser');
     });
 
@@ -178,12 +185,12 @@ export function usePermissions() {
     // cross-tenant access (axios sends ?tenantId instead of X-Tenant-* headers).
     const isPlatformOwner = computed(() => isPlatformOwnerUser(currentUser.value));
 
-    // Check if user has specific permission
+    // Check if user has specific permission (matches bare + app_label.codename forms)
     const hasPermission = (permission) => {
         if (!permission) return false;
         // Superusers bypass all permission checks
         if (isSuperuser.value) return true;
-        return userPermissions.value.includes(permission);
+        return userPermSet.value.has(bareCode(permission));
     };
 
     // Check if user has any of the provided permissions
@@ -199,7 +206,7 @@ export function usePermissions() {
         if (!permissions || !Array.isArray(permissions)) return false;
         // Superusers bypass all permission checks
         if (isSuperuser.value) return true;
-        return permissions.every((permission) => userPermissions.value.includes(permission));
+        return permissions.every((permission) => userPermSet.value.has(bareCode(permission)));
     };
 
     // Check permission for specific module and action

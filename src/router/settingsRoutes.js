@@ -184,19 +184,6 @@ export const settingsRoutes = [
         name: 'brandingSettings',
         meta: { requiresAuth: true },
         component: () => import('@/views/pages/settings/branding.vue')
-    },
-
-    // Integration Settings
-    {
-        path: '/settings/integrations/kra',
-        name: 'kraSettings',
-        meta: { requiresAuth: true },
-        component: () => import('@/views/pages/settings/integrations/KRASettings.vue')
-    },
-    {
-        path: '/settings/integrations/payment',
-        name: 'paymentGatewaySettings',
-        meta: { requiresAuth: true },
-        component: () => import('@/views/pages/settings/integrations/PaymentGateways.vue')
     }
+    // Integration Settings (KRA iTax, Payment Gateways) removed — owned by treasury-api/UI (decomposed).
 ];

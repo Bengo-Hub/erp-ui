@@ -737,26 +737,10 @@ const originalModel = ref([
                         to: '/security/backups'
                     }
                 ]
-            },
-            {
-                label: 'API Settings',
-                icon: 'pi pi-fw pi-link',
-                permission: 'view_integrations',
-                items: [
-                    {
-                        label: 'KRA iTax',
-                        permission: 'view_krasettings',
-                        icon: 'pi pi-fw pi-building',
-                        to: '/settings/integrations/kra'
-                    },
-                    {
-                        label: 'Payment Gateways',
-                        permission: 'view_mpesasettings',
-                        icon: 'pi pi-fw pi-credit-card',
-                        to: '/settings/integrations/payment'
-                    }
-                ]
             }
+            // NOTE: "API Settings" (KRA iTax, Payment Gateways) removed — KRA/eTIMS + payment
+            // gateways are owned by treasury-api/treasury-ui (decomposed). Reach them via the
+            // EXTERNAL SERVICES → Finance link.
         ]
     }
 ]);
