@@ -14,7 +14,7 @@ ENV VITE_WEBSOCKET_URL=${VITE_WEBSOCKET_URL}
 
 # SSO (kept disabled until the erp OAuth client is registered + login is verified) +
 # external owner-service UI links shown in the decomposed ERP menu (prod domains).
-ARG VITE_SSO_ENABLED=false
+ARG VITE_SSO_ENABLED=true
 ARG VITE_SSO_CLIENT_ID=erp-ui
 ARG VITE_SSO_URL=https://sso.codevertexitsolutions.com
 ARG VITE_AUTH_URL=https://sso.codevertexitsolutions.com
