@@ -137,6 +137,12 @@ export const employeeRoutes = [
         meta: { requiresAuth: true, permission: 'view_application' },
         component: () => import('@/views/pages/hrm/recruitment/Applications.vue')
     },
+    {
+        path: '/hrm/recruitment/onboarding',
+        name: 'recruitment-onboarding',
+        meta: { requiresAuth: true, permission: 'view_employee' },
+        component: () => import('@/views/pages/hrm/recruitment/Onboarding.vue')
+    },
     // Performance (reusing appraisals)
     {
         path: '/hrm/performance/appraisals',
