@@ -4,7 +4,7 @@ FROM node:22.13-slim AS base
 WORKDIR /app
 
 # Install pnpm globally
-RUN npm install -g pnpm@latest
+RUN npm install -g pnpm@10.30.0
 
 # Build-time environment variables (available during pnpm run build)
 ARG VITE_API_URL=https://erpapi.masterspace.co.ke
@@ -12,7 +12,7 @@ ARG VITE_WEBSOCKET_URL=wss://erpapi.masterspace.co.ke/ws/pos/
 ENV VITE_API_URL=${VITE_API_URL}
 ENV VITE_WEBSOCKET_URL=${VITE_WEBSOCKET_URL}
 
-COPY package.json pnpm-lock.yaml ./
+COPY package.json pnpm-lock.yaml .npmrc ./
 RUN apt-get update && apt-get install -y git openssh-client && rm -rf /var/lib/apt/lists/*
 RUN mkdir -p -m 0600 ~/.ssh && ssh-keyscan github.com >> ~/.ssh/known_hosts
 RUN --mount=type=ssh pnpm install --frozen-lockfile || pnpm install
@@ -23,7 +23,7 @@ FROM node:22.13-alpine AS runtime
 WORKDIR /app
 
 # Install pnpm globally
-RUN npm install -g pnpm@latest
+RUN npm install -g pnpm@10.30.0
 
 RUN apk update && apk upgrade
 COPY --from=base --chown=node:node /app .
