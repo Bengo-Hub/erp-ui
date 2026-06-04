@@ -1,7 +1,6 @@
 import permissionMiddleware from '@/middleware/permission';
 import routes from '@/router/routes';
 import { createRouter, createWebHistory } from 'vue-router';
-import { isSSOEnabled, loginRedirect } from '@/services/auth/ssoService';
 import { resolveOrgSlug, setOrgSlug, splitOrgPath, isOrgSlugSegment } from '@/utils/tenantContext';
 
 const router = createRouter({
@@ -9,14 +8,18 @@ const router = createRouter({
     routes
 });
 
-// Paths that are intentionally NOT tenant-scoped (no /{orgSlug} prefix needed):
-// the SSO callback and the public landing page. Everything else is rewritten to
+// Paths that are intentionally NOT tenant-scoped (no /{orgSlug} prefix forced):
+// every auth page (login, callback, forgot-password, …) — both the flat /auth/*
+// form and the tenant-scoped /{orgSlug}/auth/* form — plus the public landing
+// page. Auth pages must NOT be rewritten to /codevertex/auth/login for an
+// unauthenticated visitor (the tenant is unknown until after sign-in); they are
+// served as-is so the generic login page renders. Everything else is rewritten to
 // /{orgSlug}/… so the URL always carries the tenant (mirrors ordering-frontend's
 // [orgSlug] App Router segment).
 function isUnscopedPath(pathOnly) {
     return (
-        pathOnly === '/auth/callback' ||
-        /^\/[^/]+\/auth\/callback\/?$/.test(pathOnly) ||
+        /^\/auth\//.test(pathOnly) || // flat /auth/* (login, callback, forgot-password…)
+        /^\/[^/]+\/auth\//.test(pathOnly) || // /{orgSlug}/auth/* (tenant-scoped auth pages)
         pathOnly === '/landing'
     );
 }
@@ -56,17 +59,19 @@ router.beforeEach((to, from, next) => {
         }
     }
 
-    // 4) Authentication gate (same policy as before, but tenant-aware redirects).
+    // 4) Authentication gate. An unauthenticated user hitting a protected route is
+    //    sent to the LOGIN PAGE — never auto-redirected into SSO. This is the fix
+    //    for "it automatically tries to login with sso instead of loading the
+    //    login page": the page renders the "Sign in with SSO" CTA so the user
+    //    starts the flow explicitly, and we never guess a tenant they may not
+    //    belong to. If a real tenant slug is already known (returning user or a
+    //    /{orgSlug}/… deep link) we use the branded /{orgSlug}/auth/login; for a
+    //    fresh visitor (tenant unknown) we use the flat /auth/login. After SSO the
+    //    JWT's tenant_slug re-scopes the whole app.
     if (to.matched.some((record) => record.meta.requiresAuth) && !sessionStorage.getItem('isAuthenticated')) {
-        // SSO mode: redirect to the auth-service login. Pass the resolved org slug
-        // as the tenant so auth-api mints a token for the right org.
-        if (isSSOEnabled()) {
-            loginRedirect(to.fullPath, resolveOrgSlug(to.params?.orgSlug));
-            return;
-        }
-        // Legacy mode: go to the tenant-scoped login page.
         const slug = resolveOrgSlug(to.params?.orgSlug);
-        next({ path: `/${slug}/auth/login`, query: { redirect: to.fullPath } });
+        const loginPath = slug ? `/${slug}/auth/login` : '/auth/login';
+        next({ path: loginPath, query: { redirect: to.fullPath } });
         return;
     }
 

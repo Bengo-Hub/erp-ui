@@ -24,25 +24,25 @@ const cfg = () => ({
     scope: 'openid profile email offline_access'
 });
 
+// First path segments that are never tenant slugs (so they can't be mistaken for
+// a tenant hint).
+const SSO_RESERVED_SEGMENTS = new Set(['auth', 'landing', 'unauthorized', 'assets', 'images', 'media']);
+
 /**
- * Resolve the org slug to scope the SSO flow to. Tries (in order) an explicit
- * argument, the first path segment of the current URL, then the persisted
- * tenant_slug. Reserved first segments (auth, landing, …) are ignored.
+ * Resolve the org slug to scope the SSO flow to — i.e. the OPTIONAL `tenant` hint
+ * sent to /authorize. We only scope when the caller passes an EXPLICIT, real org
+ * slug (the user is on a tenant-scoped /{orgSlug}/auth/login, or a returning user
+ * whose tenant we already know). For a generic /auth/login we return '' (NO hint):
+ * auth-api then resolves the tenant from the user's primary org membership, which
+ * avoids the "you are not a member of the requested tenant" error that a guessed
+ * default (e.g. 'codevertex') caused. The token is always scoped correctly because
+ * the JWT carries the real tenant_slug, which we read back in handleCallback().
  */
 function resolveOrgSlugForSSO(explicit) {
-    if (explicit && typeof explicit === 'string') return explicit;
-    try {
-        const first = window.location.pathname.split('/').filter(Boolean)[0];
-        const reserved = new Set(['auth', 'landing', 'unauthorized', 'assets', 'images', 'media']);
-        if (first && !reserved.has(first)) return first;
-    } catch (_) {
-        /* no-op */
+    if (explicit && typeof explicit === 'string' && !SSO_RESERVED_SEGMENTS.has(explicit)) {
+        return explicit;
     }
-    try {
-        return localStorage.getItem('tenant_slug') || '';
-    } catch (_) {
-        return '';
-    }
+    return '';
 }
 
 export const isSSOEnabled = () => cfg().enabled;
@@ -154,8 +154,15 @@ export async function loginRedirect(returnTo, orgSlug) {
         }
     }
 
-    // Tenant-scoped callback so the callback page can read orgSlug from the path.
-    const redirectUri = slug ? `${window.location.origin}/${slug}/auth/callback` : c.redirectUri;
+    // ALWAYS use the flat /auth/callback. It is the redirect_uri registered for the
+    // erp-ui client on BOTH hosts (erp.codevertexitsolutions.com AND
+    // erp.masterspace.co.ke — see auth-api cmd/seed buildRedirects), so the token
+    // exchange's exact-match redirect_uri check passes for every tenant. A
+    // per-tenant /{slug}/auth/callback would only match if that exact slug were
+    // pre-registered, which broke login for tenants like 'codevertex-demo'. The
+    // tenant is recovered from the JWT (tenant_slug) in handleCallback(), so the
+    // callback does not need the slug in its path.
+    const redirectUri = c.redirectUri;
     // Remember which redirect_uri we used — the token exchange must send the same one.
     sessionStorage.setItem('sso_redirect_uri', redirectUri);
 
@@ -179,6 +186,20 @@ export async function loginRedirect(returnTo, orgSlug) {
 export async function handleCallback() {
     const c = cfg();
     const params = new URLSearchParams(window.location.search);
+
+    // The auth-service may redirect back with an OAuth error instead of a code
+    // (e.g. error=access_denied "you are not a member of the requested tenant",
+    // or the user cancelled). Surface the human-readable description rather than
+    // the misleading "Missing authorization code".
+    const oauthError = params.get('error');
+    if (oauthError) {
+        const desc = params.get('error_description') || '';
+        const message = (desc || oauthError).replace(/\+/g, ' ');
+        const err = new Error(message);
+        err.code = oauthError;
+        throw err;
+    }
+
     const code = params.get('code');
     const state = params.get('state');
     if (!code) throw new Error('Missing authorization code');

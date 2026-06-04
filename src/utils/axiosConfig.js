@@ -193,11 +193,12 @@ axiosInstance.interceptors.response.use(
             sessionStorage.removeItem('token');
             localStorage.removeItem('token');
             // Capture the org slug BEFORE clearing storage so we bounce to the
-            // tenant-scoped login page (/{orgSlug}/auth/login).
+            // tenant-scoped login page (/{orgSlug}/auth/login). When the tenant is
+            // unknown ('') fall back to the flat /auth/login (never //auth/login).
             const slug = resolveOrgSlug();
             localStorage.clear();
             if (typeof window !== 'undefined') {
-                window.location.href = `/${slug}/auth/login`;
+                window.location.href = slug ? `/${slug}/auth/login` : '/auth/login';
             }
         }
 
