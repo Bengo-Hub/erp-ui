@@ -69,8 +69,25 @@ onMounted(async () => {
     } catch (e) {
         console.error('SSO callback failed:', e);
         error.value = e?.message || 'Sign-in failed. Please try again.';
+        // Clean up the half-finished PKCE/state so a retry starts fresh, and drop
+        // any stale tenant hint that triggered an access_denied ("not a member of
+        // the requested tenant") so the retry resolves the tenant from the user's
+        // primary org instead of re-sending the bad tenant.
+        try {
+            sessionStorage.removeItem('pkce_verifier');
+            sessionStorage.removeItem('oauth_state');
+            sessionStorage.removeItem('sso_redirect_uri');
+            if (e?.code === 'access_denied') localStorage.removeItem('tenant_slug');
+        } catch (_) {
+            /* storage unavailable */
+        }
     }
 });
+
+/** Send the user back to the generic (flat) login page to retry. */
+function backToSignIn() {
+    router.replace('/auth/login');
+}
 </script>
 
 <template>
@@ -83,7 +100,10 @@ onMounted(async () => {
             <template v-else>
                 <i class="pi pi-exclamation-triangle text-4xl text-red-500" />
                 <p class="mt-3">{{ error }}</p>
-                <a href="/" class="text-primary">Return home</a>
+                <div class="mt-3 flex gap-3 justify-content-center">
+                    <a class="text-primary cursor-pointer" @click="backToSignIn">Back to sign in</a>
+                    <a href="/" class="text-color-secondary">Return home</a>
+                </div>
             </template>
         </div>
     </div>

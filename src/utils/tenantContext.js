@@ -22,8 +22,13 @@
 // `orgSlug === 'codevertex'` ⇒ platform owner (user-menu-drawer.tsx, platform/page.tsx).
 export const PLATFORM_OWNER_SLUG = 'codevertex';
 
-// Fallback org slug when none is known yet (no stored tenant, no JWT claim).
-// Bare/legacy paths resolve to this so the app always lands on a scoped URL.
+// The platform-owner slug, re-exported for callers that need an EXPLICIT default
+// (e.g. platform-owner-only screens). NOTE: this is deliberately NOT used as an
+// implicit fallback in resolveOrgSlug — unauthenticated users have no tenant yet,
+// and silently defaulting them to 'codevertex' made the SSO flow request a tenant
+// they are not a member of ("not a member of the requested tenant"). Resolution
+// now returns '' when the tenant is unknown so the caller can show the generic
+// (flat) login page instead of guessing.
 export const DEFAULT_ORG_SLUG = PLATFORM_OWNER_SLUG;
 
 // First path segments that are NOT tenant slugs — real top-level routes that must
@@ -75,7 +80,11 @@ export function orgPath(orgSlug, path = '/') {
  * Resolve the active org slug. Order of precedence:
  *   1. explicit argument (e.g. route.params.orgSlug)
  *   2. persisted tenant_slug (set by the SSO callback + the router guard)
- *   3. DEFAULT_ORG_SLUG
+ *   3. '' (unknown) — NO implicit 'codevertex' default. An unauthenticated user
+ *      has no tenant; the caller (router guard / SSO service) must treat '' as
+ *      "tenant unknown" and fall back to the generic, flat /auth/login + an
+ *      SSO authorize request WITHOUT a tenant hint (auth-api then resolves the
+ *      tenant from the user's primary org membership).
  */
 export function resolveOrgSlug(explicit) {
     if (explicit && typeof explicit === 'string') return explicit;
@@ -85,7 +94,7 @@ export function resolveOrgSlug(explicit) {
     } catch (_) {
         /* localStorage unavailable */
     }
-    return DEFAULT_ORG_SLUG;
+    return '';
 }
 
 /** Persist the active org slug so axios + later navigations can read it. */
