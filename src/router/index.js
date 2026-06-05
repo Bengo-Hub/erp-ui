@@ -118,6 +118,7 @@ function buildNormalisedRoute(to) {
 function rescopeRedirect(path, explicitSlug) {
     if (!path || typeof path !== 'string') return path;
     const slug = resolveOrgSlug(explicitSlug);
+    if (!slug) return path; // no tenant yet → keep the flat path (never emit "//…")
     if (path === `/${slug}` || path.startsWith(`/${slug}/`)) return path;
     if (path === '/') return `/${slug}`;
     return `/${slug}${path.startsWith('/') ? path : `/${path}`}`;
