@@ -17,7 +17,7 @@
  */
 
 import axios from '@/utils/axiosConfig';
-import { getAccessToken, ssoBaseUrl } from '@/services/auth/ssoService';
+import { getAccessToken, ssoBaseUrl, refreshAccessToken } from '@/services/auth/ssoService';
 
 // ~5 minutes, aligned with the lower bound recommended in the SSO guide.
 const STALE_TIME_MS = 5 * 60 * 1000;
@@ -42,16 +42,44 @@ function isFresh() {
  * Step (a): SSO identity + global roles + auth-service permissions.
  * Uses fetch (not the ERP axios instance) so it always hits the SSO origin.
  */
-export async function fetchSsoIdentity() {
-    const base = ssoBaseUrl();
-    const token = getAccessToken();
-    if (!base || !token) return null;
-    const res = await fetch(`${base}/api/v1/auth/me`, {
+async function ssoMeFetch(base, token) {
+    return fetch(`${base}/api/v1/auth/me`, {
         headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' }
     });
+}
+
+/** Clear a dead SSO session so a stale token can't loop the login page forever. */
+function clearDeadSession() {
+    try {
+        ['access_token', 'refresh_token', 'id_token'].forEach((k) => {
+            localStorage.removeItem(k);
+            sessionStorage.removeItem(k);
+        });
+        sessionStorage.removeItem('isAuthenticated');
+    } catch (_) {
+        /* storage unavailable */
+    }
+}
+
+export async function fetchSsoIdentity() {
+    const base = ssoBaseUrl();
+    let token = getAccessToken();
+    if (!base || !token) return null;
+
+    let res = await ssoMeFetch(base, token);
+    // A stale/expired token here would otherwise 401 on every app load (fetch bypasses the
+    // axios refresh interceptor) and bounce the user to login forever. Refresh once, retry,
+    // and if it's still bad, clear the dead session so the next render shows a clean login.
+    if (res.status === 401) {
+        try {
+            token = await refreshAccessToken();
+            res = await ssoMeFetch(base, token);
+        } catch (_) {
+            clearDeadSession();
+        }
+    }
     if (!res.ok) {
-        // 401/403 here means the token is bad — let the caller decide. Other
-        // codes are non-fatal (we can still fall back to JWT claims).
+        if (res.status === 401) clearDeadSession();
         const err = new Error(`SSO /auth/me failed (${res.status})`);
         err.status = res.status;
         throw err;

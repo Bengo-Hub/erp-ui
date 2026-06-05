@@ -128,9 +128,14 @@ export function useTheme() {
                 // localhost: no default — use CodeVertex fallback
             }
 
-            const url = resolvedOrg
+            // Build an ABSOLUTE URL against the ERP API host. A relative '/api/v1/…' would
+            // resolve against the SPA host (erp.masterspace.co.ke) and return index.html
+            // ("Unexpected token '<'"); the API lives at VITE_API_URL (erpapi.masterspace.co.ke).
+            const apiBase = (import.meta.env.VITE_API_URL || '').replace(/\/$/, '');
+            const path = resolvedOrg
                 ? `/api/v1/business/public-branding/?org=${encodeURIComponent(resolvedOrg)}`
                 : '/api/v1/business/public-branding/';
+            const url = apiBase ? `${apiBase}${path}` : path;
 
             const response = await fetch(url, {
                 method: 'GET',

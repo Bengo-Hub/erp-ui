@@ -73,7 +73,11 @@ export const KNOWN_APP_SEGMENTS = new Set([
 export function orgPath(orgSlug, path = '/') {
     const slug = orgSlug || resolveOrgSlug();
     const tail = path.startsWith('/') ? path : `/${path}`;
-    return `/${slug}${tail === '/' ? '' : tail}` || `/${slug}`;
+    // No tenant resolved yet → return the FLAT (unprefixed) path. Prefixing with an empty
+    // slug previously produced a double slash ("//hrm"); the flat path matches the legacy
+    // route tree and is rewritten to /{slug}/… by the guard once a tenant is known.
+    if (!slug) return tail === '' ? '/' : tail;
+    return `/${slug}${tail === '/' ? '' : tail}`;
 }
 
 /**
@@ -93,6 +97,21 @@ export function resolveOrgSlug(explicit) {
         if (stored) return stored;
     } catch (_) {
         /* localStorage unavailable */
+    }
+    // Fallback: derive from the logged-in user (covers sessions where the SSO/legacy
+    // login stored the user but not the tenant_slug key) and persist for next time.
+    try {
+        const raw = sessionStorage.getItem('user');
+        if (raw) {
+            const user = JSON.parse(raw);
+            const slug = user?.tenant_slug || user?.tenant?.slug || user?.business?.slug;
+            if (slug) {
+                setOrgSlug(slug);
+                return slug;
+            }
+        }
+    } catch (_) {
+        /* ignore */
     }
     return '';
 }

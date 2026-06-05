@@ -17,62 +17,11 @@ export const PERMISSION_CATEGORIES = {
         CONTRACTS: ['view_contract', 'add_contract', 'change_contract', 'delete_contract'],
         SETTINGS: ['view_jobtitle', 'view_departments', 'view_regions', 'view_projects', 'view_publicholiday', 'view_generalhr', 'view_defaultpayrollsettings', 'view_bankinstitution']
     },
-    
-    // Finance Permissions
-    FINANCE: {
-        TRANSACTIONS: ['view_transaction', 'add_transaction', 'change_transaction', 'delete_transaction'],
-        ACCOUNTS: ['view_paymentaccounts', 'add_paymentaccounts', 'change_paymentaccounts', 'delete_paymentaccounts'],
-        VOUCHERS: ['view_voucher', 'add_voucher', 'change_voucher', 'delete_voucher'],
-        BILLING: ['view_billingdocument', 'add_billingdocument', 'change_billingdocument', 'delete_billingdocument'],
-        TAXES: ['view_tax', 'view_taxrates', 'add_tax', 'change_tax', 'delete_tax'],
-        PAYMENTS: ['view_payment', 'add_payment', 'change_payment', 'delete_payment'],
-        EXPENSES: ['view_expense', 'add_expense', 'change_expense', 'delete_expense'],
-        BUDGETS: ['view_budget', 'add_budget', 'change_budget', 'delete_budget']
-    },
-    
-    // CRM Permissions
-    CRM: {
-        LEADS: ['view_lead', 'add_lead', 'change_lead', 'delete_lead'],
-        CONTACTS: ['view_contact', 'add_contact', 'change_contact', 'delete_contact'],
-        CUSTOMERS: ['view_customergroup', 'view_customersegment', 'view_customerreward'],
-        DEALS: ['view_deal', 'add_deal', 'change_deal', 'delete_deal'],
-        CAMPAIGNS: ['view_campaign', 'add_campaign', 'change_campaign', 'delete_campaign', 'view_campaignperformance'],
-        PIPELINE: ['view_pipelinestage', 'add_pipelinestage', 'change_pipelinestage', 'delete_pipelinestage']
-    },
-    
-    // E-commerce Permissions
-    ECOMMERCE: {
-        SALES: ['view_sales', 'add_sales', 'change_sales', 'delete_sales', 'view_salesreturn'],
-        PRODUCTS: ['view_products', 'add_products', 'change_products', 'delete_products'],
-        CATEGORIES: ['view_category', 'add_category', 'change_category', 'delete_category'],
-        INVENTORY: ['view_stockinventory', 'add_stockinventory', 'change_stockinventory', 'delete_stockinventory']
-    },
-    
-    // Inventory Permissions
-    INVENTORY: {
-        STOCK: ['view_stockinventory', 'view_stocktransfer', 'view_stockadjustment'],
-        TRANSFERS: ['view_stocktransfer', 'add_stocktransfer', 'change_stocktransfer', 'delete_stocktransfer'],
-        ADJUSTMENTS: ['view_stockadjustment', 'add_stockadjustment', 'change_stockadjustment', 'delete_stockadjustment'],
-        ASSETS: ['view_asset', 'add_asset', 'change_asset', 'delete_asset', 'view_assetcategory', 'view_assettransfer', 'view_assetmaintenance', 'view_assetaudit', 'view_assetdepreciation', 'view_assetinsurance']
-    },
-    
-    // Manufacturing Permissions
-    MANUFACTURING: {
-        PRODUCTION: ['view_productionbatch', 'add_productionbatch', 'change_productionbatch', 'delete_productionbatch'],
-        FORMULAS: ['view_formulas', 'add_formulas', 'change_formulas', 'delete_formulas'],
-        QUALITY: ['view_qualitycheck', 'add_qualitycheck', 'change_qualitycheck', 'delete_qualitycheck'],
-        ANALYTICS: ['view_manufacturinganalytics', 'view_rawmaterialusage']
-    },
-    
-    // Procurement Permissions
-    PROCUREMENT: {
-        REQUISITIONS: ['view_procurementrequest', 'add_procurementrequest', 'change_procurementrequest', 'delete_procurementrequest'],
-        ORDERS: ['view_purchaseorder', 'add_purchaseorder', 'change_purchaseorder', 'delete_purchaseorder'],
-        PURCHASES: ['view_purchase', 'add_purchase', 'change_purchase', 'delete_purchase'],
-        RETURNS: ['view_purchasereturn', 'add_purchasereturn', 'change_purchasereturn', 'delete_purchasereturn'],
-        SUPPLIERS: ['view_vendor', 'add_vendor', 'change_vendor', 'delete_vendor', 'view_supplierperformance']
-    },
-    
+
+    // NOTE: FINANCE / CRM / ECOMMERCE / INVENTORY / MANUFACTURING / PROCUREMENT permission
+    // categories removed — those domains are decomposed to treasury / marketflow / pos /
+    // inventory services. The ERP UI only owns HR/payroll + system settings.
+
     // System Permissions
     SYSTEM: {
         USERS: ['view_customuser', 'add_customuser', 'change_customuser', 'delete_customuser'],
