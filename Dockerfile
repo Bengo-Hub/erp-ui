@@ -9,6 +9,10 @@ RUN npm install -g pnpm@10.30.0
 # Build-time environment variables (available during pnpm run build)
 ARG VITE_API_URL=https://erpapi.masterspace.co.ke
 ENV VITE_API_URL=${VITE_API_URL}
+# Realtime WebSocket base. The live ERP socket is /ws/payroll/ (POS sockets are owned by
+# pos-service); kept so the channel base can be overridden per environment.
+ARG VITE_WEBSOCKET_URL=wss://erpapi.masterspace.co.ke/ws/payroll/
+ENV VITE_WEBSOCKET_URL=${VITE_WEBSOCKET_URL}
 
 # SSO (kept disabled until the erp OAuth client is registered + login is verified) +
 # external owner-service UI links shown in the decomposed ERP menu (prod domains).
