@@ -209,16 +209,20 @@ export async function handleCallback() {
     // Use the SAME redirect_uri that was sent to /authorize (tenant-scoped when an
     // org slug was known) — the token endpoint requires an exact match.
     const redirectUri = sessionStorage.getItem('sso_redirect_uri') || c.redirectUri;
+    // The OIDC /token endpoint parses the body as application/x-www-form-urlencoded
+    // (r.ParseForm + r.FormValue). Sending JSON makes every field empty → 400
+    // "missing parameters". Use a urlencoded form body.
+    const form = new URLSearchParams({
+        grant_type: 'authorization_code',
+        code,
+        code_verifier: verifier || '',
+        client_id: c.clientId,
+        redirect_uri: redirectUri
+    });
     const res = await fetch(`${c.authApi}/api/v1/token`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-            grant_type: 'authorization_code',
-            code,
-            code_verifier: verifier,
-            client_id: c.clientId,
-            redirect_uri: redirectUri
-        })
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded', Accept: 'application/json' },
+        body: form.toString()
     });
     if (!res.ok) throw new Error(`Token exchange failed (${res.status})`);
     const data = await res.json();
