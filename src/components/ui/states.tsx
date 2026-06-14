@@ -11,11 +11,78 @@ export function Spinner({ className }: { className?: string }) {
   return <Loader2 className={cn("size-4 animate-spin", className)} />;
 }
 
+/** Shimmering placeholder block. Compose into skeleton screens. */
+export function Skeleton({ className }: { className?: string }) {
+  return <div aria-hidden className={cn("animate-pulse rounded-md bg-muted", className)} />;
+}
+
+/**
+ * Skeleton that mimics a data table (header + N rows). Preferred over a bare
+ * spinner for list pages so layout doesn't jump when data arrives.
+ */
+export function TableSkeleton({ rows = 6, cols = 4 }: { rows?: number; cols?: number }) {
+  return (
+    <div className="space-y-3 p-4" role="status" aria-busy="true" aria-label="Loading">
+      <div className="flex gap-4 border-b border-border pb-3">
+        {Array.from({ length: cols }).map((_, i) => (
+          <Skeleton key={i} className="h-3 flex-1" />
+        ))}
+      </div>
+      {Array.from({ length: rows }).map((_, r) => (
+        <div key={r} className="flex gap-4">
+          {Array.from({ length: cols }).map((_, c) => (
+            <Skeleton key={c} className="h-4 flex-1" />
+          ))}
+        </div>
+      ))}
+      <span className="sr-only">Loading…</span>
+    </div>
+  );
+}
+
+/** Skeleton grid for KPI tiles / card dashboards. */
+export function CardsSkeleton({ count = 4 }: { count?: number }) {
+  return (
+    <div
+      className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4"
+      role="status"
+      aria-busy="true"
+      aria-label="Loading"
+    >
+      {Array.from({ length: count }).map((_, i) => (
+        <Skeleton key={i} className="h-24 w-full" />
+      ))}
+      <span className="sr-only">Loading…</span>
+    </div>
+  );
+}
+
+/** Skeleton for a detail/form panel. */
+export function DetailSkeleton() {
+  return (
+    <div className="space-y-4" role="status" aria-busy="true" aria-label="Loading">
+      <Skeleton className="h-8 w-1/3" />
+      <Skeleton className="h-4 w-1/2" />
+      <div className="grid gap-3 sm:grid-cols-2">
+        {Array.from({ length: 6 }).map((_, i) => (
+          <Skeleton key={i} className="h-12 w-full" />
+        ))}
+      </div>
+      <span className="sr-only">Loading…</span>
+    </div>
+  );
+}
+
 /** Centered loading panel for data fetches. */
 export function LoadingState({ label = "Loading…" }: { label?: string }) {
   return (
-    <div className="flex flex-col items-center justify-center gap-2 py-16 text-muted-foreground">
-      <Loader2 className="size-6 animate-spin" />
+    <div
+      role="status"
+      aria-busy="true"
+      aria-live="polite"
+      className="flex flex-col items-center justify-center gap-2 py-16 text-muted-foreground"
+    >
+      <Loader2 className="size-6 animate-spin" aria-hidden />
       <p className="text-sm">{label}</p>
     </div>
   );
@@ -34,8 +101,11 @@ export function EmptyState({
   action?: ReactNode;
 }) {
   return (
-    <div className="flex flex-col items-center justify-center gap-3 py-16 text-center">
-      <div className="flex size-12 items-center justify-center rounded-full bg-muted text-muted-foreground">
+    <div role="status" className="flex flex-col items-center justify-center gap-3 py-16 text-center">
+      <div
+        aria-hidden
+        className="flex size-12 items-center justify-center rounded-full bg-muted text-muted-foreground"
+      >
         {icon ?? <Inbox className="size-6" />}
       </div>
       <div>
@@ -61,8 +131,14 @@ export function ErrorState({
     (error as { message?: string })?.message ||
     "Something went wrong while loading this data.";
   return (
-    <div className="flex flex-col items-center justify-center gap-3 py-16 text-center">
-      <div className="flex size-12 items-center justify-center rounded-full bg-destructive/10 text-destructive">
+    <div
+      role="alert"
+      className="flex flex-col items-center justify-center gap-3 py-16 text-center"
+    >
+      <div
+        aria-hidden
+        className="flex size-12 items-center justify-center rounded-full bg-destructive/10 text-destructive"
+      >
         <AlertCircle className="size-6" />
       </div>
       <div>
