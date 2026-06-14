@@ -1,6 +1,12 @@
 # ERP-UI Revamp Plan — Vue 3 → Next.js 16
 
-> Executive plan for rebuilding `erp-ui` (HR + internal operations) from **Vue 3 / Vite / PrimeVue** to **Next.js 16 / React 19**, on the same stack as the platform's other UIs.
+> Plan for rebuilding `erp-ui` (HR + internal operations) from **Vue 3 / Vite / PrimeVue** to
+> **Next.js 16 / React 19**, on the same stack as the platform's other UIs.
+>
+> **STATUS: Sprints 1–4 done & on `revamp`.** Foundation, HRM+payroll, leave/attendance/
+> appraisals, and reports/admin/settings/dashboards are all implemented and building green.
+> A data-ownership **conformance cleanup** has scrubbed the last decomposed-domain remnants
+> (HR/Ops only). Sprint 5 (polish + cutover) is the remaining work, then `revamp` → `main`.
 
 ---
 
@@ -21,39 +27,49 @@ HRM (employees, contracts, org chart, training, recruitment) · Payroll (process
 
 Full route/component map: [`component-inventory.md`](./component-inventory.md). API contracts: [`integrations.md`](./integrations.md). Target architecture: [`architecture.md`](./architecture.md).
 
-## 4. Out of scope (do NOT port)
+## 4. Out of scope (data-ownership — NOT in this app)
 
-Finance/CRM/Inventory/POS/Procurement/Manufacturing/Assets/Notifications/Projects/Billing pages, ecommerce cart/product utils, storefront assets, legacy DRF Token login, the erp-api branding-settings system (use auth-api `by-slug`), highcharts, moment, express.
+Per master plan §0a, ERP-UI holds **no** data owned by another service. Excluded entirely
+(external links only): Finance/GL, CRM/customers, Inventory/products/stock, POS, Ordering/
+orders/**address_book**/**pickup_station**/**service_type**, Procurement, Manufacturing, Assets,
+Notifications, **Projects** (milestones/budgets/tenders/timelogs — ERP keeps only internal
+task_management), Billing, **bank-institution/branch masters** (employee bank details stay as
+HR form fields). Also dropped from the Vue app: ecommerce cart/product utils, storefront
+assets, legacy DRF Token login, the erp-api branding-settings system (use auth-api `by-slug`),
+highcharts, moment, express. A conformance scan of `src/` confirms none of these are present.
 
 ## 5. Phasing (see `sprints/`)
 
-> **Status:** Sprint 1 ✅ done (foundation shipped). Sprint 2 ✅ core scope done
-> (employee directory + profile/CRUD, HRM org-structure settings, payroll process
-> wizard, payslips list/detail/print, payroll-settings incl. tax/statutory,
-> claims/advances/losses). Sprint 3 ✅ done — leave (requests + approvals queue,
-> apply form, balances, entitlement, types, logs), attendance (records,
-> timesheets + approvals, shift-planner roster grid, work-shifts, shift-rotations,
-> off-days, attendance-rules, self-service settings), recruitment (jobs,
-> candidates, applications kanban), training (courses, enrollments + lifecycle,
-> evaluations), appraisals (list/detail/review evaluation form, cycles with
-> activate/close/reopen, goals + library, templates, questions) and performance
-> reviews. Shared `ApprovalActions` + `StatusBadge` power every approve/reject
-> flow; all orphan appraisal routes are now registered (no broken nav links).
-> Deferred to later sprints: contracts, org-chart, the editable pay-components
-> spreadsheet grid, realtime `use-payroll-progress` WS (process flow uses
-> request/response for now), and ESS My-Dashboard (`/ess`, Sprint 4).
+> **Status:** Sprints 1–4 ✅ done.
+> - **S1 Foundation** — Next 16 scaffold, `[orgSlug]` routing, SSO/PKCE, `ApiClient` +
+>   TanStack Query, RBAC gate, shell + branding + per-tenant manifest, subscription gating.
+> - **S2 HRM & Payroll** — employee directory + profile/CRUD (overview/bank/kin/salary tabs) +
+>   import, contracts, org-chart, HRM org-structure settings, payroll process wizard, payslips
+>   list/detail, advances/claims/losses, payroll-settings incl. formulas + tax/statutory.
+> - **S3 Leave/Attendance/Appraisals** — leave (requests + approvals, apply, balances,
+>   entitlement, types, logs); attendance (records, timesheets, shift-planner grid, work-shifts,
+>   rotations, off-days, rules, ESS settings); recruitment (jobs/candidates/applications);
+>   training (courses/enrollments/evaluations); appraisals (list/detail/review, cycles, goals,
+>   templates, questions) + performance reviews. Shared approval actions + status badges.
+> - **S4 Reports/Admin/Settings/Dashboards** — one config-driven `ReportRunner` for all KRA
+>   statutory + payroll reports (no per-report pages); users/roles/permissions; security
+>   dashboard + backups; company/currency/branding + HR/payroll settings; executive + HRM
+>   dashboards (recharts) + ESS home.
+> - **Conformance cleanup** ✅ — scrubbed decomposed-domain remnants (vestigial `project`
+>   report filter, orphaned `/payroll/formulas` stub); docs streamlined to the HR/Ops set.
 >
-> **Sprint 3 backend caveat:** several erp-api endpoints (leave logs,
-> attendance rules, shift-planner resolve, appraisal responses) may still be in
-> progress; pages render loading/empty/error states and fail gracefully.
+> **Backend caveat:** a few erp-api endpoints (leave logs, attendance rules, shift-planner
+> resolve, appraisal responses) may still be in progress; pages render loading/empty/error
+> states and fail gracefully. Realtime `use-payroll-progress` WS deferred to Sprint 5 (process
+> flow uses request/response for now).
 
 | Sprint | Theme | Outcome |
 |---|---|---|
 | [1 — Foundation](./sprints/sprint-1-foundation.md) ✅ | Next 16 scaffold, `[orgSlug]` routing, SSO/PKCE auth, `ApiClient` + TanStack Query, RBAC gate, layout + branding + manifest, subscription gating | Authenticated empty shell with branding, nav, guards |
 | [2 — HRM & Payroll](./sprints/sprint-2-hrm-payroll.md) ✅ (core) | Employees, contracts, org chart, training, recruitment, full payroll (process wizard + payslips + advances/claims/losses + formulas + spreadsheet) | Core HR/payroll usable |
 | [3 — Leave, Attendance, Appraisals](./sprints/sprint-3-leave-attendance-appraisals.md) ✅ | Leave lifecycle, attendance/shifts/timesheets, appraisals/cycles/goals, approval workflows | Performance + time management |
-| [4 — Reports, Users/Security, Settings, Dashboards](./sprints/sprint-4-reports-admin-settings.md) | DRY `ReportLayout` for 13 statutory reports, users/roles/permissions, security/backups, all settings, dashboards (recharts), ESS | Admin + reporting + analytics complete |
-| [5 — Polish & Cutover](./sprints/sprint-5-polish-cutover.md) | a11y/responsive, Playwright e2e, perf, PWA, Docker/CI, parity verification, DNS/ingress cutover | Production cutover, Vue app retired |
+| [4 — Reports, Users/Security, Settings, Dashboards](./sprints/sprint-4-reports-admin-settings.md) ✅ | Config-driven `ReportRunner` for statutory reports, users/roles/permissions, security/backups, all settings, dashboards (recharts), ESS | Admin + reporting + analytics complete |
+| [5 — Polish & Cutover](./sprints/sprint-5-polish-cutover.md) ⏳ | a11y/responsive, Playwright e2e, perf, PWA, Docker/CI, parity verification, DNS/ingress cutover | Production cutover, Vue app retired |
 
 ## 6. Risks & mitigations
 

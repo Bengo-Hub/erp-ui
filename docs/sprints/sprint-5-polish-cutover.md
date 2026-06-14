@@ -1,5 +1,7 @@
 # Sprint 5 — Polish & Cutover
 
+> **Status: ⏳ PENDING** (Sprints 1–4 + conformance cleanup done; this is the remaining work).
+
 **Goal:** Production hardening, parity verification, and switching `erp-ui` traffic to the Next.js app while keeping the Vue app as rollback.
 
 ## Scope
