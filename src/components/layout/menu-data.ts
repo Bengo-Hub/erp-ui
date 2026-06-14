@@ -131,6 +131,7 @@ export const APP_MENU: MenuSection[] = [
         children: [
           { label: "Courses", to: "/hrm/training/courses", permissions: ["view_trainingcourse"] },
           { label: "Enrollments", to: "/hrm/training/enrollments", permissions: ["view_trainingenrollment"] },
+          { label: "Evaluations", to: "/hrm/training/evaluations" },
         ],
       },
       {
@@ -139,6 +140,7 @@ export const APP_MENU: MenuSection[] = [
         children: [
           { label: "Jobs", to: "/hrm/recruitment/jobs", permissions: ["view_jobposting"] },
           { label: "Candidates", to: "/hrm/recruitment/candidates", permissions: ["view_candidate"] },
+          { label: "Applications", to: "/hrm/recruitment/applications" },
         ],
       },
     ],
