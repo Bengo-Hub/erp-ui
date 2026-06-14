@@ -69,7 +69,7 @@ highcharts, moment, express. A conformance scan of `src/` confirms none of these
 | [2 — HRM & Payroll](./sprints/sprint-2-hrm-payroll.md) ✅ (core) | Employees, contracts, org chart, training, recruitment, full payroll (process wizard + payslips + advances/claims/losses + formulas + spreadsheet) | Core HR/payroll usable |
 | [3 — Leave, Attendance, Appraisals](./sprints/sprint-3-leave-attendance-appraisals.md) ✅ | Leave lifecycle, attendance/shifts/timesheets, appraisals/cycles/goals, approval workflows | Performance + time management |
 | [4 — Reports, Users/Security, Settings, Dashboards](./sprints/sprint-4-reports-admin-settings.md) ✅ | Config-driven `ReportRunner` for statutory reports, users/roles/permissions, security/backups, all settings, dashboards (recharts), ESS | Admin + reporting + analytics complete |
-| [5 — Polish & Cutover](./sprints/sprint-5-polish-cutover.md) ⏳ | a11y/responsive, Playwright e2e, perf, PWA, Docker/CI, parity verification, DNS/ingress cutover | Production cutover, Vue app retired |
+| [5 — Polish & Cutover](./sprints/sprint-5-polish-cutover.md) 🔄 | Polish ✅ (centralized formatting, skeleton/empty/error states + boundaries, a11y/responsive, perf code-split + memoize, PWA update banner + offline shell, Playwright smoke). Remaining: Docker/CI parity, full parity sign-off, DNS/ingress cutover | Production cutover, Vue app retired |
 
 ## 6. Risks & mitigations
 

@@ -82,17 +82,24 @@ Severity: 🔴 critical · 🟡 high · 🟢 medium · ⚪ low/cleanup. Status: 
 | 🟢 ~790-line hardcoded mega-menu | ✅ Data-driven `menu-data.ts` |
 | 🟢 13 near-duplicate statutory report pages | ✅ One config-driven `ReportRunner` + `reports-config.ts` |
 | 🟢 AppLayout outside-click listener leak | ✅ N/A (new shell) |
-| 🟢 Systematic ARIA / keyboard-nav / mobile QA | ⏳ Sprint 5 polish |
+| 🟢 Systematic ARIA / keyboard-nav / mobile QA | ✅ Sprint 5: dialog focus trap, skip-link + `main` landmark, nav landmarks/`aria-current`/`aria-expanded`, table `scope=col` + keyboard rows + labelled pagination, `SearchInput` labelled; responsive sidebar drawer |
+| 🟢 Inconsistent loading/empty/error (blank screens, spinner-only) | ✅ Sprint 5: skeleton loaders in `DataTable`/detail/dashboards, `EmptyState`/`ErrorState` with roles, `[orgSlug]/error.tsx` boundary + `loading.tsx` |
+| 🟢 Ad-hoc currency/number/date formatting | ✅ Sprint 5: centralized `src/lib/format.ts` (KES, Africa/Nairobi) applied everywhere |
 
 ---
 
 ## 8. Remaining for Sprint 5 (polish & cutover)
 
-- 🔄 Playwright e2e coverage (role matrices, payroll wizard, report exports).
-- ⏳ Accessibility / responsive sweep across data tables, forms, and the shift-planner grid.
+- ✅ Playwright e2e **smoke** (auth-gate redirects, login SSO control, return-to, healthz) —
+  8/8 green headless against the standalone server. Deeper role-matrix / payroll-wizard /
+  report-export e2e needs a seeded backend (deferred to cutover staging).
+- ✅ Accessibility / responsive sweep across data tables, dialogs, nav, search and the shell.
+- ✅ Performance pass (recharts code-split, memoized report table, `optimizePackageImports`)
+  and PWA verification (per-tenant manifest, update banner, offline shell).
 - 🔄 Realtime payroll-progress (`use-payroll-progress` WS) — process flow currently uses
   request/response; wire the socket if/when erp-api exposes it.
-- ⏳ Performance pass + PWA verification per tenant; parity sign-off vs. the retired Vue app.
+- ⏳ Parity sign-off vs. the retired Vue app + Docker/CI/Helm/ArgoCD deploy parity + DNS
+  cutover (cutover-phase work, not application polish).
 - 🔄 Some erp-api endpoints (leave logs, attendance rules, shift-planner resolve, appraisal
   responses) may still be in progress; pages already render loading/empty/error gracefully.
 
