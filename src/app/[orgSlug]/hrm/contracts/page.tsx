@@ -16,6 +16,7 @@ import { useDebounce } from "@/hooks/use-debounce";
 import { useEmployeeOptions } from "@/hooks/use-employee-options";
 import { normalizeList } from "@/lib/api/drf";
 import { type Contract } from "@/lib/api/contracts";
+import { formatCurrency } from "@/lib/format";
 import { PAGE_SIZE, relationLabel } from "@/lib/hrm";
 
 const STATUS_OPTIONS = [
@@ -120,7 +121,7 @@ export default function ContractsPage() {
       header: "Salary",
       className: "text-right tabular-nums",
       headerClassName: "text-right",
-      cell: (c) => (c.salary != null ? Number(c.salary).toLocaleString() : "—"),
+      cell: (c) => formatCurrency(c.salary),
     },
     { header: "Pay Type", cell: (c) => <span className="capitalize">{c.pay_type || "—"}</span> },
     { header: "Status", cell: (c) => <Badge variant={statusVariant(c.status)}>{c.status || "—"}</Badge> },

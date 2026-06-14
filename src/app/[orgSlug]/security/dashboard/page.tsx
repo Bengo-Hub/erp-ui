@@ -9,6 +9,7 @@ import { PageHeader } from "@/components/ui/page-header";
 import { StatTile } from "@/components/ui/stat-tile";
 import { useSecurityDashboard } from "@/hooks/use-security";
 import { type SecurityEvent } from "@/lib/api/security";
+import { formatDateTime } from "@/lib/format";
 
 import { UsersTabs } from "../../users/_tabs";
 import { SecuritySettingsCards } from "./_settings-cards";
@@ -20,7 +21,7 @@ export default function SecurityDashboardPage() {
     { header: "Event", cell: (e) => <span className="font-medium">{e.event_type || "—"}</span> },
     { header: "User", cell: (e) => e.user || "—" },
     { header: "IP", cell: (e) => <code className="text-xs">{e.ip_address || "—"}</code> },
-    { header: "When", cell: (e) => (e.timestamp ? new Date(e.timestamp).toLocaleString() : "—") },
+    { header: "When", cell: (e) => formatDateTime(e.timestamp) },
   ];
 
   return (

@@ -11,11 +11,9 @@ import { StatTile } from "@/components/ui/stat-tile";
 import { useHrmDashboard } from "@/hooks/use-dashboard";
 import { useBranding } from "@/providers/branding-provider";
 import { useAuthStore } from "@/store/auth";
+import { formatCurrency } from "@/lib/format";
 
-function money(v?: number): string {
-  if (v == null) return "—";
-  return new Intl.NumberFormat("en-KE", { style: "currency", currency: "KES", maximumFractionDigits: 0 }).format(v);
-}
+const money = (v?: number) => formatCurrency(v, "KES", 0);
 
 function QuickLink({ href, icon: Icon, label }: { href: string; icon: typeof Users; label: string }) {
   return (

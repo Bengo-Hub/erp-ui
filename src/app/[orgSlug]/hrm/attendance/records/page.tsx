@@ -14,15 +14,10 @@ import { useDebounce } from "@/hooks/use-debounce";
 import { normalizeList } from "@/lib/api/drf";
 import { type AttendanceRecord } from "@/lib/api/attendance";
 import { PAGE_SIZE } from "@/lib/hrm";
-import { formatDate } from "@/lib/utils";
+import { formatDate, formatTime } from "@/lib/utils";
 import { useParams } from "next/navigation";
 
-function timePart(v?: string) {
-  if (!v) return "—";
-  const d = new Date(v);
-  if (!Number.isNaN(d.getTime())) return d.toLocaleTimeString("en-KE", { hour: "2-digit", minute: "2-digit" });
-  return v;
-}
+const timePart = (v?: string) => formatTime(v);
 
 export default function AttendanceRecordsPage() {
   const orgSlug = (useParams()?.orgSlug as string) ?? "";

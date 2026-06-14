@@ -9,6 +9,7 @@ import { PageHeader } from "@/components/ui/page-header";
 import { usePlannerResolve } from "@/hooks/use-attendance";
 import { useEmployeeOptions } from "@/hooks/use-employee-options";
 import { type PlannerCell } from "@/lib/api/attendance";
+import { formatDateParts } from "@/lib/format";
 
 function startOfWeek(d: Date) {
   const x = new Date(d);
@@ -69,8 +70,8 @@ export default function ShiftPlannerPage() {
               <ChevronLeft className="size-4" />
             </Button>
             <span className="px-2 text-sm font-medium text-foreground">
-              {days[0].toLocaleDateString("en-KE", { month: "short", day: "numeric" })} –{" "}
-              {days[6].toLocaleDateString("en-KE", { month: "short", day: "numeric" })}
+              {formatDateParts(days[0], { month: "short", day: "numeric" })} –{" "}
+              {formatDateParts(days[6], { month: "short", day: "numeric" })}
             </span>
             <Button variant="outline" size="sm" onClick={() => shiftWeek(1)} aria-label="Next week">
               <ChevronRight className="size-4" />
@@ -102,7 +103,7 @@ export default function ShiftPlannerPage() {
                   </th>
                   {days.map((d) => (
                     <th key={iso(d)} className="px-3 py-3 text-center text-xs font-semibold text-muted-foreground">
-                      <div>{d.toLocaleDateString("en-KE", { weekday: "short" })}</div>
+                      <div>{formatDateParts(d, { weekday: "short" })}</div>
                       <div className="font-normal">{d.getDate()}</div>
                     </th>
                   ))}
