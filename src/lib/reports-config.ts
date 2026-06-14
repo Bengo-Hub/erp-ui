@@ -11,7 +11,6 @@ export type ReportFilterKey =
   | "month"
   | "department"
   | "region"
-  | "project"
   | "employee"
   | "dateRange";
 

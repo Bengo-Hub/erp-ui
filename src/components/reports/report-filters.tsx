@@ -15,7 +15,6 @@ export interface ReportFilterValues {
   month?: string;
   department?: string;
   region?: string;
-  project?: string;
   employee?: string;
   from_date?: string;
   to_date?: string;

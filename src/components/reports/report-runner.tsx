@@ -43,7 +43,6 @@ function toParams(show: ReportFilterKey[], v: ReportFilterValues): ReportParams 
   if (show.includes("month") && v.month) p.month = v.month;
   if (show.includes("department") && v.department) p.department_id = v.department;
   if (show.includes("region") && v.region) p.region_id = v.region;
-  if (show.includes("project") && v.project) p.project_id = v.project;
   if (show.includes("employee") && v.employee) p.employee_id = v.employee;
   if (show.includes("dateRange")) {
     if (v.from_date) p.from_date = v.from_date;
