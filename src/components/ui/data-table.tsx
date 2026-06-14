@@ -29,6 +29,8 @@ interface DataTableProps<T> {
   emptyDescription?: ReactNode;
   emptyAction?: ReactNode;
   onRowClick?: (row: T) => void;
+  /** Accessible name for the table (screen readers). */
+  ariaLabel?: string;
 }
 
 /** Generic, presentational data table with loading / empty / error states. */
@@ -43,6 +45,7 @@ export function DataTable<T>({
   emptyDescription,
   emptyAction,
   onRowClick,
+  ariaLabel,
 }: DataTableProps<T>) {
   if (error) return <ErrorState error={error} onRetry={onRetry} />;
   if (isLoading) return <TableSkeleton cols={columns.length || 4} />;
@@ -53,12 +56,13 @@ export function DataTable<T>({
 
   return (
     <div className="overflow-x-auto">
-      <table className="w-full border-collapse text-sm">
+      <table className="w-full border-collapse text-sm" aria-label={ariaLabel}>
         <thead>
           <tr className="border-b border-border bg-accent/5 text-left">
             {columns.map((col, i) => (
               <th
                 key={i}
+                scope="col"
                 className={cn(
                   "px-4 py-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground",
                   col.headerClassName,
@@ -74,9 +78,21 @@ export function DataTable<T>({
             <tr
               key={rowKey(row)}
               onClick={onRowClick ? () => onRowClick(row) : undefined}
+              tabIndex={onRowClick ? 0 : undefined}
+              onKeyDown={
+                onRowClick
+                  ? (e) => {
+                      if (e.key === "Enter" || e.key === " ") {
+                        e.preventDefault();
+                        onRowClick(row);
+                      }
+                    }
+                  : undefined
+              }
               className={cn(
                 "border-b border-border/60 transition-colors hover:bg-accent/5",
-                onRowClick && "cursor-pointer",
+                onRowClick &&
+                  "cursor-pointer focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-ring",
               )}
             >
               {columns.map((col, i) => (
@@ -118,8 +134,9 @@ export function Pagination({
           size="sm"
           disabled={page <= 1}
           onClick={() => onPageChange(page - 1)}
+          aria-label="Previous page"
         >
-          <ChevronLeft className="size-4" />
+          <ChevronLeft className="size-4" aria-hidden />
         </Button>
         <span className="px-2 text-xs font-medium text-foreground">
           {page} / {totalPages}
@@ -129,8 +146,9 @@ export function Pagination({
           size="sm"
           disabled={page >= totalPages}
           onClick={() => onPageChange(page + 1)}
+          aria-label="Next page"
         >
-          <ChevronRight className="size-4" />
+          <ChevronRight className="size-4" aria-hidden />
         </Button>
       </div>
     </div>
