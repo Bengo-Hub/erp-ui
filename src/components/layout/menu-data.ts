@@ -163,6 +163,15 @@ export const APP_MENU: MenuSection[] = [
           { label: "NITA", to: "/reports/nita" },
         ],
       },
+      {
+        label: "Payroll Reports",
+        icon: FileBarChart,
+        children: [
+          { label: "Bank Net Pay", to: "/reports/bank-net-pay" },
+          { label: "Muster Roll", to: "/reports/muster-roll" },
+          { label: "Variance", to: "/reports/variance" },
+        ],
+      },
     ],
   },
   {

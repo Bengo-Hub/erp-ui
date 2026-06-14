@@ -1,5 +1,5 @@
-import { PageStub } from "@/components/layout/page-stub";
+import { ReportPage } from "../_report-page";
 
 export default function Page() {
-  return <PageStub title="Withholding Tax" sprint="Sprint 4" />;
+  return <ReportPage reportKey="withholding-tax" />;
 }
