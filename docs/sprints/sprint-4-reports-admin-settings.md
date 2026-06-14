@@ -1,5 +1,7 @@
 # Sprint 4 — Reports, Users/Security, Settings & Dashboards
 
+> **Status: ✅ COMPLETE** (on `revamp`, building green).
+
 **Goal:** Statutory + payroll reports (DRY), user/role/permission/security administration, all settings, and the analytics dashboards.
 
 ## Scope (component-inventory.md §2, §4, §8, §9, §10)

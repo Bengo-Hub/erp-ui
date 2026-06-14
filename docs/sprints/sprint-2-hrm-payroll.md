@@ -1,5 +1,7 @@
 # Sprint 2 — HRM & Payroll
 
+> **Status: ✅ COMPLETE** (on `revamp`, building green).
+
 **Goal:** Port the core HR and payroll surfaces — the highest-value, highest-traffic part of the app.
 
 ## Scope (from component-inventory.md §3, §5)

@@ -1,5 +1,7 @@
 # Sprint 1 — Foundation (scaffold, auth/SSO, data layer, layout/branding)
 
+> **Status: ✅ COMPLETE** (on `revamp`, building green).
+
 **Goal:** A running Next.js 16 app with tenant-scoped routing, SSO/PKCE login, the `ApiClient` + TanStack Query data layer, RBAC gating, the layout shell with per-tenant branding + PWA manifest, and subscription gating — i.e. an authenticated empty shell everything else plugs into.
 
 ## Scope
