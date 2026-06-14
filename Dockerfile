@@ -1,75 +1,63 @@
-# Multi-stage Dockerfile for Vue ERP UI
+FROM node:20-alpine AS base
 
-FROM node:22.13-slim AS base
+FROM base AS deps
+RUN apk add --no-cache libc6-compat
 WORKDIR /app
+RUN npm install -g pnpm@9
+COPY package.json pnpm-lock.yaml* .npmrc* ./
+RUN pnpm install --shamefully-hoist --frozen-lockfile
 
-# Install pnpm globally
-RUN npm install -g pnpm@10.30.0
-
-# Build-time environment variables (available during pnpm run build)
-ARG VITE_API_URL=https://erpapi.masterspace.co.ke
-ENV VITE_API_URL=${VITE_API_URL}
-# Realtime WebSocket base. The live ERP socket is /ws/payroll/ (POS sockets are owned by
-# pos-service); kept so the channel base can be overridden per environment.
-ARG VITE_WEBSOCKET_URL=wss://erpapi.masterspace.co.ke/ws/payroll/
-ENV VITE_WEBSOCKET_URL=${VITE_WEBSOCKET_URL}
-
-# SSO (kept disabled until the erp OAuth client is registered + login is verified) +
-# external owner-service UI links shown in the decomposed ERP menu (prod domains).
-ARG VITE_SSO_ENABLED=true
-ARG VITE_SSO_CLIENT_ID=erp-ui
-ARG VITE_SSO_URL=https://sso.codevertexitsolutions.com
-ARG VITE_AUTH_URL=https://sso.codevertexitsolutions.com
-ARG VITE_AUTH_API_URL=https://sso.codevertexitsolutions.com
-ARG VITE_AUTH_UI_URL=https://accounts.codevertexitsolutions.com
-ARG VITE_SUBSCRIPTIONS_API_URL=https://pricingapi.codevertexitsolutions.com
-ARG VITE_SUBSCRIPTIONS_UI_URL=https://pricing.codevertexitsolutions.com
-ARG VITE_TREASURY_UI_URL=https://books.codevertexitsolutions.com
-ARG VITE_MARKETFLOW_UI_URL=https://marketflow.codevertexitsolutions.com
-ARG VITE_INVENTORY_UI_URL=https://inventory.codevertexitsolutions.com
-ARG VITE_POS_UI_URL=https://pos.codevertexitsolutions.com
-ARG VITE_ORDERING_UI_URL=https://ordersapp.codevertexitsolutions.com
-ARG VITE_NOTIFICATIONS_UI_URL=https://notifications.codevertexitsolutions.com
-ARG VITE_PROJECTS_UI_URL=https://projects.codevertexitsolutions.com
-ENV VITE_SSO_ENABLED=${VITE_SSO_ENABLED} \
-    VITE_SSO_CLIENT_ID=${VITE_SSO_CLIENT_ID} \
-    VITE_SSO_URL=${VITE_SSO_URL} \
-    VITE_AUTH_URL=${VITE_AUTH_URL} \
-    VITE_AUTH_API_URL=${VITE_AUTH_API_URL} \
-    VITE_AUTH_UI_URL=${VITE_AUTH_UI_URL} \
-    VITE_SUBSCRIPTIONS_API_URL=${VITE_SUBSCRIPTIONS_API_URL} \
-    VITE_SUBSCRIPTIONS_UI_URL=${VITE_SUBSCRIPTIONS_UI_URL} \
-    VITE_TREASURY_UI_URL=${VITE_TREASURY_UI_URL} \
-    VITE_MARKETFLOW_UI_URL=${VITE_MARKETFLOW_UI_URL} \
-    VITE_INVENTORY_UI_URL=${VITE_INVENTORY_UI_URL} \
-    VITE_POS_UI_URL=${VITE_POS_UI_URL} \
-    VITE_ORDERING_UI_URL=${VITE_ORDERING_UI_URL} \
-    VITE_NOTIFICATIONS_UI_URL=${VITE_NOTIFICATIONS_UI_URL} \
-    VITE_PROJECTS_UI_URL=${VITE_PROJECTS_UI_URL}
-
-COPY package.json pnpm-lock.yaml .npmrc ./
-RUN apt-get update && apt-get install -y git openssh-client && rm -rf /var/lib/apt/lists/*
-RUN mkdir -p -m 0600 ~/.ssh && ssh-keyscan github.com >> ~/.ssh/known_hosts
-RUN --mount=type=ssh pnpm install --frozen-lockfile || pnpm install
+FROM base AS builder
+WORKDIR /app
+RUN npm install -g pnpm@9
+COPY --from=deps /app/node_modules ./node_modules
 COPY . .
-RUN pnpm run build
 
-FROM node:22.13-alpine AS runtime
+# Build-time public config (NEXT_PUBLIC_* are inlined at build).
+ARG NEXT_PUBLIC_API_URL=https://erpapi.masterspace.co.ke
+ARG NEXT_PUBLIC_SSO_URL=https://sso.codevertexitsolutions.com
+ARG NEXT_PUBLIC_AUTH_API_URL=https://sso.codevertexitsolutions.com
+ARG NEXT_PUBLIC_SSO_CLIENT_ID=erp-ui
+ARG NEXT_PUBLIC_SUBSCRIPTIONS_API_URL=https://pricingapi.codevertexitsolutions.com
+ARG NEXT_PUBLIC_WEBSOCKET_URL=wss://erpapi.masterspace.co.ke/ws/payroll/
+ARG NEXT_PUBLIC_TREASURY_UI_URL=https://books.codevertexitsolutions.com
+ARG NEXT_PUBLIC_MARKETFLOW_UI_URL=https://marketflow.codevertexitsolutions.com
+ARG NEXT_PUBLIC_INVENTORY_UI_URL=https://inventory.codevertexitsolutions.com
+ARG NEXT_PUBLIC_POS_UI_URL=https://pos.codevertexitsolutions.com
+ARG NEXT_PUBLIC_ORDERING_UI_URL=https://ordersapp.codevertexitsolutions.com
+ARG NEXT_PUBLIC_NOTIFICATIONS_UI_URL=https://notifications.codevertexitsolutions.com
+ARG NEXT_PUBLIC_PROJECTS_UI_URL=https://projects.codevertexitsolutions.com
+ARG NEXT_PUBLIC_SUBSCRIPTIONS_UI_URL=https://pricing.codevertexitsolutions.com
+ARG NEXT_PUBLIC_AUTH_UI_URL=https://accounts.codevertexitsolutions.com
+
+ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL \
+    NEXT_PUBLIC_SSO_URL=$NEXT_PUBLIC_SSO_URL \
+    NEXT_PUBLIC_AUTH_API_URL=$NEXT_PUBLIC_AUTH_API_URL \
+    NEXT_PUBLIC_SSO_CLIENT_ID=$NEXT_PUBLIC_SSO_CLIENT_ID \
+    NEXT_PUBLIC_SUBSCRIPTIONS_API_URL=$NEXT_PUBLIC_SUBSCRIPTIONS_API_URL \
+    NEXT_PUBLIC_WEBSOCKET_URL=$NEXT_PUBLIC_WEBSOCKET_URL \
+    NEXT_PUBLIC_TREASURY_UI_URL=$NEXT_PUBLIC_TREASURY_UI_URL \
+    NEXT_PUBLIC_MARKETFLOW_UI_URL=$NEXT_PUBLIC_MARKETFLOW_UI_URL \
+    NEXT_PUBLIC_INVENTORY_UI_URL=$NEXT_PUBLIC_INVENTORY_UI_URL \
+    NEXT_PUBLIC_POS_UI_URL=$NEXT_PUBLIC_POS_UI_URL \
+    NEXT_PUBLIC_ORDERING_UI_URL=$NEXT_PUBLIC_ORDERING_UI_URL \
+    NEXT_PUBLIC_NOTIFICATIONS_UI_URL=$NEXT_PUBLIC_NOTIFICATIONS_UI_URL \
+    NEXT_PUBLIC_PROJECTS_UI_URL=$NEXT_PUBLIC_PROJECTS_UI_URL \
+    NEXT_PUBLIC_SUBSCRIPTIONS_UI_URL=$NEXT_PUBLIC_SUBSCRIPTIONS_UI_URL \
+    NEXT_PUBLIC_AUTH_UI_URL=$NEXT_PUBLIC_AUTH_UI_URL
+
+RUN pnpm build
+
+FROM base AS runner
 WORKDIR /app
-
-# Install pnpm globally
-RUN npm install -g pnpm@10.30.0
-
-RUN apk update && apk upgrade
-COPY --from=base --chown=node:node /app .
-RUN chown -R node:node /app
-ENV NODE_ENV=production PORT=3000
-USER node
-
+ENV NODE_ENV=production
+RUN addgroup --system --gid 1001 nodejs && adduser --system --uid 1001 nextjs
+COPY --from=builder /app/public ./public
+RUN mkdir -p .next && chown nextjs:nodejs .next
+COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
+COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
+USER nextjs
 EXPOSE 3000
-
-# If this UI has a Node server entry point use it; otherwise build static and serve with a simple server
-HEALTHCHECK --interval=30s --timeout=5s --start-period=30s --retries=3 CMD wget -qO- http://localhost:${PORT}/ || exit 1
-CMD ["pnpm","run","start"]
-
-
+ENV PORT=3000
+ENV HOSTNAME="0.0.0.0"
+CMD ["node", "server.js"]
