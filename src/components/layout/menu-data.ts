@@ -121,8 +121,10 @@ export const APP_MENU: MenuSection[] = [
         children: [
           { label: "Appraisals", to: "/hrm/appraisals", permissions: ["view_appraisal"] },
           { label: "Cycles", to: "/hrm/appraisals/cycles", permissions: ["view_appraisalcycle"] },
-          { label: "Reviews", to: "/hrm/performance/reviews", permissions: ["view_performancereview"] },
+          { label: "Templates", to: "/hrm/appraisals/templates" },
+          { label: "Questions", to: "/hrm/appraisals/questions" },
           { label: "Goals", to: "/hrm/appraisals/goals" },
+          { label: "Reviews", to: "/hrm/performance/reviews", permissions: ["view_performancereview"] },
         ],
       },
       {
