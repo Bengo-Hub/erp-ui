@@ -209,7 +209,15 @@ export const APP_MENU: MenuSection[] = [
           { label: "Tax & Statutory", to: "/settings/payroll/statutory", permissions: ["view_defaultpayrollsettings"] },
         ],
       },
-      { label: "Settings", to: "/settings", icon: Settings },
+      {
+        label: "Settings",
+        icon: Settings,
+        children: [
+          { label: "Company", to: "/settings" },
+          { label: "Currency & Time", to: "/settings/currency-time" },
+          { label: "Branding", to: "/settings/branding" },
+        ],
+      },
     ],
   },
 ];
