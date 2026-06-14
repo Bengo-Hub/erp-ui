@@ -98,6 +98,7 @@ export const APP_MENU: MenuSection[] = [
           { label: "Balances", to: "/hrm/leave/balances", permissions: ["view_leavebalance"] },
           { label: "Entitlement", to: "/hrm/leave/entitlement" },
           { label: "Types", to: "/hrm/leave/types", permissions: ["view_leavecategory"] },
+          { label: "Logs", to: "/hrm/leave/logs" },
         ],
       },
       {
@@ -107,6 +108,11 @@ export const APP_MENU: MenuSection[] = [
           { label: "Shift Planner", to: "/hrm/attendance/shift-planner" },
           { label: "Records", to: "/hrm/attendance/records", permissions: ["view_attendancerecord"] },
           { label: "Timesheets", to: "/hrm/attendance/timesheets" },
+          { label: "Work Shifts", to: "/hrm/attendance/work-shifts" },
+          { label: "Shift Rotations", to: "/hrm/attendance/shift-rotations" },
+          { label: "Off Days", to: "/hrm/attendance/off-days" },
+          { label: "Attendance Rules", to: "/hrm/attendance/rules" },
+          { label: "Self-Service Settings", to: "/hrm/attendance/ess-settings" },
         ],
       },
       {

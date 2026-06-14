@@ -50,6 +50,17 @@ export interface OffDay {
   [key: string]: unknown;
 }
 
+export interface AttendanceRule {
+  id: number;
+  name?: string;
+  description?: string;
+  late_grace_minutes?: string | number;
+  overtime_after_minutes?: string | number;
+  half_day_threshold?: string | number;
+  is_active?: boolean;
+  [key: string]: unknown;
+}
+
 export interface Timesheet {
   id: number;
   employee?: number;
@@ -124,6 +135,7 @@ export const attendanceApi = {
   rotations: crud<ShiftRotation>("shift-rotations"),
   offDays: crud<OffDay>("off-days"),
   rosters: crud<ShiftRoster>("shift-rosters"),
+  rules: crud<AttendanceRule>("rules"),
 
   // Timesheets + lifecycle
   timesheets: {

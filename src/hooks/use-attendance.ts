@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import {
   attendanceApi,
   type AttendanceRecord,
+  type AttendanceRule,
   type OffDay,
   type ShiftAssignment,
   type ShiftRotation,
@@ -37,6 +38,11 @@ const offDays = makeResourceHooks<OffDay>("off-days", attendanceApi.offDays, "Of
 export const useOffDays = offDays.useList;
 export const useSaveOffDay = offDays.useSave;
 export const useDeleteOffDay = offDays.useRemove;
+
+const rules = makeResourceHooks<AttendanceRule>("attendance-rules", attendanceApi.rules, "Rule");
+export const useAttendanceRules = rules.useList;
+export const useSaveAttendanceRule = rules.useSave;
+export const useDeleteAttendanceRule = rules.useRemove;
 
 // ---- Timesheets ----
 const KEY = "timesheets";
