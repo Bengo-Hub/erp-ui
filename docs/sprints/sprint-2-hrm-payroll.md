@@ -29,3 +29,25 @@ DataTable views, multi-step RHF forms, `PayslipPreview`, `ProcessPayrollStepper`
 
 ## Dependencies
 Sprint 1 (auth, ApiClient, layout, RBAC, WS-capable client). Pick org-chart + rich-text libs in Sprint 1/early here.
+
+---
+
+## Progress (revamp branch)
+
+**Done ✅**
+- **Data layer** (all TanStack Query, no inline fetch): `src/lib/api/{employees,hrm-settings,payroll,payroll-settings,drf,error}.ts`; hooks `use-employees`, `use-hrm-settings`, `use-payroll`, `use-payroll-settings`, `use-debounce`. Mutations invalidate queries + sonner toasts; 403 sub-gating via shared `apiClient`.
+- **Shared UI primitives**: `form` (Input/Select/Textarea/Switch/Field), `dialog`, `data-table` + `Pagination`, `tabs`, `stepper`, `page-header`, `search-input`, `states` (Loading/Empty/Error), `crud/crud-manager` (reusable list+dialog-form+ConfirmDialog-delete).
+- **HRM — Employees**: directory (`/hrm/employees`) with debounced search, department/status/outlet filters, pagination, row→profile, **import dialog**. Create/edit RHF form (`/new`, `/[id]/edit`). Profile (`/[id]`) tabs: Overview, Salary (upsert), Bank accounts CRUD, Next-of-kin CRUD.
+- **HRM — Org structure** (`/settings/hrm/{departments,job-titles,job-groups}`): tabbed CRUD.
+- **Payroll — Process** (`/payroll/process`): stepper Period→Preview→Run→Disburse; preview shows PAYE/NSSF/SHIF/housing/net + totals; Run and Disburse behind PermissionGate + ConfirmDialog; wrapped in SubscriptionGate.
+- **Payroll — Payslips**: list (`/payroll/payslips`, search/period filter/paginate) + detail (`/[id]`) with gross/PAYE/NSSF/SHIF/net breakdown + browser **print/PDF** view.
+- **Payroll — Settings** (`/settings/payroll/{earnings,deductions,benefits,loans,formulas,statutory}`): components CRUD, loans, formulas, and **tax/statutory config** (relief + rate toggles, ERP-owned/tenant-configurable).
+- **Payroll — Claims / Advances / Losses & Damages**: CRUD pages (shared `PayRecordManager`).
+- Sidebar menu extended with HR Settings + Payroll Settings sections. `pnpm build` green at each commit.
+
+**Deferred (kept as PageStub / later sprint, build stays green)**
+- Employee **contracts** (`/hrm/contracts`), **org chart** (needs an org-chart lib), **import column mapping** UI (current dialog posts file only).
+- Training / recruitment screens (Sprint 2 stretch — left as stubs).
+- Editable **pay-components spreadsheet grid** (`/payroll/spreadsheet/...`) — large bespoke surface, deferred.
+- **Realtime `use-payroll-progress`** over `/ws/payroll/`: process flow currently uses request/response (`process-with-formulas` + optional `task_status`); WS progress to be wired when the socket contract is confirmed.
+- Email-payslips / scheduled-emails UI (hook `useEmailPayslips` exists; screen deferred).

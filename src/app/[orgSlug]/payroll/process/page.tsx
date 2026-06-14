@@ -7,6 +7,7 @@ import { toast } from "sonner";
 
 import { PermissionGate } from "@/components/auth/permission-gate";
 import { OutletFilter } from "@/components/outlet/outlet-filter";
+import { SubscriptionGate } from "@/components/subscription/subscription-gate";
 import { Button, Card, CardContent, CardHeader } from "@/components/ui/base";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Field, Input, Select } from "@/components/ui/form";
@@ -96,6 +97,7 @@ export default function ProcessPayrollPage() {
         </CardContent>
       </Card>
 
+      <SubscriptionGate>
       {step === 0 && (
         <Card>
           <CardHeader>
@@ -196,6 +198,7 @@ export default function ProcessPayrollPage() {
           </CardContent>
         </Card>
       )}
+      </SubscriptionGate>
 
       <ConfirmDialog
         open={confirmRun}
