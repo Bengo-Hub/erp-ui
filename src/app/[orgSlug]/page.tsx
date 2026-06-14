@@ -4,7 +4,7 @@ import { Banknote, CalendarClock, Receipt, TrendingUp, Users } from "lucide-reac
 import Link from "next/link";
 import { useParams } from "next/navigation";
 
-import { BarChart, ChartCard, type ChartDatum } from "@/components/charts/charts";
+import { BarChart, ChartCard, type ChartDatum } from "@/components/charts";
 import { Button } from "@/components/ui/base";
 import { PageHeader } from "@/components/ui/page-header";
 import { StatTile } from "@/components/ui/stat-tile";

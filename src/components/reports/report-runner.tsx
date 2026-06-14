@@ -78,17 +78,25 @@ export function ReportRunner({ config }: { config: ReportConfig }) {
     setValues({ year: String(new Date().getFullYear()) });
   };
 
-  const columns: Column<ReportRow>[] = config.columns.map((c) => ({
-    header: c.header,
-    headerClassName: c.money || c.numeric || c.percent ? "text-right" : undefined,
-    className: c.money || c.numeric || c.percent ? "text-right tabular-nums" : undefined,
-    cell: (row) => renderCell(c, row),
-  }));
+  const columns: Column<ReportRow>[] = useMemo(
+    () =>
+      config.columns.map((c) => ({
+        header: c.header,
+        headerClassName: c.money || c.numeric || c.percent ? "text-right" : undefined,
+        className: c.money || c.numeric || c.percent ? "text-right tabular-nums" : undefined,
+        cell: (row: ReportRow) => renderCell(c, row),
+      })),
+    [config.columns],
+  );
 
-  const tiles = (config.summary ?? []).map((s) => ({
-    label: s.label,
-    value: s.money ? formatCurrency(sum(rows, s.field)) : String(sum(rows, s.field)),
-  }));
+  const tiles = useMemo(
+    () =>
+      (config.summary ?? []).map((s) => ({
+        label: s.label,
+        value: s.money ? formatCurrency(sum(rows, s.field)) : String(sum(rows, s.field)),
+      })),
+    [config.summary, rows],
+  );
 
   const hasData = enabled && rows.length > 0;
 
