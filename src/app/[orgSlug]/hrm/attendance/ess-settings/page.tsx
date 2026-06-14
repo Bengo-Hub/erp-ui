@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 
 import { Button, Card, CardContent } from "@/components/ui/base";
 import { Field, Input, Switch } from "@/components/ui/form";
@@ -25,14 +25,20 @@ export default function EssSettingsPage() {
   const save = useSaveGeneralHrSettings();
 
   const settings = pickSettings(data);
-  const [form, setForm] = useState<GeneralHrSettings>({});
 
-  useEffect(() => {
-    if (settings) setForm(settings);
-  }, [settings]);
+  // Seed the editable form from the loaded record once (render-time guard avoids
+  // an effect/setState cascade). Re-seeds if the underlying record id changes.
+  const [state, setState] = useState<{ id: number | undefined; form: GeneralHrSettings }>({
+    id: undefined,
+    form: {},
+  });
+  if (settings && state.id !== settings.id) {
+    setState({ id: settings.id, form: settings });
+  }
+  const form = state.form;
 
   const set = (k: keyof GeneralHrSettings, v: unknown) =>
-    setForm((f) => ({ ...f, [k]: v }));
+    setState((s) => ({ ...s, form: { ...s.form, [k]: v } }));
 
   const onSave = () => {
     save.mutate({ id: settings?.id, data: form });

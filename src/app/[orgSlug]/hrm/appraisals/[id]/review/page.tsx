@@ -2,7 +2,7 @@
 
 import { ArrowLeft } from "lucide-react";
 import { useParams, useRouter } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 
 import { PermissionGate } from "@/components/auth/permission-gate";
 import { Button, Card, CardContent } from "@/components/ui/base";
@@ -39,21 +39,18 @@ export default function AppraisalReviewPage() {
   const questions = useMemo(() => normalizeList<AppraisalQuestion>(qData).results, [qData]);
   const existing = useMemo(() => normalizeList<AppraisalResponse>(respData).results, [respData]);
 
+  // Seed answers from existing responses once (render-time guard, keyed on the
+  // response set's identity, avoids an effect/setState cascade).
+  const [seededFor, setSeededFor] = useState<unknown>(null);
   const [answers, setAnswers] = useState<Record<number, Answer>>({});
-
-  // Seed from existing responses.
-  useEffect(() => {
-    if (!existing.length) return;
-    setAnswers((prev) => {
-      const next = { ...prev };
-      for (const r of existing) {
-        if (r.question != null && next[r.question] == null) {
-          next[r.question] = { score: String(r.score ?? ""), comment: r.comment ?? "" };
-        }
-      }
-      return next;
-    });
-  }, [existing]);
+  if (existing.length && seededFor !== existing) {
+    const seed: Record<number, Answer> = {};
+    for (const r of existing) {
+      if (r.question != null) seed[r.question] = { score: String(r.score ?? ""), comment: r.comment ?? "" };
+    }
+    setSeededFor(existing);
+    setAnswers((prev) => ({ ...seed, ...prev }));
+  }
 
   const setAnswer = (qid: number, patch: Partial<Answer>) =>
     setAnswers((a) => {

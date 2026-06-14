@@ -30,15 +30,28 @@ Finance/CRM/Inventory/POS/Procurement/Manufacturing/Assets/Notifications/Project
 > **Status:** Sprint 1 ✅ done (foundation shipped). Sprint 2 ✅ core scope done
 > (employee directory + profile/CRUD, HRM org-structure settings, payroll process
 > wizard, payslips list/detail/print, payroll-settings incl. tax/statutory,
-> claims/advances/losses). Deferred to later sprints: contracts, org-chart,
-> training/recruitment screens, the editable pay-components spreadsheet grid, and
-> realtime `use-payroll-progress` WS (process flow uses request/response for now).
+> claims/advances/losses). Sprint 3 ✅ done — leave (requests + approvals queue,
+> apply form, balances, entitlement, types, logs), attendance (records,
+> timesheets + approvals, shift-planner roster grid, work-shifts, shift-rotations,
+> off-days, attendance-rules, self-service settings), recruitment (jobs,
+> candidates, applications kanban), training (courses, enrollments + lifecycle,
+> evaluations), appraisals (list/detail/review evaluation form, cycles with
+> activate/close/reopen, goals + library, templates, questions) and performance
+> reviews. Shared `ApprovalActions` + `StatusBadge` power every approve/reject
+> flow; all orphan appraisal routes are now registered (no broken nav links).
+> Deferred to later sprints: contracts, org-chart, the editable pay-components
+> spreadsheet grid, realtime `use-payroll-progress` WS (process flow uses
+> request/response for now), and ESS My-Dashboard (`/ess`, Sprint 4).
+>
+> **Sprint 3 backend caveat:** several erp-api endpoints (leave logs,
+> attendance rules, shift-planner resolve, appraisal responses) may still be in
+> progress; pages render loading/empty/error states and fail gracefully.
 
 | Sprint | Theme | Outcome |
 |---|---|---|
 | [1 — Foundation](./sprints/sprint-1-foundation.md) ✅ | Next 16 scaffold, `[orgSlug]` routing, SSO/PKCE auth, `ApiClient` + TanStack Query, RBAC gate, layout + branding + manifest, subscription gating | Authenticated empty shell with branding, nav, guards |
 | [2 — HRM & Payroll](./sprints/sprint-2-hrm-payroll.md) ✅ (core) | Employees, contracts, org chart, training, recruitment, full payroll (process wizard + payslips + advances/claims/losses + formulas + spreadsheet) | Core HR/payroll usable |
-| [3 — Leave, Attendance, Appraisals](./sprints/sprint-3-leave-attendance-appraisals.md) | Leave lifecycle, attendance/shifts/timesheets, appraisals/cycles/goals, approval workflows | Performance + time management |
+| [3 — Leave, Attendance, Appraisals](./sprints/sprint-3-leave-attendance-appraisals.md) ✅ | Leave lifecycle, attendance/shifts/timesheets, appraisals/cycles/goals, approval workflows | Performance + time management |
 | [4 — Reports, Users/Security, Settings, Dashboards](./sprints/sprint-4-reports-admin-settings.md) | DRY `ReportLayout` for 13 statutory reports, users/roles/permissions, security/backups, all settings, dashboards (recharts), ESS | Admin + reporting + analytics complete |
 | [5 — Polish & Cutover](./sprints/sprint-5-polish-cutover.md) | a11y/responsive, Playwright e2e, perf, PWA, Docker/CI, parity verification, DNS/ingress cutover | Production cutover, Vue app retired |
 
