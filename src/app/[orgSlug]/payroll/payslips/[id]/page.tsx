@@ -5,7 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 
 import { Button } from "@/components/ui/base";
 import { PageHeader } from "@/components/ui/page-header";
-import { ErrorState, LoadingState } from "@/components/ui/states";
+import { DetailSkeleton, ErrorState } from "@/components/ui/states";
 import { usePayslip } from "@/hooks/use-payroll";
 
 import { PayslipView } from "./_payslip-view";
@@ -27,7 +27,7 @@ export default function PayslipDetailPage() {
       </div>
 
       {isLoading ? (
-        <LoadingState />
+        <DetailSkeleton />
       ) : error || !payslip ? (
         <ErrorState error={error} onRetry={refetch} />
       ) : (

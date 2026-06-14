@@ -3,7 +3,7 @@
 import { CalendarClock, FileWarning, TrendingUp, UserPlus, Users } from "lucide-react";
 
 import { BarChart, BreakdownChart, ChartCard, type ChartDatum } from "@/components/charts/charts";
-import { ErrorState, LoadingState } from "@/components/ui/states";
+import { CardsSkeleton, ErrorState } from "@/components/ui/states";
 import { PageHeader } from "@/components/ui/page-header";
 import { StatTile } from "@/components/ui/stat-tile";
 import { useHrmDashboard } from "@/hooks/use-dashboard";
@@ -41,7 +41,7 @@ export default function HrmDashboardPage() {
       <PageHeader title="HR Dashboard" subtitle="Headcount, attendance, leave & payroll at a glance" />
 
       {isLoading ? (
-        <LoadingState />
+        <CardsSkeleton count={5} />
       ) : error ? (
         <ErrorState error={error} onRetry={refetch} />
       ) : (

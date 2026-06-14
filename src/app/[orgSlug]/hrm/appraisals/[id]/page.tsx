@@ -7,7 +7,7 @@ import { ApprovalActions } from "@/components/hrm/approval-actions";
 import { StatusBadge } from "@/components/hrm/status-badge";
 import { PermissionGate } from "@/components/auth/permission-gate";
 import { Button, Card, CardContent } from "@/components/ui/base";
-import { ErrorState, LoadingState } from "@/components/ui/states";
+import { DetailSkeleton, ErrorState } from "@/components/ui/states";
 import { PageHeader } from "@/components/ui/page-header";
 import {
   useApproveAppraisal,
@@ -44,7 +44,7 @@ export default function AppraisalDetailPage() {
   const reject = useRejectAppraisal();
   const reopen = useReopenAppraisal();
 
-  if (isLoading) return <div className="p-6"><LoadingState /></div>;
+  if (isLoading) return <div className="p-6"><DetailSkeleton /></div>;
   if (error || !appraisal) return <div className="p-6"><ErrorState error={error} onRetry={refetch} /></div>;
 
   const status = (appraisal.status || "").toLowerCase();

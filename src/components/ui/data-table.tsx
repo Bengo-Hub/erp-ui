@@ -4,7 +4,7 @@ import { ChevronLeft, ChevronRight } from "lucide-react";
 import { type ReactNode } from "react";
 
 import { Button } from "@/components/ui/base";
-import { EmptyState, ErrorState, LoadingState } from "@/components/ui/states";
+import { EmptyState, ErrorState, TableSkeleton } from "@/components/ui/states";
 import { cn } from "@/lib/utils";
 
 export interface Column<T> {
@@ -45,7 +45,7 @@ export function DataTable<T>({
   onRowClick,
 }: DataTableProps<T>) {
   if (error) return <ErrorState error={error} onRetry={onRetry} />;
-  if (isLoading) return <LoadingState />;
+  if (isLoading) return <TableSkeleton cols={columns.length || 4} />;
   if (!rows.length)
     return (
       <EmptyState title={emptyTitle} description={emptyDescription} action={emptyAction} />

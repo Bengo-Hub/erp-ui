@@ -7,7 +7,7 @@ import { useState } from "react";
 import { PermissionGate } from "@/components/auth/permission-gate";
 import { Badge, Button } from "@/components/ui/base";
 import { PageHeader } from "@/components/ui/page-header";
-import { ErrorState, LoadingState } from "@/components/ui/states";
+import { DetailSkeleton, ErrorState } from "@/components/ui/states";
 import { Tabs } from "@/components/ui/tabs";
 import { useEmployee } from "@/hooks/use-employees";
 import { employeeName } from "@/lib/hrm";
@@ -40,7 +40,7 @@ export default function EmployeeProfilePage() {
       </Button>
 
       {isLoading ? (
-        <LoadingState />
+        <DetailSkeleton />
       ) : error || !employee ? (
         <ErrorState error={error} onRetry={refetch} />
       ) : (
