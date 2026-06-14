@@ -2,7 +2,7 @@
  * erp-api HRM / payroll statutory reports.
  *
  * All report data comes from `/hrm/payroll/reports/<type>/` (GET, params:
- * year/month/department_id/region_id/project_id/employee_id). Exports stream
+ * year/month/department_id/region_id/employee_id). Exports stream
  * blobs from `/hrm/payroll/reports/export/<type>/?format=pdf|excel`.
  *
  * One service surface drives the config-driven report runner (see
@@ -33,7 +33,6 @@ export interface ReportParams {
   month?: number | string;
   department_id?: number | string;
   region_id?: number | string;
-  project_id?: number | string;
   employee_id?: number | string;
   from_date?: string;
   to_date?: string;
