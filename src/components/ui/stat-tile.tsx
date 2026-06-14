@@ -3,6 +3,7 @@
 import { type LucideIcon } from "lucide-react";
 
 import { Card, CardContent } from "@/components/ui/base";
+import { formatNumber } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
 /** Compact KPI tile with an icon, value and label (+ optional trend). */
@@ -36,7 +37,7 @@ export function StatTile({
           {hint && <p className="text-[11px] text-muted-foreground/80">{hint}</p>}
           {trend != null && isFinite(trend) && (
             <p className={cn("text-[11px] font-semibold", trend >= 0 ? "text-green-600" : "text-red-600")}>
-              {trend >= 0 ? "▲" : "▼"} {Math.abs(trend).toFixed(1)}%
+              {trend >= 0 ? "▲" : "▼"} {formatNumber(Math.abs(trend), 1)}%
             </p>
           )}
         </div>

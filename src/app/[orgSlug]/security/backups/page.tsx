@@ -17,6 +17,7 @@ import {
 } from "@/hooks/use-security";
 import { normalizeList } from "@/lib/api/drf";
 import { type Backup } from "@/lib/api/security";
+import { formatDateTime } from "@/lib/format";
 
 import { UsersTabs } from "../../users/_tabs";
 
@@ -59,7 +60,7 @@ export default function BackupsPage() {
     { header: "Type", cell: (b) => <span className="capitalize">{b.type || "—"}</span> },
     { header: "Size", cell: (b) => (b.size ? String(b.size) : "—") },
     { header: "Status", cell: (b) => <Badge variant={statusVariant(b.status)}>{b.status || "—"}</Badge> },
-    { header: "Created", cell: (b) => (b.created_at ? new Date(b.created_at).toLocaleString() : "—") },
+    { header: "Created", cell: (b) => formatDateTime(b.created_at) },
     {
       header: "",
       headerClassName: "text-right",

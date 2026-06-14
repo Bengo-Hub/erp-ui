@@ -9,26 +9,13 @@ import { PageHeader } from "@/components/ui/page-header";
 import { useReport, useReportExport } from "@/hooks/use-reports";
 import { type ReportParams, type ReportRow } from "@/lib/api/reports";
 import { type ReportColumn, type ReportConfig, type ReportFilterKey } from "@/lib/reports-config";
+import { formatCurrency, formatPercent } from "@/lib/format";
 import { ReportFilters, type ReportFilterValues } from "./report-filters";
-
-/** Format a money value as KES (no decimals beyond 2). */
-function money(v: unknown): string {
-  const n = typeof v === "number" ? v : parseFloat(String(v ?? ""));
-  if (!isFinite(n)) return "—";
-  return new Intl.NumberFormat("en-KE", {
-    style: "currency",
-    currency: "KES",
-    maximumFractionDigits: 2,
-  }).format(n);
-}
 
 function renderCell(col: ReportColumn, row: ReportRow) {
   const v = row[col.field];
-  if (col.money) return money(v);
-  if (col.percent) {
-    const n = parseFloat(String(v ?? ""));
-    return isFinite(n) ? `${n}%` : "—";
-  }
+  if (col.money) return formatCurrency(v as string | number | null);
+  if (col.percent) return formatPercent(v as string | number | null);
   return v == null || v === "" ? "—" : String(v);
 }
 
@@ -100,7 +87,7 @@ export function ReportRunner({ config }: { config: ReportConfig }) {
 
   const tiles = (config.summary ?? []).map((s) => ({
     label: s.label,
-    value: s.money ? money(sum(rows, s.field)) : String(sum(rows, s.field)),
+    value: s.money ? formatCurrency(sum(rows, s.field)) : String(sum(rows, s.field)),
   }));
 
   const hasData = enabled && rows.length > 0;
