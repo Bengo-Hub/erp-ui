@@ -54,12 +54,18 @@ export function OrgShell({ children }: { children: ReactNode }) {
       <BrandingProvider>
         <AuthProvider>
           <ManifestLink />
+          <a
+            href="#main-content"
+            className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-[100] focus:rounded-lg focus:bg-primary focus:px-4 focus:py-2 focus:text-sm focus:font-medium focus:text-primary-foreground"
+          >
+            Skip to content
+          </a>
           <div className="flex h-screen overflow-hidden bg-background">
             <AppSidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} />
             <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
               <AppTopbar onMenuClick={() => setSidebarOpen(true)} />
               <SubscriptionBanner />
-              <main className="flex-1 overflow-y-auto bg-accent/5">
+              <main id="main-content" tabIndex={-1} className="flex-1 overflow-y-auto bg-accent/5">
                 <Breadcrumb />
                 <div className="min-h-full">{children}</div>
               </main>
