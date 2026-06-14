@@ -2,7 +2,7 @@
 
 import { CalendarClock, FileWarning, TrendingUp, UserPlus, Users } from "lucide-react";
 
-import { BarChart, BreakdownChart, ChartCard, type ChartDatum } from "@/components/charts/charts";
+import { BarChart, BreakdownChart, ChartCard, type ChartDatum } from "@/components/charts";
 import { CardsSkeleton, ErrorState } from "@/components/ui/states";
 import { PageHeader } from "@/components/ui/page-header";
 import { StatTile } from "@/components/ui/stat-tile";

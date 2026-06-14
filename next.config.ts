@@ -30,6 +30,11 @@ const withPWA = withPWAInit({
 
 const nextConfig: NextConfig = {
   ...(process.env.SKIP_STANDALONE !== "true" && { output: "standalone" as const }),
+  experimental: {
+    // Tree-shake barrel imports from heavy icon/chart packages so unused exports
+    // don't land in the client bundle.
+    optimizePackageImports: ["lucide-react", "recharts", "date-fns"],
+  },
   images: {
     remotePatterns: [
       { protocol: "https", hostname: "erpapi.masterspace.co.ke" },
