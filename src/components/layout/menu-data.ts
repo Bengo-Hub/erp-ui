@@ -169,6 +169,27 @@ export const APP_MENU: MenuSection[] = [
           { label: "Backups", to: "/security/backups" },
         ],
       },
+      {
+        label: "HR Settings",
+        icon: Building2,
+        children: [
+          { label: "Departments", to: "/settings/hrm/departments", permissions: ["view_employee"] },
+          { label: "Job Titles", to: "/settings/hrm/job-titles", permissions: ["view_employee"] },
+          { label: "Job Groups", to: "/settings/hrm/job-groups", permissions: ["view_employee"] },
+        ],
+      },
+      {
+        label: "Payroll Settings",
+        icon: Banknote,
+        children: [
+          { label: "Earnings", to: "/settings/payroll/earnings", permissions: ["view_payrollcomponents"] },
+          { label: "Deductions", to: "/settings/payroll/deductions", permissions: ["view_payrollcomponents"] },
+          { label: "Benefits", to: "/settings/payroll/benefits", permissions: ["view_payrollcomponents"] },
+          { label: "Loans", to: "/settings/payroll/loans", permissions: ["view_payrollcomponents"] },
+          { label: "Formulas", to: "/settings/payroll/formulas", permissions: ["view_payrollcomponents"] },
+          { label: "Tax & Statutory", to: "/settings/payroll/statutory", permissions: ["view_defaultpayrollsettings"] },
+        ],
+      },
       { label: "Settings", to: "/settings", icon: Settings },
     ],
   },
