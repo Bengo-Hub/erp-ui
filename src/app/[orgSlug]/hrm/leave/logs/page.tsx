@@ -7,12 +7,13 @@ import { DataTable, Pagination, type Column } from "@/components/ui/data-table";
 import { PageHeader } from "@/components/ui/page-header";
 import { SearchInput } from "@/components/ui/search-input";
 import { useDebounce } from "@/hooks/use-debounce";
-import { useLeaveBalances } from "@/hooks/use-leave";
+import { useLeaveLogs } from "@/hooks/use-leave";
 import { normalizeList } from "@/lib/api/drf";
-import { type LeaveBalance } from "@/lib/api/leave";
+import { type LeaveLog } from "@/lib/api/leave";
 import { PAGE_SIZE } from "@/lib/hrm";
+import { formatDate } from "@/lib/utils";
 
-export default function LeaveBalancesPage() {
+export default function LeaveLogsPage() {
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
   const debounced = useDebounce(search);
@@ -21,41 +22,22 @@ export default function LeaveBalancesPage() {
     () => ({ page, page_size: PAGE_SIZE, search: debounced || undefined }),
     [page, debounced],
   );
-  const { data, isLoading, error, refetch } = useLeaveBalances(params);
-  const { results, count } = normalizeList<LeaveBalance>(data);
+  const { data, isLoading, error, refetch } = useLeaveLogs(params);
+  const { results, count } = normalizeList<LeaveLog>(data);
 
-  const num = (v: unknown) => (v == null || v === "" ? "—" : String(v));
-
-  const columns: Column<LeaveBalance>[] = [
+  const columns: Column<LeaveLog>[] = [
     {
       header: "Employee",
-      cell: (b) => <span className="font-medium">{b.employee_name || b.employee || "—"}</span>,
+      cell: (l) => <span className="font-medium">{l.employee_name || l.employee || "—"}</span>,
     },
-    { header: "Leave Type", cell: (b) => b.leave_category_name || b.category_name || "—" },
-    { header: "Year", cell: (b) => num(b.year) },
-    {
-      header: "Entitled",
-      className: "text-right",
-      headerClassName: "text-right",
-      cell: (b) => num(b.entitled ?? b.total_days),
-    },
-    {
-      header: "Used",
-      className: "text-right",
-      headerClassName: "text-right",
-      cell: (b) => num(b.used ?? b.used_days),
-    },
-    {
-      header: "Remaining",
-      className: "text-right font-semibold",
-      headerClassName: "text-right",
-      cell: (b) => num(b.remaining ?? b.balance),
-    },
+    { header: "Action", cell: (l) => l.action || "—" },
+    { header: "Description", cell: (l) => l.description || "—" },
+    { header: "Date", cell: (l) => formatDate(l.created_at) },
   ];
 
   return (
     <div className="space-y-4 p-4 sm:p-6">
-      <PageHeader title="Leave Balances" subtitle="Entitled, used and remaining leave per employee" />
+      <PageHeader title="Leave Logs" subtitle="Audit trail of leave activity" />
       <Card>
         <div className="border-b border-border p-4">
           <SearchInput
@@ -64,19 +46,19 @@ export default function LeaveBalancesPage() {
               setSearch(v);
               setPage(1);
             }}
-            placeholder="Search employee…"
+            placeholder="Search…"
             className="max-w-sm"
           />
         </div>
         <DataTable
           columns={columns}
           rows={results}
-          rowKey={(b) => b.id}
+          rowKey={(l) => l.id}
           isLoading={isLoading}
           error={error}
           onRetry={refetch}
-          emptyTitle="No leave balances"
-          emptyDescription="Balances are computed from entitlements and approved leave."
+          emptyTitle="No leave logs"
+          emptyDescription="Leave activity will be recorded here."
         />
         {results.length > 0 && (
           <div className="border-t border-border">
