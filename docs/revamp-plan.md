@@ -27,10 +27,17 @@ Finance/CRM/Inventory/POS/Procurement/Manufacturing/Assets/Notifications/Project
 
 ## 5. Phasing (see `sprints/`)
 
+> **Status:** Sprint 1 ✅ done (foundation shipped). Sprint 2 ✅ core scope done
+> (employee directory + profile/CRUD, HRM org-structure settings, payroll process
+> wizard, payslips list/detail/print, payroll-settings incl. tax/statutory,
+> claims/advances/losses). Deferred to later sprints: contracts, org-chart,
+> training/recruitment screens, the editable pay-components spreadsheet grid, and
+> realtime `use-payroll-progress` WS (process flow uses request/response for now).
+
 | Sprint | Theme | Outcome |
 |---|---|---|
-| [1 — Foundation](./sprints/sprint-1-foundation.md) | Next 16 scaffold, `[orgSlug]` routing, SSO/PKCE auth, `ApiClient` + TanStack Query, RBAC gate, layout + branding + manifest, subscription gating | Authenticated empty shell with branding, nav, guards |
-| [2 — HRM & Payroll](./sprints/sprint-2-hrm-payroll.md) | Employees, contracts, org chart, training, recruitment, full payroll (process wizard + payslips + advances/claims/losses + formulas + spreadsheet) | Core HR/payroll usable |
+| [1 — Foundation](./sprints/sprint-1-foundation.md) ✅ | Next 16 scaffold, `[orgSlug]` routing, SSO/PKCE auth, `ApiClient` + TanStack Query, RBAC gate, layout + branding + manifest, subscription gating | Authenticated empty shell with branding, nav, guards |
+| [2 — HRM & Payroll](./sprints/sprint-2-hrm-payroll.md) ✅ (core) | Employees, contracts, org chart, training, recruitment, full payroll (process wizard + payslips + advances/claims/losses + formulas + spreadsheet) | Core HR/payroll usable |
 | [3 — Leave, Attendance, Appraisals](./sprints/sprint-3-leave-attendance-appraisals.md) | Leave lifecycle, attendance/shifts/timesheets, appraisals/cycles/goals, approval workflows | Performance + time management |
 | [4 — Reports, Users/Security, Settings, Dashboards](./sprints/sprint-4-reports-admin-settings.md) | DRY `ReportLayout` for 13 statutory reports, users/roles/permissions, security/backups, all settings, dashboards (recharts), ESS | Admin + reporting + analytics complete |
 | [5 — Polish & Cutover](./sprints/sprint-5-polish-cutover.md) | a11y/responsive, Playwright e2e, perf, PWA, Docker/CI, parity verification, DNS/ingress cutover | Production cutover, Vue app retired |
