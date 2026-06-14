@@ -8,6 +8,8 @@ const withPWA = withPWAInit({
   cacheOnFrontEndNav: true,
   aggressiveFrontEndNavCaching: true,
   reloadOnOnline: true,
+  // Offline shell served when a navigation request fails with no network.
+  fallbacks: { document: "/offline" },
   workboxOptions: {
     skipWaiting: true,
     clientsClaim: true,
