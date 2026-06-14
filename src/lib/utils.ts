@@ -1,30 +1,23 @@
 import { type ClassValue, clsx } from "clsx";
 import { twMerge } from "tailwind-merge";
 
+import { formatCurrency } from "@/lib/format";
+
 /** Tailwind-aware className combiner. */
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
-/** Format a number as a currency amount (defaults to KES, no symbol clutter). */
+/**
+ * Format a number as a currency amount (defaults to KES).
+ * @deprecated Prefer `formatCurrency` from `@/lib/format` — kept as an alias for back-compat.
+ */
 export function formatMoney(value: number | string | null | undefined, currency = "KES"): string {
-  const n = typeof value === "string" ? parseFloat(value) : value;
-  if (n == null || Number.isNaN(n)) return "—";
-  return new Intl.NumberFormat("en-KE", {
-    style: "currency",
-    currency,
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  }).format(n);
+  return formatCurrency(value, currency);
 }
 
-/** Format an ISO date/timestamp as a short local date. */
-export function formatDate(value: string | Date | null | undefined): string {
-  if (!value) return "—";
-  const d = typeof value === "string" ? new Date(value) : value;
-  if (Number.isNaN(d.getTime())) return "—";
-  return d.toLocaleDateString("en-KE", { year: "numeric", month: "short", day: "numeric" });
-}
+// Re-export the centralized date/time helpers so existing `@/lib/utils` imports keep working.
+export { formatDate, formatDateTime, formatTime, formatNumber } from "@/lib/format";
 
 /** Decode a JWT payload without verifying the signature. Returns {} on failure. */
 export function parseJwt(token: string): Record<string, unknown> {
