@@ -28,7 +28,7 @@ export function usePerformanceReview(id: number | string | undefined) {
 export function useSavePerformanceReview() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, data }: { id?: number; data: Partial<PerformanceReview> }) =>
+    mutationFn: ({ id, data }: { id?: number | string; data: Partial<PerformanceReview> }) =>
       id ? performanceApi.updateReview(id, data) : performanceApi.createReview(data),
     onSuccess: (_r, v) => {
       qc.invalidateQueries({ queryKey: [KEY] });
@@ -41,7 +41,7 @@ export function useSavePerformanceReview() {
 export function useDeletePerformanceReview() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (id: number) => performanceApi.deleteReview(id),
+    mutationFn: (id: number | string) => performanceApi.deleteReview(id),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: [KEY] });
       toast.success("Review deleted");
@@ -56,7 +56,7 @@ export const useApproveReview = makeActionHook(KEY, (id) => performanceApi.appro
 export function useRejectReview() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, reason }: { id: number; reason: string }) =>
+    mutationFn: ({ id, reason }: { id: number | string; reason: string }) =>
       performanceApi.reject(id, reason),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: [KEY] });
