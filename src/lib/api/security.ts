@@ -29,18 +29,6 @@ export interface TwoFactorStartResponse {
   [key: string]: unknown;
 }
 
-export interface Backup {
-  /** auth-api keys backups by filename, not a numeric id. */
-  filename: string;
-  size?: string;
-  created_at?: number; // unix seconds
-  [key: string]: unknown;
-}
-
-interface BackupManifest {
-  backups?: Backup[];
-}
-
 export const securityApi = {
   /* ---- Self-service 2FA (TOTP) ---- */
   start2FA: () => authAdminClient.post<TwoFactorStartResponse>(`/auth/mfa/totp/start`),
@@ -48,18 +36,4 @@ export const securityApi = {
     authAdminClient.post<{ status: string }>(`/auth/mfa/totp/confirm`, { code }),
   regenerateBackupCodes: () =>
     authAdminClient.post<{ backup_codes: string[] }>(`/auth/mfa/backup-codes/regenerate`, {}),
-};
-
-export const backupsApi = {
-  /** Platform-admin only. Returns the backup manifest from the backup server. */
-  list: () => authAdminClient.get<BackupManifest>(`/admin/backups`),
-  /** Browser download of a single backup file (auth-api streams it). */
-  downloadUrl: (filename: string) => {
-    const base = (
-      process.env.NEXT_PUBLIC_AUTH_API_URL ||
-      process.env.NEXT_PUBLIC_SSO_URL ||
-      "https://sso.codevertexitsolutions.com"
-    ).replace(/\/$/, "");
-    return `${base}/api/v1/admin/backups/${encodeURIComponent(filename)}`;
-  },
 };
