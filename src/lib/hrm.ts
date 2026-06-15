@@ -10,7 +10,7 @@ export function employeeName(e: Pick<Employee, "first_name" | "middle_name" | "l
 
 /** Resolve a possibly-nested FK ({id,name}) or flat *_name field to a label. */
 export function relationLabel(
-  rel: number | { id: number; name: string } | null | undefined,
+  rel: number | string | { id: number | string; name: string } | null | undefined,
   flatName?: string,
 ): string {
   if (rel && typeof rel === "object" && "name" in rel) return rel.name;
