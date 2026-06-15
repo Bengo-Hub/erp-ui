@@ -3,6 +3,7 @@ import { createJSONStorage, persist } from "zustand/middleware";
 
 import { apiClient } from "@/lib/api/client";
 import { authAdminClient } from "@/lib/api/auth-admin-client";
+import { useOutletFilterStore } from "@/store/outlet-filter";
 import {
   buildAuthorizeUrl,
   buildLogoutUrl,
@@ -177,8 +178,11 @@ export const useAuthStore = create<AuthState>()(
         });
         apiClient.setAccessToken(null);
         authAdminClient.setAccessToken(null);
+        apiClient.setOutletID(null);
+        try { useOutletFilterStore.getState().reset(); } catch { /* no-op */ }
         if (typeof window !== "undefined") {
           try { localStorage.removeItem("erp-auth-storage"); } catch { /* no-op */ }
+          try { localStorage.removeItem("erp-outlet-filter"); } catch { /* no-op */ }
           try { sessionStorage.clear(); } catch { /* no-op */ }
           window.location.href = buildLogoutUrl(AUTH_UI_URL);
         }
