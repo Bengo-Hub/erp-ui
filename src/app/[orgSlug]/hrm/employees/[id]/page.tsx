@@ -13,6 +13,9 @@ import { useEmployee } from "@/hooks/use-employees";
 import { employeeName } from "@/lib/hrm";
 
 import { BankTab } from "./_bank-tab";
+import { DisciplinaryTab } from "./_disciplinary-tab";
+import { EducationTab } from "./_education-tab";
+import { EmploymentTab } from "./_employment-tab";
 import { KinTab } from "./_kin-tab";
 import { OverviewTab } from "./_overview-tab";
 import { SalaryTab } from "./_salary-tab";
@@ -22,6 +25,9 @@ const TABS = [
   { key: "salary", label: "Salary" },
   { key: "bank", label: "Bank" },
   { key: "kin", label: "Next of Kin" },
+  { key: "education", label: "Education" },
+  { key: "employment", label: "Employment" },
+  { key: "disciplinary", label: "Disciplinary" },
 ];
 
 export default function EmployeeProfilePage() {
@@ -75,6 +81,9 @@ export default function EmployeeProfilePage() {
           {tab === "salary" && <SalaryTab employeeId={id} />}
           {tab === "bank" && <BankTab employeeId={id} />}
           {tab === "kin" && <KinTab employeeId={id} />}
+          {tab === "education" && <EducationTab employeeId={id} />}
+          {tab === "employment" && <EmploymentTab employeeId={id} />}
+          {tab === "disciplinary" && <DisciplinaryTab employeeId={id} />}
         </>
       )}
     </div>
