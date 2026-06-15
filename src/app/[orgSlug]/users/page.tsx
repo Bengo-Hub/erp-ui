@@ -20,13 +20,11 @@ import { UserRolesDialog } from "./_user-roles-dialog";
 import { UsersTabs } from "./_tabs";
 
 function userName(u: ManagedUser): string {
-  return (
-    u.full_name ||
-    [u.first_name, u.last_name].filter(Boolean).join(" ") ||
-    u.username ||
-    u.email ||
-    `User #${u.id}`
-  );
+  return u.name || u.full_name || u.email || `User ${u.user_id ?? u.id}`;
+}
+
+function isInactive(u: ManagedUser): boolean {
+  return u.status != null && u.status !== "active";
 }
 
 export default function UsersPage() {
@@ -39,7 +37,7 @@ export default function UsersPage() {
   const debounced = useDebounce(search);
 
   const params = useMemo(
-    () => ({ page, page_size: PAGE_SIZE, search: debounced || undefined }),
+    () => ({ page, limit: PAGE_SIZE, search: debounced || undefined }),
     [page, debounced],
   );
   const { data, isLoading, error, refetch } = useUsers(params);
@@ -53,18 +51,18 @@ export default function UsersPage() {
       cell: (u) => (
         <div className="flex flex-col">
           <span className="font-medium text-foreground">{userName(u)}</span>
-          <span className="text-xs text-muted-foreground">{u.email || u.username || "—"}</span>
+          <span className="text-xs text-muted-foreground">{u.email || "—"}</span>
         </div>
       ),
     },
     {
       header: "Roles",
       cell: (u) => {
-        const roles = (u.roles ?? []).map((r) => (typeof r === "object" ? r.name : r));
+        const roles = u.roles ?? [];
         return roles.length ? (
           <div className="flex flex-wrap gap-1">
             {roles.slice(0, 3).map((r) => (
-              <Badge key={String(r)} variant="outline">{String(r)}</Badge>
+              <Badge key={r} variant="outline">{r}</Badge>
             ))}
             {roles.length > 3 && <Badge variant="secondary">+{roles.length - 3}</Badge>}
           </div>
@@ -76,8 +74,8 @@ export default function UsersPage() {
     {
       header: "Status",
       cell: (u) => (
-        <Badge variant={u.is_active === false ? "secondary" : "success"}>
-          {u.is_active === false ? "Inactive" : "Active"}
+        <Badge variant={isInactive(u) ? "secondary" : "success"}>
+          {isInactive(u) ? (u.status === "suspended" ? "Suspended" : "Inactive") : "Active"}
         </Badge>
       ),
     },
@@ -97,18 +95,18 @@ export default function UsersPage() {
               variant="ghost"
               size="icon"
               aria-label="Reset password"
-              onClick={() => resetPassword.mutate(u.id)}
+              onClick={() => u.user_id && resetPassword.mutate(u.user_id)}
             >
               <KeyRound className="size-4" />
             </Button>
           </PermissionGate>
           <PermissionGate permission="change_user">
-            {u.is_active === false ? (
-              <Button variant="ghost" size="icon" aria-label="Activate" onClick={() => activate.mutate(u.id)}>
+            {isInactive(u) ? (
+              <Button variant="ghost" size="icon" aria-label="Activate" onClick={() => u.user_id && activate.mutate(u.user_id)}>
                 <UserCheck className="size-4 text-green-600" />
               </Button>
             ) : (
-              <Button variant="ghost" size="icon" aria-label="Deactivate" onClick={() => deactivate.mutate(u.id)}>
+              <Button variant="ghost" size="icon" aria-label="Deactivate" onClick={() => u.user_id && deactivate.mutate(u.user_id)}>
                 <UserX className="size-4 text-yellow-600" />
               </Button>
             )}
@@ -132,7 +130,7 @@ export default function UsersPage() {
     <div className="space-y-4 p-4 sm:p-6">
       <PageHeader
         title="Users & Security"
-        subtitle="Manage users, roles and permissions"
+        subtitle="Manage tenant members and their roles"
         actions={
           <PermissionGate permission="add_user">
             <Button size="sm" onClick={() => { setEditing(null); setFormOpen(true); }}>
@@ -173,12 +171,14 @@ export default function UsersPage() {
       <UserRolesDialog user={rolesFor} onClose={() => setRolesFor(null)} />
       <ConfirmDialog
         open={!!toDelete}
-        title="Delete user?"
-        description={`This will permanently remove ${toDelete ? userName(toDelete) : "this user"}.`}
+        title="Remove user?"
+        description={`This will remove ${toDelete ? userName(toDelete) : "this user"} from this organization.`}
         destructive
         loading={del.isPending}
         onCancel={() => setToDelete(null)}
-        onConfirm={() => toDelete && del.mutate(toDelete.id, { onSuccess: () => setToDelete(null) })}
+        onConfirm={() =>
+          toDelete?.user_id && del.mutate(toDelete.user_id, { onSuccess: () => setToDelete(null) })
+        }
       />
     </div>
   );

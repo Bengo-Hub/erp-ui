@@ -1,85 +1,56 @@
 "use client";
 
-import { Download, History, Plus, Trash2 } from "lucide-react";
-import { useState } from "react";
+import { Download, Info } from "lucide-react";
 
-import { PermissionGate } from "@/components/auth/permission-gate";
-import { Badge, Button, Card } from "@/components/ui/base";
-import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { Button, Card } from "@/components/ui/base";
 import { DataTable, type Column } from "@/components/ui/data-table";
 import { PageHeader } from "@/components/ui/page-header";
-import { SettingsForm } from "@/components/settings/settings-form";
-import {
-  useBackupActions,
-  useBackupSchedule,
-  useBackups,
-  useSaveBackupSchedule,
-} from "@/hooks/use-security";
+import { useBackups } from "@/hooks/use-security";
+import { backupsApi, type Backup } from "@/lib/api/security";
 import { normalizeList } from "@/lib/api/drf";
-import { type Backup } from "@/lib/api/security";
 import { formatDateTime } from "@/lib/format";
 
 import { UsersTabs } from "../../users/_tabs";
 
-const scheduleFields = [
-  { name: "enabled", label: "Scheduled backups", type: "switch" as const, span2: true },
-  {
-    name: "frequency",
-    label: "Frequency",
-    type: "select" as const,
-    options: [
-      { value: "daily", label: "Daily" },
-      { value: "weekly", label: "Weekly" },
-      { value: "monthly", label: "Monthly" },
-    ],
-  },
-  { name: "time", label: "Run at", type: "time" as const },
-  { name: "retention_days", label: "Retention (days)", type: "number" as const },
-];
-
-function statusVariant(status?: string) {
-  const s = (status || "").toLowerCase();
-  if (s.includes("complete") || s === "success") return "success" as const;
-  if (s.includes("fail") || s.includes("error")) return "error" as const;
-  if (s.includes("progress") || s.includes("running")) return "warning" as const;
-  return "secondary" as const;
-}
-
+/**
+ * Platform database backups. auth-api proxies a read-only manifest from the
+ * backup server (GET /admin/backups) and streams files for download. There is
+ * no create/delete/restore/schedule API — those are infra-managed CronJobs
+ * (reported), so this page lists + downloads only and is platform-admin gated by
+ * the API (non-admins get 403).
+ */
 export default function BackupsPage() {
   const { data, isLoading, error, refetch } = useBackups();
-  const { create, remove, restore, download } = useBackupActions();
-  const schedule = useBackupSchedule();
-  const saveSchedule = useSaveBackupSchedule();
-  const backups = normalizeList<Backup>(data).results;
+  // Manifest shape: { backups: [...] }; normalizeList tolerates both envelopes.
+  const backups = normalizeList<Backup>(
+    Array.isArray(data?.backups) ? data?.backups : (data as unknown as Backup[] | undefined),
+  ).results;
 
-  const [toDelete, setToDelete] = useState<Backup | null>(null);
-  const [toRestore, setToRestore] = useState<Backup | null>(null);
+  const download = (filename: string) => {
+    const a = document.createElement("a");
+    a.href = backupsApi.downloadUrl(filename);
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+  };
 
   const columns: Column<Backup>[] = [
-    { header: "Name", cell: (b) => <span className="font-medium">{b.name || `Backup #${b.id}`}</span> },
-    { header: "Type", cell: (b) => <span className="capitalize">{b.type || "—"}</span> },
+    { header: "File", cell: (b) => <span className="font-medium">{b.filename}</span> },
     { header: "Size", cell: (b) => (b.size ? String(b.size) : "—") },
-    { header: "Status", cell: (b) => <Badge variant={statusVariant(b.status)}>{b.status || "—"}</Badge> },
-    { header: "Created", cell: (b) => formatDateTime(b.created_at) },
+    {
+      header: "Created",
+      cell: (b) => (b.created_at ? formatDateTime(new Date(b.created_at * 1000).toISOString()) : "—"),
+    },
     {
       header: "",
       headerClassName: "text-right",
       className: "text-right",
       cell: (b) => (
-        <div className="flex justify-end gap-1">
-          <Button variant="ghost" size="icon" aria-label="Download" onClick={() => download.mutate(b.id)}>
+        <div className="flex justify-end">
+          <Button variant="ghost" size="icon" aria-label="Download" onClick={() => download(b.filename)}>
             <Download className="size-4" />
           </Button>
-          <PermissionGate permission="change_backup">
-            <Button variant="ghost" size="icon" aria-label="Restore" onClick={() => setToRestore(b)}>
-              <History className="size-4" />
-            </Button>
-          </PermissionGate>
-          <PermissionGate permission="delete_backup">
-            <Button variant="ghost" size="icon" aria-label="Delete" onClick={() => setToDelete(b)}>
-              <Trash2 className="size-4 text-destructive" />
-            </Button>
-          </PermissionGate>
         </div>
       ),
     },
@@ -87,65 +58,30 @@ export default function BackupsPage() {
 
   return (
     <div className="space-y-4 p-4 sm:p-6">
-      <PageHeader
-        title="Backups"
-        subtitle="Database backups & restore"
-        actions={
-          <PermissionGate permission="add_backup">
-            <Button size="sm" onClick={() => create.mutate("full")} disabled={create.isPending}>
-              <Plus className="mr-1.5 size-4" /> {create.isPending ? "Starting…" : "New Backup"}
-            </Button>
-          </PermissionGate>
-        }
-      />
+      <PageHeader title="Backups" subtitle="Platform database backups (read-only)" />
       <UsersTabs active="backups" />
+
+      <Card className="flex items-start gap-3 border-dashed bg-muted/30 p-4">
+        <Info className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
+        <p className="text-xs text-muted-foreground">
+          Backups are generated automatically by infrastructure CronJobs. This view (platform
+          admins only) lists available snapshots and lets you download them. Creating, deleting,
+          restoring and scheduling are managed by infrastructure, not this UI.
+        </p>
+      </Card>
 
       <Card>
         <DataTable
           columns={columns}
           rows={backups}
-          rowKey={(b) => b.id}
+          rowKey={(b) => b.filename}
           isLoading={isLoading}
           error={error}
           onRetry={refetch}
-          emptyTitle="No backups yet"
-          emptyDescription="Create a backup or configure a schedule below."
+          emptyTitle="No backups available"
+          emptyDescription="No backup snapshots were found, or you lack platform-admin access."
         />
       </Card>
-
-      <PermissionGate permission="change_backup">
-        <SettingsForm
-          title="Backup schedule"
-          description="Automate periodic database backups."
-          data={schedule.data}
-          isLoading={schedule.isLoading}
-          error={schedule.error}
-          onRetry={schedule.refetch}
-          saving={saveSchedule.isPending}
-          fields={scheduleFields}
-          onSave={(v) => saveSchedule.mutate(v)}
-        />
-      </PermissionGate>
-
-      <ConfirmDialog
-        open={!!toDelete}
-        title="Delete backup?"
-        description="This backup file will be permanently removed."
-        destructive
-        loading={remove.isPending}
-        onCancel={() => setToDelete(null)}
-        onConfirm={() => toDelete && remove.mutate(toDelete.id, { onSuccess: () => setToDelete(null) })}
-      />
-      <ConfirmDialog
-        open={!!toRestore}
-        title="Restore from backup?"
-        description="This will overwrite current data with the backup contents. Proceed with caution."
-        destructive
-        confirmLabel="Restore"
-        loading={restore.isPending}
-        onCancel={() => setToRestore(null)}
-        onConfirm={() => toRestore && restore.mutate(toRestore.id, { onSuccess: () => setToRestore(null) })}
-      />
     </div>
   );
 }

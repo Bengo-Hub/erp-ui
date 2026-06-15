@@ -1,25 +1,18 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 
 import { Button } from "@/components/ui/base";
 import { Dialog } from "@/components/ui/dialog";
 import { TransferList, type TransferItem } from "@/components/ui/transfer-list";
 import { useRoles, useUserActions } from "@/hooks/use-users";
-import { normalizeList } from "@/lib/api/drf";
-import { type ManagedUser, type Role } from "@/lib/api/users";
+import { type ManagedUser } from "@/lib/api/users";
 
-/** Resolve the role ids currently assigned to a user. */
-function userRoleIds(user: ManagedUser): Set<number> {
-  const ids = new Set<number>();
-  (user.roles ?? []).forEach((r) => {
-    if (typeof r === "object" && r && "id" in r) ids.add(r.id);
-  });
-  (user.role_ids ?? []).forEach((id) => ids.add(id));
-  return ids;
-}
-
-/** Assign/remove roles for a user via the TransferList. */
+/**
+ * Manage a member's role set. auth-api stores roles as plain strings on the
+ * tenant membership, so the TransferList edits a string array and commits the
+ * whole set via the member update endpoint (PUT .../members/{user_id}).
+ */
 export function UserRolesDialog({
   user,
   onClose,
@@ -27,27 +20,33 @@ export function UserRolesDialog({
   user: ManagedUser | null;
   onClose: () => void;
 }) {
-  const { data } = useRoles({ page_size: 200 });
-  const { assignRole, removeRole } = useUserActions();
-  const roles = normalizeList<Role>(data).results;
+  const { data: roleOptions = [] } = useRoles();
+  const { setRoles } = useUserActions();
 
   const items: TransferItem[] = useMemo(
-    () => roles.map((r) => ({ value: String(r.id), label: r.name })),
-    [roles],
-  );
-  const selected = useMemo(
-    () => (user ? Array.from(userRoleIds(user)).map(String) : []),
-    [user],
+    () => roleOptions.map((r) => ({ value: r.id, label: r.name })),
+    [roleOptions],
   );
 
+  const openKey = user ? String(user.id) : "";
+  const [draft, setDraft] = useState<{ key: string; roles: string[] }>({ key: "", roles: [] });
+  if (user && draft.key !== openKey) {
+    setDraft({ key: openKey, roles: user.roles ?? [] });
+  }
+
   if (!user) return null;
-  const busy = assignRole.isPending || removeRole.isPending;
+  const busy = setRoles.isPending;
+
+  const commit = (next: string[]) => {
+    setDraft((d) => ({ ...d, roles: next }));
+    if (user.user_id) setRoles.mutate({ userId: user.user_id, roles: next });
+  };
 
   return (
     <Dialog
       open={!!user}
       onClose={onClose}
-      title={`Manage roles — ${user.full_name || user.username || user.email}`}
+      title={`Manage roles — ${user.name || user.full_name || user.email}`}
       maxWidth="max-w-2xl"
       footer={
         <Button size="sm" onClick={onClose} disabled={busy}>
@@ -57,14 +56,15 @@ export function UserRolesDialog({
     >
       <TransferList
         items={items}
-        selected={selected}
+        selected={draft.roles}
         disabled={busy}
         leftTitle="Available roles"
         rightTitle="Assigned roles"
         onMove={(value, assign) => {
-          const args = { userId: user.id, roleId: Number(value) };
-          if (assign) assignRole.mutate(args);
-          else removeRole.mutate(args);
+          const next = assign
+            ? [...draft.roles, value]
+            : draft.roles.filter((r) => r !== value);
+          commit(next);
         }}
       />
     </Dialog>

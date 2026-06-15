@@ -2,99 +2,31 @@
 
 import { useState } from "react";
 
-import { PermissionGate } from "@/components/auth/permission-gate";
 import { Button, Card } from "@/components/ui/base";
-import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Field, Input } from "@/components/ui/form";
-import { SettingsForm } from "@/components/settings/settings-form";
-import {
-  use2FA,
-  use2FAActions,
-  usePasswordPolicy,
-  useSavePasswordPolicy,
-  useSaveSecuritySettings,
-  useSecuritySettings,
-} from "@/hooks/use-security";
+import { use2FAActions } from "@/hooks/use-security";
 
-/** Security settings + password policy + 2FA self-management cards. */
+/** Self-service 2FA setup card (auth-api /auth/mfa/totp/*). */
 export function SecuritySettingsCards() {
-  const settings = useSecuritySettings();
-  const saveSettings = useSaveSecuritySettings();
-  const policy = usePasswordPolicy();
-  const savePolicy = useSavePasswordPolicy();
-
   return (
     <div className="grid gap-4 lg:grid-cols-2">
-      <PermissionGate
-        permission="change_securitysettings"
-        fallback={
-          <SettingsForm
-            title="Security settings"
-            data={settings.data}
-            isLoading={settings.isLoading}
-            error={settings.error}
-            onRetry={settings.refetch}
-            readOnly
-            fields={securityFields}
-            onSave={() => undefined}
-          />
-        }
-      >
-        <SettingsForm
-          title="Security settings"
-          description="Session & lockout policy applied platform-wide."
-          data={settings.data}
-          isLoading={settings.isLoading}
-          error={settings.error}
-          onRetry={settings.refetch}
-          saving={saveSettings.isPending}
-          fields={securityFields}
-          onSave={(v) => saveSettings.mutate(v)}
-        />
-      </PermissionGate>
-
-      <SettingsForm
-        title="Password policy"
-        description="Complexity & expiry requirements for all users."
-        data={policy.data}
-        isLoading={policy.isLoading}
-        error={policy.error}
-        onRetry={policy.refetch}
-        saving={savePolicy.isPending}
-        fields={policyFields}
-        onSave={(v) => savePolicy.mutate(v)}
-      />
-
       <TwoFactorCard />
     </div>
   );
 }
 
-const securityFields = [
-  { name: "enforce_2fa", label: "Enforce two-factor", type: "switch" as const, span2: true },
-  { name: "session_timeout_minutes", label: "Session timeout (min)", type: "number" as const },
-  { name: "max_failed_attempts", label: "Max failed attempts", type: "number" as const },
-  { name: "lockout_duration_minutes", label: "Lockout duration (min)", type: "number" as const },
-];
-
-const policyFields = [
-  { name: "min_length", label: "Minimum length", type: "number" as const },
-  { name: "expiry_days", label: "Expiry (days)", type: "number" as const },
-  { name: "require_uppercase", label: "Require uppercase", type: "switch" as const },
-  { name: "require_lowercase", label: "Require lowercase", type: "switch" as const },
-  { name: "require_numbers", label: "Require numbers", type: "switch" as const },
-  { name: "require_special", label: "Require special chars", type: "switch" as const },
-];
-
-/** Self-service 2FA enable/verify/disable. */
+/**
+ * Enroll a TOTP authenticator. auth-api returns the raw secret + an otpauth://
+ * provisioning URI (no server-rendered QR), then verifies the first code.
+ */
 function TwoFactorCard() {
-  const { data, isLoading } = use2FA();
-  const { setup, verify, disable } = use2FAActions();
+  const { start, confirm, regenerateBackupCodes } = use2FAActions();
   const [code, setCode] = useState("");
-  const [confirmDisable, setConfirmDisable] = useState(false);
 
-  const enabled = data?.enabled;
-  const qr = setup.data?.qr_code;
+  const secret = start.data?.secret;
+  const provisioning = start.data?.provisioning;
+  const enabled = confirm.isSuccess;
+  const backupCodes = regenerateBackupCodes.data?.backup_codes;
 
   return (
     <Card className="p-4">
@@ -103,45 +35,70 @@ function TwoFactorCard() {
         Add a second factor to your own account.
       </p>
 
-      {isLoading ? (
-        <p className="mt-4 text-sm text-muted-foreground">Loading…</p>
-      ) : enabled ? (
+      {enabled ? (
         <div className="mt-4 space-y-3">
           <p className="text-sm text-green-600">Two-factor is enabled on your account.</p>
-          <Button size="sm" variant="destructive" onClick={() => setConfirmDisable(true)}>
-            Disable 2FA
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => regenerateBackupCodes.mutate()}
+            disabled={regenerateBackupCodes.isPending}
+          >
+            {regenerateBackupCodes.isPending ? "Generating…" : "Regenerate backup codes"}
           </Button>
+          {backupCodes && backupCodes.length > 0 && (
+            <div className="rounded border border-border bg-muted/40 p-3">
+              <p className="mb-1 text-xs font-medium text-foreground">
+                Save these backup codes — they are shown once:
+              </p>
+              <div className="grid grid-cols-2 gap-1 font-mono text-xs">
+                {backupCodes.map((c) => (
+                  <span key={c}>{c}</span>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       ) : (
         <div className="mt-4 space-y-3">
-          {!qr ? (
-            <Button size="sm" onClick={() => setup.mutate()} disabled={setup.isPending}>
-              {setup.isPending ? "Starting…" : "Set up 2FA"}
+          {!secret ? (
+            <Button size="sm" onClick={() => start.mutate()} disabled={start.isPending}>
+              {start.isPending ? "Starting…" : "Set up 2FA"}
             </Button>
           ) : (
             <>
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={qr} alt="2FA QR code" className="h-40 w-40 rounded border border-border" />
+              <div className="rounded border border-border bg-muted/40 p-3 text-xs">
+                <p className="mb-1 font-medium text-foreground">
+                  Add this account to your authenticator app:
+                </p>
+                <p className="break-all">
+                  Secret: <code className="font-mono">{secret}</code>
+                </p>
+                {provisioning && (
+                  <p className="mt-1 break-all text-muted-foreground">
+                    Or open: <code className="font-mono">{provisioning}</code>
+                  </p>
+                )}
+              </div>
               <Field label="Verification code" htmlFor="twofa-code">
-                <Input id="twofa-code" value={code} onChange={(e) => setCode(e.target.value)} placeholder="123456" />
+                <Input
+                  id="twofa-code"
+                  value={code}
+                  onChange={(e) => setCode(e.target.value)}
+                  placeholder="123456"
+                />
               </Field>
-              <Button size="sm" onClick={() => verify.mutate(code)} disabled={verify.isPending || !code}>
-                {verify.isPending ? "Verifying…" : "Verify & enable"}
+              <Button
+                size="sm"
+                onClick={() => confirm.mutate(code)}
+                disabled={confirm.isPending || !code}
+              >
+                {confirm.isPending ? "Verifying…" : "Verify & enable"}
               </Button>
             </>
           )}
         </div>
       )}
-
-      <ConfirmDialog
-        open={confirmDisable}
-        title="Disable two-factor?"
-        description="Your account will be less secure."
-        destructive
-        loading={disable.isPending}
-        onCancel={() => setConfirmDisable(false)}
-        onConfirm={() => disable.mutate(undefined, { onSuccess: () => setConfirmDisable(false) })}
-      />
     </Card>
   );
 }
