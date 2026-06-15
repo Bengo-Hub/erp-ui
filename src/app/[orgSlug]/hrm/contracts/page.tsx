@@ -96,7 +96,8 @@ export default function ContractsPage() {
   const submit = () => {
     if (!form.employee || !form.contract_start_date) return;
     const payload: Partial<Contract> = {
-      employee: Number(form.employee),
+      // employee id is a UUID string — do not Number() it.
+      employee: form.employee,
       contract_start_date: form.contract_start_date,
       contract_end_date: form.contract_end_date || undefined,
       salary: form.salary || undefined,

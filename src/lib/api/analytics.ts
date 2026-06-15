@@ -48,13 +48,44 @@ export interface HrmDashboard {
   [key: string]: unknown;
 }
 
+/** erp-api summary report envelope ({report,columns,rows,totals}). */
+interface SummaryReport {
+  totals?: Record<string, unknown>;
+  rows?: Record<string, unknown>[];
+}
+
+const numOf = (v: unknown) => (v == null || v === "" ? 0 : Number(v) || 0);
+
+/**
+ * erp-api has no dedicated `/hrm/analytics` surface (gap). The HRM dashboard
+ * is composed from the two summary report endpoints that DO exist:
+ * `/reports/headcount-summary` and `/reports/leave-summary`. Payroll &
+ * attendance analytics have no backend yet and are left empty.
+ */
 export const analyticsApi = {
-  hrmDashboard: (params?: Record<string, unknown>) =>
-    apiClient.get<HrmDashboard>(`/hrm/analytics/`, params),
-  payroll: (params?: Record<string, unknown>) =>
-    apiClient.get<Record<string, unknown>>(`/hrm/payroll/analytics/`, params),
-  leave: (params?: Record<string, unknown>) =>
-    apiClient.get<Record<string, unknown>>(`/hrm/leave/analytics/`, params),
-  attendance: (params?: Record<string, unknown>) =>
-    apiClient.get<Record<string, unknown>>(`/hrm/attendance/analytics/`, params),
+  hrmDashboard: async (params?: Record<string, unknown>): Promise<HrmDashboard> => {
+    const year = (params?.year as number) ?? new Date().getFullYear();
+    const [headcount, leave] = await Promise.allSettled([
+      apiClient.get<SummaryReport>(`/reports/headcount-summary`, params),
+      apiClient.get<SummaryReport>(`/reports/leave-summary`, { year, ...params }),
+    ]);
+    const hc = headcount.status === "fulfilled" ? (headcount.value.totals ?? {}) : {};
+    const lv = leave.status === "fulfilled" ? (leave.value.totals ?? {}) : {};
+    return {
+      headcount_metrics: {
+        total_employees: numOf(hc.total),
+        new_hires: numOf(hc.active),
+        expiring_contracts: numOf(hc.terminated),
+      },
+      leave_metrics: {
+        pending_requests: numOf(lv.pending_requests),
+      },
+      attendance_metrics: {},
+      payroll_metrics: {},
+    };
+  },
+  // No backend yet for these (gap) — resolve to empty objects so widgets render.
+  payroll: async (): Promise<Record<string, unknown>> => ({}),
+  leave: async (): Promise<Record<string, unknown>> => ({}),
+  attendance: async (): Promise<Record<string, unknown>> => ({}),
 };

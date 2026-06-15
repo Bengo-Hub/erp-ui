@@ -4,8 +4,8 @@ import { apiClient } from "@/lib/api/client";
 import { type ListParams, type Paginated } from "@/lib/api/drf";
 
 export interface Contract {
-  id: number;
-  employee?: number | { id: number; name?: string } | null;
+  id: number | string;
+  employee?: number | string | { id: number | string; name?: string } | null;
   employee_name?: string;
   employee_number?: string;
   contract_start_date?: string;
