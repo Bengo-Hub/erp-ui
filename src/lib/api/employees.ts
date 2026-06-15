@@ -91,6 +91,21 @@ function toEmployeePayload(data: Partial<Employee>): Record<string, unknown> {
   return out;
 }
 
+/** Per-row result from the bulk CSV import (erp-api POST /hrm/employees/import). */
+export interface EmployeeImportRow {
+  row: number;
+  employee_number?: string;
+  email?: string;
+  status: "created" | "error";
+  error?: string;
+}
+export interface EmployeeImportResult {
+  total: number;
+  created: number;
+  failed: number;
+  results: EmployeeImportRow[];
+}
+
 export const employeesApi = {
   list: (params?: ListParams) =>
     apiClient.get<Paginated<Employee> | Employee[]>(`${EMP}/employees/`, params),
@@ -106,14 +121,12 @@ export const employeesApi = {
     apiClient.patch<Employee>(`${EMP}/employees/${id}/`, toEmployeePayload(data)),
   remove: (id: number | string) => apiClient.delete<void>(`${EMP}/employees/${id}/`),
 
-  importEmployees: (file: File, mapping?: Record<string, string>) => {
+  // Bulk CSV import → POST /hrm/employees/import (erp-api parses CSV, creates each
+  // row independently, returns a per-row summary).
+  importEmployees: (file: File) => {
     const fd = new FormData();
     fd.append("file", file);
-    if (mapping) fd.append("mapping", JSON.stringify(mapping));
-    return apiClient.post<{ created?: number; errors?: unknown[] }>(
-      `${EMP}/upload-employee-data/`,
-      fd,
-    );
+    return apiClient.post<EmployeeImportResult>(`${EMP}/employees/import`, fd);
   },
 
   // Bank accounts
