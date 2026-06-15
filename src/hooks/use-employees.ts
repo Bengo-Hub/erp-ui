@@ -7,8 +7,11 @@ import {
   employeesApi,
   type Employee,
   type EmployeeBankAccount,
+  type EmployeeDisciplinary,
+  type EmployeeEducation,
   type EmployeeNextOfKin,
   type EmployeeSalaryDetail,
+  type EmploymentHistory,
 } from "@/lib/api/employees";
 import { type ListParams } from "@/lib/api/drf";
 import { extractApiError } from "@/lib/api/error";
@@ -137,6 +140,102 @@ export function useDeleteNextOfKin(employeeId: number | string) {
       toast.success("Next of kin removed");
     },
     onError: (e) => toast.error(extractApiError(e, "Failed to remove next of kin")),
+  });
+}
+
+// ---- Education ----
+export function useEmployeeEducation(employeeId: number | string | undefined) {
+  return useQuery({
+    queryKey: [KEY, "education", employeeId],
+    queryFn: () => employeesApi.listEducation(employeeId!),
+    enabled: !!employeeId,
+  });
+}
+export function useSaveEducation(employeeId: number | string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, data }: { id?: string | number; data: Partial<EmployeeEducation> }) =>
+      id ? employeesApi.updateEducation(id, data) : employeesApi.addEducation(employeeId, data),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: [KEY, "education", employeeId] });
+      toast.success("Education saved");
+    },
+    onError: (e) => toast.error(extractApiError(e, "Failed to save education")),
+  });
+}
+export function useDeleteEducation(employeeId: number | string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string | number) => employeesApi.removeEducation(id),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: [KEY, "education", employeeId] });
+      toast.success("Education removed");
+    },
+    onError: (e) => toast.error(extractApiError(e, "Failed to remove education")),
+  });
+}
+
+// ---- Employment history ----
+export function useEmployeeEmployment(employeeId: number | string | undefined) {
+  return useQuery({
+    queryKey: [KEY, "employment", employeeId],
+    queryFn: () => employeesApi.listEmployment(employeeId!),
+    enabled: !!employeeId,
+  });
+}
+export function useSaveEmployment(employeeId: number | string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, data }: { id?: string | number; data: Partial<EmploymentHistory> }) =>
+      id ? employeesApi.updateEmployment(id, data) : employeesApi.addEmployment(employeeId, data),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: [KEY, "employment", employeeId] });
+      toast.success("Employment record saved");
+    },
+    onError: (e) => toast.error(extractApiError(e, "Failed to save employment record")),
+  });
+}
+export function useDeleteEmployment(employeeId: number | string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string | number) => employeesApi.removeEmployment(id),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: [KEY, "employment", employeeId] });
+      toast.success("Employment record removed");
+    },
+    onError: (e) => toast.error(extractApiError(e, "Failed to remove employment record")),
+  });
+}
+
+// ---- Disciplinary ----
+export function useEmployeeDisciplinary(employeeId: number | string | undefined) {
+  return useQuery({
+    queryKey: [KEY, "disciplinary", employeeId],
+    queryFn: () => employeesApi.listDisciplinary(employeeId!),
+    enabled: !!employeeId,
+  });
+}
+export function useSaveDisciplinary(employeeId: number | string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, data }: { id?: string | number; data: Partial<EmployeeDisciplinary> }) =>
+      id ? employeesApi.updateDisciplinary(id, data) : employeesApi.addDisciplinary(employeeId, data),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: [KEY, "disciplinary", employeeId] });
+      toast.success("Disciplinary record saved");
+    },
+    onError: (e) => toast.error(extractApiError(e, "Failed to save disciplinary record")),
+  });
+}
+export function useDeleteDisciplinary(employeeId: number | string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string | number) => employeesApi.removeDisciplinary(id),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: [KEY, "disciplinary", employeeId] });
+      toast.success("Disciplinary record removed");
+    },
+    onError: (e) => toast.error(extractApiError(e, "Failed to remove disciplinary record")),
   });
 }
 

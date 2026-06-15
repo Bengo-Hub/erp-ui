@@ -65,6 +65,39 @@ export interface EmployeeNextOfKin {
   address?: string;
 }
 
+export interface EmployeeEducation {
+  id: string | number;
+  employee_id?: string;
+  institution?: string;
+  qualification?: string;
+  field_of_study?: string;
+  grade?: string;
+  certificate_url?: string;
+  start_date?: string;
+  end_date?: string;
+}
+
+export interface EmploymentHistory {
+  id: string | number;
+  employee_id?: string;
+  employer?: string;
+  designation?: string;
+  reason_for_leaving?: string;
+  start_date?: string;
+  end_date?: string;
+}
+
+export interface EmployeeDisciplinary {
+  id: string | number;
+  employee_id?: string;
+  category?: string;
+  description?: string;
+  action_taken?: string;
+  status?: string;
+  document_url?: string;
+  incident_date?: string;
+}
+
 export interface EmployeeSalaryDetail {
   id?: number;
   employee?: number;
@@ -150,6 +183,33 @@ export const employeesApi = {
   updateNextOfKin: (id: number, data: Partial<EmployeeNextOfKin>) =>
     apiClient.put<EmployeeNextOfKin>(`${EMP}/next-of-kin/${id}/`, data),
   removeNextOfKin: (id: number) => apiClient.delete<void>(`${EMP}/next-of-kin/${id}/`),
+
+  // Education
+  listEducation: (employeeId: number | string) =>
+    apiClient.get<EmployeeEducation[]>(`${EMP}/employee-education/`, { emp_id: employeeId }),
+  addEducation: (employeeId: number | string, data: Partial<EmployeeEducation>) =>
+    apiClient.post<EmployeeEducation>(`${EMP}/employee-education/`, { ...data, employee: employeeId }),
+  updateEducation: (id: string | number, data: Partial<EmployeeEducation>) =>
+    apiClient.put<EmployeeEducation>(`${EMP}/employee-education/${id}/`, data),
+  removeEducation: (id: string | number) => apiClient.delete<void>(`${EMP}/employee-education/${id}/`),
+
+  // Employment history
+  listEmployment: (employeeId: number | string) =>
+    apiClient.get<EmploymentHistory[]>(`${EMP}/employment-history/`, { emp_id: employeeId }),
+  addEmployment: (employeeId: number | string, data: Partial<EmploymentHistory>) =>
+    apiClient.post<EmploymentHistory>(`${EMP}/employment-history/`, { ...data, employee: employeeId }),
+  updateEmployment: (id: string | number, data: Partial<EmploymentHistory>) =>
+    apiClient.put<EmploymentHistory>(`${EMP}/employment-history/${id}/`, data),
+  removeEmployment: (id: string | number) => apiClient.delete<void>(`${EMP}/employment-history/${id}/`),
+
+  // Disciplinary
+  listDisciplinary: (employeeId: number | string) =>
+    apiClient.get<EmployeeDisciplinary[]>(`${EMP}/employee-disciplinary/`, { emp_id: employeeId }),
+  addDisciplinary: (employeeId: number | string, data: Partial<EmployeeDisciplinary>) =>
+    apiClient.post<EmployeeDisciplinary>(`${EMP}/employee-disciplinary/`, { ...data, employee: employeeId }),
+  updateDisciplinary: (id: string | number, data: Partial<EmployeeDisciplinary>) =>
+    apiClient.put<EmployeeDisciplinary>(`${EMP}/employee-disciplinary/${id}/`, data),
+  removeDisciplinary: (id: string | number) => apiClient.delete<void>(`${EMP}/employee-disciplinary/${id}/`),
 
   // Salary details. erp-api exposes a single salary record per employee via
   // `PUT /hrm/employees/{id}/salary` (no list endpoint), so we read the salary
