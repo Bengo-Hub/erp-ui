@@ -96,7 +96,7 @@ export function useClaims(params?: ListParams) {
 export function useSaveClaim() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, data }: { id?: number; data: Partial<Claim> }) =>
+    mutationFn: ({ id, data }: { id?: number | string; data: Partial<Claim> }) =>
       id ? payrollApi.updateClaim(id, data) : payrollApi.createClaim(data),
     onSuccess: (_r, v) => {
       qc.invalidateQueries({ queryKey: [KEY, "claims"] });
@@ -109,7 +109,7 @@ export function useSaveClaim() {
 export function useDeleteClaim() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (id: number) => payrollApi.deleteClaim(id),
+    mutationFn: (id: number | string) => payrollApi.deleteClaim(id),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: [KEY, "claims"] });
       toast.success("Claim deleted");
@@ -129,7 +129,7 @@ export function useAdvances(params?: ListParams) {
 export function useSaveAdvance() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, data }: { id?: number; data: Partial<PayComponentRecord> }) =>
+    mutationFn: ({ id, data }: { id?: number | string; data: Partial<PayComponentRecord> }) =>
       id ? payrollApi.updateAdvance(id, data) : payrollApi.createAdvance(data),
     onSuccess: (_r, v) => {
       qc.invalidateQueries({ queryKey: [KEY, "advances"] });
@@ -142,7 +142,7 @@ export function useSaveAdvance() {
 export function useDeleteAdvance() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (id: number) => payrollApi.deleteAdvance(id),
+    mutationFn: (id: number | string) => payrollApi.deleteAdvance(id),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: [KEY, "advances"] });
       toast.success("Advance deleted");
@@ -162,7 +162,7 @@ export function useLossDamages(params?: ListParams) {
 export function useSaveLossDamage() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, data }: { id?: number; data: Partial<PayComponentRecord> }) =>
+    mutationFn: ({ id, data }: { id?: number | string; data: Partial<PayComponentRecord> }) =>
       id ? payrollApi.updateLossDamage(id, data) : payrollApi.createLossDamage(data),
     onSuccess: (_r, v) => {
       qc.invalidateQueries({ queryKey: [KEY, "losses"] });
@@ -175,7 +175,7 @@ export function useSaveLossDamage() {
 export function useDeleteLossDamage() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (id: number) => payrollApi.deleteLossDamage(id),
+    mutationFn: (id: number | string) => payrollApi.deleteLossDamage(id),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: [KEY, "losses"] });
       toast.success("Record deleted");
