@@ -34,7 +34,7 @@ export function useLeaveRequest(id: number | string | undefined) {
 export function useSaveLeaveRequest() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, data }: { id?: number; data: Partial<LeaveRequest> }) =>
+    mutationFn: ({ id, data }: { id?: number | string; data: Partial<LeaveRequest> }) =>
       id ? leaveApi.updateRequest(id, data) : leaveApi.createRequest(data),
     onSuccess: (_r, v) => {
       qc.invalidateQueries({ queryKey: [KEY] });
@@ -47,7 +47,7 @@ export function useSaveLeaveRequest() {
 export function useDeleteLeaveRequest() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (id: number) => leaveApi.deleteRequest(id),
+    mutationFn: (id: number | string) => leaveApi.deleteRequest(id),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: [KEY, "requests"] });
       toast.success("Leave request deleted");
@@ -59,7 +59,7 @@ export function useDeleteLeaveRequest() {
 export function useApproveLeave() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (id: number) => leaveApi.approveRequest(id),
+    mutationFn: (id: number | string) => leaveApi.approveRequest(id),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: [KEY] });
       toast.success("Leave request approved");
@@ -71,7 +71,7 @@ export function useApproveLeave() {
 export function useRejectLeave() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, reason }: { id: number; reason: string }) =>
+    mutationFn: ({ id, reason }: { id: number | string; reason: string }) =>
       leaveApi.rejectRequest(id, reason),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: [KEY] });
@@ -92,7 +92,7 @@ export function useLeaveCategories(params?: ListParams) {
 export function useSaveLeaveCategory() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, data }: { id?: number; data: Partial<LeaveCategory> }) =>
+    mutationFn: ({ id, data }: { id?: number | string; data: Partial<LeaveCategory> }) =>
       id ? leaveApi.updateCategory(id, data) : leaveApi.createCategory(data),
     onSuccess: (_r, v) => {
       qc.invalidateQueries({ queryKey: [KEY, "categories"] });
@@ -105,7 +105,7 @@ export function useSaveLeaveCategory() {
 export function useDeleteLeaveCategory() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (id: number) => leaveApi.deleteCategory(id),
+    mutationFn: (id: number | string) => leaveApi.deleteCategory(id),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: [KEY, "categories"] });
       toast.success("Leave type deleted");
@@ -125,7 +125,7 @@ export function useLeaveBalances(params?: ListParams) {
 export function useSaveLeaveBalance() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, data }: { id?: number; data: Partial<LeaveBalance> }) =>
+    mutationFn: ({ id, data }: { id?: number | string; data: Partial<LeaveBalance> }) =>
       id ? leaveApi.updateBalance(id, data) : leaveApi.createBalance(data),
     onSuccess: (_r, v) => {
       qc.invalidateQueries({ queryKey: [KEY, "balances"] });
@@ -138,7 +138,7 @@ export function useSaveLeaveBalance() {
 export function useDeleteLeaveBalance() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (id: number) => leaveApi.deleteBalance(id),
+    mutationFn: (id: number | string) => leaveApi.deleteBalance(id),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: [KEY, "balances"] });
       toast.success("Balance deleted");
@@ -158,7 +158,7 @@ export function useLeaveEntitlements(params?: ListParams) {
 export function useSaveLeaveEntitlement() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, data }: { id?: number; data: Partial<LeaveEntitlement> }) =>
+    mutationFn: ({ id, data }: { id?: number | string; data: Partial<LeaveEntitlement> }) =>
       id ? leaveApi.updateEntitlement(id, data) : leaveApi.createEntitlement(data),
     onSuccess: (_r, v) => {
       qc.invalidateQueries({ queryKey: [KEY, "entitlements"] });
@@ -171,7 +171,7 @@ export function useSaveLeaveEntitlement() {
 export function useDeleteLeaveEntitlement() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (id: number) => leaveApi.deleteEntitlement(id),
+    mutationFn: (id: number | string) => leaveApi.deleteEntitlement(id),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: [KEY, "entitlements"] });
       toast.success("Entitlement deleted");

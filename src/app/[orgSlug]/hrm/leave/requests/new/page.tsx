@@ -37,8 +37,9 @@ export default function NewLeaveRequestPage() {
     save.mutate(
       {
         data: {
-          employee: Number(form.employee),
-          leave_category: Number(form.leave_category),
+          // employee/category ids are UUID strings — do not Number() them.
+          employee: form.employee,
+          leave_category: form.leave_category,
           start_date: form.start_date,
           end_date: form.end_date,
           reason: form.reason || undefined,
