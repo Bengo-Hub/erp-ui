@@ -31,11 +31,36 @@ export const useAppraisalTemplate = templates.useDetail;
 export const useSaveAppraisalTemplate = templates.useSave;
 export const useDeleteAppraisalTemplate = templates.useRemove;
 
-// ---- Questions ----
-const questions = makeResourceHooks<AppraisalQuestion>("appraisal-questions", appraisalApi.questions, "Question");
-export const useAppraisalQuestions = questions.useList;
-export const useSaveAppraisalQuestion = questions.useSave;
-export const useDeleteAppraisalQuestion = questions.useRemove;
+// ---- Questions (scoped under a template) ----
+const QUESTIONS_KEY = "appraisal-questions";
+
+/** Lists questions for a template. Requires a template id (erp-api scope). */
+export function useAppraisalQuestions(templateId?: number | string) {
+  return useQuery({
+    queryKey: [QUESTIONS_KEY, templateId ?? null],
+    queryFn: () => appraisalApi.questions.list(templateId!),
+    enabled: !!templateId,
+  });
+}
+
+/** Adds a question to a template (erp-api has no question update/delete). */
+export function useSaveAppraisalQuestion() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      templateId,
+      data,
+    }: {
+      templateId: number | string;
+      data: Partial<AppraisalQuestion>;
+    }) => appraisalApi.questions.create(templateId, data),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: [QUESTIONS_KEY] });
+      toast.success("Question added");
+    },
+    onError: (e) => toast.error(extractApiError(e, "Failed to add question")),
+  });
+}
 
 // ---- Goals ----
 const goals = makeResourceHooks<Goal>("appraisal-goals", appraisalApi.goals, "Goal");
@@ -47,7 +72,7 @@ export const useDeleteGoal = goals.useRemove;
 export function useUpdateGoalProgress() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, progress, note }: { id: number; progress: number | string; note?: string }) =>
+    mutationFn: ({ id, progress, note }: { id: number | string; progress: number | string; note?: string }) =>
       appraisalApi.goals.updateProgress(id, { progress, note }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["appraisal-goals"] });
@@ -78,7 +103,7 @@ export function useAppraisal(id: number | string | undefined) {
 export function useSaveAppraisal() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, data }: { id?: number; data: Record<string, unknown> }) =>
+    mutationFn: ({ id, data }: { id?: number | string; data: Record<string, unknown> }) =>
       id ? appraisalApi.appraisals.update(id, data) : appraisalApi.appraisals.create(data),
     onSuccess: (_r, v) => {
       qc.invalidateQueries({ queryKey: [KEY] });
@@ -91,7 +116,7 @@ export function useSaveAppraisal() {
 export function useDeleteAppraisal() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (id: number) => appraisalApi.appraisals.remove(id),
+    mutationFn: (id: number | string) => appraisalApi.appraisals.remove(id),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: [KEY] });
       toast.success("Appraisal deleted");
@@ -107,7 +132,7 @@ export const useReopenAppraisal = makeActionHook(KEY, (id) => appraisalApi.appra
 export function useRejectAppraisal() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, reason }: { id: number; reason: string }) =>
+    mutationFn: ({ id, reason }: { id: number | string; reason: string }) =>
       appraisalApi.appraisals.reject(id, reason),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: [KEY] });
@@ -129,7 +154,8 @@ export function useAppraisalResponses(appraisalId: number | string | undefined) 
 export function useSaveResponses() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (data: unknown) => appraisalApi.createResponses(data),
+    mutationFn: ({ appraisalId, data }: { appraisalId: number | string; data: unknown }) =>
+      appraisalApi.createResponses(appraisalId, data),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["appraisal-responses"] });
       qc.invalidateQueries({ queryKey: [KEY] });

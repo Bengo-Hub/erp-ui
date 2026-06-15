@@ -67,7 +67,8 @@ export default function GoalsPage() {
       {
         id: editing?.id,
         data: {
-          employee: form.employee ? Number(form.employee) : undefined,
+          // employee id is a UUID string — do not Number() it.
+          employee: form.employee || undefined,
           title: form.title,
           description: form.description || undefined,
           category: form.category || undefined,

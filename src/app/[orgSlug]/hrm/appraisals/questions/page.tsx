@@ -10,7 +10,6 @@ import { PageHeader } from "@/components/ui/page-header";
 import {
   useAppraisalQuestions,
   useAppraisalTemplates,
-  useDeleteAppraisalQuestion,
   useSaveAppraisalQuestion,
 } from "@/hooks/use-appraisals";
 import { normalizeList } from "@/lib/api/drf";
@@ -21,13 +20,8 @@ export default function AppraisalQuestionsPage() {
   const { data: tplData } = useAppraisalTemplates({ page_size: 200 });
   const templates = normalizeList<AppraisalTemplate>(tplData).results;
 
-  const params = useMemo(
-    () => (template ? { template, page_size: 200 } : { page_size: 200 }),
-    [template],
-  );
-  const { data, isLoading, error, refetch } = useAppraisalQuestions(params);
+  const { data, isLoading, error, refetch } = useAppraisalQuestions(template || undefined);
   const save = useSaveAppraisalQuestion();
-  const del = useDeleteAppraisalQuestion();
   const rows = normalizeList<AppraisalQuestion>(data).results;
 
   const fields: CrudFieldDef[] = [
@@ -90,21 +84,18 @@ export default function AppraisalQuestionsPage() {
           max_score: q?.max_score ?? "",
           order: q?.order ?? "",
         })}
-        onSave={({ id, data }, done) =>
+        onSave={({ data }, done) => {
+          const templateId = (data.template as string) || template;
+          if (!templateId) return;
           save.mutate(
-            {
-              id,
-              data: {
-                ...data,
-                template: data.template ? Number(data.template) : undefined,
-              } as Partial<AppraisalQuestion>,
-            },
+            { templateId, data: data as Partial<AppraisalQuestion> },
             { onSuccess: done },
-          )
-        }
-        onDelete={(id, done) => del.mutate(id, { onSuccess: done })}
+          );
+        }}
+        onDelete={() => {
+          /* erp-api has no question delete endpoint (gap). */
+        }}
         saving={save.isPending}
-        deleting={del.isPending}
       />
     </div>
   );

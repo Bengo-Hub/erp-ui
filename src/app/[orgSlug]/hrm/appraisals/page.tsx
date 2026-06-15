@@ -66,9 +66,10 @@ export default function AppraisalsPage() {
     save.mutate(
       {
         data: {
-          employee: Number(form.employee),
-          cycle: form.cycle ? Number(form.cycle) : undefined,
-          template: form.template ? Number(form.template) : undefined,
+          // ids are UUID strings — do not Number() them.
+          employee: form.employee,
+          cycle: form.cycle || undefined,
+          template: form.template || undefined,
         },
       },
       {

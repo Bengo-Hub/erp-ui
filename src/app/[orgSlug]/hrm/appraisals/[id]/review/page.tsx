@@ -30,9 +30,7 @@ export default function AppraisalReviewPage() {
 
   const { data: appraisal, isLoading, error, refetch } = useAppraisal(id);
   const templateId = appraisal?.template;
-  const { data: qData, isLoading: qLoading } = useAppraisalQuestions(
-    templateId ? { template: templateId, page_size: 200 } : { page_size: 200 },
-  );
+  const { data: qData, isLoading: qLoading } = useAppraisalQuestions(templateId);
   const { data: respData } = useAppraisalResponses(id);
   const save = useSaveResponses();
 
@@ -42,17 +40,17 @@ export default function AppraisalReviewPage() {
   // Seed answers from existing responses once (render-time guard, keyed on the
   // response set's identity, avoids an effect/setState cascade).
   const [seededFor, setSeededFor] = useState<unknown>(null);
-  const [answers, setAnswers] = useState<Record<number, Answer>>({});
+  const [answers, setAnswers] = useState<Record<string, Answer>>({});
   if (existing.length && seededFor !== existing) {
-    const seed: Record<number, Answer> = {};
+    const seed: Record<string, Answer> = {};
     for (const r of existing) {
-      if (r.question != null) seed[r.question] = { score: String(r.score ?? ""), comment: r.comment ?? "" };
+      if (r.question != null) seed[String(r.question)] = { score: String(r.score ?? ""), comment: r.comment ?? "" };
     }
     setSeededFor(existing);
     setAnswers((prev) => ({ ...seed, ...prev }));
   }
 
-  const setAnswer = (qid: number, patch: Partial<Answer>) =>
+  const setAnswer = (qid: number | string, patch: Partial<Answer>) =>
     setAnswers((a) => {
       const current: Answer = a[qid] ?? { score: "", comment: "" };
       return { ...a, [qid]: { ...current, ...patch } };
@@ -60,15 +58,18 @@ export default function AppraisalReviewPage() {
 
   const submit = () => {
     const payload = {
-      appraisal: Number(id),
+      // appraisal id is a UUID string — do not Number() it.
+      appraisal: id,
       responses: questions.map((q) => ({
-        appraisal: Number(id),
         question: q.id,
-        score: answers[q.id]?.score ? Number(answers[q.id].score) : undefined,
-        comment: answers[q.id]?.comment || undefined,
+        score: answers[String(q.id)]?.score ? Number(answers[String(q.id)].score) : undefined,
+        comment: answers[String(q.id)]?.comment || undefined,
       })),
     };
-    save.mutate(payload, { onSuccess: () => router.push(`/${params?.orgSlug}/hrm/appraisals/${id}`) });
+    save.mutate(
+      { appraisalId: id, data: payload },
+      { onSuccess: () => router.push(`/${params?.orgSlug}/hrm/appraisals/${id}`) },
+    );
   };
 
   if (isLoading) return <div className="p-6"><LoadingState /></div>;
@@ -111,14 +112,14 @@ export default function AppraisalReviewPage() {
                         id={`score-${q.id}`}
                         type="number"
                         step="0.5"
-                        value={answers[q.id]?.score ?? ""}
+                        value={answers[String(q.id)]?.score ?? ""}
                         onChange={(e) => setAnswer(q.id, { score: e.target.value })}
                       />
                     </Field>
                     <Field label="Comment" htmlFor={`comment-${q.id}`}>
                       <Textarea
                         id={`comment-${q.id}`}
-                        value={answers[q.id]?.comment ?? ""}
+                        value={answers[String(q.id)]?.comment ?? ""}
                         onChange={(e) => setAnswer(q.id, { comment: e.target.value })}
                         placeholder="Optional comment…"
                       />
