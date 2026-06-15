@@ -46,7 +46,7 @@ export default function EssDashboardPage() {
   );
 
   const actions: QuickAction[] = [
-    { label: "Apply for Leave", description: "Request time off", to: "/hrm/leave/requests/new", icon: CalendarPlus, permission: "add_leaverequest" },
+    { label: "Apply for Leave", description: "Request time off", to: "/hrm/leave/requests", icon: CalendarPlus, permission: "add_leaverequest" },
     { label: "My Leave", description: "Requests & balances", to: "/hrm/leave/balances", icon: CalendarClock },
     { label: "My Payslips", description: "Download payslips", to: "/payroll/payslips", icon: Receipt, permission: "view_payslip" },
     { label: "P9 Tax Card", description: "Annual tax card", to: "/reports/p9", icon: FileText, permission: "view_payslip" },
