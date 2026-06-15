@@ -12,6 +12,7 @@ import { Tabs } from "@/components/ui/tabs";
 import { useEmployee } from "@/hooks/use-employees";
 import { employeeName } from "@/lib/hrm";
 
+import { EmployeeFormDialog } from "../_employee-form-dialog";
 import { BankTab } from "./_bank-tab";
 import { DisciplinaryTab } from "./_disciplinary-tab";
 import { EducationTab } from "./_education-tab";
@@ -37,6 +38,7 @@ export default function EmployeeProfilePage() {
   // Employee ids are UUID strings in erp-api — keep as-is (do not Number()).
   const id = params?.id as string;
   const [tab, setTab] = useState("overview");
+  const [editOpen, setEditOpen] = useState(false);
 
   const { data: employee, isLoading, error, refetch } = useEmployee(id);
 
@@ -64,11 +66,7 @@ export default function EmployeeProfilePage() {
             subtitle={employee.email}
             actions={
               <PermissionGate permission="change_employee">
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => router.push(`/${orgSlug}/hrm/employees/${id}/edit`)}
-                >
+                <Button size="sm" variant="outline" onClick={() => setEditOpen(true)}>
                   <Pencil className="mr-1.5 size-4" /> Edit
                 </Button>
               </PermissionGate>
@@ -84,6 +82,8 @@ export default function EmployeeProfilePage() {
           {tab === "education" && <EducationTab employeeId={id} />}
           {tab === "employment" && <EmploymentTab employeeId={id} />}
           {tab === "disciplinary" && <DisciplinaryTab employeeId={id} />}
+
+          <EmployeeFormDialog open={editOpen} employee={employee} onClose={() => setEditOpen(false)} />
         </>
       )}
     </div>
