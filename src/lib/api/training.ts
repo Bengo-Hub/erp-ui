@@ -6,7 +6,7 @@ import { type ListParams, type Paginated } from "@/lib/api/drf";
 const TR = "/hrm/training";
 
 export interface TrainingCourse {
-  id: number;
+  id: number | string;
   name?: string;
   title?: string;
   description?: string;
@@ -20,10 +20,10 @@ export interface TrainingCourse {
 }
 
 export interface TrainingEnrollment {
-  id: number;
-  employee?: number;
+  id: number | string;
+  employee?: number | string;
   employee_name?: string;
-  course?: number;
+  course?: number | string;
   course_name?: string;
   status?: string;
   enrolled_at?: string;
@@ -33,7 +33,7 @@ export interface TrainingEnrollment {
 }
 
 export interface TrainingEvaluation {
-  id: number;
+  id: number | string;
   enrollment?: number;
   employee_name?: string;
   course_name?: string;
@@ -43,7 +43,7 @@ export interface TrainingEvaluation {
   [key: string]: unknown;
 }
 
-function crud<T extends { id: number }>(segment: string) {
+function crud<T extends { id: number | string }>(segment: string) {
   const base = `${TR}/${segment}`;
   return {
     list: (params?: ListParams) => apiClient.get<Paginated<T> | T[]>(`${base}/`, params),
@@ -55,13 +55,33 @@ function crud<T extends { id: number }>(segment: string) {
 }
 
 export const trainingApi = {
-  courses: crud<TrainingCourse>("courses"),
+  courses: {
+    ...crud<TrainingCourse>("courses"),
+    // erp-api course body uses `title` (UI form field is `name`).
+    create: (data: Partial<TrainingCourse>) =>
+      apiClient.post<TrainingCourse>(`${TR}/courses/`, {
+        title: data.title ?? data.name,
+        description: data.description,
+        start_date: data.start_date,
+        end_date: data.end_date,
+        capacity: (data as Record<string, unknown>).capacity,
+      }),
+  },
   evaluations: crud<TrainingEvaluation>("evaluations"),
   enrollments: {
     ...crud<TrainingEnrollment>("enrollments"),
+    // erp-api enrollment create reads {course_id, employee_id}.
+    create: (data: Partial<TrainingEnrollment>) =>
+      apiClient.post<TrainingEnrollment>(`${TR}/enrollments/`, {
+        course_id: data.course,
+        employee_id: data.employee,
+      }),
+    // Lifecycle is a single status setter (PUT /enrollments/{id}/status).
+    setStatus: (id: number | string, status: string) =>
+      apiClient.put<TrainingEnrollment>(`${TR}/enrollments/${id}/status`, { status }),
     complete: (id: number | string) =>
-      apiClient.post<TrainingEnrollment>(`${TR}/enrollments/${id}/complete/`, {}),
+      apiClient.put<TrainingEnrollment>(`${TR}/enrollments/${id}/status`, { status: "completed" }),
     cancel: (id: number | string) =>
-      apiClient.post<TrainingEnrollment>(`${TR}/enrollments/${id}/cancel/`, {}),
+      apiClient.put<TrainingEnrollment>(`${TR}/enrollments/${id}/status`, { status: "cancelled" }),
   },
 };

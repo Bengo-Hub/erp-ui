@@ -70,7 +70,7 @@ export default function TrainingEnrollmentsPage() {
   const submitForm = () => {
     if (!form.employee || !form.course) return;
     save.mutate(
-      { data: { employee: Number(form.employee), course: Number(form.course) } },
+      { data: { employee: form.employee, course: form.course } },
       {
         onSuccess: () => {
           setDialogOpen(false);
