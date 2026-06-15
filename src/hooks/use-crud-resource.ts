@@ -18,7 +18,7 @@ export interface CrudResourceApi<T> {
  * Builds list/detail/save/delete hooks for a DRF CRUD resource.
  * Mirrors the use-hrm-settings factory but exposes a detail hook too.
  */
-export function makeResourceHooks<T extends { id: number }>(
+export function makeResourceHooks<T extends { id: number | string }>(
   key: string,
   api: CrudResourceApi<T>,
   label: string,

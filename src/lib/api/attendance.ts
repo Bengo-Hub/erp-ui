@@ -7,8 +7,8 @@ import { type ListParams, type Paginated } from "@/lib/api/drf";
 const ATT = "/hrm/attendance";
 
 export interface AttendanceRecord {
-  id: number;
-  employee?: number;
+  id: number | string;
+  employee?: number | string;
   employee_name?: string;
   date?: string;
   check_in?: string;
@@ -20,7 +20,7 @@ export interface AttendanceRecord {
 }
 
 export interface WorkShift {
-  id: number;
+  id: number | string;
   name?: string;
   start_time?: string;
   end_time?: string;
@@ -31,7 +31,7 @@ export interface WorkShift {
 }
 
 export interface ShiftRotation {
-  id: number;
+  id: number | string;
   title?: string;
   name?: string;
   description?: string;
@@ -42,7 +42,7 @@ export interface ShiftRotation {
 }
 
 export interface OffDay {
-  id: number;
+  id: number | string;
   name?: string;
   date?: string;
   description?: string;
@@ -51,7 +51,7 @@ export interface OffDay {
 }
 
 export interface AttendanceRule {
-  id: number;
+  id: number | string;
   name?: string;
   description?: string;
   late_grace_minutes?: string | number;
@@ -62,8 +62,8 @@ export interface AttendanceRule {
 }
 
 export interface Timesheet {
-  id: number;
-  employee?: number;
+  id: number | string;
+  employee?: number | string;
   employee_name?: string;
   period_start?: string;
   period_end?: string;
@@ -77,7 +77,7 @@ export interface Timesheet {
 }
 
 export interface TimesheetEntry {
-  id: number;
+  id: number | string;
   timesheet?: number;
   date?: string;
   hours?: string | number;
@@ -86,7 +86,7 @@ export interface TimesheetEntry {
 }
 
 export interface ShiftRoster {
-  id: number;
+  id: number | string;
   name?: string;
   title?: string;
   outlet?: number | string;
@@ -97,9 +97,9 @@ export interface ShiftRoster {
 }
 
 export interface ShiftAssignment {
-  id: number;
+  id: number | string;
   roster?: number;
-  employee?: number;
+  employee?: number | string;
   employee_name?: string;
   work_shift?: number;
   work_shift_name?: string;
@@ -109,7 +109,7 @@ export interface ShiftAssignment {
 
 /** A resolved per-employee/per-day planner cell from /shift-planner/. */
 export interface PlannerCell {
-  employee?: number;
+  employee?: number | string;
   employee_name?: string;
   date?: string;
   shift_name?: string;
@@ -118,7 +118,7 @@ export interface PlannerCell {
   [key: string]: unknown;
 }
 
-function crud<T extends { id: number }>(segment: string) {
+function crud<T extends { id: number | string }>(segment: string) {
   const base = `${ATT}/${segment}`;
   return {
     list: (params?: ListParams) => apiClient.get<Paginated<T> | T[]>(`${base}/`, params),
@@ -130,16 +130,51 @@ function crud<T extends { id: number }>(segment: string) {
 }
 
 export const attendanceApi = {
+  // erp-api records are read-only via the list route plus check-in/check-out
+  // actions (no generic create/update/delete server-side).
   records: crud<AttendanceRecord>("records"),
-  workShifts: crud<WorkShift>("work-shifts"),
-  rotations: crud<ShiftRotation>("shift-rotations"),
+  checkIn: (data: Record<string, unknown>) =>
+    apiClient.post<AttendanceRecord>(`${ATT}/records/check-in`, data),
+  checkOut: (id: number | string, data?: Record<string, unknown>) =>
+    apiClient.post<AttendanceRecord>(`${ATT}/records/${id}/check-out`, data ?? {}),
+  // Shifts: erp-api create body uses grace_minutes (not grace_period) and has
+  // no DELETE-by-other-name — segment is /shifts. (No PUT on a shift; schedule
+  // edits go through /shifts/{id}/schedules, a gap for the simple form.)
+  workShifts: {
+    ...crud<WorkShift>("shifts"),
+    create: (data: Partial<WorkShift>) =>
+      apiClient.post<WorkShift>(`${ATT}/shifts/`, {
+        name: data.name,
+        start_time: data.start_time,
+        end_time: data.end_time,
+        grace_minutes: data.grace_period ?? (data as Record<string, unknown>).grace_minutes,
+        total_hours_per_week: (data as Record<string, unknown>).total_hours_per_week,
+      }),
+  },
+  rotations: crud<ShiftRotation>("rotations"),
   offDays: crud<OffDay>("off-days"),
-  rosters: crud<ShiftRoster>("shift-rosters"),
+  rosters: crud<ShiftRoster>("rosters"),
   rules: crud<AttendanceRule>("rules"),
 
-  // Timesheets + lifecycle
+  // Timesheets + lifecycle. erp-api supports list/create + entry upsert +
+  // submit/approve/reject (no PUT/DELETE on a timesheet itself).
   timesheets: {
-    ...crud<Timesheet>("timesheets"),
+    list: (params?: ListParams) =>
+      apiClient.get<Paginated<Timesheet> | Timesheet[]>(`${ATT}/timesheets/`, params),
+    get: (id: number | string) => apiClient.get<Timesheet>(`${ATT}/timesheets/${id}/`),
+    create: (data: Partial<Timesheet>) =>
+      apiClient.post<Timesheet>(`${ATT}/timesheets/`, {
+        employee_id: data.employee,
+        period_start: data.period_start ?? data.start_date,
+        period_end: data.period_end ?? data.end_date,
+        notes: (data as Record<string, unknown>).notes,
+      }),
+    // No timesheet-level update in erp-api; route through entry upsert.
+    update: (id: number | string, data: Partial<Timesheet>) =>
+      apiClient.put<Timesheet>(`${ATT}/timesheets/${id}/entries`, data),
+    remove: (id: number | string) => apiClient.delete<void>(`${ATT}/timesheets/${id}/`),
+    upsertEntry: (id: number | string, data: Partial<TimesheetEntry>) =>
+      apiClient.put<TimesheetEntry>(`${ATT}/timesheets/${id}/entries`, data),
     submit: (id: number | string) =>
       apiClient.post<Timesheet>(`${ATT}/timesheets/${id}/submit/`, {}),
     approve: (id: number | string) =>
@@ -148,16 +183,24 @@ export const attendanceApi = {
       apiClient.post<Timesheet>(`${ATT}/timesheets/${id}/reject/`, { reason }),
   },
 
-  // Shift-planner assignments + resolve grid
+  // Roster assignments (erp-api: /hrm/attendance/assignments).
   listAssignments: (params?: ListParams) =>
-    apiClient.get<Paginated<ShiftAssignment> | ShiftAssignment[]>(`${ATT}/shift-assignments/`, params),
+    apiClient.get<Paginated<ShiftAssignment> | ShiftAssignment[]>(`${ATT}/assignments/`, params),
   createAssignment: (data: Partial<ShiftAssignment>) =>
-    apiClient.post<ShiftAssignment>(`${ATT}/shift-assignments/`, data),
+    apiClient.post<ShiftAssignment>(`${ATT}/assignments/`, data),
+  // NOTE: erp-api has no DELETE on an assignment (gap) — only create/list.
   deleteAssignment: (id: number | string) =>
-    apiClient.delete<void>(`${ATT}/shift-assignments/${id}/`),
+    apiClient.delete<void>(`${ATT}/assignments/${id}/`),
+  // Roster overrides (erp-api: /hrm/attendance/overrides).
+  listOverrides: (params?: ListParams) =>
+    apiClient.get<Paginated<PlannerCell> | PlannerCell[]>(`${ATT}/overrides/`, params),
+  createOverride: (data: Record<string, unknown>) =>
+    apiClient.post<PlannerCell>(`${ATT}/overrides/`, data),
+  // NOTE: no resolved-planner-grid endpoint in erp-api (gap); the planner UI
+  // composes rosters + assignments client-side. Falls back to assignments.
   resolvePlanner: (params: { from: string; to: string; employee_ids?: string }) =>
     apiClient.get<{ results?: PlannerCell[]; data?: PlannerCell[] } | PlannerCell[]>(
-      `${ATT}/shift-planner/`,
+      `${ATT}/assignments/`,
       params,
     ),
 };
