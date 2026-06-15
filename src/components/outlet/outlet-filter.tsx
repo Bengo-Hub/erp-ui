@@ -8,6 +8,7 @@ import { apiClient } from "@/lib/api/client";
 import { cn } from "@/lib/utils";
 import { useAuthStore } from "@/store/auth";
 import { useOutletFilterStore } from "@/store/outlet-filter";
+import { useTenantFilterStore } from "@/store/tenant-filter";
 
 /**
  * Single-select outlet/branch filter for HQ/admin users. Hidden for staff pinned
@@ -22,11 +23,26 @@ export function OutletFilter({ className, tenantSlug }: { className?: string; te
     user?.roles?.some((r) => ["admin", "superuser", "manager", "hr_admin"].includes(r))
   );
 
-  const slug = tenantSlug || user?.tenantSlug || "";
+  // For a platform owner drilled into a tenant, scope outlets to the SELECTED tenant
+  // (not their own). Falls back to an explicit prop, then the user's own tenant.
+  const selectedTenant = useTenantFilterStore((s) => s.selected);
+  const slug = tenantSlug || selectedTenant?.slug || user?.tenantSlug || "";
   const { selectedOutlet, outlets, setOutlets, selectOutlet, clearOutlet, autoInitialized, setAutoInitialized } =
     useOutletFilterStore();
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
+
+  // When the resolved tenant (slug) changes — e.g. a platform owner switches tenants —
+  // the previously-selected outlet belongs to a different tenant, so reset + re-init.
+  const loadedSlug = useRef(slug);
+  useEffect(() => {
+    if (loadedSlug.current !== slug) {
+      loadedSlug.current = slug;
+      clearOutlet();
+      setOutlets([]);
+      setAutoInitialized(false);
+    }
+  }, [slug, clearOutlet, setOutlets, setAutoInitialized]);
 
   const { data: fetched = [] } = useOutlets(slug, canFilter);
 
