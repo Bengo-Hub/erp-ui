@@ -23,7 +23,8 @@ export function OutletFilter({ className, tenantSlug }: { className?: string; te
   );
 
   const slug = tenantSlug || user?.tenantSlug || "";
-  const { selectedOutlet, outlets, setOutlets, selectOutlet, clearOutlet } = useOutletFilterStore();
+  const { selectedOutlet, outlets, setOutlets, selectOutlet, clearOutlet, autoInitialized, setAutoInitialized } =
+    useOutletFilterStore();
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
@@ -36,6 +37,19 @@ export function OutletFilter({ className, tenantSlug }: { className?: string; te
       );
     }
   }, [fetched, setOutlets]);
+
+  // Preselect the user's assigned/default outlet once per session (login-time default).
+  // Priority: the JWT outlet claim → the sole outlet (single-outlet tenants) → leave "All
+  // Outlets" for multi-outlet all-access admins (don't silently hide other outlets' data).
+  useEffect(() => {
+    if (autoInitialized || outlets.length === 0) return;
+    if (!selectedOutlet) {
+      const byClaim = user?.outletId ? outlets.find((o) => o.id === user.outletId) : null;
+      const def = byClaim ?? (outlets.length === 1 ? outlets[0] : null);
+      if (def) selectOutlet(def);
+    }
+    setAutoInitialized(true);
+  }, [autoInitialized, outlets, selectedOutlet, user?.outletId, selectOutlet, setAutoInitialized]);
 
   useEffect(() => {
     apiClient.setOutletID(selectedOutlet?.id ?? null);
