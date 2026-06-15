@@ -65,7 +65,7 @@ export function useTimesheet(id: number | string | undefined) {
 export function useSaveTimesheet() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, data }: { id?: number; data: Partial<Timesheet> }) =>
+    mutationFn: ({ id, data }: { id?: number | string; data: Partial<Timesheet> }) =>
       id ? attendanceApi.timesheets.update(id, data) : attendanceApi.timesheets.create(data),
     onSuccess: (_r, v) => {
       qc.invalidateQueries({ queryKey: [KEY] });
@@ -78,7 +78,7 @@ export function useSaveTimesheet() {
 export function useDeleteTimesheet() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (id: number) => attendanceApi.timesheets.remove(id),
+    mutationFn: (id: number | string) => attendanceApi.timesheets.remove(id),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: [KEY] });
       toast.success("Timesheet deleted");
@@ -103,7 +103,7 @@ export const useApproveTimesheet = makeActionHook(
 export function useRejectTimesheet() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, reason }: { id: number; reason: string }) =>
+    mutationFn: ({ id, reason }: { id: number | string; reason: string }) =>
       attendanceApi.timesheets.reject(id, reason),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: [KEY] });
@@ -145,7 +145,7 @@ export function useSaveAssignment() {
 export function useDeleteAssignment() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (id: number) => attendanceApi.deleteAssignment(id),
+    mutationFn: (id: number | string) => attendanceApi.deleteAssignment(id),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["shift-assignments"] });
       qc.invalidateQueries({ queryKey: ["shift-planner"] });

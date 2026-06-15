@@ -90,7 +90,8 @@ export default function TimesheetsPage() {
     save.mutate(
       {
         data: {
-          employee: Number(form.employee),
+          // employee id is a UUID string — do not Number() it.
+          employee: form.employee,
           period_start: form.period_start,
           period_end: form.period_end,
         },
