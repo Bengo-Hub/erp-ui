@@ -30,6 +30,18 @@ export interface WorkShift {
   [key: string]: unknown;
 }
 
+/** A day-wise schedule row for a work shift (erp-api WorkShiftSchedule). */
+export interface WorkShiftSchedule {
+  id?: number | string;
+  work_shift_id?: string;
+  day: "Monday" | "Tuesday" | "Wednesday" | "Thursday" | "Friday" | "Saturday" | "Sunday";
+  start_time?: string;
+  end_time?: string;
+  break_hours?: string | number;
+  is_working_day?: boolean;
+  [key: string]: unknown;
+}
+
 export interface ShiftRotation {
   id: number | string;
   title?: string;
@@ -149,6 +161,18 @@ export const attendanceApi = {
         end_time: data.end_time,
         grace_minutes: data.grace_period ?? (data as Record<string, unknown>).grace_minutes,
         total_hours_per_week: (data as Record<string, unknown>).total_hours_per_week,
+      }),
+    // Day-wise schedules: GET lists rows for a shift; PUT upserts ONE day at a
+    // time (erp-api UpsertSchedule keys on (shift, day)).
+    listSchedules: (shiftId: number | string) =>
+      apiClient.get<Paginated<WorkShiftSchedule> | WorkShiftSchedule[]>(`${ATT}/shifts/${shiftId}/schedules`),
+    upsertSchedule: (shiftId: number | string, data: WorkShiftSchedule) =>
+      apiClient.put<WorkShiftSchedule>(`${ATT}/shifts/${shiftId}/schedules`, {
+        day: data.day,
+        start_time: data.start_time,
+        end_time: data.end_time,
+        break_hours: String(data.break_hours ?? "0"),
+        is_working_day: data.is_working_day ?? true,
       }),
   },
   rotations: crud<ShiftRotation>("rotations"),

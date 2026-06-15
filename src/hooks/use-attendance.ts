@@ -12,6 +12,7 @@ import {
   type ShiftRotation,
   type Timesheet,
   type WorkShift,
+  type WorkShiftSchedule,
 } from "@/lib/api/attendance";
 import { type ListParams } from "@/lib/api/drf";
 import { extractApiError } from "@/lib/api/error";
@@ -27,6 +28,27 @@ export const useWorkShifts = shifts.useList;
 export const useWorkShift = shifts.useDetail;
 export const useSaveWorkShift = shifts.useSave;
 export const useDeleteWorkShift = shifts.useRemove;
+
+// ---- Work-shift day-wise schedules ----
+export function useShiftSchedules(shiftId: number | string | null) {
+  return useQuery({
+    queryKey: ["work-shift-schedules", shiftId],
+    queryFn: () => attendanceApi.workShifts.listSchedules(shiftId as number | string),
+    enabled: shiftId != null,
+  });
+}
+
+export function useUpsertShiftSchedule() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ shiftId, data }: { shiftId: number | string; data: WorkShiftSchedule }) =>
+      attendanceApi.workShifts.upsertSchedule(shiftId, data),
+    onSuccess: (_res, vars) => {
+      qc.invalidateQueries({ queryKey: ["work-shift-schedules", vars.shiftId] });
+    },
+    onError: (e) => toast.error(extractApiError(e)),
+  });
+}
 
 const rotations = makeResourceHooks<ShiftRotation>("shift-rotations", attendanceApi.rotations, "Shift rotation");
 export const useShiftRotations = rotations.useList;

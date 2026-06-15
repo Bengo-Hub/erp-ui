@@ -1,12 +1,15 @@
 "use client";
 
+import { useState } from "react";
+
 import { CrudManager, type CrudFieldDef } from "@/components/crud/crud-manager";
-import { Badge } from "@/components/ui/base";
+import { Badge, Button } from "@/components/ui/base";
 import { type Column } from "@/components/ui/data-table";
 import { PageHeader } from "@/components/ui/page-header";
 import { useDeleteWorkShift, useSaveWorkShift, useWorkShifts } from "@/hooks/use-attendance";
 import { normalizeList } from "@/lib/api/drf";
 import { type WorkShift } from "@/lib/api/attendance";
+import { ScheduleDialog } from "./_schedule-dialog";
 
 const fields: CrudFieldDef[] = [
   { name: "name", label: "Shift Name", required: true },
@@ -22,6 +25,7 @@ export default function WorkShiftsPage() {
   const save = useSaveWorkShift();
   const del = useDeleteWorkShift();
   const rows = normalizeList<WorkShift>(data).results;
+  const [scheduleFor, setScheduleFor] = useState<WorkShift | null>(null);
 
   const columns: Column<WorkShift>[] = [
     { header: "Name", cell: (s) => <span className="font-medium">{s.name || "—"}</span> },
@@ -36,11 +40,20 @@ export default function WorkShiftsPage() {
         </Badge>
       ),
     },
+    {
+      header: "Schedule",
+      cell: (s) => (
+        <Button size="sm" variant="secondary" onClick={() => setScheduleFor(s)}>
+          Weekly hours
+        </Button>
+      ),
+    },
   ];
 
   return (
     <div className="space-y-4 p-4 sm:p-6">
       <PageHeader title="Work Shifts" subtitle="Define working-hour patterns" />
+      <ScheduleDialog shift={scheduleFor} onClose={() => setScheduleFor(null)} />
       <CrudManager
         rows={rows}
         columns={columns}
