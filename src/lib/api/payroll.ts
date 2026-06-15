@@ -100,6 +100,10 @@ export const payrollApi = {
   getPayslip: (id: number | string) => apiClient.get<Payslip>(`${PAY}/payroll/${id}/`),
   deleteRecord: (id: number | string) => apiClient.delete<void>(`${PAY}/payroll/${id}/`),
 
+  /** Download a tenant-branded payslip PDF (auth-only; server enforces self-or-manager). */
+  payslipPdf: (id: number | string) =>
+    apiClient.getBlob(`${PAY}/payroll/${id}/pdf`, `payslip_${id}.pdf`),
+
   // Employees eligible for a payroll run
   payrollEmployees: (params?: ListParams) =>
     apiClient.get<Paginated<PayrollEmployee> | PayrollEmployee[]>(`${PAY}/payroll/employees/`, params),
