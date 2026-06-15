@@ -1,104 +1,65 @@
-/** erp-api security dashboard, 2FA, settings, password policy & backups. */
+/**
+ * Security features backed by auth-api (SSO).
+ *
+ * auth-api provides ONLY:
+ *  - Self-service 2FA (TOTP):  POST /auth/mfa/totp/start    → {secret, provisioning(otpauth URL)}
+ *                              POST /auth/mfa/totp/confirm  {code}
+ *                              POST /auth/mfa/backup-codes/regenerate → {backup_codes[]}
+ *  - Platform DB backups (read-only): GET /admin/backups          → {backups:[{filename,size,created_at}]}
+ *                                     GET /admin/backups/{filename} → file stream
+ *
+ * REPORTED AS MISSING (no auth-api endpoint — see report):
+ *  - Security dashboard stats / recent events
+ *  - Audit-log feed
+ *  - Tenant security settings (session timeout, lockout, enforce-2fa)
+ *  - Password policy (min length / complexity / expiry)
+ *  - Account unlock
+ *  - 2FA status read + disable, backup create/delete/restore/schedule
+ * These helpers either return empty/typed-null so the UI degrades gracefully, or
+ * are omitted; the consuming UI is gated/annotated accordingly.
+ */
 
-import { apiClient } from "@/lib/api/client";
-import { type ListParams, type Paginated } from "@/lib/api/drf";
+import { authAdminClient } from "@/lib/api/auth-admin-client";
 
-export interface SecurityDashboard {
-  total_users?: number;
-  active_users?: number;
-  locked_accounts?: number;
-  failed_logins_24h?: number;
-  two_factor_enabled?: number;
-  recent_events?: SecurityEvent[];
-  [key: string]: unknown;
-}
-
-export interface SecurityEvent {
-  id?: number;
-  event_type?: string;
-  user?: string;
-  ip_address?: string;
-  timestamp?: string;
-  detail?: string;
-  [key: string]: unknown;
-}
-
-export interface SecuritySettings {
-  enforce_2fa?: boolean;
-  session_timeout_minutes?: number;
-  max_failed_attempts?: number;
-  lockout_duration_minutes?: number;
-  [key: string]: unknown;
-}
-
-export interface PasswordPolicy {
-  min_length?: number;
-  require_uppercase?: boolean;
-  require_lowercase?: boolean;
-  require_numbers?: boolean;
-  require_special?: boolean;
-  expiry_days?: number;
-  [key: string]: unknown;
-}
-
-export interface TwoFactorStatus {
-  enabled?: boolean;
-  method?: string;
-  qr_code?: string;
+export interface TwoFactorStartResponse {
+  /** Raw TOTP secret (base32). */
   secret?: string;
+  /** otpauth:// provisioning URI — render as a QR client-side. */
+  provisioning?: string;
   [key: string]: unknown;
 }
 
 export interface Backup {
-  id: number;
-  name?: string;
-  type?: string;
-  status?: string;
-  size?: string | number;
-  created_at?: string;
-  location?: string;
+  /** auth-api keys backups by filename, not a numeric id. */
+  filename: string;
+  size?: string;
+  created_at?: number; // unix seconds
   [key: string]: unknown;
 }
 
-export interface BackupSchedule {
-  id?: number;
-  enabled?: boolean;
-  frequency?: string;
-  time?: string;
-  retention_days?: number;
-  [key: string]: unknown;
+interface BackupManifest {
+  backups?: Backup[];
 }
 
 export const securityApi = {
-  dashboard: () => apiClient.get<SecurityDashboard>(`/auth/security/dashboard/`),
-  auditLogs: (params?: ListParams) =>
-    apiClient.get<Paginated<SecurityEvent> | SecurityEvent[]>(`/auth/security/audit-logs/`, params),
-  getSettings: () => apiClient.get<SecuritySettings>(`/auth/security/settings/`),
-  updateSettings: (data: Partial<SecuritySettings>) =>
-    apiClient.put<SecuritySettings>(`/auth/security/settings/`, data),
-  unlockAccount: (userId: number | string) =>
-    apiClient.post<void>(`/auth/security/unlock-account/`, { user_id: userId }),
-
-  getPasswordPolicy: () => apiClient.get<PasswordPolicy>(`/auth/password-policy/`),
-  updatePasswordPolicy: (data: Partial<PasswordPolicy>) =>
-    apiClient.post<PasswordPolicy>(`/auth/password-policy/`, data),
-
-  get2FA: () => apiClient.get<TwoFactorStatus>(`/auth/security/2fa/`),
-  setup2FA: () => apiClient.post<TwoFactorStatus>(`/auth/security/2fa/`),
-  verify2FA: (code: string) =>
-    apiClient.post<void>(`/auth/security/2fa/verify/`, { verification_code: code }),
-  disable2FA: () => apiClient.post<void>(`/auth/security/2fa/disable/`),
+  /* ---- Self-service 2FA (TOTP) ---- */
+  start2FA: () => authAdminClient.post<TwoFactorStartResponse>(`/auth/mfa/totp/start`),
+  confirm2FA: (code: string) =>
+    authAdminClient.post<{ status: string }>(`/auth/mfa/totp/confirm`, { code }),
+  regenerateBackupCodes: () =>
+    authAdminClient.post<{ backup_codes: string[] }>(`/auth/mfa/backup-codes/regenerate`, {}),
 };
 
 export const backupsApi = {
-  list: (params?: ListParams) =>
-    apiClient.get<Paginated<Backup> | Backup[]>(`/auth/backups/`, params),
-  create: (type: string) => apiClient.post<Backup>(`/auth/backups/`, { type }),
-  remove: (id: number | string) => apiClient.delete<void>(`/auth/backups/${id}/`),
-  restore: (id: number | string) => apiClient.post<void>(`/auth/backups/${id}/`, { confirm: true }),
-  download: (id: number | string) =>
-    apiClient.getBlob(`/auth/backups/${id}/`, `backup-${id}.sql`, { action: "download" }),
-  getSchedule: () => apiClient.get<BackupSchedule>(`/auth/backups/schedule/`),
-  updateSchedule: (data: Partial<BackupSchedule>) =>
-    apiClient.put<BackupSchedule>(`/auth/backups/schedule/`, data),
+  /** Platform-admin only. Returns the backup manifest from the backup server. */
+  list: () => authAdminClient.get<BackupManifest>(`/admin/backups`),
+  /** Browser download of a single backup file (auth-api streams it). */
+  downloadUrl: (filename: string) => {
+    const base = (
+      process.env.NEXT_PUBLIC_AUTH_API_URL ||
+      process.env.NEXT_PUBLIC_SSO_URL ||
+      "https://sso.codevertexitsolutions.com"
+    ).replace(/\/$/, "");
+    return `${base}/api/v1/admin/backups/${encodeURIComponent(filename)}`;
+  },
 };

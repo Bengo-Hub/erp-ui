@@ -2,6 +2,7 @@ import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
 
 import { apiClient } from "@/lib/api/client";
+import { authAdminClient } from "@/lib/api/auth-admin-client";
 import {
   buildAuthorizeUrl,
   buildLogoutUrl,
@@ -78,6 +79,9 @@ export const useAuthStore = create<AuthState>()(
         apiClient.setPlatformOwner(isPlatform);
         apiClient.setTenantContext(user.tenantId || null, user.tenantSlug || null);
         apiClient.setOutletID(user.isHqUser ? null : user.outletId ?? null);
+
+        // auth-api client (user/role/member admin lives in auth-service, not erp-api).
+        authAdminClient.setTenantContext(user.tenantId || null, user.tenantSlug || null);
       },
 
       initialize: () => {
@@ -87,6 +91,7 @@ export const useAuthStore = create<AuthState>()(
           return;
         }
         apiClient.setAccessToken(session.accessToken);
+        authAdminClient.setAccessToken(session.accessToken);
         if (user) get().syncApiClient(user);
 
         if (session.expiresAt) {
@@ -146,6 +151,7 @@ export const useAuthStore = create<AuthState>()(
             expiresAt: new Date(Date.now() + (tokens.expires_in || 3600) * 1000).toISOString(),
           };
           apiClient.setAccessToken(session.accessToken);
+          authAdminClient.setAccessToken(session.accessToken);
 
           const claims = parseJwt(tokens.access_token || "");
           const user = profileFromClaims(claims);
@@ -170,6 +176,7 @@ export const useAuthStore = create<AuthState>()(
           lastAuthenticatedAt: null,
         });
         apiClient.setAccessToken(null);
+        authAdminClient.setAccessToken(null);
         if (typeof window !== "undefined") {
           try { localStorage.removeItem("erp-auth-storage"); } catch { /* no-op */ }
           try { sessionStorage.clear(); } catch { /* no-op */ }

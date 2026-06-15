@@ -13,84 +13,102 @@ import {
   type Permission,
   type Role,
 } from "@/lib/api/users";
-import { makeResourceHooks } from "@/hooks/use-crud-resource";
 
-/* ---- Users ---- */
-const users = makeResourceHooks<ManagedUser>("users", usersApi, "User");
-export const useUsers = users.useList;
-export const useUser = users.useDetail;
-export const useSaveUser = users.useSave;
-export const useDeleteUser = users.useRemove;
+/* ---- Tenant members (auth-api) ---- */
 
-/** User lifecycle/action mutations (activate/deactivate/reset password). */
+export function useUsers(params?: ListParams) {
+  return useQuery({
+    queryKey: ["users", "list", params ?? {}],
+    queryFn: () => usersApi.list(params),
+  });
+}
+
+export function useUser(userId: string | undefined) {
+  return useQuery({
+    queryKey: ["users", "detail", userId],
+    queryFn: () => usersApi.get(userId!),
+    enabled: !!userId,
+  });
+}
+
+/**
+ * Create (invite) or update a member. Updates key off `user_id` (auth-api member
+ * routes are user-scoped), passed via `data.user_id`.
+ */
+export function useSaveUser() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ data }: { data: Partial<ManagedUser> }) =>
+      data.user_id ? usersApi.update(data.user_id, data) : usersApi.create(data),
+    onSuccess: (res, v) => {
+      qc.invalidateQueries({ queryKey: ["users"] });
+      const temp = (res as ManagedUser | undefined)?.temp_password;
+      if (temp) {
+        toast.success(`User added. Temporary password: ${temp}`, { duration: 15000 });
+      } else {
+        toast.success(v.data.user_id ? "User updated" : "User added");
+      }
+    },
+    onError: (e) => toast.error(extractApiError(e, "Failed to save user")),
+  });
+}
+
+export function useDeleteUser() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (userId: string) => usersApi.remove(userId),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["users"] });
+      toast.success("User removed");
+    },
+    onError: (e) => toast.error(extractApiError(e, "Failed to remove user")),
+  });
+}
+
+/** User lifecycle/action mutations (activate/deactivate/suspend/reset password). */
 export function useUserActions() {
   const qc = useQueryClient();
   const invalidate = () => qc.invalidateQueries({ queryKey: ["users"] });
   const activate = useMutation({
-    mutationFn: (id: number | string) => usersApi.activate(id),
+    mutationFn: (userId: string) => usersApi.activate(userId),
     onSuccess: () => { invalidate(); toast.success("User activated"); },
     onError: (e) => toast.error(extractApiError(e, "Failed to activate user")),
   });
   const deactivate = useMutation({
-    mutationFn: (id: number | string) => usersApi.deactivate(id),
+    mutationFn: (userId: string) => usersApi.deactivate(userId),
     onSuccess: () => { invalidate(); toast.success("User deactivated"); },
     onError: (e) => toast.error(extractApiError(e, "Failed to deactivate user")),
   });
+  const suspend = useMutation({
+    mutationFn: (userId: string) => usersApi.suspend(userId),
+    onSuccess: () => { invalidate(); toast.success("User suspended"); },
+    onError: (e) => toast.error(extractApiError(e, "Failed to suspend user")),
+  });
   const resetPassword = useMutation({
-    mutationFn: (id: number | string) => usersApi.resetPassword(id),
+    mutationFn: (userId: string) => usersApi.resetPassword(userId),
     onSuccess: () => toast.success("Password reset email sent"),
     onError: (e) => toast.error(extractApiError(e, "Failed to reset password")),
   });
-  const assignRole = useMutation({
-    mutationFn: ({ userId, roleId }: { userId: number | string; roleId: number | string }) =>
-      usersApi.assignRole(userId, roleId),
-    onSuccess: () => { invalidate(); toast.success("Role assigned"); },
-    onError: (e) => toast.error(extractApiError(e, "Failed to assign role")),
+  /** Replace a member's role set (auth-api stores roles as strings on membership). */
+  const setRoles = useMutation({
+    mutationFn: ({ userId, roles }: { userId: string; roles: string[] }) =>
+      usersApi.setRoles(userId, roles),
+    onSuccess: () => { invalidate(); toast.success("Roles updated"); },
+    onError: (e) => toast.error(extractApiError(e, "Failed to update roles")),
   });
-  const removeRole = useMutation({
-    mutationFn: ({ userId, roleId }: { userId: number | string; roleId: number | string }) =>
-      usersApi.removeRole(userId, roleId),
-    onSuccess: () => { invalidate(); toast.success("Role removed"); },
-    onError: (e) => toast.error(extractApiError(e, "Failed to remove role")),
-  });
-  return { activate, deactivate, resetPassword, assignRole, removeRole };
+  return { activate, deactivate, suspend, resetPassword, setRoles };
 }
 
-/* ---- Roles ---- */
-const roles = makeResourceHooks<Role>("roles", rolesApi, "Role");
-export const useRoles = roles.useList;
-export const useRole = roles.useDetail;
-export const useSaveRole = roles.useSave;
-export const useDeleteRole = roles.useRemove;
+/* ---- Roles (curated string set — auth-api has no role table) ---- */
 
-/** Assign/remove a permission on a role; invalidates role queries. */
-export function useRolePermissionActions() {
-  const qc = useQueryClient();
-  const invalidate = () => qc.invalidateQueries({ queryKey: ["roles"] });
-  const assign = useMutation({
-    mutationFn: ({ roleId, permId }: { roleId: number | string; permId: number | string }) =>
-      rolesApi.assignPermission(roleId, permId),
-    onSuccess: invalidate,
-    onError: (e) => toast.error(extractApiError(e, "Failed to assign permission")),
-  });
-  const remove = useMutation({
-    mutationFn: ({ roleId, permId }: { roleId: number | string; permId: number | string }) =>
-      rolesApi.removePermission(roleId, permId),
-    onSuccess: invalidate,
-    onError: (e) => toast.error(extractApiError(e, "Failed to remove permission")),
-  });
-  return { assign, remove };
+export function useRoles(_params?: ListParams) {
+  return useQuery({ queryKey: ["roles", "list"], queryFn: () => rolesApi.list() });
 }
 
-/* ---- Permissions ---- */
-const permissions = makeResourceHooks<Permission>("permissions", permissionsApi, "Permission");
-export const useSavePermission = permissions.useSave;
-export const useDeletePermission = permissions.useRemove;
+/* ---- Permissions (REPORT: no auth-api endpoint — empty catalogue) ---- */
 
-/** Permissions list (defaults to a large page so role editors get them all). */
-export function usePermissions(params?: ListParams) {
-  return useQuery({
-    queryKey: ["permissions", "list", params ?? {}],
-    queryFn: () => permissionsApi.list({ page_size: 500, ...params }),
-  });
+export function usePermissions(_params?: ListParams) {
+  return useQuery({ queryKey: ["permissions", "list"], queryFn: () => permissionsApi.list() });
 }
+
+export type { ManagedUser, Permission, Role };
