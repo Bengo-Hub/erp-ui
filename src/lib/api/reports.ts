@@ -2,9 +2,8 @@
  * erp-api HRM / payroll statutory reports.
  *
  * All report data comes from `/reports/<type>` (GET, params:
- * year/month/outlet_id). The Go reports handler returns a single report
- * object per call — there are no separate export endpoints, so `export()`
- * hits the same route and the caller renders/prints client-side.
+ * year/month/outlet_id). Exports stream a tenant-branded document from
+ * `/reports/<type>/export?format=pdf|excel` (server-side fpdf/excelize render).
  *
  * One service surface drives the config-driven report runner (see
  * `src/hooks/use-reports.ts` + `components/reports/*`).
@@ -58,13 +57,13 @@ export const reportsApi = {
     apiClient.get<ReportResponse | ReportRow[]>(`${BASE}/${path}/`, params),
 
   /**
-   * Stream an export blob. erp-api has no dedicated export endpoint yet (gap):
-   * this hits the same JSON report route so the call resolves instead of 404ing;
-   * server-side pdf/excel rendering is a pending erp-api feature.
+   * Stream a server-rendered export blob from `/reports/<type>/export`
+   * (format=pdf|excel). The erp-api documents layer adapts the report to a
+   * tenant-branded PDF (fpdf) or Excel workbook (excelize).
    */
   export: (exportType: string, format: ReportFormat, params?: ReportParams) =>
     apiClient.getBlob(
-      `${BASE}/${exportType}`,
+      `${BASE}/${exportType}/export`,
       `${exportType}_report.${format === "excel" ? "xlsx" : "pdf"}`,
       { format, ...params },
     ),
