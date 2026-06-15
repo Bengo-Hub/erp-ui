@@ -7,7 +7,7 @@ import { type ListParams, type Paginated } from "@/lib/api/drf";
 const REC = "/hrm/recruitment";
 
 export interface JobPosting {
-  id: number;
+  id: number | string;
   title?: string;
   department?: number | string;
   department_name?: string;
@@ -22,7 +22,7 @@ export interface JobPosting {
 }
 
 export interface Candidate {
-  id: number;
+  id: number | string;
   name?: string;
   full_name?: string;
   first_name?: string;
@@ -36,7 +36,7 @@ export interface Candidate {
 }
 
 export interface JobApplication {
-  id: number;
+  id: number | string;
   candidate?: number;
   candidate_name?: string;
   job?: number;
@@ -49,7 +49,7 @@ export interface JobApplication {
 }
 
 export interface Onboarding {
-  id: number;
+  id: number | string;
   employee?: number;
   employee_name?: string;
   status?: string;
@@ -58,7 +58,7 @@ export interface Onboarding {
   [key: string]: unknown;
 }
 
-function crud<T extends { id: number }>(segment: string) {
+function crud<T extends { id: number | string }>(segment: string) {
   const base = `${REC}/${segment}`;
   return {
     list: (params?: ListParams) => apiClient.get<Paginated<T> | T[]>(`${base}/`, params),
@@ -69,22 +69,6 @@ function crud<T extends { id: number }>(segment: string) {
   };
 }
 
-export const recruitmentApi = {
-  jobs: crud<JobPosting>("jobs"),
-  candidates: crud<Candidate>("candidates"),
-  applications: {
-    ...crud<JobApplication>("applications"),
-    advance: (id: number | string) =>
-      apiClient.post<JobApplication>(`${REC}/applications/${id}/advance/`, {}),
-    reject: (id: number | string, reason?: string) =>
-      apiClient.post<JobApplication>(`${REC}/applications/${id}/reject/`, { reason }),
-  },
-  onboarding: {
-    ...crud<Onboarding>("onboarding"),
-    start: (id: number | string) => apiClient.post<Onboarding>(`${REC}/onboarding/${id}/start/`, {}),
-  },
-};
-
 /** Ordered recruitment pipeline stages (kanban columns). */
 export const APPLICATION_STAGES = [
   { value: "applied", label: "Applied" },
@@ -93,3 +77,46 @@ export const APPLICATION_STAGES = [
   { value: "offer", label: "Offer" },
   { value: "hired", label: "Hired" },
 ];
+
+/** The stage that follows `stage` in the pipeline (clamps at "hired"). */
+export function nextStage(stage?: string): string {
+  const order = APPLICATION_STAGES.map((s) => s.value);
+  const idx = order.indexOf((stage || "applied").toLowerCase());
+  return order[Math.min(idx < 0 ? 0 : idx + 1, order.length - 1)];
+}
+
+export const recruitmentApi = {
+  // erp-api postings segment is "postings", not "jobs".
+  jobs: {
+    ...crud<JobPosting>("postings"),
+    setStatus: (id: number | string, status: string) =>
+      apiClient.put<JobPosting>(`${REC}/postings/${id}/status`, { status }),
+  },
+  candidates: crud<Candidate>("candidates"),
+  applications: {
+    ...crud<JobApplication>("applications"),
+    // erp-api exposes a single /transition taking the target status.
+    transition: (id: number | string, status: string, createEmployee = false) =>
+      apiClient.post<JobApplication>(`${REC}/applications/${id}/transition`, {
+        status,
+        create_employee: createEmployee,
+      }),
+    advance: (id: number | string, currentStage?: string) =>
+      apiClient.post<JobApplication>(`${REC}/applications/${id}/transition`, {
+        status: nextStage(currentStage),
+        create_employee: nextStage(currentStage) === "hired",
+      }),
+    reject: (id: number | string) =>
+      apiClient.post<JobApplication>(`${REC}/applications/${id}/transition`, {
+        status: "rejected",
+      }),
+  },
+  onboarding: {
+    ...crud<Onboarding>("onboarding"),
+    // erp-api: tasks list + complete-by-taskID.
+    listTasks: (id: number | string) =>
+      apiClient.get(`${REC}/onboarding/${id}/tasks`),
+    completeTask: (taskId: number | string) =>
+      apiClient.put(`${REC}/onboarding/tasks/${taskId}/complete`, {}),
+  },
+};

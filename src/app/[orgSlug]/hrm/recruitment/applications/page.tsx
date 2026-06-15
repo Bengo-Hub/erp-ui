@@ -79,7 +79,7 @@ export default function ApplicationsPipelinePage() {
                                   variant="outline"
                                   size="sm"
                                   className="flex-1"
-                                  onClick={() => advance.mutate(a.id)}
+                                  onClick={() => advance.mutate({ id: a.id, stage: stage.value })}
                                   disabled={advance.isPending}
                                 >
                                   Advance <ChevronRight className="ml-1 size-3.5" />

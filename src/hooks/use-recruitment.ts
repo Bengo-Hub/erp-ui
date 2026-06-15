@@ -11,7 +11,7 @@ import {
   type Onboarding,
 } from "@/lib/api/recruitment";
 import { extractApiError } from "@/lib/api/error";
-import { makeActionHook, makeResourceHooks } from "@/hooks/use-crud-resource";
+import { makeResourceHooks } from "@/hooks/use-crud-resource";
 
 const jobs = makeResourceHooks<JobPosting>("recruitment-jobs", recruitmentApi.jobs, "Job posting");
 export const useJobPostings = jobs.useList;
@@ -33,18 +33,29 @@ const applications = makeResourceHooks<JobApplication>(
 export const useApplications = applications.useList;
 export const useSaveApplication = applications.useSave;
 export const useDeleteApplication = applications.useRemove;
-export const useAdvanceApplication = makeActionHook(
-  "recruitment-applications",
-  (id) => recruitmentApi.applications.advance(id),
-  "Application advanced",
-  "Failed to advance application",
-);
+
+/** Advance an application to the next pipeline stage (erp-api /transition). */
+export function useAdvanceApplication() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (arg: number | string | { id: number | string; stage?: string }) => {
+      const id = typeof arg === "object" ? arg.id : arg;
+      const stage = typeof arg === "object" ? arg.stage : undefined;
+      return recruitmentApi.applications.advance(id, stage);
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["recruitment-applications"] });
+      toast.success("Application advanced");
+    },
+    onError: (e) => toast.error(extractApiError(e, "Failed to advance application")),
+  });
+}
 
 export function useRejectApplication() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, reason }: { id: number; reason?: string }) =>
-      recruitmentApi.applications.reject(id, reason),
+    mutationFn: ({ id }: { id: number | string; reason?: string }) =>
+      recruitmentApi.applications.reject(id),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["recruitment-applications"] });
       toast.success("Application rejected");
@@ -57,9 +68,5 @@ const onboarding = makeResourceHooks<Onboarding>("recruitment-onboarding", recru
 export const useOnboarding = onboarding.useList;
 export const useSaveOnboarding = onboarding.useSave;
 export const useDeleteOnboarding = onboarding.useRemove;
-export const useStartOnboarding = makeActionHook(
-  "recruitment-onboarding",
-  (id) => recruitmentApi.onboarding.start(id),
-  "Onboarding started",
-  "Failed to start onboarding",
-);
+// erp-api starts onboarding via POST /onboarding (create), so this is an alias.
+export const useStartOnboarding = onboarding.useSave;
