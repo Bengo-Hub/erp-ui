@@ -31,7 +31,7 @@ export interface ReportConfig {
   key: string;
   title: string;
   description: string;
-  /** GET path under /hrm/payroll/reports/ (without trailing slash). */
+  /** Report route segment under /reports/ (e.g. "p9", "nssf"). */
   path: string;
   /** Export type segment for /export/<type>/. */
   exportType: string;
