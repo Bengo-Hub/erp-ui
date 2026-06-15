@@ -120,8 +120,27 @@ export const TENANT_ROLES: Role[] = [
   { id: "viewer", name: "Viewer", description: "Read-only access" },
 ];
 
+type RegistryRole = { role_code: string; name?: string; description?: string };
+
 export const rolesApi = {
-  list: (_params?: ListParams) => Promise.resolve(TENANT_ROLES),
+  /**
+   * Assignable roles come from the auth role REGISTRY (auth keeps a copy of every
+   * service's roles, pushed via S2S — e.g. erp's ceo/cto/ict/finance/hr roles). Falls
+   * back to the static canonical set if the registry is unavailable/empty.
+   */
+  list: async (_params?: ListParams): Promise<Role[]> => {
+    try {
+      const res = await authAdminClient.get<{ roles?: RegistryRole[] } | RegistryRole[]>(`/admin/roles`);
+      const rows = Array.isArray(res) ? res : (res?.roles ?? []);
+      const mapped = rows
+        .filter((r) => r?.role_code)
+        .map((r) => ({ id: r.role_code, name: r.name || r.role_code, description: r.description }));
+      if (mapped.length) return mapped;
+    } catch {
+      /* registry unavailable — fall back to the static canonical set */
+    }
+    return TENANT_ROLES;
+  },
 };
 
 /**

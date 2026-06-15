@@ -48,13 +48,14 @@ export default function BackupsPage() {
           <Button
             variant="ghost"
             size="icon"
-            aria-label="Download"
+            aria-label="Download backup"
+            title="Download backup"
             disabled={download.isPending}
             onClick={() => download.mutate(b.name)}
           >
             <Download className="size-4" />
           </Button>
-          <Button variant="ghost" size="icon" aria-label="Delete" onClick={() => setToDelete(b)}>
+          <Button variant="ghost" size="icon" aria-label="Delete backup" title="Delete backup" onClick={() => setToDelete(b)}>
             <Trash2 className="size-4 text-destructive" />
           </Button>
         </div>

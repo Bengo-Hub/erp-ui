@@ -50,10 +50,10 @@ export function ApprovalActions({
       <div className="flex items-center gap-1.5">
         {icon ? (
           <>
-            <Button variant="ghost" size="icon" aria-label="Approve" onClick={() => setConfirmApprove(true)}>
+            <Button variant="ghost" size="icon" aria-label={approveLabel} title={approveLabel} onClick={() => setConfirmApprove(true)}>
               <Check className="size-4 text-green-600" />
             </Button>
-            <Button variant="ghost" size="icon" aria-label="Reject" onClick={() => setRejectOpen(true)}>
+            <Button variant="ghost" size="icon" aria-label="Reject" title="Reject" onClick={() => setRejectOpen(true)}>
               <X className="size-4 text-destructive" />
             </Button>
           </>
