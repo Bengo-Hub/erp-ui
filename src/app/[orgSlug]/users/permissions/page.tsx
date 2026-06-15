@@ -1,36 +1,60 @@
 "use client";
 
-import { ShieldCheck } from "lucide-react";
+import { useMemo } from "react";
 
-import { Card } from "@/components/ui/base";
+import { Badge, Card } from "@/components/ui/base";
 import { PageHeader } from "@/components/ui/page-header";
+import { usePermissions } from "@/hooks/use-rbac";
+import { groupPermissions } from "@/lib/api/rbac";
 
 import { UsersTabs } from "../_tabs";
 
 /**
- * Permissions are not a managed catalogue in auth-api (SSO). Effective
- * permissions are derived from a user's roles and surfaced in the access-token
- * `permissions` claim — there is no per-permission CRUD endpoint to wire to.
- * This screen documents that ownership rather than fabricating an API.
+ * The erp service permission catalogue (read-only), owned by this service. Roles
+ * are composed from these on the Roles tab. The catalogue itself is defined in
+ * code + seeded, so it is presented read-only here, grouped by module.
  */
 export default function PermissionsPage() {
+  const { data, isLoading } = usePermissions();
+  const grouped = useMemo(() => groupPermissions(data?.permissions ?? []), [data]);
+
   return (
     <div className="space-y-4 p-4 sm:p-6">
-      <PageHeader title="Users & Security" subtitle="How permissions are granted" />
+      <PageHeader title="Users & Security" subtitle="Service permission catalogue" />
       <UsersTabs active="permissions" />
 
-      <Card className="flex items-start gap-3 p-6">
-        <ShieldCheck className="mt-0.5 size-5 shrink-0 text-primary" />
-        <div className="space-y-2 text-sm">
-          <p className="font-medium text-foreground">Permissions are role-derived</p>
-          <p className="text-muted-foreground">
-            Single sign-on (auth-service) does not expose an editable permission catalogue.
-            A user&apos;s effective permissions come from the roles assigned to their membership
-            and are embedded in the access token. To change what a user can do, adjust their
-            roles from the <span className="font-medium text-foreground">Users</span> tab.
-          </p>
-        </div>
+      <Card className="border-dashed bg-muted/30 p-4">
+        <p className="text-xs text-muted-foreground">
+          These are the fine-grained permissions this service enforces. Compose them into roles
+          on the <span className="font-medium text-foreground">Roles</span> tab, then assign roles
+          to members from the <span className="font-medium text-foreground">Users</span> tab.
+        </p>
       </Card>
+
+      {isLoading ? (
+        <Card className="p-6 text-sm text-muted-foreground">Loading permissions…</Card>
+      ) : (
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+          {Object.entries(grouped).map(([module, perms]) => (
+            <Card key={module} className="p-4">
+              <h3 className="mb-2 text-sm font-semibold capitalize">{module}</h3>
+              <div className="space-y-1.5">
+                {perms.map((p) => (
+                  <div key={p.permission_code} className="flex items-center justify-between gap-2 text-sm">
+                    <span className="min-w-0">
+                      <span className="block truncate">{p.name}</span>
+                      <code className="block truncate text-[11px] text-muted-foreground">
+                        {p.permission_code}
+                      </code>
+                    </span>
+                    <Badge variant="outline" className="shrink-0 capitalize">{p.action}</Badge>
+                  </div>
+                ))}
+              </div>
+            </Card>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
