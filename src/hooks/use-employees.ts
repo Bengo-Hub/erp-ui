@@ -61,7 +61,12 @@ export function useImportEmployees() {
     mutationFn: (file: File) => employeesApi.importEmployees(file),
     onSuccess: (res) => {
       qc.invalidateQueries({ queryKey: [KEY] });
-      toast.success(`Imported ${res?.created ?? ""} employees`.trim());
+      const failed = res?.failed ?? 0;
+      if (failed > 0) {
+        toast.warning(`Imported ${res?.created ?? 0}, ${failed} failed — see details`);
+      } else {
+        toast.success(`Imported ${res?.created ?? 0} employees`);
+      }
     },
     onError: (e) => toast.error(extractApiError(e, "Import failed")),
   });
