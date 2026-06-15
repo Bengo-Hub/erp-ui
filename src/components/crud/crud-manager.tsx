@@ -87,12 +87,12 @@ export function CrudManager<T extends { id: number | string }>({
     cell: (row) => (
       <div className="flex justify-end gap-1">
         <PermissionGate permission={perms?.change}>
-          <Button variant="ghost" size="icon" onClick={() => open(row)} aria-label="Edit">
+          <Button variant="ghost" size="icon" onClick={() => open(row)} aria-label={`Edit ${entityLabel}`} title={`Edit ${entityLabel}`}>
             <Pencil className="size-4" />
           </Button>
         </PermissionGate>
         <PermissionGate permission={perms?.delete}>
-          <Button variant="ghost" size="icon" onClick={() => setToDelete(row)} aria-label="Delete">
+          <Button variant="ghost" size="icon" onClick={() => setToDelete(row)} aria-label={`Delete ${entityLabel}`} title={`Delete ${entityLabel}`}>
             <Trash2 className="size-4 text-destructive" />
           </Button>
         </PermissionGate>

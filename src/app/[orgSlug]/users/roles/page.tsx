@@ -56,10 +56,10 @@ export default function RolesPage() {
           </Button>
           {!r.is_system_role && (
             <>
-              <Button size="sm" variant="ghost" onClick={() => openEdit(r)} aria-label="Edit role">
+              <Button size="sm" variant="ghost" onClick={() => openEdit(r)} aria-label="Edit role" title="Edit role">
                 <Pencil className="size-3.5" />
               </Button>
-              <Button size="sm" variant="ghost" onClick={() => setToDelete(r)} aria-label="Delete role">
+              <Button size="sm" variant="ghost" onClick={() => setToDelete(r)} aria-label="Delete role" title="Delete role">
                 <Trash2 className="size-3.5 text-destructive" />
               </Button>
             </>
