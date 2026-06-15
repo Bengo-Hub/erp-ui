@@ -19,7 +19,7 @@ type FormValues = {
   effective_date?: string;
 };
 
-export function SalaryTab({ employeeId }: { employeeId: number }) {
+export function SalaryTab({ employeeId }: { employeeId: number | string }) {
   const { data, isLoading } = useEmployeeSalary(employeeId);
   const save = useSaveSalary(employeeId);
   const current = normalizeList<EmployeeSalaryDetail>(data).results[0];

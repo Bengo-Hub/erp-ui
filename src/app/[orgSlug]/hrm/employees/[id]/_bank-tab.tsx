@@ -20,7 +20,7 @@ import { type EmployeeBankAccount } from "@/lib/api/employees";
 
 type FormValues = Omit<EmployeeBankAccount, "id" | "employee" | "is_primary">;
 
-export function BankTab({ employeeId }: { employeeId: number }) {
+export function BankTab({ employeeId }: { employeeId: number | string }) {
   const { data, isLoading, error, refetch } = useEmployeeBankAccounts(employeeId);
   const save = useSaveBankAccount(employeeId);
   const del = useDeleteBankAccount(employeeId);
