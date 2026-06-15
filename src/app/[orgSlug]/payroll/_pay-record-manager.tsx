@@ -11,12 +11,12 @@ interface RecordHooks {
   list: () => { data: unknown; isLoading: boolean; error: unknown; refetch: () => void };
   save: () => {
     mutate: (
-      a: { id?: number; data: Partial<PayComponentRecord> },
+      a: { id?: number | string; data: Partial<PayComponentRecord> },
       o?: { onSuccess?: () => void },
     ) => void;
     isPending: boolean;
   };
-  remove: () => { mutate: (id: number, o?: { onSuccess?: () => void }) => void; isPending: boolean };
+  remove: () => { mutate: (id: number | string, o?: { onSuccess?: () => void }) => void; isPending: boolean };
 }
 
 const fields: CrudFieldDef[] = [

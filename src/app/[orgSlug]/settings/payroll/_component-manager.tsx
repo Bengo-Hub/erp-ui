@@ -19,10 +19,10 @@ interface ComponentHooks {
     refetch: () => void;
   };
   save: () => {
-    mutate: (a: { id?: number; data: Partial<PayrollComponent> }, o?: { onSuccess?: () => void }) => void;
+    mutate: (a: { id?: number | string; data: Partial<PayrollComponent> }, o?: { onSuccess?: () => void }) => void;
     isPending: boolean;
   };
-  remove: () => { mutate: (id: number, o?: { onSuccess?: () => void }) => void; isPending: boolean };
+  remove: () => { mutate: (id: number | string, o?: { onSuccess?: () => void }) => void; isPending: boolean };
 }
 
 const fields: CrudFieldDef[] = [

@@ -7,7 +7,7 @@ const HRM = "/hrm";
 const PAY = "/hrm/payroll";
 
 export interface Payslip {
-  id: number;
+  id: number | string;
   employee?: number;
   employee_name?: string;
   employee_number?: string;
@@ -43,7 +43,7 @@ export interface PayslipLine {
 }
 
 export interface PayrollEmployee {
-  id: number;
+  id: number | string;
   employee?: number;
   employee_name?: string;
   first_name?: string;
@@ -78,7 +78,7 @@ export interface PayrollProcessPayload {
 }
 
 export interface PayrollRun {
-  id: number;
+  id: number | string;
   payment_period?: string;
   period?: string;
   from_date?: string;
@@ -144,31 +144,31 @@ export const payrollApi = {
     apiClient.get<Paginated<PayComponentRecord> | PayComponentRecord[]>(`${PAY}/advances/`, params),
   createAdvance: (data: Partial<PayComponentRecord>) =>
     apiClient.post<PayComponentRecord>(`${PAY}/advances/`, data),
-  updateAdvance: (id: number, data: Partial<PayComponentRecord>) =>
+  updateAdvance: (id: number | string, data: Partial<PayComponentRecord>) =>
     apiClient.put<PayComponentRecord>(`${PAY}/advances/${id}/`, data),
-  deleteAdvance: (id: number) => apiClient.delete<void>(`${PAY}/advances/${id}/`),
+  deleteAdvance: (id: number | string) => apiClient.delete<void>(`${PAY}/advances/${id}/`),
 
   // Losses & damages
   listLossDamages: (params?: ListParams) =>
     apiClient.get<Paginated<PayComponentRecord> | PayComponentRecord[]>(`${PAY}/losses-damages/`, params),
   createLossDamage: (data: Partial<PayComponentRecord>) =>
     apiClient.post<PayComponentRecord>(`${PAY}/losses-damages/`, data),
-  updateLossDamage: (id: number, data: Partial<PayComponentRecord>) =>
+  updateLossDamage: (id: number | string, data: Partial<PayComponentRecord>) =>
     apiClient.put<PayComponentRecord>(`${PAY}/losses-damages/${id}/`, data),
-  deleteLossDamage: (id: number) => apiClient.delete<void>(`${PAY}/losses-damages/${id}/`),
+  deleteLossDamage: (id: number | string) => apiClient.delete<void>(`${PAY}/losses-damages/${id}/`),
 
   // Claims
   listClaims: (params?: ListParams) =>
     apiClient.get<Paginated<Claim> | Claim[]>(`${HRM}/payroll/claims/`, params),
-  getClaim: (id: number) => apiClient.get<Claim>(`${HRM}/payroll/claims/${id}/`),
+  getClaim: (id: number | string) => apiClient.get<Claim>(`${HRM}/payroll/claims/${id}/`),
   createClaim: (data: Partial<Claim>) => apiClient.post<Claim>(`${HRM}/payroll/claims/`, data),
-  updateClaim: (id: number, data: Partial<Claim>) =>
+  updateClaim: (id: number | string, data: Partial<Claim>) =>
     apiClient.put<Claim>(`${HRM}/payroll/claims/${id}/`, data),
-  deleteClaim: (id: number) => apiClient.delete<void>(`${HRM}/payroll/claims/${id}/`),
+  deleteClaim: (id: number | string) => apiClient.delete<void>(`${HRM}/payroll/claims/${id}/`),
 };
 
 export interface PayComponentRecord {
-  id: number;
+  id: number | string;
   employee?: number;
   employee_name?: string;
   amount?: string | number;
@@ -180,7 +180,7 @@ export interface PayComponentRecord {
 }
 
 export interface Claim {
-  id: number;
+  id: number | string;
   employee?: number;
   employee_name?: string;
   claim_type?: string;
