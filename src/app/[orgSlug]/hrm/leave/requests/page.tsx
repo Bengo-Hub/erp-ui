@@ -1,7 +1,6 @@
 "use client";
 
 import { Plus } from "lucide-react";
-import { useRouter, useParams } from "next/navigation";
 import { useMemo, useState } from "react";
 
 import { ApprovalActions } from "@/components/hrm/approval-actions";
@@ -24,10 +23,10 @@ import { type LeaveRequest } from "@/lib/api/leave";
 import { PAGE_SIZE } from "@/lib/hrm";
 import { formatDate } from "@/lib/utils";
 
-export default function LeaveRequestsPage() {
-  const router = useRouter();
-  const orgSlug = (useParams()?.orgSlug as string) ?? "";
+import { LeaveFormDialog } from "./_leave-form-dialog";
 
+export default function LeaveRequestsPage() {
+  const [applyOpen, setApplyOpen] = useState(false);
   const [tab, setTab] = useState<"all" | "approvals">("all");
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState("");
@@ -84,7 +83,7 @@ export default function LeaveRequestsPage() {
         subtitle="Apply for leave and manage approvals"
         actions={
           <PermissionGate permission="add_leaverequest">
-            <Button size="sm" onClick={() => router.push(`/${orgSlug}/hrm/leave/requests/new`)}>
+            <Button size="sm" onClick={() => setApplyOpen(true)}>
               <Plus className="mr-1.5 size-4" /> Apply for Leave
             </Button>
           </PermissionGate>
@@ -152,6 +151,8 @@ export default function LeaveRequestsPage() {
           </div>
         )}
       </Card>
+
+      <LeaveFormDialog open={applyOpen} onClose={() => setApplyOpen(false)} />
     </div>
   );
 }
