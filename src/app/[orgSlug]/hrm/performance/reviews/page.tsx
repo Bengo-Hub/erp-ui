@@ -88,7 +88,11 @@ export default function PerformanceReviewsPage() {
     save.mutate(
       {
         data: {
-          employee: Number(form.employee),
+          // employee id is a UUID string — do not Number() it.
+          employee: form.employee,
+          // erp-api review create takes title/description; reuse period/comments.
+          title: form.period || undefined,
+          description: form.comments || undefined,
           period: form.period || undefined,
           review_date: form.review_date || undefined,
           rating: form.rating ? Number(form.rating) : undefined,
