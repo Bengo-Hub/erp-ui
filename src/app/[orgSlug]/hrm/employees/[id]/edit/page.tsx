@@ -16,7 +16,8 @@ export default function EditEmployeePage() {
   const params = useParams();
   const router = useRouter();
   const orgSlug = params?.orgSlug as string;
-  const id = Number(params?.id);
+  // Employee ids are UUID strings in erp-api — keep as-is (do not Number()).
+  const id = params?.id as string;
   const { data: employee, isLoading, error, refetch } = useEmployee(id);
 
   return (

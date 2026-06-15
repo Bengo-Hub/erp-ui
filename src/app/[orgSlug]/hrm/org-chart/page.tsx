@@ -17,10 +17,11 @@ interface Node {
 }
 
 /** Resolve a manager id from common field names. */
-function managerId(e: Employee): number | null {
+function managerId(e: Employee): number | string | null {
   const raw = (e.manager ?? e.reports_to ?? e.supervisor) as
     | number
-    | { id: number }
+    | string
+    | { id: number | string }
     | null
     | undefined;
   if (raw == null) return null;
@@ -29,7 +30,7 @@ function managerId(e: Employee): number | null {
 
 /** Build a reporting tree; employees with no/absent manager become roots. */
 function buildTree(employees: Employee[]): Node[] {
-  const byId = new Map<number, Node>();
+  const byId = new Map<number | string, Node>();
   employees.forEach((e) => byId.set(e.id, { employee: e, reports: [] }));
   const roots: Node[] = [];
   employees.forEach((e) => {

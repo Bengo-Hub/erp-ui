@@ -20,7 +20,7 @@ import { type EmployeeNextOfKin } from "@/lib/api/employees";
 
 type FormValues = Omit<EmployeeNextOfKin, "id" | "employee">;
 
-export function KinTab({ employeeId }: { employeeId: number }) {
+export function KinTab({ employeeId }: { employeeId: number | string }) {
   const { data, isLoading, error, refetch } = useEmployeeNextOfKin(employeeId);
   const save = useSaveNextOfKin(employeeId);
   const del = useDeleteNextOfKin(employeeId);

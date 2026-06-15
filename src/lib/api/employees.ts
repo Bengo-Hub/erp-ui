@@ -3,11 +3,22 @@
 import { apiClient } from "@/lib/api/client";
 import { type ListParams, type Paginated } from "@/lib/api/drf";
 
-const EMP = "/hrm/employees";
+const EMP = "/hrm";
 const HRM = "/hrm";
 
 export interface Employee {
-  id: number;
+  /** erp-api employee id is a UUID string. */
+  id: number | string;
+  tenant_id?: string;
+  user_id?: string | null;
+  pin_no?: string;
+  shif_or_nhif_number?: string;
+  nssf_no?: string;
+  residential_status?: string;
+  terminated?: boolean;
+  deleted?: boolean;
+  created_at?: string;
+  updated_at?: string;
   employee_number?: string;
   first_name?: string;
   last_name?: string;
@@ -65,15 +76,34 @@ export interface EmployeeSalaryDetail {
   [key: string]: unknown;
 }
 
+/**
+ * Maps the UI's (DRF-era) employee form fields onto the names erp-api's
+ * create handler expects. The Go handler only reads a known subset
+ * (employee_number, first/last name, email, gender, national_id, pin_no,
+ * shif_or_nhif_number, nssf_no, residential_status, outlet_id, user_id) — the
+ * rest are ignored server-side but harmless to send.
+ */
+function toEmployeePayload(data: Partial<Employee>): Record<string, unknown> {
+  const out: Record<string, unknown> = { ...data };
+  // UI form uses kra_pin; erp-api field is pin_no.
+  if (out.kra_pin != null && out.pin_no == null) out.pin_no = out.kra_pin;
+  if (out.outlet != null && out.outlet_id == null) out.outlet_id = out.outlet;
+  return out;
+}
+
 export const employeesApi = {
   list: (params?: ListParams) =>
     apiClient.get<Paginated<Employee> | Employee[]>(`${EMP}/employees/`, params),
   get: (id: number | string) => apiClient.get<Employee>(`${EMP}/employees/${id}/`),
-  create: (data: Partial<Employee>) => apiClient.post<Employee>(`${EMP}/employees/`, data),
+  create: (data: Partial<Employee>) =>
+    apiClient.post<Employee>(`${EMP}/employees/`, toEmployeePayload(data)),
+  // NOTE: erp-api has no PUT/PATCH on /hrm/employees/{id}; edit is not yet
+  // supported server-side (gap). Kept pointing at the canonical path so it
+  // works once the route lands.
   update: (id: number | string, data: Partial<Employee>) =>
-    apiClient.put<Employee>(`${EMP}/employees/${id}/`, data),
+    apiClient.put<Employee>(`${EMP}/employees/${id}/`, toEmployeePayload(data)),
   patch: (id: number | string, data: Partial<Employee>) =>
-    apiClient.patch<Employee>(`${EMP}/employees/${id}/`, data),
+    apiClient.patch<Employee>(`${EMP}/employees/${id}/`, toEmployeePayload(data)),
   remove: (id: number | string) => apiClient.delete<void>(`${EMP}/employees/${id}/`),
 
   importEmployees: (file: File, mapping?: Record<string, string>) => {
@@ -108,11 +138,34 @@ export const employeesApi = {
     apiClient.put<EmployeeNextOfKin>(`${EMP}/next-of-kin/${id}/`, data),
   removeNextOfKin: (id: number) => apiClient.delete<void>(`${EMP}/next-of-kin/${id}/`),
 
-  // Salary details (upsert via POST)
-  getSalaryDetails: (employeeId: number | string) =>
-    apiClient.get<EmployeeSalaryDetail[] | Paginated<EmployeeSalaryDetail>>(`${HRM}/salary-details/`, {
-      emp_id: employeeId,
-    }),
+  // Salary details. erp-api exposes a single salary record per employee via
+  // `PUT /hrm/employees/{id}/salary` (no list endpoint), so we read the salary
+  // off the employee record and write through the real upsert route.
+  getSalaryDetails: async (
+    employeeId: number | string,
+  ): Promise<EmployeeSalaryDetail[]> => {
+    const emp = await apiClient.get<Employee>(`${EMP}/employees/${employeeId}/`);
+    const salary = (emp as Record<string, unknown>).salary as
+      | EmployeeSalaryDetail
+      | undefined;
+    if (salary) return [salary];
+    if (emp.basic_salary != null) {
+      return [{ employee: undefined, basic_salary: emp.basic_salary }];
+    }
+    return [];
+  },
   upsertSalary: (employeeId: number | string, data: Partial<EmployeeSalaryDetail>) =>
-    apiClient.post<EmployeeSalaryDetail>(`${HRM}/salary-details/`, { ...data, employee: employeeId }),
+    apiClient.put<EmployeeSalaryDetail>(`${EMP}/employees/${employeeId}/salary`, {
+      monthly_salary:
+        data.basic_salary != null ? String(data.basic_salary) : undefined,
+      pay_mode: data.payment_method,
+      currency: data.currency,
+    }),
+
+  /** Marks a bank account primary (the only mutation erp-api exposes for banks). */
+  setPrimaryBankAccount: (employeeId: number | string, accountId: number | string) =>
+    apiClient.put<{ ok: boolean }>(
+      `${EMP}/employees/${employeeId}/bank-accounts/${accountId}/primary`,
+      {},
+    ),
 };
