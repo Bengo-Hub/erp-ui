@@ -47,29 +47,49 @@ export interface BrandingSettings {
   [key: string]: unknown;
 }
 
-/** Resolve a singleton config record from DRF's various envelopes. */
+/** Resolve a singleton config record from the various envelopes. */
 export function pickSettings<T>(data: T | Paginated<T> | T[] | null | undefined): T | undefined {
   if (!data) return undefined;
   if (Array.isArray(data)) return data[0];
+  // erp-api business settings wrap the record as {settings: row}.
+  if (typeof data === "object" && "settings" in (data as object)) {
+    return (data as { settings?: T }).settings ?? undefined;
+  }
+  if (typeof data === "object" && "data" in (data as object)) {
+    const inner = (data as Paginated<T>).data;
+    if (Array.isArray(inner)) return inner[0];
+  }
   if (typeof data === "object" && "results" in (data as object)) {
     return (data as Paginated<T>).results?.[0];
   }
   return data as T;
 }
 
-/** Build a singleton settings surface: GET list + create/update (id-aware). */
-function singletonApi<T extends { id?: number }>(base: string) {
-  return {
-    get: () => apiClient.get<Paginated<T> | T[] | T>(`${base}/`),
-    save: (id: number | undefined, data: Partial<T>) =>
-      id != null
-        ? apiClient.put<T>(`${base}/${id}/`, data)
-        : apiClient.post<T>(`${base}/`, data),
-  };
-}
+/**
+ * erp-api business settings are a true per-tenant singleton:
+ * GET/PUT /business/settings (no id, no list). The save signature keeps the
+ * (id, data) shape used by the page but ignores id.
+ */
+export const businessSettingsApi = {
+  get: () => apiClient.get<BusinessSettings>(`/business/settings`),
+  save: (_id: number | undefined, data: Partial<BusinessSettings>) =>
+    apiClient.put<BusinessSettings>(`/business/settings`, {
+      ...data,
+      // Map UI field names onto erp-api's settings body.
+      contact_email: (data as Record<string, unknown>).contact_email ?? data.email,
+      contact_phone: (data as Record<string, unknown>).contact_phone ?? data.phone,
+      physical_address: (data as Record<string, unknown>).physical_address ?? data.address,
+    }),
+};
 
-export const regionalSettingsApi = singletonApi<RegionalSettings>("/core/regional-settings");
-export const businessSettingsApi = singletonApi<BusinessSettings>("/business/business");
+// NOTE: erp-api has no /core/regional-settings or /core/branding-settings
+// routes (gap). Regional config currently lives inside business settings;
+// public branding is exposed at /business/public-branding instead.
+export const regionalSettingsApi = {
+  get: () => apiClient.get<BusinessSettings>(`/business/settings`),
+  save: (_id: number | undefined, data: Partial<RegionalSettings>) =>
+    apiClient.put<BusinessSettings>(`/business/settings`, data),
+};
 export const brandingSettingsApi = {
-  get: () => apiClient.get<BrandingSettings>(`/core/branding-settings/`),
+  get: () => apiClient.get<BrandingSettings>(`/business/public-branding`),
 };
