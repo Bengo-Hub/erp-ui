@@ -21,6 +21,7 @@ import { type Employee } from "@/lib/api/employees";
 import { employeeName, PAGE_SIZE, relationLabel } from "@/lib/hrm";
 import { useOutletFilterStore } from "@/store/outlet-filter";
 
+import { EmployeeFormDialog } from "./_employee-form-dialog";
 import { ImportEmployeesDialog } from "./_import-dialog";
 
 export default function EmployeesPage() {
@@ -34,6 +35,7 @@ export default function EmployeesPage() {
   const [status, setStatus] = useState("");
   const [page, setPage] = useState(1);
   const [importOpen, setImportOpen] = useState(false);
+  const [formOpen, setFormOpen] = useState(false);
   const debouncedSearch = useDebounce(search);
 
   const queryParams = useMemo(
@@ -110,7 +112,7 @@ export default function EmployeesPage() {
               </Button>
             </PermissionGate>
             <PermissionGate permission="add_employee">
-              <Button size="sm" onClick={() => router.push(`/${orgSlug}/hrm/employees/new`)}>
+              <Button size="sm" onClick={() => setFormOpen(true)}>
                 <Plus className="mr-1.5 size-4" /> Add Employee
               </Button>
             </PermissionGate>
@@ -163,7 +165,7 @@ export default function EmployeesPage() {
           emptyDescription="Try adjusting your filters, or add your first employee."
           emptyAction={
             <PermissionGate permission="add_employee">
-              <Button size="sm" onClick={() => router.push(`/${orgSlug}/hrm/employees/new`)}>
+              <Button size="sm" onClick={() => setFormOpen(true)}>
                 <Users className="mr-1.5 size-4" /> Add Employee
               </Button>
             </PermissionGate>
@@ -178,6 +180,11 @@ export default function EmployeesPage() {
       </Card>
 
       <ImportEmployeesDialog open={importOpen} onClose={() => setImportOpen(false)} />
+      <EmployeeFormDialog
+        open={formOpen}
+        onClose={() => setFormOpen(false)}
+        onCreated={(id) => router.push(`/${orgSlug}/hrm/employees/${id}`)}
+      />
 
       <p className="text-center text-xs text-muted-foreground">
         Need to manage org structure?{" "}
