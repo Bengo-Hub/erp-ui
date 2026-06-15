@@ -6,10 +6,10 @@ import { type ListParams, type Paginated } from "@/lib/api/drf";
 const LEAVE = "/hrm/leave";
 
 export interface LeaveRequest {
-  id: number;
-  employee?: number;
+  id: number | string;
+  employee?: number | string;
   employee_name?: string;
-  leave_category?: number;
+  leave_category?: number | string;
   leave_category_name?: string;
   category_name?: string;
   start_date?: string;
@@ -25,7 +25,7 @@ export interface LeaveRequest {
 }
 
 export interface LeaveCategory {
-  id: number;
+  id: number | string;
   name?: string;
   description?: string;
   max_days?: string | number;
@@ -37,7 +37,7 @@ export interface LeaveCategory {
 }
 
 export interface LeaveBalance {
-  id: number;
+  id: number | string;
   employee?: number;
   employee_name?: string;
   leave_category?: number;
@@ -54,18 +54,40 @@ export interface LeaveBalance {
 }
 
 export interface LeaveEntitlement {
-  id: number;
-  employee?: number;
+  id: number | string;
+  employee?: number | string;
   employee_name?: string;
-  leave_category?: number;
+  leave_category?: number | string;
   leave_category_name?: string;
   days?: string | number;
   year?: number | string;
   [key: string]: unknown;
 }
 
+/** Maps the UI request form fields onto erp-api's CreateRequest body. */
+function toRequestPayload(data: Partial<LeaveRequest>): Record<string, unknown> {
+  return {
+    employee_id: data.employee,
+    category_id: data.leave_category,
+    start_date: data.start_date,
+    end_date: data.end_date,
+    days_requested: data.days ?? data.number_of_days,
+    reason: data.reason,
+  };
+}
+
+/** Maps the UI entitlement form fields onto erp-api's UpsertEntitlement body. */
+function toEntitlementPayload(data: Partial<LeaveEntitlement>): Record<string, unknown> {
+  return {
+    employee_id: data.employee,
+    category_id: data.leave_category,
+    year: data.year != null ? Number(data.year) : undefined,
+    days_entitled: data.days,
+  };
+}
+
 export interface LeaveLog {
-  id: number;
+  id: number | string;
   employee?: number;
   employee_name?: string;
   action?: string;
@@ -80,14 +102,19 @@ export const leaveApi = {
     apiClient.get<Paginated<LeaveRequest> | LeaveRequest[]>(`${LEAVE}/requests/`, params),
   getRequest: (id: number | string) => apiClient.get<LeaveRequest>(`${LEAVE}/requests/${id}/`),
   createRequest: (data: Partial<LeaveRequest>) =>
-    apiClient.post<LeaveRequest>(`${LEAVE}/requests/`, data),
+    apiClient.post<LeaveRequest>(`${LEAVE}/requests/`, toRequestPayload(data)),
+  // erp-api has no PUT/DELETE on a leave request; use cancel for withdrawal.
   updateRequest: (id: number | string, data: Partial<LeaveRequest>) =>
-    apiClient.put<LeaveRequest>(`${LEAVE}/requests/${id}/`, data),
-  deleteRequest: (id: number | string) => apiClient.delete<void>(`${LEAVE}/requests/${id}/`),
+    apiClient.put<LeaveRequest>(`${LEAVE}/requests/${id}/`, toRequestPayload(data)),
+  deleteRequest: (id: number | string) =>
+    apiClient.post<void>(`${LEAVE}/requests/${id}/cancel/`, {}),
+  cancelRequest: (id: number | string) =>
+    apiClient.post<LeaveRequest>(`${LEAVE}/requests/${id}/cancel/`, {}),
   approveRequest: (id: number | string) =>
     apiClient.post<LeaveRequest>(`${LEAVE}/requests/${id}/approve/`, {}),
+  // erp-api reject handler reads {reason}.
   rejectRequest: (id: number | string, reason: string) =>
-    apiClient.post<LeaveRequest>(`${LEAVE}/requests/${id}/reject/`, { rejection_reason: reason }),
+    apiClient.post<LeaveRequest>(`${LEAVE}/requests/${id}/reject/`, { reason }),
 
   // Categories (leave types)
   listCategories: (params?: ListParams) =>
@@ -110,14 +137,19 @@ export const leaveApi = {
   // Entitlements
   listEntitlements: (params?: ListParams) =>
     apiClient.get<Paginated<LeaveEntitlement> | LeaveEntitlement[]>(`${LEAVE}/entitlements/`, params),
+  // erp-api exposes a single upsert (POST) keyed on employee+category+year;
+  // both create and "update" route through it. There is no delete endpoint.
   createEntitlement: (data: Partial<LeaveEntitlement>) =>
-    apiClient.post<LeaveEntitlement>(`${LEAVE}/entitlements/`, data),
-  updateEntitlement: (id: number | string, data: Partial<LeaveEntitlement>) =>
-    apiClient.put<LeaveEntitlement>(`${LEAVE}/entitlements/${id}/`, data),
+    apiClient.post<LeaveEntitlement>(`${LEAVE}/entitlements/`, toEntitlementPayload(data)),
+  updateEntitlement: (_id: number | string, data: Partial<LeaveEntitlement>) =>
+    apiClient.post<LeaveEntitlement>(`${LEAVE}/entitlements/`, toEntitlementPayload(data)),
   deleteEntitlement: (id: number | string) =>
     apiClient.delete<void>(`${LEAVE}/entitlements/${id}/`),
 
-  // Logs
+  // Accrual: erp-api recomputes balances from entitlements + approved leave.
+  accrue: (data?: { year?: number }) => apiClient.post<void>(`${LEAVE}/accrue/`, data ?? {}),
+
+  // Logs: no erp-api endpoint yet (gap) — returns empty until one lands.
   listLogs: (params?: ListParams) =>
     apiClient.get<Paginated<LeaveLog> | LeaveLog[]>(`${LEAVE}/logs/`, params),
 };

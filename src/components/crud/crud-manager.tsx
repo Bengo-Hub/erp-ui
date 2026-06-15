@@ -22,7 +22,7 @@ export interface CrudFieldDef {
   span2?: boolean;
 }
 
-interface CrudManagerProps<T extends { id: number }> {
+interface CrudManagerProps<T extends { id: number | string }> {
   rows: T[];
   columns: Column<T>[];
   fields: CrudFieldDef[];
@@ -36,14 +36,14 @@ interface CrudManagerProps<T extends { id: number }> {
   emptyDescription?: ReactNode;
   /** Build initial form values from an existing row (for edit). */
   toForm: (row?: T) => Record<string, unknown>;
-  onSave: (args: { id?: number; data: Record<string, unknown> }, done: () => void) => void;
-  onDelete: (id: number, done: () => void) => void;
+  onSave: (args: { id?: number | string; data: Record<string, unknown> }, done: () => void) => void;
+  onDelete: (id: number | string, done: () => void) => void;
   saving?: boolean;
   deleting?: boolean;
 }
 
 /** Reusable list + dialog-form CRUD surface for simple named records. */
-export function CrudManager<T extends { id: number }>({
+export function CrudManager<T extends { id: number | string }>({
   rows,
   columns,
   fields,
