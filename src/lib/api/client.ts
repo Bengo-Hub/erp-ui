@@ -56,6 +56,18 @@ class ApiClient {
       config.headers.Authorization = `Bearer ${this.accessToken}`;
     }
 
+    // erp-api uses `limit` for page size (shared pagination lib), but much of the
+    // UI still passes the legacy DRF `page_size`. Translate it centrally so every
+    // list call honours the requested size instead of falling back to the server
+    // default. An explicit `limit` always wins.
+    if (config.params && typeof config.params === "object") {
+      const p = config.params as Record<string, unknown>;
+      if (p.page_size != null && p.limit == null) {
+        p.limit = p.page_size;
+      }
+      delete p.page_size;
+    }
+
     // FormData → let the browser set the multipart boundary.
     if (typeof FormData !== "undefined" && config.data instanceof FormData) {
       delete config.headers["Content-Type"];
