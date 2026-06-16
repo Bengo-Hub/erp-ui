@@ -8,9 +8,17 @@ export interface ErpBackup {
   created_at: string;
 }
 
+export interface BackupSettings {
+  auto_enabled: boolean;
+  schedule_hour: number;
+  retention_days: number;
+}
+
 export const erpBackupsApi = {
   list: () => apiClient.get<{ backups: ErpBackup[] }>(`/backups`),
   create: () => apiClient.post<ErpBackup>(`/backups`, {}),
+  getSettings: () => apiClient.get<BackupSettings>(`/backups/settings`),
+  updateSettings: (data: BackupSettings) => apiClient.put<BackupSettings>(`/backups/settings`, data),
   remove: (name: string) => apiClient.delete<void>(`/backups/${encodeURIComponent(name)}`),
   download: async (name: string) => {
     const { blob, fileName } = await apiClient.getBlob(

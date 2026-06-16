@@ -3,10 +3,11 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 
-import { erpBackupsApi } from "@/lib/api/backups";
+import { erpBackupsApi, type BackupSettings } from "@/lib/api/backups";
 import { extractApiError } from "@/lib/api/error";
 
 const KEY = ["backups", "erp"] as const;
+const SETTINGS_KEY = ["backups", "erp", "settings"] as const;
 
 export function useErpBackups() {
   return useQuery({ queryKey: KEY, queryFn: () => erpBackupsApi.list() });
@@ -40,5 +41,21 @@ export function useDownloadBackup() {
   return useMutation({
     mutationFn: (name: string) => erpBackupsApi.download(name),
     onError: (e) => toast.error(extractApiError(e, "Download failed")),
+  });
+}
+
+export function useBackupSettings() {
+  return useQuery({ queryKey: SETTINGS_KEY, queryFn: () => erpBackupsApi.getSettings() });
+}
+
+export function useUpdateBackupSettings() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (data: BackupSettings) => erpBackupsApi.updateSettings(data),
+    onSuccess: (saved) => {
+      qc.setQueryData(SETTINGS_KEY, saved);
+      toast.success("Backup schedule saved");
+    },
+    onError: (e) => toast.error(extractApiError(e, "Failed to save backup schedule")),
   });
 }
