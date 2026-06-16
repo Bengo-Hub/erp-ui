@@ -4,6 +4,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useParams, usePathname, useRouter } from "next/navigation";
 import { ReactNode, useEffect } from "react";
 import { toast } from "sonner";
+import { OfflineBar } from "@bengo-hub/shared-ui-lib/offline";
 
 import { useMe } from "@/hooks/useMe";
 import { apiClient } from "@/lib/api/client";
@@ -105,5 +106,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     );
   }
 
-  return <>{children}</>;
+  return (
+    <>
+      <OfflineBar availableOffline={["View cached data"]} disabledOffline={["Edits", "Posting", "Reports"]} />
+      {children}
+    </>
+  );
 }
