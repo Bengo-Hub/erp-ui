@@ -8,6 +8,7 @@ import {
   buildAuthorizeUrl,
   buildLogoutUrl,
   exchangeCodeForTokens,
+  revokeServerSession,
 } from "@/lib/auth/api";
 import {
   generateCodeChallenge,
@@ -21,9 +22,6 @@ import {
 import type { SubscriptionInfo } from "@/lib/auth/subscription";
 import type { AuthStatus, Session, UserProfile } from "@/lib/auth/types";
 import { parseJwt } from "@/lib/utils";
-
-const AUTH_UI_URL =
-  process.env.NEXT_PUBLIC_AUTH_UI_URL || "https://accounts.codevertexitsolutions.com";
 
 interface AuthState {
   status: AuthStatus;
@@ -41,7 +39,7 @@ interface AuthState {
   redirectToSSO: (orgSlug: string, returnTo?: string) => Promise<void>;
   handleSSOCallback: (orgSlug: string, code: string, callbackUrl: string) => Promise<void>;
   setUser: (user: UserProfile) => void;
-  logout: () => void;
+  logout: () => Promise<void>;
 }
 
 /** Build a UserProfile from the access-token JWT claims (pre-/auth/me bootstrap). */
@@ -168,7 +166,12 @@ export const useAuthStore = create<AuthState>()(
         set({ user });
       },
 
-      logout: () => {
+      logout: async () => {
+        const token = get().session?.accessToken;
+        // Revoke the backend session (Redis session_token keys + DB sessions)
+        // BEFORE clearing local state, so we still have the access token.
+        await revokeServerSession(token);
+
         set({
           status: "idle",
           user: null,
@@ -184,7 +187,10 @@ export const useAuthStore = create<AuthState>()(
           try { localStorage.removeItem("erp-auth-storage"); } catch { /* no-op */ }
           try { localStorage.removeItem("erp-outlet-filter"); } catch { /* no-op */ }
           try { sessionStorage.clear(); } catch { /* no-op */ }
-          window.location.href = buildLogoutUrl(AUTH_UI_URL);
+          const returnTo = encodeURIComponent(window.location.origin);
+          window.location.href = buildLogoutUrl(
+            `https://accounts.codevertexitsolutions.com/login?return_to=${returnTo}`,
+          );
         }
       },
     }),
