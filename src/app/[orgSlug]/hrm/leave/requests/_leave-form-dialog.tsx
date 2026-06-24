@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { z } from "zod";
 
 import { Button } from "@/components/ui/base";
@@ -38,9 +38,13 @@ export function LeaveFormDialog({ open, onClose }: { open: boolean; onClose: () 
   const save = useSaveLeaveRequest();
 
   const [form, setForm] = useState(EMPTY);
-  useEffect(() => {
+  // Reset the form each time the dialog opens, without a setState-in-effect (React's
+  // "store previous value during render" pattern).
+  const [wasOpen, setWasOpen] = useState(open);
+  if (open !== wasOpen) {
+    setWasOpen(open);
     if (open) setForm(EMPTY);
-  }, [open]);
+  }
   const set = (k: string, v: string) => setForm((f) => ({ ...f, [k]: v }));
 
   const parsed = useMemo(() => leaveSchema.safeParse(form), [form]);
