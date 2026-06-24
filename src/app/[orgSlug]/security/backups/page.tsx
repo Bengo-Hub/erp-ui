@@ -1,8 +1,9 @@
 "use client";
 
 import { CalendarClock, Download, Info, Trash2 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 
+import { PermissionGate } from "@/components/auth/permission-gate";
 import { Button, Card } from "@/components/ui/base";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { DataTable, type Column } from "@/components/ui/data-table";
@@ -49,13 +50,16 @@ function AutoBackupCard() {
   const [hour, setHour] = useState(2);
   const [retention, setRetention] = useState(4);
 
-  useEffect(() => {
-    if (data) {
-      setEnabled(data.auto_enabled);
-      setHour(data.schedule_hour);
-      setRetention(data.retention_days);
-    }
-  }, [data]);
+  // Sync local form state from the fetched settings without an effect (React's
+  // "adjust state during render when a prop changes" pattern) — avoids the cascading
+  // re-render that setState-in-useEffect causes.
+  const [syncedData, setSyncedData] = useState<typeof data>(undefined);
+  if (data && data !== syncedData) {
+    setSyncedData(data);
+    setEnabled(data.auto_enabled);
+    setHour(data.schedule_hour);
+    setRetention(data.retention_days);
+  }
 
   const dirty =
     !!data &&
@@ -115,19 +119,21 @@ function AutoBackupCard() {
       </div>
 
       <div className="flex justify-end">
-        <Button
-          size="sm"
-          disabled={!dirty || save.isPending}
-          onClick={() =>
-            save.mutate({
-              auto_enabled: enabled,
-              schedule_hour: hour,
-              retention_days: retention,
-            })
-          }
-        >
-          {save.isPending ? "Saving…" : "Save schedule"}
-        </Button>
+        <PermissionGate permission="backups.manage">
+          <Button
+            size="sm"
+            disabled={!dirty || save.isPending}
+            onClick={() =>
+              save.mutate({
+                auto_enabled: enabled,
+                schedule_hour: hour,
+                retention_days: retention,
+              })
+            }
+          >
+            {save.isPending ? "Saving…" : "Save schedule"}
+          </Button>
+        </PermissionGate>
       </div>
     </Card>
   );
@@ -166,9 +172,11 @@ export default function BackupsPage() {
           >
             <Download className="size-4" />
           </Button>
-          <Button variant="ghost" size="icon" aria-label="Delete backup" title="Delete backup" onClick={() => setToDelete(b)}>
-            <Trash2 className="size-4 text-destructive" />
-          </Button>
+          <PermissionGate permission="backups.manage">
+            <Button variant="ghost" size="icon" aria-label="Delete backup" title="Delete backup" onClick={() => setToDelete(b)}>
+              <Trash2 className="size-4 text-destructive" />
+            </Button>
+          </PermissionGate>
         </div>
       ),
     },
@@ -180,9 +188,11 @@ export default function BackupsPage() {
         title="Backups"
         subtitle="Your organisation's data backups"
         actions={
-          <Button size="sm" onClick={() => create.mutate()} disabled={create.isPending}>
-            {create.isPending ? "Creating…" : "Create backup"}
-          </Button>
+          <PermissionGate permission="backups.manage">
+            <Button size="sm" onClick={() => create.mutate()} disabled={create.isPending}>
+              {create.isPending ? "Creating…" : "Create backup"}
+            </Button>
+          </PermissionGate>
         }
       />
       <UsersTabs active="backups" />
