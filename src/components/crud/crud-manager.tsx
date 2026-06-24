@@ -6,7 +6,7 @@ import { useState, type ReactNode } from "react";
 import { PermissionGate } from "@/components/auth/permission-gate";
 import { Button, Card } from "@/components/ui/base";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
-import { DataTable, type Column } from "@/components/ui/data-table";
+import { DataTable, Pagination, type Column } from "@/components/ui/data-table";
 import { Dialog } from "@/components/ui/dialog";
 import { Field, Input, Select, Switch, Textarea } from "@/components/ui/form";
 
@@ -40,6 +40,9 @@ interface CrudManagerProps<T extends { id: number | string }> {
   onDelete: (id: number | string, done: () => void) => void;
   saving?: boolean;
   deleting?: boolean;
+  /** Server-side pagination. When provided, a pager renders below the table so every row is
+   *  reachable (backend list endpoints default to a 20-row page). */
+  pagination?: { page: number; pageSize: number; total: number; onPageChange: (page: number) => void };
 }
 
 /** Reusable list + dialog-form CRUD surface for simple named records. */
@@ -59,6 +62,7 @@ export function CrudManager<T extends { id: number | string }>({
   onDelete,
   saving,
   deleting,
+  pagination,
 }: CrudManagerProps<T>) {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<T | null>(null);
@@ -121,6 +125,17 @@ export function CrudManager<T extends { id: number | string }>({
         emptyTitle={`No ${entityLabel.toLowerCase()}s yet`}
         emptyDescription={emptyDescription}
       />
+
+      {pagination && pagination.total > 0 && (
+        <div className="border-t border-border p-3">
+          <Pagination
+            page={pagination.page}
+            pageSize={pagination.pageSize}
+            total={pagination.total}
+            onPageChange={pagination.onPageChange}
+          />
+        </div>
+      )}
 
       <Dialog
         open={dialogOpen}

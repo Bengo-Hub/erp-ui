@@ -1,5 +1,7 @@
 "use client";
 
+import { useState } from "react";
+
 import { CrudManager, type CrudFieldDef } from "@/components/crud/crud-manager";
 import { Badge } from "@/components/ui/base";
 import { type Column } from "@/components/ui/data-table";
@@ -11,6 +13,7 @@ import {
 } from "@/hooks/use-attendance";
 import { normalizeList } from "@/lib/api/drf";
 import { type AttendanceRule } from "@/lib/api/attendance";
+import { PAGE_SIZE } from "@/lib/hrm";
 
 const fields: CrudFieldDef[] = [
   { name: "name", label: "Rule Name", required: true },
@@ -22,10 +25,11 @@ const fields: CrudFieldDef[] = [
 ];
 
 export default function AttendanceRulesPage() {
-  const { data, isLoading, error, refetch } = useAttendanceRules();
+  const [page, setPage] = useState(1);
+  const { data, isLoading, error, refetch } = useAttendanceRules({ page, page_size: PAGE_SIZE });
   const save = useSaveAttendanceRule();
   const del = useDeleteAttendanceRule();
-  const rows = normalizeList<AttendanceRule>(data).results;
+  const { results: rows, count } = normalizeList<AttendanceRule>(data);
 
   const columns: Column<AttendanceRule>[] = [
     { header: "Name", cell: (r) => <span className="font-medium">{r.name || "—"}</span> },
@@ -68,6 +72,7 @@ export default function AttendanceRulesPage() {
         onDelete={(id, done) => del.mutate(id, { onSuccess: done })}
         saving={save.isPending}
         deleting={del.isPending}
+        pagination={{ page, pageSize: PAGE_SIZE, total: count, onPageChange: setPage }}
       />
     </div>
   );

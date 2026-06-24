@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { z } from "zod";
 
 import { Button } from "@/components/ui/base";
 import { Dialog } from "@/components/ui/dialog";
@@ -9,8 +10,22 @@ import { useEmployeeOptions } from "@/hooks/use-employee-options";
 import { useLeaveCategories, useSaveLeaveRequest } from "@/hooks/use-leave";
 import { normalizeList } from "@/lib/api/drf";
 import { type LeaveCategory } from "@/lib/api/leave";
+import { endNotBeforeStart } from "@/lib/validation";
 
 const EMPTY = { employee: "", leave_category: "", start_date: "", end_date: "", reason: "" };
+
+const leaveSchema = z
+  .object({
+    employee: z.string().min(1, "Select an employee"),
+    leave_category: z.string().min(1, "Select a leave type"),
+    start_date: z.string().min(1, "Start date is required"),
+    end_date: z.string().min(1, "End date is required"),
+    reason: z.string().optional(),
+  })
+  .refine(endNotBeforeStart("start_date", "end_date"), {
+    message: "End date must not be before start date",
+    path: ["end_date"],
+  });
 
 /**
  * Apply-for-leave modal. Replaces the standalone /requests/new page so the form
@@ -28,7 +43,9 @@ export function LeaveFormDialog({ open, onClose }: { open: boolean; onClose: () 
   }, [open]);
   const set = (k: string, v: string) => setForm((f) => ({ ...f, [k]: v }));
 
-  const valid = form.employee && form.leave_category && form.start_date && form.end_date;
+  const parsed = useMemo(() => leaveSchema.safeParse(form), [form]);
+  const valid = parsed.success;
+  const fieldErrors = parsed.success ? {} : parsed.error.flatten().fieldErrors;
 
   const submit = () => {
     if (!valid) return;
@@ -94,7 +111,7 @@ export function LeaveFormDialog({ open, onClose }: { open: boolean; onClose: () 
           <Field label="Start Date" htmlFor="start_date" required>
             <Input id="start_date" type="date" value={form.start_date} onChange={(e) => set("start_date", e.target.value)} />
           </Field>
-          <Field label="End Date" htmlFor="end_date" required>
+          <Field label="End Date" htmlFor="end_date" required error={fieldErrors.end_date?.[0]}>
             <Input id="end_date" type="date" value={form.end_date} onChange={(e) => set("end_date", e.target.value)} />
           </Field>
         </div>
