@@ -186,7 +186,9 @@ export const employeesApi = {
 
   // Education
   listEducation: (employeeId: number | string) =>
-    apiClient.get<EmployeeEducation[]>(`${EMP}/employee-education/`, { emp_id: employeeId }),
+    apiClient.get<EmployeeEducation[] | Paginated<EmployeeEducation>>(`${EMP}/employee-education/`, {
+      emp_id: employeeId,
+    }),
   addEducation: (employeeId: number | string, data: Partial<EmployeeEducation>) =>
     apiClient.post<EmployeeEducation>(`${EMP}/employee-education/`, { ...data, employee: employeeId }),
   updateEducation: (id: string | number, data: Partial<EmployeeEducation>) =>
@@ -195,7 +197,9 @@ export const employeesApi = {
 
   // Employment history
   listEmployment: (employeeId: number | string) =>
-    apiClient.get<EmploymentHistory[]>(`${EMP}/employment-history/`, { emp_id: employeeId }),
+    apiClient.get<EmploymentHistory[] | Paginated<EmploymentHistory>>(`${EMP}/employment-history/`, {
+      emp_id: employeeId,
+    }),
   addEmployment: (employeeId: number | string, data: Partial<EmploymentHistory>) =>
     apiClient.post<EmploymentHistory>(`${EMP}/employment-history/`, { ...data, employee: employeeId }),
   updateEmployment: (id: string | number, data: Partial<EmploymentHistory>) =>
@@ -204,7 +208,10 @@ export const employeesApi = {
 
   // Disciplinary
   listDisciplinary: (employeeId: number | string) =>
-    apiClient.get<EmployeeDisciplinary[]>(`${EMP}/employee-disciplinary/`, { emp_id: employeeId }),
+    apiClient.get<EmployeeDisciplinary[] | Paginated<EmployeeDisciplinary>>(
+      `${EMP}/employee-disciplinary/`,
+      { emp_id: employeeId },
+    ),
   addDisciplinary: (employeeId: number | string, data: Partial<EmployeeDisciplinary>) =>
     apiClient.post<EmployeeDisciplinary>(`${EMP}/employee-disciplinary/`, { ...data, employee: employeeId }),
   updateDisciplinary: (id: string | number, data: Partial<EmployeeDisciplinary>) =>

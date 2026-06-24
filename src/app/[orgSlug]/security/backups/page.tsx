@@ -17,6 +17,7 @@ import {
   useUpdateBackupSettings,
 } from "@/hooks/use-backups";
 import { type ErpBackup } from "@/lib/api/backups";
+import { normalizeList } from "@/lib/api/drf";
 import { formatDateTime } from "@/lib/format";
 
 import { UsersTabs } from "../../users/_tabs";
@@ -142,7 +143,7 @@ export default function BackupsPage() {
   const create = useCreateBackup();
   const del = useDeleteBackup();
   const download = useDownloadBackup();
-  const backups = data?.backups ?? [];
+  const backups = normalizeList<ErpBackup>(data).results;
   const [toDelete, setToDelete] = useState<ErpBackup | null>(null);
 
   const columns: Column<ErpBackup>[] = [

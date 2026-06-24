@@ -7,7 +7,7 @@ import { StatusBadge } from "@/components/hrm/status-badge";
 import { PermissionGate } from "@/components/auth/permission-gate";
 import { Button, Card } from "@/components/ui/base";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
-import { DataTable, type Column } from "@/components/ui/data-table";
+import { DataTable, Pagination, type Column } from "@/components/ui/data-table";
 import { Dialog } from "@/components/ui/dialog";
 import { Field, Input, Textarea } from "@/components/ui/form";
 import { PageHeader } from "@/components/ui/page-header";
@@ -21,18 +21,21 @@ import {
 } from "@/hooks/use-appraisals";
 import { normalizeList } from "@/lib/api/drf";
 import { type AppraisalCycle } from "@/lib/api/appraisals";
+import { PAGE_SIZE } from "@/lib/hrm";
+import { endNotBeforeStart } from "@/lib/validation";
 import { formatDate } from "@/lib/utils";
 
 const empty = { name: "", description: "", start_date: "", end_date: "" };
 
 export default function AppraisalCyclesPage() {
-  const { data, isLoading, error, refetch } = useAppraisalCycles();
+  const [page, setPage] = useState(1);
+  const { data, isLoading, error, refetch } = useAppraisalCycles({ page, page_size: PAGE_SIZE });
   const save = useSaveAppraisalCycle();
   const del = useDeleteAppraisalCycle();
   const activate = useActivateCycle();
   const close = useCloseCycle();
   const reopen = useReopenCycle();
-  const rows = normalizeList<AppraisalCycle>(data).results;
+  const { results: rows, count } = normalizeList<AppraisalCycle>(data);
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<AppraisalCycle | null>(null);
@@ -49,8 +52,10 @@ export default function AppraisalCyclesPage() {
     setDialogOpen(true);
   };
 
+  const dateRangeValid = endNotBeforeStart<typeof form>("start_date", "end_date")(form);
+
   const submit = () => {
-    if (!form.name.trim()) return;
+    if (!form.name.trim() || !dateRangeValid) return;
     save.mutate({ id: editing?.id, data: form }, { onSuccess: () => setDialogOpen(false) });
   };
 
@@ -125,6 +130,11 @@ export default function AppraisalCyclesPage() {
           emptyTitle="No cycles"
           emptyDescription="Create an appraisal cycle to schedule reviews."
         />
+        {count > 0 && (
+          <div className="border-t border-border p-3">
+            <Pagination page={page} pageSize={PAGE_SIZE} total={count} onPageChange={setPage} />
+          </div>
+        )}
       </Card>
 
       <Dialog
@@ -136,7 +146,7 @@ export default function AppraisalCyclesPage() {
             <Button variant="outline" size="sm" onClick={() => setDialogOpen(false)} disabled={save.isPending}>
               Cancel
             </Button>
-            <Button size="sm" onClick={submit} disabled={save.isPending}>
+            <Button size="sm" onClick={submit} disabled={save.isPending || !form.name.trim() || !dateRangeValid}>
               {save.isPending ? "Saving…" : "Save"}
             </Button>
           </>
@@ -149,7 +159,7 @@ export default function AppraisalCyclesPage() {
           <Field label="Start Date" htmlFor="cy-start">
             <Input id="cy-start" type="date" value={form.start_date} onChange={(e) => setForm((f) => ({ ...f, start_date: e.target.value }))} />
           </Field>
-          <Field label="End Date" htmlFor="cy-end">
+          <Field label="End Date" htmlFor="cy-end" error={!dateRangeValid ? "End date must not be before start date" : undefined}>
             <Input id="cy-end" type="date" value={form.end_date} onChange={(e) => setForm((f) => ({ ...f, end_date: e.target.value }))} />
           </Field>
           <Field label="Description" htmlFor="cy-desc" className="sm:col-span-2">

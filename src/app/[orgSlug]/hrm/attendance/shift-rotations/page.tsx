@@ -1,5 +1,7 @@
 "use client";
 
+import { useState } from "react";
+
 import { CrudManager, type CrudFieldDef } from "@/components/crud/crud-manager";
 import { Badge } from "@/components/ui/base";
 import { type Column } from "@/components/ui/data-table";
@@ -11,6 +13,7 @@ import {
 } from "@/hooks/use-attendance";
 import { normalizeList } from "@/lib/api/drf";
 import { type ShiftRotation } from "@/lib/api/attendance";
+import { PAGE_SIZE } from "@/lib/hrm";
 
 const fields: CrudFieldDef[] = [
   { name: "title", label: "Title", required: true },
@@ -20,10 +23,11 @@ const fields: CrudFieldDef[] = [
 ];
 
 export default function ShiftRotationsPage() {
-  const { data, isLoading, error, refetch } = useShiftRotations();
+  const [page, setPage] = useState(1);
+  const { data, isLoading, error, refetch } = useShiftRotations({ page, page_size: PAGE_SIZE });
   const save = useSaveShiftRotation();
   const del = useDeleteShiftRotation();
-  const rows = normalizeList<ShiftRotation>(data).results;
+  const { results: rows, count } = normalizeList<ShiftRotation>(data);
 
   const columns: Column<ShiftRotation>[] = [
     { header: "Title", cell: (r) => <span className="font-medium">{r.title || r.name || "—"}</span> },
@@ -64,6 +68,7 @@ export default function ShiftRotationsPage() {
         onDelete={(id, done) => del.mutate(id, { onSuccess: done })}
         saving={save.isPending}
         deleting={del.isPending}
+        pagination={{ page, pageSize: PAGE_SIZE, total: count, onPageChange: setPage }}
       />
     </div>
   );

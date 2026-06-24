@@ -1,11 +1,14 @@
 "use client";
 
+import { useState } from "react";
+
 import { CrudManager, type CrudFieldDef } from "@/components/crud/crud-manager";
 import { type Column } from "@/components/ui/data-table";
 import { PageHeader } from "@/components/ui/page-header";
 import { useDeleteOffDay, useOffDays, useSaveOffDay } from "@/hooks/use-attendance";
 import { normalizeList } from "@/lib/api/drf";
 import { type OffDay } from "@/lib/api/attendance";
+import { PAGE_SIZE } from "@/lib/hrm";
 import { formatDate } from "@/lib/utils";
 
 const fields: CrudFieldDef[] = [
@@ -16,10 +19,11 @@ const fields: CrudFieldDef[] = [
 ];
 
 export default function OffDaysPage() {
-  const { data, isLoading, error, refetch } = useOffDays();
+  const [page, setPage] = useState(1);
+  const { data, isLoading, error, refetch } = useOffDays({ page, page_size: PAGE_SIZE });
   const save = useSaveOffDay();
   const del = useDeleteOffDay();
-  const rows = normalizeList<OffDay>(data).results;
+  const { results: rows, count } = normalizeList<OffDay>(data);
 
   const columns: Column<OffDay>[] = [
     { header: "Name", cell: (o) => <span className="font-medium">{o.name || "—"}</span> },
@@ -53,6 +57,7 @@ export default function OffDaysPage() {
         onDelete={(id, done) => del.mutate(id, { onSuccess: done })}
         saving={save.isPending}
         deleting={del.isPending}
+        pagination={{ page, pageSize: PAGE_SIZE, total: count, onPageChange: setPage }}
       />
     </div>
   );

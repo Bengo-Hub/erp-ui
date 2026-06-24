@@ -1,7 +1,9 @@
 "use client";
 
+import { zodResolver } from "@hookform/resolvers/zod";
 import { useEffect } from "react";
 import { useForm } from "react-hook-form";
+import { z } from "zod";
 
 import { Button } from "@/components/ui/base";
 import { Dialog } from "@/components/ui/dialog";
@@ -11,24 +13,34 @@ import { useDepartments, useJobGroups, useJobTitles } from "@/hooks/use-hrm-sett
 import { normalizeList } from "@/lib/api/drf";
 import { type Employee } from "@/lib/api/employees";
 import { EMPLOYMENT_TYPES } from "@/lib/hrm";
+import {
+  optionalEmail,
+  optionalKraPin,
+  optionalNationalId,
+  optionalPastOrTodayDate,
+  optionalPhone,
+  optionalPositiveMoney,
+} from "@/lib/validation";
 
-type FormValues = {
-  first_name: string;
-  middle_name?: string;
-  last_name: string;
-  email?: string;
-  phone_number?: string;
-  national_id?: string;
-  kra_pin?: string;
-  gender?: string;
-  date_of_birth?: string;
-  employment_type?: string;
-  date_joined?: string;
-  job_title?: string;
-  department?: string;
-  job_group?: string;
-  basic_salary?: string;
-};
+const employeeSchema = z.object({
+  first_name: z.string().trim().min(1, "First name is required"),
+  middle_name: z.string().trim().optional(),
+  last_name: z.string().trim().min(1, "Last name is required"),
+  email: optionalEmail,
+  phone_number: optionalPhone,
+  national_id: optionalNationalId,
+  kra_pin: optionalKraPin,
+  gender: z.string().optional(),
+  date_of_birth: optionalPastOrTodayDate,
+  employment_type: z.string().optional(),
+  date_joined: z.string().trim().optional(),
+  job_title: z.string().optional(),
+  department: z.string().optional(),
+  job_group: z.string().optional(),
+  basic_salary: optionalPositiveMoney,
+});
+
+type FormValues = z.infer<typeof employeeSchema>;
 
 function toFormValues(e?: Employee | null): FormValues {
   if (!e) return { first_name: "", last_name: "" };
@@ -78,7 +90,9 @@ export function EmployeeFormDialog({
   const jobTitles = normalizeList(titleData).results;
   const jobGroups = normalizeList(groupData).results;
 
-  const { register, handleSubmit, reset, formState: { errors } } = useForm<FormValues>();
+  const { register, handleSubmit, reset, formState: { errors } } = useForm<FormValues>({
+    resolver: zodResolver(employeeSchema),
+  });
   useEffect(() => {
     if (open) reset(toFormValues(employee));
   }, [open, employee, reset]);
@@ -125,14 +139,14 @@ export function EmployeeFormDialog({
           <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Personal</h3>
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             <Field label="First Name" required error={errors.first_name?.message}>
-              <Input {...register("first_name", { required: "First name is required" })} />
+              <Input {...register("first_name")} />
             </Field>
             <Field label="Middle Name"><Input {...register("middle_name")} /></Field>
             <Field label="Last Name" required error={errors.last_name?.message}>
-              <Input {...register("last_name", { required: "Last name is required" })} />
+              <Input {...register("last_name")} />
             </Field>
-            <Field label="Email"><Input type="email" {...register("email")} /></Field>
-            <Field label="Phone Number"><Input {...register("phone_number")} /></Field>
+            <Field label="Email" error={errors.email?.message}><Input type="email" {...register("email")} /></Field>
+            <Field label="Phone Number" error={errors.phone_number?.message}><Input {...register("phone_number")} /></Field>
             <Field label="Gender">
               <Select {...register("gender")}>
                 <option value="">Select…</option>
@@ -141,9 +155,9 @@ export function EmployeeFormDialog({
                 <option value="other">Other</option>
               </Select>
             </Field>
-            <Field label="Date of Birth"><Input type="date" {...register("date_of_birth")} /></Field>
-            <Field label="National ID"><Input {...register("national_id")} /></Field>
-            <Field label="KRA PIN"><Input {...register("kra_pin")} /></Field>
+            <Field label="Date of Birth" error={errors.date_of_birth?.message}><Input type="date" {...register("date_of_birth")} /></Field>
+            <Field label="National ID" error={errors.national_id?.message}><Input {...register("national_id")} /></Field>
+            <Field label="KRA PIN" error={errors.kra_pin?.message}><Input {...register("kra_pin")} /></Field>
           </div>
         </div>
 
@@ -175,7 +189,7 @@ export function EmployeeFormDialog({
               </Select>
             </Field>
             <Field label="Date Joined"><Input type="date" {...register("date_joined")} /></Field>
-            <Field label="Basic Salary" help="Refine in the Salary tab later.">
+            <Field label="Basic Salary" help="Refine in the Salary tab later." error={errors.basic_salary?.message}>
               <Input type="number" step="0.01" {...register("basic_salary")} />
             </Field>
           </div>
