@@ -106,6 +106,8 @@ export interface EmployeeSalaryDetail {
   pay_frequency?: string;
   payment_method?: string;
   effective_date?: string;
+  /** PAYE category: primary | secondary | none. Drives which PAYE table the engine applies. */
+  income_tax?: string;
   [key: string]: unknown;
 }
 
@@ -239,6 +241,8 @@ export const employeesApi = {
       monthly_salary:
         data.basic_salary != null ? String(data.basic_salary) : undefined,
       pay_mode: data.payment_method,
+      // PAYE category: primary (full bands + relief) | secondary (flat top-rate, no relief) | none.
+      income_tax: data.income_tax,
       currency: data.currency,
     }),
 
