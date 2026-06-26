@@ -127,6 +127,14 @@ export function ReportRunner({ config }: { config: ReportConfig }) {
               >
                 <FileSpreadsheet className="mr-1.5 size-4" /> Excel
               </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => exporter.mutate("csv")}
+                disabled={exporter.isPending}
+              >
+                <FileDown className="mr-1.5 size-4" /> CSV
+              </Button>
             </div>
           ) : undefined
         }

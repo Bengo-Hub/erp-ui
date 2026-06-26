@@ -49,7 +49,9 @@ export interface ReportParams {
   [key: string]: unknown;
 }
 
-export type ReportFormat = "pdf" | "excel";
+export type ReportFormat = "pdf" | "excel" | "csv";
+
+const EXT: Record<ReportFormat, string> = { pdf: "pdf", excel: "xlsx", csv: "csv" };
 
 export const reportsApi = {
   /** Fetch report rows for `path` (e.g. `p9-tax`) with the given params. */
@@ -64,7 +66,7 @@ export const reportsApi = {
   export: (exportType: string, format: ReportFormat, params?: ReportParams) =>
     apiClient.getBlob(
       `${BASE}/${exportType}/export`,
-      `${exportType}_report.${format === "excel" ? "xlsx" : "pdf"}`,
+      `${exportType}_report.${EXT[format]}`,
       { format, ...params },
     ),
 };
