@@ -25,7 +25,7 @@ interface CrudApi<T> {
   remove: (id: number | string) => Promise<void>;
 }
 
-function makeCrudHooks<T extends { id: number }>(key: string, api: CrudApi<T>, label: string) {
+function makeCrudHooks<T extends { id: number | string }>(key: string, api: CrudApi<T>, label: string) {
   function useList(params?: ListParams) {
     return useQuery({ queryKey: [key, "list", params ?? {}], queryFn: () => api.list(params) });
   }
@@ -79,6 +79,30 @@ const formulas = makeCrudHooks<Formula>("pay-formulas", formulasApi, "Formula");
 export const useFormulas = formulas.useList;
 export const useSaveFormula = formulas.useSave;
 export const useDeleteFormula = formulas.useRemove;
+
+/** Full formula detail (bands + split) for the band/tier editor. */
+export function useFormula(id: string | null) {
+  return useQuery({
+    queryKey: ["pay-formula", id],
+    queryFn: () => formulasApi.get(id!),
+    enabled: !!id && id !== "new",
+  });
+}
+
+/** Create/update a formula WITH its bands + split (editor save). */
+export function useSaveFormulaDetail() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, data }: { id?: string; data: Partial<Formula> }) =>
+      id && id !== "new" ? formulasApi.update(id, data) : formulasApi.create(data),
+    onSuccess: (_r, v) => {
+      qc.invalidateQueries({ queryKey: ["pay-formulas"] });
+      qc.invalidateQueries({ queryKey: ["pay-formula", v.id] });
+      toast.success(v.id && v.id !== "new" ? "Formula updated" : "Formula created");
+    },
+    onError: (e) => toast.error(extractApiError(e, "Failed to save formula")),
+  });
+}
 
 // ---- Tax relief management (formulas/relief-status + formula-management) ----
 export function useReliefStatus(reliefType: string | null) {

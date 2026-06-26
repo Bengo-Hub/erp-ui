@@ -43,14 +43,34 @@ export interface Loan {
   [key: string]: unknown;
 }
 
+/** One band/bracket of a formula (percentages are stored as e.g. "30.00" = 30%). */
+export interface FormulaItem {
+  id?: string;
+  amount_from?: string;
+  amount_to?: string; // "0" = open-ended top band
+  deduct_amount?: string;
+  deduct_percentage?: string;
+}
+
 export interface Formula {
-  id: number;
+  id: number | string;
   name: string;
+  title?: string;
   type?: string;
   category?: string;
+  unit?: string;
   is_current?: boolean;
+  progressive?: boolean;
   effective_date?: string;
+  effective_from?: string;
+  effective_to?: string;
+  personal_relief?: string;
+  regulatory_source?: string;
   description?: string;
+  // Editor (GET /formulas/{id}) detail: bands + employee/employer split.
+  items?: FormulaItem[];
+  employee_percentage?: string;
+  employer_percentage?: string;
   [key: string]: unknown;
 }
 
