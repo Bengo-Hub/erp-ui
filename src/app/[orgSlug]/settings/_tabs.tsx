@@ -10,6 +10,7 @@ const TABS = [
   { key: "branding", label: "Branding", path: "/settings/branding" },
   { key: "hrm", label: "HR Settings", path: "/settings/hrm/departments" },
   { key: "payroll", label: "Payroll Settings", path: "/settings/payroll/earnings" },
+  { key: "approvals", label: "Approvals", path: "/settings/approvals" },
 ];
 
 /** Cross-section settings nav. */
