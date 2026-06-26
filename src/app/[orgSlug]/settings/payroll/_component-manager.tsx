@@ -32,6 +32,7 @@ interface ComponentHooks {
 function fieldsFor(category: string): CrudFieldDef[] {
   const isDeduction = category === "Deductions";
   const isEarning = category === "Earnings";
+  const isBenefit = category === "Benefits";
   return [
     { name: "name", label: "Title", required: true },
     { name: "amount", label: isDeduction ? "Employee Fixed Amount" : "Fixed Amount", type: "number", step: "0.01" },
@@ -40,6 +41,10 @@ function fieldsFor(category: string): CrudFieldDef[] {
       ? ([
           { name: "employer_amount", label: "Employer Fixed Amount", type: "number", step: "0.01" },
           { name: "employer_percentage", label: "or Employer % of Basic", type: "number", step: "0.01" },
+          { name: "mode", label: "Calculation Mode", type: "select", options: [
+              { value: "", label: "—" }, { value: "fixed", label: "Fixed amount" },
+              { value: "percent_of_basic", label: "% of Basic" }, { value: "percent_of_gross", label: "% of Gross" },
+            ] },
           { name: "registration_no", label: "Registration No" },
           { name: "checkoff", label: "Checkoff (deduct on employee's behalf)", type: "switch" },
         ] as CrudFieldDef[])
@@ -54,8 +59,13 @@ function fieldsFor(category: string): CrudFieldDef[] {
           { name: "quantity", label: "Quantity", type: "number", step: "0.01" },
         ] as CrudFieldDef[])
       : []),
+    ...(isBenefit
+      ? ([{ name: "non_cash", label: "Non-cash (in-kind; taxed, not paid in cash)", type: "switch" }] as CrudFieldDef[])
+      : []),
     { name: "is_taxable", label: "Taxable", type: "switch" },
     { name: "is_active", label: "Active", type: "switch" },
+    { name: "effective_from", label: "Effective From", type: "date" },
+    { name: "effective_to", label: "Effective To", type: "date" },
     { name: "description", label: "Description", type: "textarea", span2: true },
   ];
 }
@@ -153,11 +163,15 @@ export function PayComponentManager({
           employer_percentage: c?.employer_percentage ?? "",
           registration_no: c?.registration_no ?? "",
           checkoff: c?.checkoff ?? true,
+          mode: c?.mode ?? "",
+          non_cash: c?.non_cash ?? false,
           unit_type: c?.unit_type ?? "",
           unit_rate: c?.unit_rate ?? "",
           quantity: c?.quantity ?? "",
           is_taxable: c?.is_taxable ?? false,
           is_active: c?.is_active ?? true,
+          effective_from: c?.effective_from ?? "",
+          effective_to: c?.effective_to ?? "",
           description: c?.description ?? "",
         })}
         onSave={({ id, data }, done) =>

@@ -24,7 +24,10 @@ export interface PayrollComponent {
   quantity?: string | number;
   registration_no?: string;
   checkoff?: boolean;
+  /** fixed | percent_of_basic | percent_of_gross — how the amount is computed. */
   mode?: string;
+  /** Non-cash benefit (taxed but not paid in cash; e.g. company car/housing). */
+  non_cash?: boolean;
   effective_from?: string;
   effective_to?: string;
   is_taxable?: boolean;
