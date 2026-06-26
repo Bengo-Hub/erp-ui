@@ -11,6 +11,7 @@ import { DataTable, type Column } from "@/components/ui/data-table";
 import { Dialog } from "@/components/ui/dialog";
 import { Field, Select } from "@/components/ui/form";
 import { PageHeader } from "@/components/ui/page-header";
+import { IconButton } from "@/components/ui/tooltip";
 import { useEmployeeOptions } from "@/hooks/use-employee-options";
 import {
   useCancelEnrollment,
@@ -55,12 +56,12 @@ export default function TrainingEnrollmentsPage() {
         active(e) ? (
           <PermissionGate permission="change_trainingenrollment">
             <div className="flex justify-end gap-1">
-              <Button variant="ghost" size="icon" aria-label="Complete" onClick={() => complete.mutate(e.id)}>
+              <IconButton label="Complete enrollment" onClick={() => complete.mutate(e.id)}>
                 <CheckCircle2 className="size-4 text-green-600" />
-              </Button>
-              <Button variant="ghost" size="icon" aria-label="Cancel" onClick={() => setToCancel(e)}>
+              </IconButton>
+              <IconButton label="Cancel enrollment" onClick={() => setToCancel(e)}>
                 <Ban className="size-4 text-destructive" />
-              </Button>
+              </IconButton>
             </div>
           </PermissionGate>
         ) : null,

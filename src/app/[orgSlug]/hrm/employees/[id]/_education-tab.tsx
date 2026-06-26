@@ -10,6 +10,7 @@ import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { DataTable, type Column } from "@/components/ui/data-table";
 import { Dialog } from "@/components/ui/dialog";
 import { Field, Input } from "@/components/ui/form";
+import { IconButton } from "@/components/ui/tooltip";
 import { useDeleteEducation, useEmployeeEducation, useSaveEducation } from "@/hooks/use-employees";
 import { normalizeList } from "@/lib/api/drf";
 import { type EmployeeEducation } from "@/lib/api/employees";
@@ -56,14 +57,14 @@ export function EducationTab({ employeeId }: { employeeId: number | string }) {
       cell: (e) => (
         <div className="flex justify-end gap-1">
           <PermissionGate permission="change_employee">
-            <Button variant="ghost" size="icon" onClick={() => openEdit(e)} aria-label="Edit education" title="Edit education">
+            <IconButton label="Edit education" onClick={() => openEdit(e)}>
               <Pencil className="size-4" />
-            </Button>
+            </IconButton>
           </PermissionGate>
           <PermissionGate permission="delete_employee">
-            <Button variant="ghost" size="icon" onClick={() => setToDelete(e)} aria-label="Delete education" title="Delete education">
+            <IconButton label="Delete education" onClick={() => setToDelete(e)}>
               <Trash2 className="size-4 text-destructive" />
-            </Button>
+            </IconButton>
           </PermissionGate>
         </div>
       ),

@@ -9,6 +9,7 @@ import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { DataTable, type Column } from "@/components/ui/data-table";
 import { Field, Input, Select, Switch } from "@/components/ui/form";
 import { PageHeader } from "@/components/ui/page-header";
+import { IconButton } from "@/components/ui/tooltip";
 import {
   useBackupSettings,
   useCreateBackup,
@@ -162,20 +163,17 @@ export default function BackupsPage() {
       className: "text-right",
       cell: (b) => (
         <div className="flex justify-end gap-1">
-          <Button
-            variant="ghost"
-            size="icon"
-            aria-label="Download backup"
-            title="Download backup"
+          <IconButton
+            label="Download backup"
             disabled={download.isPending}
             onClick={() => download.mutate(b.name)}
           >
             <Download className="size-4" />
-          </Button>
+          </IconButton>
           <PermissionGate permission="backups.manage">
-            <Button variant="ghost" size="icon" aria-label="Delete backup" title="Delete backup" onClick={() => setToDelete(b)}>
+            <IconButton label="Delete backup" onClick={() => setToDelete(b)}>
               <Trash2 className="size-4 text-destructive" />
-            </Button>
+            </IconButton>
           </PermissionGate>
         </div>
       ),

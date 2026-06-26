@@ -11,6 +11,7 @@ import { Dialog } from "@/components/ui/dialog";
 import { Field, Input, Select, Textarea } from "@/components/ui/form";
 import { PageHeader } from "@/components/ui/page-header";
 import { Tabs } from "@/components/ui/tabs";
+import { IconButton } from "@/components/ui/tooltip";
 import { useEmployeeOptions } from "@/hooks/use-employee-options";
 import {
   useDeleteGoal,
@@ -107,17 +108,15 @@ export default function GoalsPage() {
       cell: (g) => (
         <div className="flex justify-end gap-1">
           <PermissionGate permission="change_goal">
-            <Button
-              variant="ghost"
-              size="icon"
-              aria-label="Update progress"
+            <IconButton
+              label="Update progress"
               onClick={() => {
                 setProgressGoal(g);
                 setProgressVal(String(g.progress ?? ""));
               }}
             >
               <TrendingUp className="size-4 text-primary" />
-            </Button>
+            </IconButton>
             <Button variant="ghost" size="sm" onClick={() => open(g)}>
               Edit
             </Button>

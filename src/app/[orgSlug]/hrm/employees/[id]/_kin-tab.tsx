@@ -10,6 +10,7 @@ import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { DataTable, type Column } from "@/components/ui/data-table";
 import { Dialog } from "@/components/ui/dialog";
 import { Field, Input } from "@/components/ui/form";
+import { IconButton } from "@/components/ui/tooltip";
 import {
   useDeleteNextOfKin,
   useEmployeeNextOfKin,
@@ -63,14 +64,14 @@ export function KinTab({ employeeId }: { employeeId: number | string }) {
       cell: (k) => (
         <div className="flex justify-end gap-1">
           <PermissionGate permission="change_employee">
-            <Button variant="ghost" size="icon" onClick={() => openEdit(k)} aria-label="Edit">
+            <IconButton label="Edit next of kin" onClick={() => openEdit(k)}>
               <Pencil className="size-4" />
-            </Button>
+            </IconButton>
           </PermissionGate>
           <PermissionGate permission="delete_employee">
-            <Button variant="ghost" size="icon" onClick={() => setToDelete(k)} aria-label="Delete">
+            <IconButton label="Delete next of kin" onClick={() => setToDelete(k)}>
               <Trash2 className="size-4 text-destructive" />
-            </Button>
+            </IconButton>
           </PermissionGate>
         </div>
       ),
