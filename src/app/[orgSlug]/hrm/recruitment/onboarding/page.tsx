@@ -5,17 +5,19 @@ import { useMemo, useState } from "react";
 
 import { PermissionGate } from "@/components/auth/permission-gate";
 import { StatusBadge } from "@/components/hrm/status-badge";
-import { Button, Card } from "@/components/ui/base";
+import { Badge, Button, Card } from "@/components/ui/base";
 import { DataTable, Pagination, type Column } from "@/components/ui/data-table";
 import { Dialog } from "@/components/ui/dialog";
-import { Field, Select, Switch } from "@/components/ui/form";
+import { Field, Input, Select, Switch } from "@/components/ui/form";
 import { PageHeader } from "@/components/ui/page-header";
 import { useEmployeeOptions } from "@/hooks/use-employee-options";
 import {
+  useAddOnboardingTask,
   useCompleteOnboardingTask,
   useOnboarding,
   useOnboardingTasks,
   useStartOnboarding,
+  useUpdateOnboardingTask,
 } from "@/hooks/use-recruitment";
 import { normalizeList } from "@/lib/api/drf";
 import { type Onboarding, type OnboardingTask } from "@/lib/api/recruitment";
@@ -25,11 +27,18 @@ import { formatDate } from "@/lib/utils";
 const TASK_CATEGORIES = ["IT", "HR", "Training", "Other"] as const;
 
 /** Checklist drawer for a single onboarding — tasks grouped by category, toggle to complete. */
+const todayISO = () => new Date().toISOString().slice(0, 10);
+
 function ChecklistDialog({ onboarding, onClose }: { onboarding: Onboarding; onClose: () => void }) {
   const { data, isLoading } = useOnboardingTasks(onboarding.id);
   const complete = useCompleteOnboardingTask();
+  const updateTask = useUpdateOnboardingTask();
+  const addTask = useAddOnboardingTask();
   const tasks = normalizeList<OnboardingTask>(data).results;
   const done = tasks.filter((t) => t.is_done).length;
+
+  const [newTitle, setNewTitle] = useState("");
+  const [newCat, setNewCat] = useState<string>("Other");
 
   const grouped = useMemo(() => {
     const by: Record<string, OnboardingTask[]> = {};
@@ -39,6 +48,20 @@ function ChecklistDialog({ onboarding, onClose }: { onboarding: Onboarding; onCl
     }
     return by;
   }, [tasks]);
+
+  const today = todayISO();
+  const isOverdue = (t: OnboardingTask) => {
+    const due = t.due_date as string | undefined;
+    return !!due && !t.is_done && due < today;
+  };
+
+  const submitAdd = () => {
+    if (!newTitle.trim()) return;
+    addTask.mutate(
+      { onboardingId: onboarding.id, data: { title: newTitle.trim(), category: newCat } },
+      { onSuccess: () => setNewTitle("") },
+    );
+  };
 
   return (
     <Dialog
@@ -55,8 +78,6 @@ function ChecklistDialog({ onboarding, onClose }: { onboarding: Onboarding; onCl
     >
       {isLoading ? (
         <p className="py-8 text-center text-sm text-muted-foreground">Loading checklist…</p>
-      ) : tasks.length === 0 ? (
-        <p className="py-8 text-center text-sm text-muted-foreground">No tasks on this checklist.</p>
       ) : (
         <div className="space-y-4">
           {TASK_CATEGORIES.filter((c) => grouped[c]?.length).map((cat) => (
@@ -66,24 +87,66 @@ function ChecklistDialog({ onboarding, onClose }: { onboarding: Onboarding; onCl
                 {grouped[cat].map((t) => (
                   <div
                     key={t.id}
-                    className="flex items-center justify-between rounded-lg border border-border px-3 py-2"
+                    className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-border px-3 py-2"
                   >
-                    <span className={t.is_done ? "text-sm text-muted-foreground line-through" : "text-sm"}>
-                      {t.title}
-                    </span>
-                    <PermissionGate permission="change_onboarding" fallback={<StatusBadge status={t.is_done ? "completed" : "pending"} />}>
-                      <Switch
-                        checked={!!t.is_done}
-                        disabled={complete.isPending}
-                        onChange={(checked) => complete.mutate({ taskId: t.id, done: checked })}
-                        id={`task-${t.id}`}
-                      />
-                    </PermissionGate>
+                    <div className="flex min-w-0 items-center gap-2">
+                      <span className={t.is_done ? "text-sm text-muted-foreground line-through" : "text-sm"}>
+                        {t.title}
+                      </span>
+                      {isOverdue(t) && <Badge variant="error">Overdue</Badge>}
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <PermissionGate permission="change_onboarding">
+                        <Input
+                          type="date"
+                          aria-label="Due date"
+                          className="h-8 w-36 text-xs"
+                          defaultValue={(t.due_date as string) ?? ""}
+                          disabled={updateTask.isPending}
+                          onChange={(e) =>
+                            updateTask.mutate({ taskId: t.id, data: { due_date: e.target.value } })
+                          }
+                        />
+                      </PermissionGate>
+                      <PermissionGate permission="change_onboarding" fallback={<StatusBadge status={t.is_done ? "completed" : "pending"} />}>
+                        <Switch
+                          checked={!!t.is_done}
+                          disabled={complete.isPending}
+                          onChange={(checked) => complete.mutate({ taskId: t.id, done: checked })}
+                          id={`task-${t.id}`}
+                        />
+                      </PermissionGate>
+                    </div>
                   </div>
                 ))}
               </div>
             </div>
           ))}
+
+          {tasks.length === 0 && (
+            <p className="py-4 text-center text-sm text-muted-foreground">No tasks yet — add one below.</p>
+          )}
+
+          <PermissionGate permission="change_onboarding">
+            <div className="flex items-end gap-2 border-t border-border pt-3">
+              <Field label="Add custom task" className="flex-1">
+                <Input
+                  value={newTitle}
+                  onChange={(e) => setNewTitle(e.target.value)}
+                  placeholder="e.g. Issue access badge"
+                  onKeyDown={(e) => e.key === "Enter" && submitAdd()}
+                />
+              </Field>
+              <Select value={newCat} onChange={(e) => setNewCat(e.target.value)} className="h-10 w-32">
+                {TASK_CATEGORIES.map((c) => (
+                  <option key={c} value={c}>{c}</option>
+                ))}
+              </Select>
+              <Button size="sm" onClick={submitAdd} disabled={!newTitle.trim() || addTask.isPending}>
+                Add
+              </Button>
+            </div>
+          </PermissionGate>
         </div>
       )}
     </Dialog>
