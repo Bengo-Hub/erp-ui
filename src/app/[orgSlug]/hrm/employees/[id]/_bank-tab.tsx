@@ -10,6 +10,7 @@ import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { DataTable, type Column } from "@/components/ui/data-table";
 import { Dialog } from "@/components/ui/dialog";
 import { Field, Input, Switch } from "@/components/ui/form";
+import { BankVerifyFields } from "@/components/hrm/BankVerifyFields";
 import {
   useDeleteBankAccount,
   useEmployeeBankAccounts,
@@ -31,12 +32,14 @@ export function BankTab({ employeeId }: { employeeId: number | string }) {
   const [isPrimary, setIsPrimary] = useState(false);
   const [toDelete, setToDelete] = useState<EmployeeBankAccount | null>(null);
 
-  const { register, handleSubmit, reset } = useForm<FormValues>();
+  const { register, handleSubmit, reset, watch, setValue } = useForm<FormValues>();
+  const [bankCode, setBankCode] = useState('');
 
   const openCreate = () => {
     setEditing(null);
     setIsPrimary(false);
     reset({ bank_name: "", branch_name: "", account_number: "", account_name: "" });
+    setBankCode("");
     setDialogOpen(true);
   };
   const openEdit = (a: EmployeeBankAccount) => {
@@ -48,6 +51,7 @@ export function BankTab({ employeeId }: { employeeId: number | string }) {
       account_number: a.account_number,
       account_name: a.account_name,
     });
+    setBankCode("");
     setDialogOpen(true);
   };
 
@@ -130,17 +134,23 @@ export function BankTab({ employeeId }: { employeeId: number | string }) {
         }
       >
         <div className="grid gap-4 sm:grid-cols-2">
-          <Field label="Bank Name">
-            <Input {...register("bank_name")} />
-          </Field>
+          {/* Verify the account against Paystack to auto-fill the account holder name. */}
+          <div className="sm:col-span-2 space-y-4">
+            <BankVerifyFields
+              bankName={watch("bank_name") ?? ""}
+              bankCode={bankCode}
+              accountNumber={watch("account_number") ?? ""}
+              accountName={watch("account_name") ?? ""}
+              onChange={(patch) => {
+                if (patch.bank_code !== undefined) setBankCode(patch.bank_code);
+                if (patch.bank_name !== undefined) setValue("bank_name", patch.bank_name);
+                if (patch.account_number !== undefined) setValue("account_number", patch.account_number);
+                if (patch.account_name !== undefined) setValue("account_name", patch.account_name);
+              }}
+            />
+          </div>
           <Field label="Branch">
             <Input {...register("branch_name")} />
-          </Field>
-          <Field label="Account Number">
-            <Input {...register("account_number")} />
-          </Field>
-          <Field label="Account Name">
-            <Input {...register("account_name")} />
           </Field>
           <div className="flex items-center gap-2 sm:col-span-2">
             <Switch checked={isPrimary} onChange={setIsPrimary} id="bank-primary" />
