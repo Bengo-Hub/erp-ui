@@ -1,6 +1,8 @@
 "use client";
 
 import { useState } from "react";
+import { useParams, useRouter } from "next/navigation";
+import { SlidersHorizontal } from "lucide-react";
 
 import { PermissionGate } from "@/components/auth/permission-gate";
 import { CrudManager, type CrudFieldDef } from "@/components/crud/crud-manager";
@@ -105,10 +107,14 @@ const fields: CrudFieldDef[] = [
 
 export default function FormulasPage() {
   const { tabs, active, onChange } = usePayrollSettingsTabs("formulas");
+  const params = useParams<{ orgSlug: string }>();
+  const router = useRouter();
   const { data, isLoading, error, refetch } = useFormulas();
   const save = useSaveFormula();
   const del = useDeleteFormula();
   const rows = normalizeList<Formula>(data).results;
+
+  const editHref = (id: string | number) => `/${params.orgSlug}/settings/payroll/formulas/${id}`;
 
   const columns: Column<Formula>[] = [
     { header: "Name", cell: (f) => <span className="font-medium">{f.name}</span> },
@@ -119,12 +125,27 @@ export default function FormulasPage() {
       cell: (f) =>
         f.is_current ? <Badge variant="success">Current</Badge> : <Badge variant="secondary">Historical</Badge>,
     },
+    {
+      header: "Rates",
+      cell: (f) => (
+        <Button size="sm" variant="outline" onClick={() => router.push(editHref(f.id))}>
+          <SlidersHorizontal className="mr-1 size-3.5" /> Edit bands
+        </Button>
+      ),
+    },
   ];
 
   return (
     <div className="space-y-4 p-4 sm:p-6">
       <PageHeader title="Payroll Settings" subtitle="Components, loans, formulas & statutory rates" />
       <Tabs tabs={tabs} active={active} onChange={onChange} />
+      <div className="flex justify-end">
+        <PermissionGate permission={["hrm.payroll.manage", "add_payrollcomponents"]}>
+          <Button size="sm" onClick={() => router.push(editHref("new"))}>
+            <SlidersHorizontal className="mr-1.5 size-4" /> New formula (bands editor)
+          </Button>
+        </PermissionGate>
+      </div>
       <TaxReliefCard />
       <CrudManager
         rows={rows}
