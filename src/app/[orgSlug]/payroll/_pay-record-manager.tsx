@@ -3,6 +3,7 @@
 import { CrudManager, type CrudFieldDef } from "@/components/crud/crud-manager";
 import { type Column } from "@/components/ui/data-table";
 import { PageHeader } from "@/components/ui/page-header";
+import { useEmployeeOptions } from "@/hooks/use-employee-options";
 import { normalizeList } from "@/lib/api/drf";
 import { type PayComponentRecord } from "@/lib/api/payroll";
 import { formatDate, formatMoney } from "@/lib/utils";
@@ -20,11 +21,11 @@ interface RecordHooks {
 }
 
 const fields: CrudFieldDef[] = [
-  { name: "employee", label: "Employee ID", type: "number", required: true },
+  { name: "employee", label: "Employee", type: "combobox", optionsHook: useEmployeeOptions, required: true, placeholder: "Select employee" },
   { name: "amount", label: "Amount", type: "number", step: "0.01", required: true },
   { name: "date", label: "Date", type: "date" },
   { name: "reason", label: "Reason", span2: true },
-  { name: "description", label: "Description", type: "textarea", span2: true },
+  { name: "description", label: "Description", type: "richtext", span2: true },
 ];
 
 /** Shared editor for salary advances and losses/damages (same record shape). */

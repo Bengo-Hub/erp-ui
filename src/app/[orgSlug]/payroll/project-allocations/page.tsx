@@ -3,6 +3,8 @@
 import { CrudManager, type CrudFieldDef } from "@/components/crud/crud-manager";
 import { type Column } from "@/components/ui/data-table";
 import { PageHeader } from "@/components/ui/page-header";
+import { useEmployeeOptions } from "@/hooks/use-employee-options";
+import { useCostCenterOptions, useProjectOptions } from "@/hooks/use-option-hooks";
 import {
   useDeleteProjectAllocation,
   useProjectAllocations,
@@ -12,12 +14,12 @@ import { normalizeList } from "@/lib/api/drf";
 import { type ProjectAllocation } from "@/lib/api/payroll";
 
 const fields: CrudFieldDef[] = [
-  { name: "employee_id", label: "Employee / Consultant ID", required: true },
-  { name: "project_id", label: "Project ID", required: true },
+  { name: "employee_id", label: "Employee / Consultant", type: "combobox", optionsHook: useEmployeeOptions, required: true, placeholder: "Select employee" },
+  { name: "project_id", label: "Project", type: "combobox", optionsHook: useProjectOptions, required: true, placeholder: "Select project" },
   { name: "project_name", label: "Project Name" },
   { name: "allocation_percent", label: "Allocation %", type: "number", step: "0.01" },
   { name: "fixed_amount", label: "Fixed Amount (optional)", type: "number", step: "0.01" },
-  { name: "cost_center_id", label: "Cost Center ID (optional)" },
+  { name: "cost_center_id", label: "Cost Center (optional)", type: "combobox", optionsHook: useCostCenterOptions, placeholder: "Select cost center" },
 ];
 
 /**

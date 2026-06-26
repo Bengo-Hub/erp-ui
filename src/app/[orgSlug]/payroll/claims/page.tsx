@@ -4,13 +4,15 @@ import { CrudManager, type CrudFieldDef } from "@/components/crud/crud-manager";
 import { Badge, Button } from "@/components/ui/base";
 import { type Column } from "@/components/ui/data-table";
 import { PageHeader } from "@/components/ui/page-header";
+import { useEmployeeOptions } from "@/hooks/use-employee-options";
+import { useCostCenterOptions, useProjectOptions } from "@/hooks/use-option-hooks";
 import { useApproveClaim, useClaims, useDeleteClaim, useSaveClaim } from "@/hooks/use-payroll";
 import { normalizeList } from "@/lib/api/drf";
 import { type Claim } from "@/lib/api/payroll";
 import { formatDate, formatMoney } from "@/lib/utils";
 
 const fields: CrudFieldDef[] = [
-  { name: "employee", label: "Employee ID", type: "number", required: true },
+  { name: "employee", label: "Employee", type: "combobox", optionsHook: useEmployeeOptions, required: true, placeholder: "Select employee" },
   {
     name: "claim_type",
     label: "Claim Type",
@@ -25,12 +27,12 @@ const fields: CrudFieldDef[] = [
   { name: "amount", label: "Amount", type: "number", step: "0.01", required: true },
   { name: "date", label: "Date", type: "date" },
   // Analytic tagging: cost posts against this project/cost-center in treasury.
-  { name: "project_id", label: "Project ID (optional)" },
-  { name: "cost_center_id", label: "Cost Center ID (optional)" },
+  { name: "project_id", label: "Project (optional)", type: "combobox", optionsHook: useProjectOptions, placeholder: "Select project" },
+  { name: "cost_center_id", label: "Cost Center (optional)", type: "combobox", optionsHook: useCostCenterOptions, placeholder: "Select cost center" },
   // Taxable excess (per-diem/mileage over KRA caps, taxable allowances) flows to the payslip;
   // non-taxable reimbursements are paid via treasury AP and never inflate PAYE.
   { name: "taxable", label: "Taxable (flows to payslip / PAYE)", type: "switch" },
-  { name: "description", label: "Description", type: "textarea", span2: true },
+  { name: "description", label: "Description", type: "richtext", span2: true },
 ];
 
 export default function ClaimsPage() {

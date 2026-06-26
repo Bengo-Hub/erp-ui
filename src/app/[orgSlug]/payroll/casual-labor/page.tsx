@@ -4,6 +4,8 @@ import { CrudManager, type CrudFieldDef } from "@/components/crud/crud-manager";
 import { Badge, Button } from "@/components/ui/base";
 import { type Column } from "@/components/ui/data-table";
 import { PageHeader } from "@/components/ui/page-header";
+import { useEmployeeOptions } from "@/hooks/use-employee-options";
+import { useCostCenterOptions, useProjectOptions } from "@/hooks/use-option-hooks";
 import {
   useApproveCasualLabor,
   useCasualLabor,
@@ -20,10 +22,10 @@ const fields: CrudFieldDef[] = [
   { name: "worker_phone", label: "Phone" },
   { name: "amount", label: "Amount", type: "number", step: "0.01", required: true },
   { name: "payment_method", label: "Payment Method" },
-  { name: "engaged_by_employee_id", label: "Engaged By (Employee ID)" },
-  { name: "project_id", label: "Project ID (optional)" },
-  { name: "cost_center_id", label: "Cost Center ID (optional)" },
-  { name: "task_description", label: "Task Description", type: "textarea", span2: true },
+  { name: "engaged_by_employee_id", label: "Engaged By", type: "combobox", optionsHook: useEmployeeOptions, placeholder: "Select employee" },
+  { name: "project_id", label: "Project (optional)", type: "combobox", optionsHook: useProjectOptions, placeholder: "Select project" },
+  { name: "cost_center_id", label: "Cost Center (optional)", type: "combobox", optionsHook: useCostCenterOptions, placeholder: "Select cost center" },
+  { name: "task_description", label: "Task Description", type: "richtext", span2: true },
 ];
 
 /**
