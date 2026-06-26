@@ -1,137 +1,382 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 
-import { careersPublicApi, type ApplyPayload, type PublicPosting } from "@/lib/api/careers-public";
+import {
+  ApiError,
+  careersPublicApi,
+  type ApplyPayload,
+  type PublicPosting,
+} from "@/lib/api/careers-public";
+import { displayCompanyName, useBranding } from "../../_components/branding";
+import {
+  BrandButton,
+  Chip,
+  CompanyHeader,
+  IconArrowLeft,
+  IconBriefcase,
+  IconCheck,
+  IconClock,
+  IconLayers,
+  IconPin,
+  IconUsers,
+  PortalFooter,
+  formatDate,
+  humanize,
+} from "../../_components/ui";
+
+type FieldErrors = Partial<Record<keyof ApplyPayload, string>>;
+
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export default function CareersDetailPage() {
   const params = useParams();
   const orgSlug = (params?.orgSlug as string) ?? "";
   const postingSlug = (params?.postingSlug as string) ?? "";
 
+  const { branding, theme } = useBranding(orgSlug);
+
   const [posting, setPosting] = useState<PublicPosting | null>(null);
   const [loading, setLoading] = useState(true);
+  const [notFound, setNotFound] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const [form, setForm] = useState<ApplyPayload>({ full_name: "", email: "", phone: "", cover_letter: "" });
+  const [form, setForm] = useState<ApplyPayload>({
+    full_name: "",
+    email: "",
+    phone: "",
+    cover_letter: "",
+  });
+  const [errors, setErrors] = useState<FieldErrors>({});
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!orgSlug || !postingSlug) return;
+    setLoading(true);
     careersPublicApi
       .getPosting(orgSlug, postingSlug)
       .then(setPosting)
-      .catch((e) => setError(e.message))
+      .catch((e) => {
+        if (e instanceof ApiError && e.status === 404) setNotFound(true);
+        else setError(e instanceof Error ? e.message : "Something went wrong.");
+      })
       .finally(() => setLoading(false));
   }, [orgSlug, postingSlug]);
 
+  const companyName = displayCompanyName(branding, orgSlug);
+
+  const validate = (f: ApplyPayload): FieldErrors => {
+    const e: FieldErrors = {};
+    if (!f.full_name.trim()) e.full_name = "Please enter your full name.";
+    if (!f.email.trim()) e.email = "Please enter your email.";
+    else if (!EMAIL_RE.test(f.email.trim())) e.email = "Please enter a valid email address.";
+    return e;
+  };
+
+  const update = (key: keyof ApplyPayload, value: string) => {
+    setForm((f) => ({ ...f, [key]: value }));
+    setErrors((prev) => (prev[key] ? { ...prev, [key]: undefined } : prev));
+  };
+
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
+    const v = validate(form);
+    setErrors(v);
+    if (Object.keys(v).length > 0) return;
+
     setSubmitting(true);
     setSubmitError(null);
     try {
-      await careersPublicApi.apply(orgSlug, postingSlug, form);
+      await careersPublicApi.apply(orgSlug, postingSlug, {
+        ...form,
+        phone: form.phone?.trim() || undefined,
+        cover_letter: form.cover_letter?.trim() || undefined,
+      });
       setSubmitted(true);
     } catch (err) {
-      setSubmitError((err as Error).message);
+      setSubmitError(err instanceof Error ? err.message : "Submission failed. Please try again.");
     } finally {
       setSubmitting(false);
     }
   };
 
-  if (loading) return <main className="mx-auto max-w-2xl px-4 py-12 text-gray-500">Loading…</main>;
-  if (error || !posting)
+  const meta = useMemo(() => {
+    if (!posting) return [];
+    const items: { icon: React.ReactNode; label: string }[] = [];
+    if (posting.employment_type)
+      items.push({ icon: <IconBriefcase />, label: humanize(posting.employment_type) });
+    if (posting.location) items.push({ icon: <IconPin />, label: posting.location });
+    if (posting.department) items.push({ icon: <IconLayers />, label: posting.department });
+    if (typeof posting.num_positions === "number" && posting.num_positions > 0)
+      items.push({
+        icon: <IconUsers />,
+        label: `${posting.num_positions} ${posting.num_positions === 1 ? "opening" : "openings"}`,
+      });
+    const deadline = formatDate(posting.application_deadline);
+    if (deadline) items.push({ icon: <IconClock />, label: `Apply by ${deadline}` });
+    return items;
+  }, [posting]);
+
+  // ----- Loading -----
+  if (loading) {
     return (
-      <main className="mx-auto max-w-2xl px-4 py-12">
-        <p className="rounded-lg bg-red-50 p-4 text-sm text-red-700">{error || "Position not found."}</p>
-        <Link href={`/careers/${orgSlug}`} className="mt-4 inline-block text-sm text-gray-900 underline">
-          ← Back to openings
-        </Link>
-      </main>
+      <div className="min-h-dvh bg-slate-50" style={theme.vars}>
+        <CompanyHeader branding={branding} orgSlug={orgSlug} />
+        <main className="mx-auto max-w-5xl animate-pulse px-4 py-10">
+          <div className="h-4 w-32 rounded bg-slate-200" />
+          <div className="mt-6 h-8 w-2/3 rounded bg-slate-200" />
+          <div className="mt-4 flex gap-2">
+            <div className="h-7 w-24 rounded-full bg-slate-100" />
+            <div className="h-7 w-24 rounded-full bg-slate-100" />
+          </div>
+          <div className="mt-8 space-y-3">
+            <div className="h-4 w-full rounded bg-slate-100" />
+            <div className="h-4 w-5/6 rounded bg-slate-100" />
+            <div className="h-4 w-4/6 rounded bg-slate-100" />
+          </div>
+        </main>
+      </div>
     );
+  }
 
-  return (
-    <main className="mx-auto max-w-2xl px-4 py-12">
-      <Link href={`/careers/${orgSlug}`} className="text-sm text-gray-500 hover:text-gray-900">
-        ← All openings
-      </Link>
-
-      <header className="mt-4">
-        <h1 className="text-3xl font-bold tracking-tight text-gray-900">{posting.title}</h1>
-        <p className="mt-2 text-sm text-gray-500">
-          {[posting.department, posting.location, posting.employment_type?.replace(/_/g, " ")]
-            .filter(Boolean)
-            .join(" · ")}
-          {posting.application_deadline ? ` · Apply by ${posting.application_deadline}` : ""}
-        </p>
-      </header>
-
-      {posting.description && (
-        <section className="mt-6 whitespace-pre-wrap text-gray-700">{posting.description}</section>
-      )}
-
-      <section className="mt-10 rounded-2xl border border-gray-200 bg-white p-6">
-        <h2 className="text-lg font-semibold text-gray-900">Apply for this role</h2>
-        {submitted ? (
-          <p className="mt-4 rounded-lg bg-green-50 p-4 text-sm text-green-700">
-            Thank you — your application has been received. We&apos;ll be in touch.
+  // ----- Not found / error -----
+  if (notFound || error || !posting) {
+    return (
+      <div className="flex min-h-dvh flex-col bg-slate-50" style={theme.vars}>
+        <CompanyHeader branding={branding} orgSlug={orgSlug} />
+        <main className="mx-auto w-full max-w-md flex-1 px-4 py-16 text-center">
+          <div
+            className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full"
+            style={{ background: "var(--brand-primary-soft)", color: "var(--brand-primary)" }}
+          >
+            <IconBriefcase />
+          </div>
+          <h1 className="text-lg font-semibold text-slate-900">
+            {notFound ? "This position isn't available" : "Something went wrong"}
+          </h1>
+          <p className="mt-2 text-sm text-slate-500">
+            {notFound
+              ? "The role may have been filled or the link is no longer valid."
+              : error}
           </p>
-        ) : (
-          <form onSubmit={submit} className="mt-4 space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700">Full name *</label>
-              <input
-                required
-                value={form.full_name}
-                onChange={(e) => setForm({ ...form, full_name: e.target.value })}
-                className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-gray-900 focus:outline-none"
-              />
-            </div>
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div>
-                <label className="block text-sm font-medium text-gray-700">Email *</label>
-                <input
-                  required
-                  type="email"
-                  value={form.email}
-                  onChange={(e) => setForm({ ...form, email: e.target.value })}
-                  className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-gray-900 focus:outline-none"
-                />
+          <Link
+            href={`/careers/${orgSlug}`}
+            className="mt-6 inline-flex items-center gap-1.5 text-sm font-semibold"
+            style={{ color: "var(--brand-primary)" }}
+          >
+            <IconArrowLeft />
+            Back to all openings
+          </Link>
+        </main>
+        <PortalFooter name={companyName} />
+      </div>
+    );
+  }
+
+  // ----- Detail -----
+  return (
+    <div className="flex min-h-dvh flex-col bg-slate-50" style={theme.vars}>
+      <CompanyHeader branding={branding} orgSlug={orgSlug} subtitle={companyName} />
+
+      <main className="mx-auto w-full max-w-5xl flex-1 px-4 py-8">
+        <Link
+          href={`/careers/${orgSlug}`}
+          className="inline-flex items-center gap-1.5 text-sm font-medium text-slate-500 transition hover:text-slate-900"
+        >
+          <IconArrowLeft />
+          All openings
+        </Link>
+
+        <div className="mt-4 grid gap-8 lg:grid-cols-[1fr_360px]">
+          {/* Left: posting content */}
+          <div>
+            <h1 className="text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">
+              {posting.title}
+            </h1>
+
+            {meta.length > 0 && (
+              <div className="mt-4 flex flex-wrap gap-2">
+                {meta.map((m, i) => (
+                  <Chip key={i} tone={i === 0 ? "brand" : "neutral"}>
+                    {m.icon}
+                    {m.label}
+                  </Chip>
+                ))}
               </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700">Phone</label>
-                <input
-                  value={form.phone}
-                  onChange={(e) => setForm({ ...form, phone: e.target.value })}
-                  className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-gray-900 focus:outline-none"
-                />
-              </div>
+            )}
+
+            {posting.description ? (
+              <section className="mt-8">
+                <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-400">
+                  About this role
+                </h2>
+                <div className="mt-3 whitespace-pre-wrap text-[15px] leading-relaxed text-slate-700">
+                  {posting.description}
+                </div>
+              </section>
+            ) : (
+              <p className="mt-8 text-sm text-slate-500">
+                No additional description was provided for this role.
+              </p>
+            )}
+
+            {/* Mobile apply CTA jumps to the form below */}
+            <div className="mt-8 lg:hidden">
+              <a href="#apply">
+                <BrandButton className="w-full" type="button">
+                  Apply for this role
+                </BrandButton>
+              </a>
             </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700">Cover letter</label>
-              <textarea
-                rows={5}
-                value={form.cover_letter}
-                onChange={(e) => setForm({ ...form, cover_letter: e.target.value })}
-                className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-gray-900 focus:outline-none"
-                placeholder="Tell us why you're a great fit…"
-              />
+          </div>
+
+          {/* Right: sticky application form */}
+          <div id="apply" className="lg:sticky lg:top-6 lg:self-start">
+            <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+              {submitted ? (
+                <div className="py-4 text-center">
+                  <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-emerald-50 text-emerald-600">
+                    <IconCheck />
+                  </div>
+                  <h2 className="text-base font-semibold text-slate-900">Application received</h2>
+                  <p className="mt-2 text-sm text-slate-500">
+                    Thanks for applying to <span className="font-medium">{posting.title}</span>.
+                    The {companyName} team will be in touch if there&apos;s a match.
+                  </p>
+                  <Link
+                    href={`/careers/${orgSlug}`}
+                    className="mt-5 inline-flex items-center gap-1.5 text-sm font-semibold"
+                    style={{ color: "var(--brand-primary)" }}
+                  >
+                    <IconArrowLeft />
+                    Browse more roles
+                  </Link>
+                </div>
+              ) : (
+                <>
+                  <h2 className="text-base font-semibold text-slate-900">Apply for this role</h2>
+                  <p className="mt-1 text-sm text-slate-500">
+                    Tell us a little about yourself.
+                  </p>
+                  <form onSubmit={submit} noValidate className="mt-5 space-y-4">
+                    <Field
+                      label="Full name"
+                      required
+                      error={errors.full_name}
+                      htmlFor="full_name"
+                    >
+                      <input
+                        id="full_name"
+                        name="name"
+                        autoComplete="name"
+                        value={form.full_name}
+                        onChange={(e) => update("full_name", e.target.value)}
+                        className={inputCls(!!errors.full_name)}
+                      />
+                    </Field>
+
+                    <Field label="Email" required error={errors.email} htmlFor="email">
+                      <input
+                        id="email"
+                        name="email"
+                        type="email"
+                        inputMode="email"
+                        autoComplete="email"
+                        value={form.email}
+                        onChange={(e) => update("email", e.target.value)}
+                        className={inputCls(!!errors.email)}
+                      />
+                    </Field>
+
+                    <Field label="Phone" htmlFor="phone">
+                      <input
+                        id="phone"
+                        name="tel"
+                        type="tel"
+                        inputMode="tel"
+                        autoComplete="tel"
+                        value={form.phone}
+                        onChange={(e) => update("phone", e.target.value)}
+                        className={inputCls(false)}
+                      />
+                    </Field>
+
+                    <Field label="Cover letter" htmlFor="cover_letter">
+                      <textarea
+                        id="cover_letter"
+                        rows={5}
+                        value={form.cover_letter}
+                        onChange={(e) => update("cover_letter", e.target.value)}
+                        placeholder="Why are you a great fit for this role?"
+                        className={`${inputCls(false)} resize-y`}
+                      />
+                    </Field>
+
+                    {submitError && (
+                      <p
+                        role="alert"
+                        className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700"
+                      >
+                        {submitError}
+                      </p>
+                    )}
+
+                    <BrandButton type="submit" className="w-full" disabled={submitting}>
+                      {submitting ? "Submitting…" : "Submit application"}
+                    </BrandButton>
+                    <p className="text-center text-xs text-slate-400">
+                      By applying you agree to be contacted about this role.
+                    </p>
+                  </form>
+                </>
+              )}
             </div>
-            {submitError && <p className="rounded-lg bg-red-50 p-3 text-sm text-red-700">{submitError}</p>}
-            <button
-              type="submit"
-              disabled={submitting}
-              className="w-full rounded-lg bg-gray-900 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-gray-800 disabled:opacity-60"
-            >
-              {submitting ? "Submitting…" : "Submit application"}
-            </button>
-          </form>
-        )}
-      </section>
-    </main>
+          </div>
+        </div>
+      </main>
+
+      <PortalFooter name={companyName} />
+    </div>
+  );
+}
+
+function inputCls(hasError: boolean): string {
+  return [
+    "mt-1.5 w-full rounded-lg border bg-white px-3 py-2.5 text-sm text-slate-900 shadow-sm transition",
+    "placeholder:text-slate-400 focus:outline-none focus:ring-2",
+    hasError ? "border-red-400 focus:ring-red-200" : "border-slate-300 focus:border-transparent",
+  ].join(" ");
+}
+
+function Field({
+  label,
+  htmlFor,
+  required,
+  error,
+  children,
+}: {
+  label: string;
+  htmlFor: string;
+  required?: boolean;
+  error?: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div style={{ ["--tw-ring-color" as string]: error ? undefined : "var(--brand-primary-ring)" }}>
+      <label htmlFor={htmlFor} className="block text-sm font-medium text-slate-700">
+        {label}
+        {required && <span className="ml-0.5 text-red-500">*</span>}
+      </label>
+      {children}
+      {error && (
+        <p role="alert" className="mt-1 text-xs text-red-600">
+          {error}
+        </p>
+      )}
+    </div>
   );
 }
