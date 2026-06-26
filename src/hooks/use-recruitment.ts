@@ -94,3 +94,31 @@ export function useCompleteOnboardingTask() {
     onError: (e) => toast.error(extractApiError(e, "Failed to update task")),
   });
 }
+
+/** Set a task's assignee / due date. */
+export function useUpdateOnboardingTask() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ taskId, data }: { taskId: string | number; data: { assigned_to?: string; due_date?: string } }) =>
+      recruitmentApi.onboarding.updateTask(taskId, data),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: TASKS_KEY });
+      toast.success("Task updated");
+    },
+    onError: (e) => toast.error(extractApiError(e, "Failed to update task")),
+  });
+}
+
+/** Add a custom checklist item to an onboarding. */
+export function useAddOnboardingTask() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ onboardingId, data }: { onboardingId: string | number; data: { category?: string; title: string } }) =>
+      recruitmentApi.onboarding.addTask(onboardingId, data),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: TASKS_KEY });
+      toast.success("Task added");
+    },
+    onError: (e) => toast.error(extractApiError(e, "Failed to add task")),
+  });
+}

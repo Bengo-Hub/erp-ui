@@ -74,6 +74,8 @@ export interface OnboardingTask {
   order?: number;
   is_done?: boolean;
   done_at?: string | null;
+  due_date?: string | null;
+  assigned_to?: string | null;
   [key: string]: unknown;
 }
 
@@ -137,5 +139,11 @@ export const recruitmentApi = {
       apiClient.get<Paginated<OnboardingTask> | OnboardingTask[]>(`${REC}/onboarding/${id}/tasks`),
     completeTask: (taskId: number | string, done = true) =>
       apiClient.put<OnboardingTask>(`${REC}/onboarding/tasks/${taskId}/complete`, { done }),
+    // Set a task's assignee and/or due date (empty due_date clears it).
+    updateTask: (taskId: number | string, data: { assigned_to?: string; due_date?: string }) =>
+      apiClient.put<OnboardingTask>(`${REC}/onboarding/tasks/${taskId}`, data),
+    // Append a custom checklist item to an onboarding.
+    addTask: (onboardingId: number | string, data: { category?: string; title: string }) =>
+      apiClient.post<OnboardingTask>(`${REC}/onboarding/${onboardingId}/tasks`, data),
   },
 };
