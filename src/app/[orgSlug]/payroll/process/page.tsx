@@ -121,7 +121,7 @@ export default function ProcessPayrollPage() {
             </Field>
             <div className="flex justify-end sm:col-span-3">
               <PermissionGate
-                permission={["add_payslip", "change_payslip"]}
+                permission={["hrm.payroll.process"]}
                 fallback={<p className="text-sm text-muted-foreground">You can&apos;t run payroll.</p>}
               >
                 <Button onClick={runPreview} disabled={previewMut.isPending}>
@@ -165,7 +165,7 @@ export default function ProcessPayrollPage() {
               <Button variant="outline" onClick={() => setStep(1)}>
                 Back to Preview
               </Button>
-              <PermissionGate permission={["add_payslip", "change_payslip"]}>
+              <PermissionGate permission={["hrm.payroll.process"]}>
                 <Button onClick={() => setConfirmRun(true)} disabled={processMut.isPending}>
                   Run Payroll
                 </Button>
@@ -188,7 +188,7 @@ export default function ProcessPayrollPage() {
               </p>
             </div>
             <PermissionGate
-              permission={["change_payslip"]}
+              permission={["hrm.payroll.disburse"]}
               fallback={<p className="text-sm text-muted-foreground">You can&apos;t disburse payroll.</p>}
             >
               <Button onClick={() => setConfirmDisburse(true)} disabled={disburseMut.isPending}>
