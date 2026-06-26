@@ -5,10 +5,13 @@ import { toast } from "sonner";
 
 import {
   attendanceApi,
+  type AttendanceOverride,
   type AttendanceRecord,
   type AttendanceRule,
   type OffDay,
+  type RosterSlot,
   type ShiftAssignment,
+  type ShiftRoster,
   type ShiftRotation,
   type Timesheet,
   type WorkShift,
@@ -22,6 +25,32 @@ const records = makeResourceHooks<AttendanceRecord>("attendance-records", attend
 export const useAttendanceRecords = records.useList;
 export const useSaveAttendanceRecord = records.useSave;
 export const useDeleteAttendanceRecord = records.useRemove;
+
+/** Manual check-in (POST /records/check-in). */
+export function useCheckIn() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (data: Record<string, unknown>) => attendanceApi.checkIn(data),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["attendance-records"] });
+      toast.success("Checked in");
+    },
+    onError: (e) => toast.error(extractApiError(e, "Failed to check in")),
+  });
+}
+
+/** Manual check-out (POST /records/{id}/check-out). */
+export function useCheckOut() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: number | string) => attendanceApi.checkOut(id),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["attendance-records"] });
+      toast.success("Checked out");
+    },
+    onError: (e) => toast.error(extractApiError(e, "Failed to check out")),
+  });
+}
 
 const shifts = makeResourceHooks<WorkShift>("work-shifts", attendanceApi.workShifts, "Work shift");
 export const useWorkShifts = shifts.useList;
@@ -174,5 +203,81 @@ export function useDeleteAssignment() {
       toast.success("Assignment removed");
     },
     onError: (e) => toast.error(extractApiError(e, "Failed to remove assignment")),
+  });
+}
+
+// ---- Rosters + slots ----
+const ROSTER_KEY = "shift-rosters";
+
+export function useRosters(params?: ListParams) {
+  return useQuery({
+    queryKey: [ROSTER_KEY, "list", params ?? {}],
+    queryFn: () => attendanceApi.rosters.list(params),
+  });
+}
+
+export function useSaveRoster() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (data: Partial<ShiftRoster>) => attendanceApi.rosters.create(data),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: [ROSTER_KEY] });
+      toast.success("Roster created");
+    },
+    onError: (e) => toast.error(extractApiError(e, "Failed to create roster")),
+  });
+}
+
+export function useDeleteRoster() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: number | string) => attendanceApi.rosters.remove(id),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: [ROSTER_KEY] });
+      toast.success("Roster deleted");
+    },
+    onError: (e) => toast.error(extractApiError(e, "Failed to delete roster")),
+  });
+}
+
+export function useRosterSlots(rosterId: number | string | null) {
+  return useQuery({
+    queryKey: [ROSTER_KEY, "slots", rosterId],
+    queryFn: () => attendanceApi.rosters.listSlots(rosterId!),
+    enabled: !!rosterId,
+  });
+}
+
+export function useUpsertRosterSlot(rosterId: number | string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (data: Partial<RosterSlot>) => attendanceApi.rosters.upsertSlot(rosterId, data),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: [ROSTER_KEY, "slots", rosterId] });
+      toast.success("Slot saved");
+    },
+    onError: (e) => toast.error(extractApiError(e, "Failed to save slot")),
+  });
+}
+
+// ---- Overrides ----
+const OVERRIDE_KEY = "attendance-overrides";
+
+export function useAttendanceOverrides(params?: ListParams) {
+  return useQuery({
+    queryKey: [OVERRIDE_KEY, "list", params ?? {}],
+    queryFn: () => attendanceApi.listOverrides(params),
+  });
+}
+
+export function useCreateOverride() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (data: Partial<AttendanceOverride>) => attendanceApi.createOverride(data),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: [OVERRIDE_KEY] });
+      toast.success("Override created");
+    },
+    onError: (e) => toast.error(extractApiError(e, "Failed to create override")),
   });
 }

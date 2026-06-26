@@ -147,6 +147,19 @@ export function useDeleteLeaveBalance() {
   });
 }
 
+/** Manually run leave accrual for the year (POST /leave/accrue) — the cron does this daily. */
+export function useAccrueLeave() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (year?: number) => leaveApi.accrue(year ? { year } : undefined),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: [KEY, "balances"] });
+      toast.success("Leave accrual run");
+    },
+    onError: (e) => toast.error(extractApiError(e, "Failed to run accrual")),
+  });
+}
+
 // ---- Entitlements ----
 export function useLeaveEntitlements(params?: ListParams) {
   return useQuery({

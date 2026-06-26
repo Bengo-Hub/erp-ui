@@ -93,3 +93,38 @@ export const regionalSettingsApi = {
 export const brandingSettingsApi = {
   get: () => apiClient.get<BrandingSettings>(`/business/public-branding`),
 };
+
+/** Per-tenant document-numbering sequence (e.g. payslip → PAY-2026-000123). */
+export interface DocumentSequence {
+  id?: string;
+  doc_type: string;
+  prefix?: string;
+  separator?: string;
+  date_format?: string;
+  padding?: number;
+  reset_freq?: string;
+  current_val?: number;
+  [key: string]: unknown;
+}
+
+/** Known erp-api document types that support numbering sequences. */
+export const DOC_TYPES = [
+  { value: "payslip", label: "Payslip" },
+  { value: "payroll_report", label: "Payroll Report" },
+  { value: "p9", label: "P9 Tax Card" },
+  { value: "p10a", label: "P10A Return" },
+] as const;
+
+export const RESET_FREQUENCIES = [
+  { value: "never", label: "Never" },
+  { value: "daily", label: "Daily" },
+  { value: "monthly", label: "Monthly" },
+  { value: "yearly", label: "Yearly" },
+] as const;
+
+export const businessSequencesApi = {
+  list: () => apiClient.get<Paginated<DocumentSequence> | DocumentSequence[]>(`/business/sequences`),
+  // erp-api upserts by doc_type (no id, no delete) — PUT /business/sequences.
+  upsert: (data: Partial<DocumentSequence>) =>
+    apiClient.put<DocumentSequence>(`/business/sequences`, data),
+};

@@ -102,11 +102,45 @@ export interface ShiftRoster {
   name?: string;
   title?: string;
   outlet?: number | string;
+  cycle_days?: number;
   start_date?: string;
   end_date?: string;
   status?: string;
   [key: string]: unknown;
 }
+
+/** A per-(employee, cycle-day) slot within a rotating roster. */
+export interface RosterSlot {
+  id: string;
+  roster_id?: string;
+  employee_id?: string;
+  cycle_day?: number;
+  start_time?: string;
+  end_time?: string;
+  is_off_day?: boolean;
+  [key: string]: unknown;
+}
+
+/** A one-off attendance override for an employee on a date (extra shift, off, etc.). */
+export interface AttendanceOverride {
+  id: string;
+  employee_id?: string;
+  employee_name?: string;
+  date?: string;
+  override_type?: string;
+  start_time?: string;
+  end_time?: string;
+  reason?: string;
+  status?: string;
+  [key: string]: unknown;
+}
+
+export const OVERRIDE_TYPES = [
+  { value: "extra_shift", label: "Extra Shift" },
+  { value: "day_off", label: "Day Off" },
+  { value: "swap", label: "Shift Swap" },
+  { value: "custom", label: "Custom Hours" },
+] as const;
 
 export interface ShiftAssignment {
   id: number | string;
@@ -177,7 +211,27 @@ export const attendanceApi = {
   },
   rotations: crud<ShiftRotation>("rotations"),
   offDays: crud<OffDay>("off-days"),
-  rosters: crud<ShiftRoster>("rosters"),
+  rosters: {
+    ...crud<ShiftRoster>("rosters"),
+    // erp-api roster create takes {name, cycle_days, start_date}; no PUT (delete only).
+    create: (data: Partial<ShiftRoster>) =>
+      apiClient.post<ShiftRoster>(`${ATT}/rosters/`, {
+        name: data.name,
+        cycle_days: data.cycle_days,
+        start_date: data.start_date,
+      }),
+    // Slots: GET lists a roster's slots; PUT upserts ONE (employee, cycle_day) slot.
+    listSlots: (rosterId: number | string) =>
+      apiClient.get<Paginated<RosterSlot> | RosterSlot[]>(`${ATT}/rosters/${rosterId}/slots`),
+    upsertSlot: (rosterId: number | string, data: Partial<RosterSlot>) =>
+      apiClient.put<RosterSlot>(`${ATT}/rosters/${rosterId}/slots`, {
+        employee_id: data.employee_id,
+        cycle_day: data.cycle_day,
+        start_time: data.start_time,
+        end_time: data.end_time,
+        is_off_day: data.is_off_day ?? false,
+      }),
+  },
   rules: crud<AttendanceRule>("rules"),
 
   // Timesheets + lifecycle. erp-api supports list/create + entry upsert +
@@ -217,9 +271,9 @@ export const attendanceApi = {
     apiClient.delete<void>(`${ATT}/assignments/${id}/`),
   // Roster overrides (erp-api: /hrm/attendance/overrides).
   listOverrides: (params?: ListParams) =>
-    apiClient.get<Paginated<PlannerCell> | PlannerCell[]>(`${ATT}/overrides/`, params),
-  createOverride: (data: Record<string, unknown>) =>
-    apiClient.post<PlannerCell>(`${ATT}/overrides/`, data),
+    apiClient.get<Paginated<AttendanceOverride> | AttendanceOverride[]>(`${ATT}/overrides/`, params),
+  createOverride: (data: Partial<AttendanceOverride>) =>
+    apiClient.post<AttendanceOverride>(`${ATT}/overrides/`, data),
   // NOTE: no resolved-planner-grid endpoint in erp-api (gap); the planner UI
   // composes rosters + assignments client-side. Falls back to assignments.
   resolvePlanner: (params: { from: string; to: string; employee_ids?: string }) =>

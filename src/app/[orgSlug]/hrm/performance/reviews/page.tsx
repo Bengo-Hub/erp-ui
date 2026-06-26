@@ -1,8 +1,9 @@
 "use client";
 
-import { Plus, Send } from "lucide-react";
+import { ClipboardCheck, Plus, Send } from "lucide-react";
 import { useMemo, useState } from "react";
 
+import { ReviewScoreDialog } from "./_score-dialog";
 import { ApprovalActions } from "@/components/hrm/approval-actions";
 import { StatusBadge } from "@/components/hrm/status-badge";
 import { PermissionGate } from "@/components/auth/permission-gate";
@@ -32,6 +33,7 @@ export default function PerformanceReviewsPage() {
   const [tab, setTab] = useState<"all" | "approvals">("all");
   const [page, setPage] = useState(1);
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [scoring, setScoring] = useState<PerformanceReview | null>(null);
   const [form, setForm] = useState(empty);
 
   const params = useMemo(
@@ -62,6 +64,9 @@ export default function PerformanceReviewsPage() {
       className: "text-right",
       cell: (r) => (
         <div className="flex items-center justify-end gap-1">
+          <Button variant="ghost" size="icon" aria-label="Score review" title="Score metrics" onClick={() => setScoring(r)}>
+            <ClipboardCheck className="size-4" />
+          </Button>
           {isDraft(r) && (
             <PermissionGate permission="change_performancereview">
               <Button variant="ghost" size="icon" aria-label="Submit" onClick={() => submit.mutate(r.id)}>
@@ -197,6 +202,8 @@ export default function PerformanceReviewsPage() {
           </Field>
         </div>
       </Dialog>
+
+      {scoring && <ReviewScoreDialog review={scoring} onClose={() => setScoring(null)} />}
     </div>
   );
 }
