@@ -7,6 +7,7 @@ import { type ListParams } from "@/lib/api/drf";
 import { extractApiError } from "@/lib/api/error";
 import {
   payrollApi,
+  type CasualLabor,
   type Claim,
   type PayComponentRecord,
   type PayrollProcessPayload,
@@ -127,6 +128,51 @@ export function useApproveClaim() {
       toast.success("Claim approved — reimbursement posted to finance");
     },
     onError: (e) => toast.error(extractApiError(e, "Failed to approve claim")),
+  });
+}
+
+// ---- Casual / subcontracted labour ----
+export function useCasualLabor(params?: ListParams) {
+  return useQuery({
+    queryKey: [KEY, "casual-labor", params ?? {}],
+    queryFn: () => payrollApi.listCasualLabor(params),
+  });
+}
+
+export function useSaveCasualLabor() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, data }: { id?: number | string; data: Partial<CasualLabor> }) =>
+      id ? payrollApi.updateCasualLabor(id, data) : payrollApi.createCasualLabor(data),
+    onSuccess: (v) => {
+      qc.invalidateQueries({ queryKey: [KEY, "casual-labor"] });
+      toast.success(v.id ? "Record updated" : "Record created");
+    },
+    onError: (e) => toast.error(extractApiError(e, "Failed to save record")),
+  });
+}
+
+export function useApproveCasualLabor() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: number | string) => payrollApi.approveCasualLabor(id),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: [KEY, "casual-labor"] });
+      toast.success("Approved — casual-labour cost posted to finance");
+    },
+    onError: (e) => toast.error(extractApiError(e, "Failed to approve")),
+  });
+}
+
+export function useDeleteCasualLabor() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: number | string) => payrollApi.deleteCasualLabor(id),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: [KEY, "casual-labor"] });
+      toast.success("Record deleted");
+    },
+    onError: (e) => toast.error(extractApiError(e, "Failed to delete")),
   });
 }
 
