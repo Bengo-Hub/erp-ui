@@ -16,8 +16,12 @@ export interface JobPosting {
   description?: string;
   status?: string;
   openings?: number;
+  num_positions?: number;
+  is_public?: boolean;
+  slug?: string;
   posted_date?: string;
   closing_date?: string;
+  application_deadline?: string;
   [key: string]: unknown;
 }
 
