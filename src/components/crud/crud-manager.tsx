@@ -5,21 +5,126 @@ import { useState, type ReactNode } from "react";
 
 import { PermissionGate } from "@/components/auth/permission-gate";
 import { Button, Card } from "@/components/ui/base";
+import { Combobox } from "@/components/ui/combobox";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { DataTable, Pagination, type Column } from "@/components/ui/data-table";
 import { Dialog } from "@/components/ui/dialog";
 import { Field, Input, Select, Switch, Textarea } from "@/components/ui/form";
+import { IconButton } from "@/components/ui/tooltip";
+import { RichTextEditor } from "@/components/ui/rich-text-editor";
+
+interface FieldOption {
+  value: string;
+  label: string;
+}
 
 export interface CrudFieldDef {
   name: string;
   label: string;
-  type?: "text" | "number" | "textarea" | "select" | "switch" | "date";
-  options?: { value: string; label: string }[];
+  type?: "text" | "number" | "textarea" | "select" | "switch" | "date" | "combobox" | "richtext";
+  options?: FieldOption[];
+  /**
+   * Hook supplying `{options,isLoading}` for a `combobox`/`select` field
+   * (e.g. `useEmployeeOptions`). Called once per render — must obey the rules of hooks.
+   */
+  optionsHook?: () => { options: FieldOption[]; isLoading?: boolean };
   required?: boolean;
   placeholder?: string;
   step?: string;
   /** Full-width in the grid. */
   span2?: boolean;
+  /**
+   * Escape hatch: render a fully custom control. Receives the field def, current value
+   * and a setter. When provided, it overrides `type`.
+   */
+  render?: (field: CrudFieldDef, value: unknown, onChange: (value: unknown) => void) => ReactNode;
+}
+
+/** Renders a single field's control (own component so `optionsHook` can be called as a hook). */
+function CrudField({
+  field,
+  value,
+  setField,
+}: {
+  field: CrudFieldDef;
+  value: unknown;
+  setField: (name: string, value: unknown) => void;
+}) {
+  const common = { id: field.name };
+  // Hooks must run unconditionally — call the optionsHook every render (no-op default).
+  const hookResult = field.optionsHook?.();
+  const onChange = (v: unknown) => setField(field.name, v);
+
+  if (field.render) return <>{field.render(field, value, onChange)}</>;
+
+  if (field.type === "combobox") {
+    const options = hookResult?.options ?? field.options ?? [];
+    return (
+      <Combobox
+        id={field.name}
+        value={String(value ?? "")}
+        onChange={(v) => setField(field.name, v)}
+        options={options}
+        loading={hookResult?.isLoading}
+        placeholder={field.placeholder ?? "Select…"}
+      />
+    );
+  }
+
+  if (field.type === "richtext") {
+    return (
+      <RichTextEditor
+        id={field.name}
+        value={String(value ?? "")}
+        onChange={(html) => setField(field.name, html)}
+        placeholder={field.placeholder}
+      />
+    );
+  }
+
+  if (field.type === "textarea") {
+    return (
+      <Textarea
+        {...common}
+        value={String(value ?? "")}
+        placeholder={field.placeholder}
+        onChange={(e) => setField(field.name, e.target.value)}
+      />
+    );
+  }
+
+  if (field.type === "select") {
+    const options = hookResult?.options ?? field.options ?? [];
+    return (
+      <Select
+        {...common}
+        value={String(value ?? "")}
+        onChange={(e) => setField(field.name, e.target.value)}
+      >
+        <option value="">Select…</option>
+        {options.map((o) => (
+          <option key={o.value} value={o.value}>
+            {o.label}
+          </option>
+        ))}
+      </Select>
+    );
+  }
+
+  if (field.type === "switch") {
+    return <Switch checked={!!value} onChange={(c) => setField(field.name, c)} id={field.name} />;
+  }
+
+  return (
+    <Input
+      {...common}
+      type={field.type === "number" ? "number" : field.type === "date" ? "date" : "text"}
+      step={field.step}
+      value={String(value ?? "")}
+      placeholder={field.placeholder}
+      onChange={(e) => setField(field.name, e.target.value)}
+    />
+  );
 }
 
 interface CrudManagerProps<T extends { id: number | string }> {
@@ -91,14 +196,14 @@ export function CrudManager<T extends { id: number | string }>({
     cell: (row) => (
       <div className="flex justify-end gap-1">
         <PermissionGate permission={perms?.change}>
-          <Button variant="ghost" size="icon" onClick={() => open(row)} aria-label={`Edit ${entityLabel}`} title={`Edit ${entityLabel}`}>
+          <IconButton label={`Edit ${entityLabel}`} onClick={() => open(row)}>
             <Pencil className="size-4" />
-          </Button>
+          </IconButton>
         </PermissionGate>
         <PermissionGate permission={perms?.delete}>
-          <Button variant="ghost" size="icon" onClick={() => setToDelete(row)} aria-label={`Delete ${entityLabel}`} title={`Delete ${entityLabel}`}>
+          <IconButton label={`Delete ${entityLabel}`} onClick={() => setToDelete(row)}>
             <Trash2 className="size-4 text-destructive" />
-          </Button>
+          </IconButton>
         </PermissionGate>
       </div>
     ),
@@ -153,52 +258,17 @@ export function CrudManager<T extends { id: number | string }>({
         }
       >
         <div className="grid gap-4 sm:grid-cols-2">
-          {fields.map((f) => {
-            const val = values[f.name];
-            const common = { id: f.name };
-            return (
-              <Field
-                key={f.name}
-                label={f.label}
-                htmlFor={f.name}
-                required={f.required}
-                className={f.span2 ? "sm:col-span-2" : undefined}
-              >
-                {f.type === "textarea" ? (
-                  <Textarea
-                    {...common}
-                    value={String(val ?? "")}
-                    placeholder={f.placeholder}
-                    onChange={(e) => setField(f.name, e.target.value)}
-                  />
-                ) : f.type === "select" ? (
-                  <Select
-                    {...common}
-                    value={String(val ?? "")}
-                    onChange={(e) => setField(f.name, e.target.value)}
-                  >
-                    <option value="">Select…</option>
-                    {f.options?.map((o) => (
-                      <option key={o.value} value={o.value}>
-                        {o.label}
-                      </option>
-                    ))}
-                  </Select>
-                ) : f.type === "switch" ? (
-                  <Switch checked={!!val} onChange={(c) => setField(f.name, c)} id={f.name} />
-                ) : (
-                  <Input
-                    {...common}
-                    type={f.type === "number" ? "number" : f.type === "date" ? "date" : "text"}
-                    step={f.step}
-                    value={String(val ?? "")}
-                    placeholder={f.placeholder}
-                    onChange={(e) => setField(f.name, e.target.value)}
-                  />
-                )}
-              </Field>
-            );
-          })}
+          {fields.map((f) => (
+            <Field
+              key={f.name}
+              label={f.label}
+              htmlFor={f.name}
+              required={f.required}
+              className={f.span2 ? "sm:col-span-2" : undefined}
+            >
+              <CrudField field={f} value={values[f.name]} setField={setField} />
+            </Field>
+          ))}
         </div>
       </Dialog>
 
