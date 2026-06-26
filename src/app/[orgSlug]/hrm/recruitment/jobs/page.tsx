@@ -4,6 +4,7 @@ import { useParams, useRouter } from "next/navigation";
 
 import { CrudManager, type CrudFieldDef } from "@/components/crud/crud-manager";
 import { StatusBadge } from "@/components/hrm/status-badge";
+import { Badge } from "@/components/ui/base";
 import { type Column } from "@/components/ui/data-table";
 import { PageHeader } from "@/components/ui/page-header";
 import { EMPLOYMENT_TYPES } from "@/lib/hrm";
@@ -25,7 +26,7 @@ const fields: CrudFieldDef[] = [
     type: "select",
     options: EMPLOYMENT_TYPES,
   },
-  { name: "openings", label: "Openings", type: "number" },
+  { name: "num_positions", label: "Openings", type: "number" },
   {
     name: "status",
     label: "Status",
@@ -36,7 +37,8 @@ const fields: CrudFieldDef[] = [
       { value: "closed", label: "Closed" },
     ],
   },
-  { name: "closing_date", label: "Closing Date", type: "date" },
+  { name: "application_deadline", label: "Closing Date", type: "date" },
+  { name: "is_public", label: "Publish to public careers portal", type: "switch" },
   { name: "description", label: "Description", type: "textarea", span2: true },
 ];
 
@@ -52,9 +54,14 @@ export default function JobsPage() {
     { header: "Title", cell: (j) => <span className="font-medium">{j.title || "—"}</span> },
     { header: "Location", cell: (j) => j.location || "—" },
     { header: "Type", cell: (j) => <span className="capitalize">{j.employment_type || "—"}</span> },
-    { header: "Openings", cell: (j) => j.openings ?? "—" },
-    { header: "Closing", cell: (j) => formatDate(j.closing_date) },
+    { header: "Openings", cell: (j) => j.num_positions ?? j.openings ?? "—" },
+    { header: "Closing", cell: (j) => formatDate(j.application_deadline ?? j.closing_date) },
     { header: "Status", cell: (j) => <StatusBadge status={j.status} /> },
+    {
+      header: "Public",
+      cell: (j) =>
+        j.is_public ? <Badge variant="success">Live</Badge> : <Badge variant="secondary">Private</Badge>,
+    },
   ];
 
   return (
@@ -77,14 +84,21 @@ export default function JobsPage() {
           title: j?.title ?? "",
           location: j?.location ?? "",
           employment_type: j?.employment_type ?? "",
-          openings: j?.openings ?? 1,
+          num_positions: j?.num_positions ?? j?.openings ?? 1,
           status: j?.status ?? "draft",
-          closing_date: j?.closing_date ?? "",
+          application_deadline: j?.application_deadline ?? j?.closing_date ?? "",
+          is_public: j?.is_public ?? false,
           description: j?.description ?? "",
         })}
         onSave={({ id, data }, done) =>
           save.mutate(
-            { id, data: { ...data, openings: data.openings ? Number(data.openings) : undefined } as Partial<JobPosting> },
+            {
+              id,
+              data: {
+                ...data,
+                num_positions: data.num_positions ? Number(data.num_positions) : undefined,
+              } as Partial<JobPosting>,
+            },
             { onSuccess: done },
           )
         }
