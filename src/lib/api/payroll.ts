@@ -172,7 +172,35 @@ export const payrollApi = {
   // Approve a claim -> emits erp.expense_claim.approved so treasury posts the reimbursement to GL.
   approveClaim: (id: number | string) =>
     apiClient.post<Claim>(`${HRM}/payroll/claims/${id}/approve`, {}),
+
+  // Casual / subcontracted labour register.
+  listCasualLabor: (params?: ListParams) =>
+    apiClient.get<Paginated<CasualLabor> | CasualLabor[]>(`${HRM}/payroll/casual-labor`, params),
+  createCasualLabor: (data: Partial<CasualLabor>) =>
+    apiClient.post<CasualLabor>(`${HRM}/payroll/casual-labor`, data),
+  updateCasualLabor: (id: number | string, data: Partial<CasualLabor>) =>
+    apiClient.put<CasualLabor>(`${HRM}/payroll/casual-labor/${id}`, data),
+  approveCasualLabor: (id: number | string) =>
+    apiClient.post<CasualLabor>(`${HRM}/payroll/casual-labor/${id}/approve`, {}),
+  deleteCasualLabor: (id: number | string) =>
+    apiClient.delete<void>(`${HRM}/payroll/casual-labor/${id}`),
 };
+
+export interface CasualLabor {
+  id: number | string;
+  worker_name?: string;
+  worker_id_number?: string;
+  worker_phone?: string;
+  task_description?: string;
+  amount?: string | number;
+  payment_method?: string;
+  status?: string;
+  project_id?: string;
+  cost_center_id?: string;
+  engaged_by_employee_id?: string;
+  created_at?: string;
+  [key: string]: unknown;
+}
 
 export interface PayComponentRecord {
   id: number | string;
