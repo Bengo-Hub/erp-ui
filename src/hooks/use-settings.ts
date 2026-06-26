@@ -6,10 +6,12 @@ import { toast } from "sonner";
 import { extractApiError } from "@/lib/api/error";
 import {
   brandingSettingsApi,
+  businessSequencesApi,
   businessSettingsApi,
   pickSettings,
   regionalSettingsApi,
   type BusinessSettings,
+  type DocumentSequence,
   type RegionalSettings,
 } from "@/lib/api/settings";
 
@@ -48,6 +50,23 @@ export function useSaveBusinessSettings() {
       toast.success("Company settings saved");
     },
     onError: (e) => toast.error(extractApiError(e, "Failed to save company settings")),
+  });
+}
+
+/* ---- Document numbering sequences ---- */
+export function useDocumentSequences() {
+  return useQuery({ queryKey: ["settings", "sequences"], queryFn: businessSequencesApi.list });
+}
+
+export function useSaveDocumentSequence() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (data: Partial<DocumentSequence>) => businessSequencesApi.upsert(data),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["settings", "sequences"] });
+      toast.success("Numbering sequence saved");
+    },
+    onError: (e) => toast.error(extractApiError(e, "Failed to save numbering sequence")),
   });
 }
 

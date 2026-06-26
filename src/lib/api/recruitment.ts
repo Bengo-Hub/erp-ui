@@ -51,10 +51,25 @@ export interface JobApplication {
 export interface Onboarding {
   id: number | string;
   employee?: number;
+  employee_id?: string;
   employee_name?: string;
   status?: string;
   progress?: string | number;
   start_date?: string;
+  started_at?: string;
+  completed_at?: string;
+  probation_end_date?: string;
+  [key: string]: unknown;
+}
+
+export interface OnboardingTask {
+  id: string;
+  onboarding_id?: string;
+  category?: "IT" | "HR" | "Training" | "Other" | string;
+  title?: string;
+  order?: number;
+  is_done?: boolean;
+  done_at?: string | null;
   [key: string]: unknown;
 }
 
@@ -115,8 +130,8 @@ export const recruitmentApi = {
     ...crud<Onboarding>("onboarding"),
     // erp-api: tasks list + complete-by-taskID.
     listTasks: (id: number | string) =>
-      apiClient.get(`${REC}/onboarding/${id}/tasks`),
-    completeTask: (taskId: number | string) =>
-      apiClient.put(`${REC}/onboarding/tasks/${taskId}/complete`, {}),
+      apiClient.get<Paginated<OnboardingTask> | OnboardingTask[]>(`${REC}/onboarding/${id}/tasks`),
+    completeTask: (taskId: number | string, done = true) =>
+      apiClient.put<OnboardingTask>(`${REC}/onboarding/tasks/${taskId}/complete`, { done }),
   },
 };

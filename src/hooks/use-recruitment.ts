@@ -1,6 +1,6 @@
 "use client";
 
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 
 import {
@@ -70,3 +70,27 @@ export const useSaveOnboarding = onboarding.useSave;
 export const useDeleteOnboarding = onboarding.useRemove;
 // erp-api starts onboarding via POST /onboarding (create), so this is an alias.
 export const useStartOnboarding = onboarding.useSave;
+
+const TASKS_KEY = ["recruitment-onboarding", "tasks"] as const;
+
+/** Checklist tasks for one onboarding (GET /onboarding/{id}/tasks). */
+export function useOnboardingTasks(onboardingId: string | number | null) {
+  return useQuery({
+    queryKey: [...TASKS_KEY, onboardingId],
+    queryFn: () => recruitmentApi.onboarding.listTasks(onboardingId!),
+    enabled: !!onboardingId,
+  });
+}
+
+/** Toggle a checklist task done/undone; refreshes tasks + the onboarding list (status rolls up). */
+export function useCompleteOnboardingTask() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ taskId, done }: { taskId: string | number; done: boolean }) =>
+      recruitmentApi.onboarding.completeTask(taskId, done),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["recruitment-onboarding"] });
+    },
+    onError: (e) => toast.error(extractApiError(e, "Failed to update task")),
+  });
+}

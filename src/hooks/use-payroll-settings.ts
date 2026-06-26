@@ -80,6 +80,28 @@ export const useFormulas = formulas.useList;
 export const useSaveFormula = formulas.useSave;
 export const useDeleteFormula = formulas.useRemove;
 
+// ---- Tax relief management (formulas/relief-status + formula-management) ----
+export function useReliefStatus(reliefType: string | null) {
+  return useQuery({
+    queryKey: ["pay-relief", reliefType],
+    queryFn: () => formulasApi.reliefStatus(reliefType!),
+    enabled: !!reliefType,
+  });
+}
+
+export function useUpdateRelief() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (data: { relief_type: string; is_active: boolean; effective_date?: string }) =>
+      formulasApi.updateRelief(data),
+    onSuccess: (_r, v) => {
+      qc.invalidateQueries({ queryKey: ["pay-relief", v.relief_type] });
+      toast.success("Tax relief updated");
+    },
+    onError: (e) => toast.error(extractApiError(e, "Failed to update relief")),
+  });
+}
+
 // ---- General HR / statutory settings (singleton) ----
 export function useGeneralHrSettings() {
   return useQuery({ queryKey: ["general-hr-settings"], queryFn: () => generalHrApi.get() });

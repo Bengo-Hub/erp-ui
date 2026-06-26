@@ -24,9 +24,99 @@ export interface PerformanceReview {
   [key: string]: unknown;
 }
 
+export interface MetricCategory {
+  id: string;
+  name?: string;
+  description?: string;
+  order?: number;
+  [key: string]: unknown;
+}
+
+export interface PerformanceMetric {
+  id: string;
+  category_id?: string;
+  category_name?: string;
+  name?: string;
+  description?: string;
+  metric_type?: string;
+  unit?: string;
+  min_value?: string | number;
+  max_value?: string | number;
+  target_value?: string | number;
+  [key: string]: unknown;
+}
+
+export interface EmployeeMetric {
+  id: string;
+  employee_id?: string;
+  employee_name?: string;
+  metric_id?: string;
+  metric_name?: string;
+  value?: string | number;
+  date_recorded?: string;
+  notes?: string;
+  [key: string]: unknown;
+}
+
+export interface MetricTarget {
+  id: string;
+  employee_id?: string;
+  employee_name?: string;
+  metric_id?: string;
+  metric_name?: string;
+  target_value?: string | number;
+  period_start?: string;
+  period_end?: string;
+  [key: string]: unknown;
+}
+
+export interface ReviewMetric {
+  id: string;
+  metric_id?: string;
+  metric_name?: string;
+  value?: string | number;
+  rating?: string | number;
+  comments?: string;
+  [key: string]: unknown;
+}
+
+export const METRIC_TYPES = [
+  { value: "numeric", label: "Numeric" },
+  { value: "percentage", label: "Percentage" },
+  { value: "rating", label: "Rating (1–5)" },
+  { value: "boolean", label: "Yes / No" },
+] as const;
+
 // erp-api review segment is "reviews" (not "performance-reviews"), and
 // lifecycle is a single status setter PUT /reviews/{id}/status.
 const REVIEWS = `${PERF}/reviews`;
+
+/** Metric framework: categories → metrics → per-employee targets & recorded values. */
+export const performanceSetupApi = {
+  categories: {
+    list: (params?: ListParams) =>
+      apiClient.get<Paginated<MetricCategory> | MetricCategory[]>(`${PERF}/categories`, params),
+    create: (data: Partial<MetricCategory>) =>
+      apiClient.post<MetricCategory>(`${PERF}/categories`, data),
+  },
+  metrics: {
+    list: (params?: ListParams) =>
+      apiClient.get<Paginated<PerformanceMetric> | PerformanceMetric[]>(`${PERF}/metrics`, params),
+    create: (data: Partial<PerformanceMetric>) =>
+      apiClient.post<PerformanceMetric>(`${PERF}/metrics`, data),
+  },
+  employeeMetrics: {
+    list: (params?: ListParams) =>
+      apiClient.get<Paginated<EmployeeMetric> | EmployeeMetric[]>(`${PERF}/employee-metrics`, params),
+    record: (data: Partial<EmployeeMetric>) =>
+      apiClient.post<EmployeeMetric>(`${PERF}/employee-metrics`, data),
+  },
+  targets: {
+    list: (params?: ListParams) =>
+      apiClient.get<Paginated<MetricTarget> | MetricTarget[]>(`${PERF}/targets`, params),
+    set: (data: Partial<MetricTarget>) => apiClient.post<MetricTarget>(`${PERF}/targets`, data),
+  },
+};
 
 export const performanceApi = {
   listReviews: (params?: ListParams) =>
