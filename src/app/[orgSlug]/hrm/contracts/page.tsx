@@ -11,6 +11,7 @@ import { Dialog } from "@/components/ui/dialog";
 import { Field, Input, Select, Textarea } from "@/components/ui/form";
 import { PageHeader } from "@/components/ui/page-header";
 import { SearchInput } from "@/components/ui/search-input";
+import { IconButton } from "@/components/ui/tooltip";
 import { useContracts, useDeleteContract, useSaveContract } from "@/hooks/use-contracts";
 import { useDebounce } from "@/hooks/use-debounce";
 import { useEmployeeOptions } from "@/hooks/use-employee-options";
@@ -133,14 +134,14 @@ export default function ContractsPage() {
       cell: (c) => (
         <div className="flex justify-end gap-1">
           <PermissionGate permission="change_employee">
-            <Button variant="ghost" size="icon" aria-label="Edit" onClick={() => open(c)}>
+            <IconButton label="Edit contract" onClick={() => open(c)}>
               <Pencil className="size-4" />
-            </Button>
+            </IconButton>
           </PermissionGate>
           <PermissionGate permission="delete_employee">
-            <Button variant="ghost" size="icon" aria-label="Delete" onClick={() => setToDelete(c)}>
+            <IconButton label="Delete contract" onClick={() => setToDelete(c)}>
               <Trash2 className="size-4 text-destructive" />
-            </Button>
+            </IconButton>
           </PermissionGate>
         </div>
       ),

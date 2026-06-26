@@ -10,6 +10,7 @@ import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { DataTable, type Column } from "@/components/ui/data-table";
 import { Dialog } from "@/components/ui/dialog";
 import { Field, Input, Select, Textarea } from "@/components/ui/form";
+import { IconButton } from "@/components/ui/tooltip";
 import { useDeleteDisciplinary, useEmployeeDisciplinary, useSaveDisciplinary } from "@/hooks/use-employees";
 import { normalizeList } from "@/lib/api/drf";
 import { type EmployeeDisciplinary } from "@/lib/api/employees";
@@ -62,14 +63,14 @@ export function DisciplinaryTab({ employeeId }: { employeeId: number | string })
       cell: (d) => (
         <div className="flex justify-end gap-1">
           <PermissionGate permission="change_employee">
-            <Button variant="ghost" size="icon" onClick={() => openEdit(d)} aria-label="Edit record" title="Edit record">
+            <IconButton label="Edit disciplinary record" onClick={() => openEdit(d)}>
               <Pencil className="size-4" />
-            </Button>
+            </IconButton>
           </PermissionGate>
           <PermissionGate permission="delete_employee">
-            <Button variant="ghost" size="icon" onClick={() => setToDelete(d)} aria-label="Delete record" title="Delete record">
+            <IconButton label="Delete disciplinary record" onClick={() => setToDelete(d)}>
               <Trash2 className="size-4 text-destructive" />
-            </Button>
+            </IconButton>
           </PermissionGate>
         </div>
       ),

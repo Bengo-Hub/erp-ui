@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/base";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Dialog } from "@/components/ui/dialog";
 import { Field, Textarea } from "@/components/ui/form";
+import { IconButton } from "@/components/ui/tooltip";
 
 interface ApprovalActionsProps {
   /** Whether the record is in a state that can be approved/rejected. */
@@ -50,12 +51,12 @@ export function ApprovalActions({
       <div className="flex items-center gap-1.5">
         {icon ? (
           <>
-            <Button variant="ghost" size="icon" aria-label={approveLabel} title={approveLabel} onClick={() => setConfirmApprove(true)}>
+            <IconButton label={approveLabel} onClick={() => setConfirmApprove(true)}>
               <Check className="size-4 text-green-600" />
-            </Button>
-            <Button variant="ghost" size="icon" aria-label="Reject" title="Reject" onClick={() => setRejectOpen(true)}>
+            </IconButton>
+            <IconButton label="Reject" onClick={() => setRejectOpen(true)}>
               <X className="size-4 text-destructive" />
-            </Button>
+            </IconButton>
           </>
         ) : (
           <>

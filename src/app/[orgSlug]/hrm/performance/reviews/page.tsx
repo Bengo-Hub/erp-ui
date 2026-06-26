@@ -13,6 +13,7 @@ import { Dialog } from "@/components/ui/dialog";
 import { Field, Input, Select, Textarea } from "@/components/ui/form";
 import { PageHeader } from "@/components/ui/page-header";
 import { Tabs } from "@/components/ui/tabs";
+import { IconButton } from "@/components/ui/tooltip";
 import { useEmployeeOptions } from "@/hooks/use-employee-options";
 import {
   useApproveReview,
@@ -64,14 +65,14 @@ export default function PerformanceReviewsPage() {
       className: "text-right",
       cell: (r) => (
         <div className="flex items-center justify-end gap-1">
-          <Button variant="ghost" size="icon" aria-label="Score review" title="Score metrics" onClick={() => setScoring(r)}>
+          <IconButton label="Score review" onClick={() => setScoring(r)}>
             <ClipboardCheck className="size-4" />
-          </Button>
+          </IconButton>
           {isDraft(r) && (
             <PermissionGate permission="change_performancereview">
-              <Button variant="ghost" size="icon" aria-label="Submit" onClick={() => submit.mutate(r.id)}>
+              <IconButton label="Submit review" onClick={() => submit.mutate(r.id)}>
                 <Send className="size-4 text-primary" />
-              </Button>
+              </IconButton>
             </PermissionGate>
           )}
           <ApprovalActions

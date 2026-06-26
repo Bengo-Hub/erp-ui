@@ -9,6 +9,7 @@ import { DataTable, type Column } from "@/components/ui/data-table";
 import { Dialog } from "@/components/ui/dialog";
 import { Field, Input, Select } from "@/components/ui/form";
 import { PageHeader } from "@/components/ui/page-header";
+import { IconButton } from "@/components/ui/tooltip";
 import { useDocumentSequences, useSaveDocumentSequence } from "@/hooks/use-settings";
 import { normalizeList } from "@/lib/api/drf";
 import {
@@ -91,9 +92,9 @@ export default function DocumentNumberingPage() {
       className: "text-right",
       cell: (s) => (
         <PermissionGate permission="business.manage">
-          <Button variant="ghost" size="icon" aria-label="Edit sequence" onClick={() => openDialog(s)}>
+          <IconButton label="Edit sequence" onClick={() => openDialog(s)}>
             <Pencil className="size-4" />
-          </Button>
+          </IconButton>
         </PermissionGate>
       ),
     },

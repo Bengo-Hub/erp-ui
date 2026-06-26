@@ -7,6 +7,7 @@ import { PermissionGate } from "@/components/auth/permission-gate";
 import { Badge, Button, Card } from "@/components/ui/base";
 import { EmptyState, ErrorState, LoadingState } from "@/components/ui/states";
 import { PageHeader } from "@/components/ui/page-header";
+import { IconButton } from "@/components/ui/tooltip";
 import {
   useAdvanceApplication,
   useApplications,
@@ -84,15 +85,13 @@ export default function ApplicationsPipelinePage() {
                                 >
                                   Advance <ChevronRight className="ml-1 size-3.5" />
                                 </Button>
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  aria-label="Reject"
+                                <IconButton
+                                  label="Reject application"
                                   onClick={() => reject.mutate({ id: a.id })}
                                   disabled={reject.isPending}
                                 >
                                   <X className="size-4 text-destructive" />
-                                </Button>
+                                </IconButton>
                               </div>
                             </PermissionGate>
                           )}

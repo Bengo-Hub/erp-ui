@@ -10,6 +10,7 @@ import { DataTable, type Column } from "@/components/ui/data-table";
 import { Dialog } from "@/components/ui/dialog";
 import { Field, Input, Select, Switch, Textarea } from "@/components/ui/form";
 import { PageHeader } from "@/components/ui/page-header";
+import { IconButton } from "@/components/ui/tooltip";
 import {
   useApprovalWorkflows,
   useCreateApprovalWorkflow,
@@ -181,9 +182,9 @@ export default function ApprovalRulesPage() {
             <Button variant="ghost" size="sm" onClick={() => startEdit(wf)}>
               Edit
             </Button>
-            <Button variant="ghost" size="icon" aria-label="Delete workflow" onClick={() => setToDelete(wf)}>
+            <IconButton label="Delete workflow" onClick={() => setToDelete(wf)}>
               <Trash2 className="size-4 text-destructive" />
-            </Button>
+            </IconButton>
           </div>
         </PermissionGate>
       ),

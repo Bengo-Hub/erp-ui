@@ -11,6 +11,7 @@ import { DataTable, Pagination, type Column } from "@/components/ui/data-table";
 import { Dialog } from "@/components/ui/dialog";
 import { Field, Input, Textarea } from "@/components/ui/form";
 import { PageHeader } from "@/components/ui/page-header";
+import { IconButton } from "@/components/ui/tooltip";
 import {
   useActivateCycle,
   useAppraisalCycles,
@@ -76,28 +77,28 @@ export default function AppraisalCyclesPage() {
           <div className="flex justify-end gap-1">
             <PermissionGate permission="change_appraisalcycle">
               {!active && !closed && (
-                <Button variant="ghost" size="icon" aria-label="Activate" onClick={() => activate.mutate(c.id)}>
+                <IconButton label="Activate cycle" onClick={() => activate.mutate(c.id)}>
                   <Play className="size-4 text-green-600" />
-                </Button>
+                </IconButton>
               )}
               {active && (
-                <Button variant="ghost" size="icon" aria-label="Close" onClick={() => close.mutate(c.id)}>
+                <IconButton label="Close cycle" onClick={() => close.mutate(c.id)}>
                   <Square className="size-4 text-yellow-600" />
-                </Button>
+                </IconButton>
               )}
               {closed && (
-                <Button variant="ghost" size="icon" aria-label="Reopen" onClick={() => reopen.mutate(c.id)}>
+                <IconButton label="Reopen cycle" onClick={() => reopen.mutate(c.id)}>
                   <RotateCcw className="size-4 text-primary" />
-                </Button>
+                </IconButton>
               )}
-              <Button variant="ghost" size="icon" aria-label="Edit" onClick={() => open(c)}>
+              <IconButton label="Edit cycle" onClick={() => open(c)}>
                 <Pencil className="size-4" />
-              </Button>
+              </IconButton>
             </PermissionGate>
             <PermissionGate permission="delete_appraisalcycle">
-              <Button variant="ghost" size="icon" aria-label="Delete" onClick={() => setToDelete(c)}>
+              <IconButton label="Delete cycle" onClick={() => setToDelete(c)}>
                 <Trash2 className="size-4 text-destructive" />
-              </Button>
+              </IconButton>
             </PermissionGate>
           </div>
         );

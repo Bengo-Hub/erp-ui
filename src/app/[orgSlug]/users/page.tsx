@@ -8,6 +8,7 @@ import { Badge, Button, Card } from "@/components/ui/base";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { DataTable, Pagination, type Column } from "@/components/ui/data-table";
 import { PageHeader } from "@/components/ui/page-header";
+import { IconButton } from "@/components/ui/tooltip";
 import { SearchInput } from "@/components/ui/search-input";
 import { useDebounce } from "@/hooks/use-debounce";
 import { useDeleteUser, useUserActions, useUsers } from "@/hooks/use-users";
@@ -86,40 +87,35 @@ export default function UsersPage() {
       cell: (u) => (
         <div className="flex justify-end gap-1">
           <PermissionGate permission="change_user">
-            <Button variant="ghost" size="icon" aria-label="Manage roles" onClick={() => setRolesFor(u)}>
+            <IconButton label="Manage roles" onClick={() => setRolesFor(u)}>
               <Shield className="size-4" />
-            </Button>
+            </IconButton>
           </PermissionGate>
           <PermissionGate permission="change_user">
-            <Button
-              variant="ghost"
-              size="icon"
-              aria-label="Reset password"
-              onClick={() => u.user_id && resetPassword.mutate(u.user_id)}
-            >
+            <IconButton label="Reset password" onClick={() => u.user_id && resetPassword.mutate(u.user_id)}>
               <KeyRound className="size-4" />
-            </Button>
+            </IconButton>
           </PermissionGate>
           <PermissionGate permission="change_user">
             {isInactive(u) ? (
-              <Button variant="ghost" size="icon" aria-label="Activate" onClick={() => u.user_id && activate.mutate(u.user_id)}>
+              <IconButton label="Activate user" onClick={() => u.user_id && activate.mutate(u.user_id)}>
                 <UserCheck className="size-4 text-green-600" />
-              </Button>
+              </IconButton>
             ) : (
-              <Button variant="ghost" size="icon" aria-label="Deactivate" onClick={() => u.user_id && deactivate.mutate(u.user_id)}>
+              <IconButton label="Deactivate user" onClick={() => u.user_id && deactivate.mutate(u.user_id)}>
                 <UserX className="size-4 text-yellow-600" />
-              </Button>
+              </IconButton>
             )}
           </PermissionGate>
           <PermissionGate permission="change_user">
-            <Button variant="ghost" size="icon" aria-label="Edit" onClick={() => { setEditing(u); setFormOpen(true); }}>
+            <IconButton label="Edit user" onClick={() => { setEditing(u); setFormOpen(true); }}>
               <Pencil className="size-4" />
-            </Button>
+            </IconButton>
           </PermissionGate>
           <PermissionGate permission="delete_user">
-            <Button variant="ghost" size="icon" aria-label="Delete" onClick={() => setToDelete(u)}>
+            <IconButton label="Delete user" onClick={() => setToDelete(u)}>
               <Trash2 className="size-4 text-destructive" />
-            </Button>
+            </IconButton>
           </PermissionGate>
         </div>
       ),

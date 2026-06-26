@@ -10,6 +10,7 @@ import { DataTable, Pagination, type Column } from "@/components/ui/data-table";
 import { Dialog } from "@/components/ui/dialog";
 import { Field, Input, Select, Switch } from "@/components/ui/form";
 import { PageHeader } from "@/components/ui/page-header";
+import { IconButton } from "@/components/ui/tooltip";
 import { useEmployeeOptions } from "@/hooks/use-employee-options";
 import {
   useDeleteRoster,
@@ -137,9 +138,9 @@ export default function RostersPage() {
             <CalendarRange className="mr-1.5 size-4" /> Slots
           </Button>
           <PermissionGate permission={MANAGE}>
-            <Button variant="ghost" size="icon" aria-label="Delete roster" onClick={() => setToDelete(r)}>
+            <IconButton label="Delete roster" onClick={() => setToDelete(r)}>
               <Trash2 className="size-4 text-destructive" />
-            </Button>
+            </IconButton>
           </PermissionGate>
         </div>
       ),

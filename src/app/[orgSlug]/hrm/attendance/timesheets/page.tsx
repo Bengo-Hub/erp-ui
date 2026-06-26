@@ -12,6 +12,7 @@ import { Dialog } from "@/components/ui/dialog";
 import { Field, Input, Select } from "@/components/ui/form";
 import { PageHeader } from "@/components/ui/page-header";
 import { Tabs } from "@/components/ui/tabs";
+import { IconButton } from "@/components/ui/tooltip";
 import { useEmployeeOptions } from "@/hooks/use-employee-options";
 import {
   useApproveTimesheet,
@@ -66,9 +67,9 @@ export default function TimesheetsPage() {
         <div className="flex items-center justify-end gap-1">
           {isDraft(t) && (
             <PermissionGate permission="change_timesheet">
-              <Button variant="ghost" size="icon" aria-label="Submit" onClick={() => submit.mutate(t.id)}>
+              <IconButton label="Submit timesheet" onClick={() => submit.mutate(t.id)}>
                 <Send className="size-4 text-primary" />
-              </Button>
+              </IconButton>
             </PermissionGate>
           )}
           <ApprovalActions
