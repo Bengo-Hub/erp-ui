@@ -17,6 +17,7 @@ type FormValues = {
   pay_frequency?: string;
   payment_method?: string;
   effective_date?: string;
+  income_tax?: string;
 };
 
 export function SalaryTab({ employeeId }: { employeeId: number | string }) {
@@ -34,9 +35,10 @@ export function SalaryTab({ employeeId }: { employeeId: number | string }) {
         pay_frequency: current.pay_frequency ?? "monthly",
         payment_method: current.payment_method ?? "",
         effective_date: current.effective_date ?? "",
+        income_tax: (current.income_tax as string) ?? "primary",
       });
     } else {
-      reset({ currency: "KES", pay_frequency: "monthly" });
+      reset({ currency: "KES", pay_frequency: "monthly", income_tax: "primary" });
     }
   }, [current, reset]);
 
@@ -87,6 +89,16 @@ export function SalaryTab({ employeeId }: { employeeId: number | string }) {
           </Field>
           <Field label="Effective Date">
             <Input type="date" {...register("effective_date")} />
+          </Field>
+          <Field
+            label="PAYE Category"
+            help="Secondary = taxed at the top rate with no personal relief (second employer)."
+          >
+            <Select {...register("income_tax")}>
+              <option value="primary">Primary employment</option>
+              <option value="secondary">Secondary employment</option>
+              <option value="none">Tax exempt</option>
+            </Select>
           </Field>
         </CardContent>
       </Card>
