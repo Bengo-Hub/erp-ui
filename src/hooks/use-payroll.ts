@@ -118,6 +118,18 @@ export function useDeleteClaim() {
   });
 }
 
+export function useApproveClaim() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: number | string) => payrollApi.approveClaim(id),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: [KEY, "claims"] });
+      toast.success("Claim approved — reimbursement posted to finance");
+    },
+    onError: (e) => toast.error(extractApiError(e, "Failed to approve claim")),
+  });
+}
+
 // ---- Advances ----
 export function useAdvances(params?: ListParams) {
   return useQuery({

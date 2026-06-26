@@ -169,6 +169,9 @@ export const payrollApi = {
   updateClaim: (id: number | string, data: Partial<Claim>) =>
     apiClient.put<Claim>(`${HRM}/payroll/claims/${id}/`, data),
   deleteClaim: (id: number | string) => apiClient.delete<void>(`${HRM}/payroll/claims/${id}/`),
+  // Approve a claim -> emits erp.expense_claim.approved so treasury posts the reimbursement to GL.
+  approveClaim: (id: number | string) =>
+    apiClient.post<Claim>(`${HRM}/payroll/claims/${id}/approve`, {}),
 };
 
 export interface PayComponentRecord {
@@ -193,5 +196,10 @@ export interface Claim {
   status?: string;
   date?: string;
   created_at?: string;
+  // Analytic + tax linkage (treasury posts non-taxable claims to AP, taxable via payslip).
+  project_id?: string;
+  cost_center_id?: string;
+  taxable?: boolean;
+  approved?: boolean;
   [key: string]: unknown;
 }
