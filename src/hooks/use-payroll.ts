@@ -11,6 +11,7 @@ import {
   type Claim,
   type PayComponentRecord,
   type PayrollProcessPayload,
+  type ProjectAllocation,
 } from "@/lib/api/payroll";
 
 const KEY = "payroll";
@@ -173,6 +174,39 @@ export function useDeleteCasualLabor() {
       toast.success("Record deleted");
     },
     onError: (e) => toast.error(extractApiError(e, "Failed to delete")),
+  });
+}
+
+// ---- Employee ↔ project allocations ----
+export function useProjectAllocations(params?: ListParams) {
+  return useQuery({
+    queryKey: [KEY, "project-allocations", params ?? {}],
+    queryFn: () => payrollApi.listAllocations(params),
+  });
+}
+
+export function useSaveProjectAllocation() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, data }: { id?: number | string; data: Partial<ProjectAllocation> }) =>
+      id ? payrollApi.updateAllocation(id, data) : payrollApi.createAllocation(data),
+    onSuccess: (v) => {
+      qc.invalidateQueries({ queryKey: [KEY, "project-allocations"] });
+      toast.success(v.id ? "Allocation updated" : "Allocation created");
+    },
+    onError: (e) => toast.error(extractApiError(e, "Failed to save allocation")),
+  });
+}
+
+export function useDeleteProjectAllocation() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: number | string) => payrollApi.deleteAllocation(id),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: [KEY, "project-allocations"] });
+      toast.success("Allocation deleted");
+    },
+    onError: (e) => toast.error(extractApiError(e, "Failed to delete allocation")),
   });
 }
 

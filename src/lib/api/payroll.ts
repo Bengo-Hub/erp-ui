@@ -184,7 +184,33 @@ export const payrollApi = {
     apiClient.post<CasualLabor>(`${HRM}/payroll/casual-labor/${id}/approve`, {}),
   deleteCasualLabor: (id: number | string) =>
     apiClient.delete<void>(`${HRM}/payroll/casual-labor/${id}`),
+
+  // Employee/consultant ↔ project allocations.
+  listAllocations: (params?: ListParams) =>
+    apiClient.get<{ results: ProjectAllocation[]; count: number } | ProjectAllocation[]>(
+      `${HRM}/project-allocations`,
+      params,
+    ),
+  createAllocation: (data: Partial<ProjectAllocation>) =>
+    apiClient.post<ProjectAllocation>(`${HRM}/project-allocations`, data),
+  updateAllocation: (id: number | string, data: Partial<ProjectAllocation>) =>
+    apiClient.put<ProjectAllocation>(`${HRM}/project-allocations/${id}`, data),
+  deleteAllocation: (id: number | string) =>
+    apiClient.delete<void>(`${HRM}/project-allocations/${id}`),
 };
+
+export interface ProjectAllocation {
+  id: number | string;
+  employee_id?: string;
+  project_id?: string;
+  project_name?: string;
+  cost_center_id?: string;
+  allocation_percent?: string | number;
+  fixed_amount?: number;
+  is_active?: boolean;
+  created_at?: string;
+  [key: string]: unknown;
+}
 
 export interface CasualLabor {
   id: number | string;
