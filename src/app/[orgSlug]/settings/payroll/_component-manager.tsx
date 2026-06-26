@@ -25,15 +25,42 @@ interface ComponentHooks {
   remove: () => { mutate: (id: number | string, o?: { onSuccess?: () => void }) => void; isPending: boolean };
 }
 
-const fields: CrudFieldDef[] = [
-  { name: "name", label: "Name", required: true },
-  { name: "amount", label: "Default Amount", type: "number", step: "0.01" },
-  { name: "rate", label: "Rate (%)", type: "number", step: "0.01" },
-  { name: "is_percentage", label: "Percentage-based", type: "switch" },
-  { name: "is_taxable", label: "Taxable", type: "switch" },
-  { name: "is_active", label: "Active", type: "switch" },
-  { name: "description", label: "Description", type: "textarea", span2: true },
-];
+// Per-category fields. Deductions expose the employer-contribution + checkoff/registration
+// columns (NSSF/pension), benefits/earnings expose taxable + per-unit. Built from the
+// category so each tab only shows the controls that apply to it (mirrors the legacy
+// "Default Payroll Settings" Deductions vs Benefits vs Earnings tabs).
+function fieldsFor(category: string): CrudFieldDef[] {
+  const isDeduction = category === "Deductions";
+  const isEarning = category === "Earnings";
+  return [
+    { name: "name", label: "Title", required: true },
+    { name: "amount", label: isDeduction ? "Employee Fixed Amount" : "Fixed Amount", type: "number", step: "0.01" },
+    { name: "percentage", label: "or % of Basic Pay", type: "number", step: "0.01" },
+    ...(isDeduction
+      ? ([
+          { name: "employer_amount", label: "Employer Fixed Amount", type: "number", step: "0.01" },
+          { name: "employer_percentage", label: "or Employer % of Basic", type: "number", step: "0.01" },
+          { name: "registration_no", label: "Registration No" },
+          { name: "checkoff", label: "Checkoff (deduct on employee's behalf)", type: "switch" },
+        ] as CrudFieldDef[])
+      : []),
+    ...(isEarning
+      ? ([
+          { name: "unit_type", label: "Unit", type: "select", options: [
+              { value: "", label: "—" }, { value: "days", label: "Days" },
+              { value: "hours", label: "Hours" }, { value: "pieces", label: "Pieces" },
+            ] },
+          { name: "unit_rate", label: "Rate per Unit", type: "number", step: "0.01" },
+          { name: "quantity", label: "Quantity", type: "number", step: "0.01" },
+        ] as CrudFieldDef[])
+      : []),
+    { name: "is_taxable", label: "Taxable", type: "switch" },
+    { name: "is_active", label: "Active", type: "switch" },
+    { name: "description", label: "Description", type: "textarea", span2: true },
+  ];
+}
+
+const num = (v: unknown): number => (v == null || v === "" ? 0 : Number(v) || 0);
 
 /** Shared editor for Earnings / Deductions / Benefits payroll components. */
 export function PayComponentManager({
@@ -53,14 +80,40 @@ export function PayComponentManager({
     data as PayrollComponent[] | undefined,
   ).results;
 
+  // Category drives which fields/columns render (Deductions show the employer + checkoff
+  // columns; Earnings show per-unit). Derived from the tab key.
+  const category =
+    tabKey === "deductions" ? "Deductions" : tabKey === "earnings" ? "Earnings" : "Benefits";
+  const isDeduction = category === "Deductions";
+
+  // A component's employee-side value: fixed amount, or a "% of basic" when a percentage is set.
+  const valueOf = (c: PayrollComponent) =>
+    num(c.percentage) > 0 ? `${num(c.percentage)}% of basic` : formatMoney(c.amount);
+  const employerOf = (c: PayrollComponent) =>
+    num(c.employer_percentage) > 0
+      ? `${num(c.employer_percentage)}%`
+      : num(c.employer_amount) > 0
+        ? formatMoney(c.employer_amount)
+        : "—";
+
   const columns: Column<PayrollComponent>[] = [
-    { header: "Name", cell: (c) => <span className="font-medium">{c.name}</span> },
+    { header: "Title", cell: (c) => <span className="font-medium">{c.name}</span> },
     {
-      header: "Amount / Rate",
+      header: isDeduction ? "Employee Deduction" : "Amount / Rate",
       className: "text-right",
       headerClassName: "text-right",
-      cell: (c) => (c.is_percentage ? `${c.rate ?? 0}%` : formatMoney(c.amount)),
+      cell: (c) => valueOf(c),
     },
+    ...(isDeduction
+      ? ([
+          {
+            header: "Employer Contribution",
+            className: "text-right",
+            headerClassName: "text-right",
+            cell: (c) => employerOf(c),
+          },
+        ] as Column<PayrollComponent>[])
+      : []),
     {
       header: "Taxable",
       cell: (c) => (c.is_taxable ? <Badge variant="warning">Taxable</Badge> : <Badge variant="secondary">Exempt</Badge>),
@@ -82,7 +135,7 @@ export function PayComponentManager({
       <CrudManager
         rows={rows}
         columns={columns}
-        fields={fields}
+        fields={fieldsFor(category)}
         isLoading={isLoading}
         error={error}
         onRetry={refetch}
@@ -95,8 +148,14 @@ export function PayComponentManager({
         toForm={(c) => ({
           name: c?.name ?? "",
           amount: c?.amount ?? "",
-          rate: c?.rate ?? "",
-          is_percentage: c?.is_percentage ?? false,
+          percentage: c?.percentage ?? "",
+          employer_amount: c?.employer_amount ?? "",
+          employer_percentage: c?.employer_percentage ?? "",
+          registration_no: c?.registration_no ?? "",
+          checkoff: c?.checkoff ?? true,
+          unit_type: c?.unit_type ?? "",
+          unit_rate: c?.unit_rate ?? "",
+          quantity: c?.quantity ?? "",
           is_taxable: c?.is_taxable ?? false,
           is_active: c?.is_active ?? true,
           description: c?.description ?? "",

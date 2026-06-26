@@ -11,9 +11,22 @@ export interface PayrollComponent {
   id: number;
   name: string;
   category?: ComponentCategory | string;
+  /** Employee-side default amount + percentage (percent_of = base the % applies to). */
   amount?: string | number;
-  rate?: string | number;
-  is_percentage?: boolean;
+  percentage?: string | number;
+  percent_of?: string;
+  /** Employer contribution side (split deductions: NSSF, pension, etc.). */
+  employer_amount?: string | number;
+  employer_percentage?: string | number;
+  /** Per-unit earnings (Daily Wages, Overtime): unit_type=days|hours|pieces. */
+  unit_type?: string;
+  unit_rate?: string | number;
+  quantity?: string | number;
+  registration_no?: string;
+  checkoff?: boolean;
+  mode?: string;
+  effective_from?: string;
+  effective_to?: string;
   is_taxable?: boolean;
   is_active?: boolean;
   description?: string;
