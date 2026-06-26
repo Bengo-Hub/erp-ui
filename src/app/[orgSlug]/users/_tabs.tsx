@@ -8,7 +8,6 @@ const TABS = [
   { key: "users", label: "Users", path: "/users" },
   { key: "roles", label: "Roles", path: "/users/roles" },
   { key: "permissions", label: "Permissions", path: "/users/permissions" },
-  { key: "security", label: "Security", path: "/security/dashboard" },
   { key: "backups", label: "Backups", path: "/security/backups" },
 ];
 

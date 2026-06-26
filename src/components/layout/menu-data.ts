@@ -189,7 +189,6 @@ export const APP_MENU: MenuSection[] = [
           { label: "Users", to: "/users", permissions: ["view_user"] },
           { label: "Roles", to: "/users/roles", permissions: ["view_role"] },
           { label: "Permissions", to: "/users/permissions", permissions: ["view_permission"] },
-          { label: "Security", to: "/security/dashboard" },
           { label: "Backups", to: "/security/backups" },
         ],
       },
