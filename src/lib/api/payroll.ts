@@ -237,6 +237,23 @@ export const payrollApi = {
   deleteCasualLabor: (id: number | string) =>
     apiClient.delete<void>(`${HRM}/payroll/casual-labor/${id}`),
 
+  // Consultant WHT payment vouchers.
+  listConsultantVouchers: (params?: ListParams) =>
+    apiClient.get<{ results: ConsultantVoucher[]; count: number; page_total?: string } | ConsultantVoucher[]>(
+      `${PAY}/consultant-vouchers`,
+      params,
+    ),
+  createConsultantVoucher: (data: Partial<ConsultantVoucher>) =>
+    apiClient.post<ConsultantVoucher>(`${PAY}/consultant-vouchers`, data),
+  approveConsultantVoucher: (id: number | string) =>
+    apiClient.post<ConsultantVoucher>(`${PAY}/consultant-vouchers/${id}/approve`, {}),
+  deleteConsultantVoucher: (id: number | string) =>
+    apiClient.delete<void>(`${PAY}/consultant-vouchers/${id}`),
+  consultantVoucherPdf: (id: number | string) =>
+    apiClient.getBlob(`${PAY}/consultant-vouchers/${id}/pdf`, `voucher_${id}.pdf`),
+  emailConsultantVouchers: (data: { ids: (number | string)[]; message?: string }) =>
+    apiClient.post<{ queued: number; skipped: number }>(`${PAY}/consultant-vouchers/email`, data),
+
   // Employee/consultant ↔ project allocations.
   listAllocations: (params?: ListParams) =>
     apiClient.get<{ results: ProjectAllocation[]; count: number } | ProjectAllocation[]>(
@@ -291,6 +308,29 @@ export interface CasualLabor {
   engaged_by_employee_id?: string;
   /** Optional link to a salary advance used as a float/imprest to pay the casual worker. */
   imprest_advance_id?: string;
+  created_at?: string;
+  [key: string]: unknown;
+}
+
+export interface ConsultantVoucher {
+  id: number | string;
+  doc_number?: string;
+  title?: string;
+  period?: string;
+  employee_id?: string;
+  employee_name?: string;
+  name?: string;
+  gross_amount?: string | number;
+  deductions_amount?: string | number;
+  wht_rate?: string | number;
+  wht_amount?: string | number;
+  net_amount?: string | number;
+  is_resident?: boolean;
+  currency?: string;
+  status?: string;
+  email_status?: string;
+  project_id?: string;
+  cost_center_id?: string;
   created_at?: string;
   [key: string]: unknown;
 }

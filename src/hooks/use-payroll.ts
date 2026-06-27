@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { type ListParams } from "@/lib/api/drf";
 import { extractApiError } from "@/lib/api/error";
 import {
+  type ConsultantVoucher,
   payrollApi,
   type CasualLabor,
   type Claim,
@@ -285,6 +286,63 @@ export function useDeleteCasualLabor() {
       toast.success("Record deleted");
     },
     onError: (e) => toast.error(extractApiError(e, "Failed to delete")),
+  });
+}
+
+// ---- Consultant WHT payment vouchers ----
+export function useConsultantVouchers(params?: ListParams) {
+  return useQuery({
+    queryKey: [KEY, "consultant-vouchers", params ?? {}],
+    queryFn: () => payrollApi.listConsultantVouchers(params),
+  });
+}
+
+export function useCreateConsultantVoucher() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (data: Partial<ConsultantVoucher>) => payrollApi.createConsultantVoucher(data),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: [KEY, "consultant-vouchers"] });
+      toast.success("Voucher created");
+    },
+    onError: (e) => toast.error(extractApiError(e, "Failed to create voucher")),
+  });
+}
+
+export function useApproveConsultantVoucher() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: number | string) => payrollApi.approveConsultantVoucher(id),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: [KEY, "consultant-vouchers"] });
+      toast.success("Approved — posted to finance and paid");
+    },
+    onError: (e) => toast.error(extractApiError(e, "Failed to approve")),
+  });
+}
+
+export function useDeleteConsultantVoucher() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: number | string) => payrollApi.deleteConsultantVoucher(id),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: [KEY, "consultant-vouchers"] });
+      toast.success("Voucher deleted");
+    },
+    onError: (e) => toast.error(extractApiError(e, "Failed to delete")),
+  });
+}
+
+export function useEmailConsultantVouchers() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (data: { ids: (number | string)[]; message?: string }) =>
+      payrollApi.emailConsultantVouchers(data),
+    onSuccess: (r) => {
+      qc.invalidateQueries({ queryKey: [KEY, "consultant-vouchers"] });
+      toast.success(`Queued ${r.queued} voucher email(s)`);
+    },
+    onError: (e) => toast.error(extractApiError(e, "Failed to email vouchers")),
   });
 }
 

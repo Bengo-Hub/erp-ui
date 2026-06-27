@@ -86,6 +86,7 @@ export const APP_MENU: MenuSection[] = [
           { label: "Payslips", to: "/payroll/payslips", permissions: ["view_payslip"] },
           { label: "Email Pay Slips", to: "/payroll/email-payslips", permissions: ["change_payslip"] },
           { label: "Casual Employees", to: "/payroll/casual-labor" },
+          { label: "Consultants", to: "/payroll/consultants" },
           { label: "Advances", to: "/payroll/advances", permissions: ["view_advances"] },
           { label: "Claims", to: "/payroll/claims" },
           { label: "Losses & Damages", to: "/payroll/losses-damages", permissions: ["view_lossesanddamages"] },
