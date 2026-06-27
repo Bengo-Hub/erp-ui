@@ -9,10 +9,13 @@ import {
   payrollApi,
   type CasualLabor,
   type Claim,
+  type ClaimItem,
+  type MileageRoute,
   type PayComponentRecord,
   type PayrollProcessPayload,
   type ProjectAllocation,
 } from "@/lib/api/payroll";
+import { normalizeList } from "@/lib/api/drf";
 
 const KEY = "payroll";
 
@@ -146,6 +149,100 @@ export function useApproveClaim() {
   });
 }
 
+/** Single claim header (for the detail / edit page). */
+export function useClaim(id: number | string | undefined) {
+  return useQuery({
+    queryKey: [KEY, "claim", id],
+    queryFn: () => payrollApi.getClaim(id!),
+    enabled: !!id,
+  });
+}
+
+// ---- Claim line items (reimbursement / other) ----
+export function useClaimItems(claimId: number | string | undefined) {
+  return useQuery({
+    queryKey: [KEY, "claim-items", claimId],
+    queryFn: async () => normalizeList<ClaimItem>(await payrollApi.listClaimItems(claimId!)).results,
+    enabled: !!claimId,
+  });
+}
+
+export function useAddClaimItem(claimId: number | string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (data: Partial<ClaimItem>) => payrollApi.createClaimItem(claimId, data),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: [KEY, "claim-items", claimId] });
+      qc.invalidateQueries({ queryKey: [KEY, "claim", claimId] });
+      qc.invalidateQueries({ queryKey: [KEY, "claims"] });
+    },
+    onError: (e) => toast.error(extractApiError(e, "Failed to add line")),
+  });
+}
+
+export function useDeleteClaimItem(claimId: number | string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (itemId: number | string) => payrollApi.deleteClaimItem(claimId, itemId),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: [KEY, "claim-items", claimId] });
+      qc.invalidateQueries({ queryKey: [KEY, "claim", claimId] });
+      qc.invalidateQueries({ queryKey: [KEY, "claims"] });
+    },
+    onError: (e) => toast.error(extractApiError(e, "Failed to remove line")),
+  });
+}
+
+// ---- Claim mileage routes (mileage) ----
+export function useMileageRoutes(claimId: number | string | undefined) {
+  return useQuery({
+    queryKey: [KEY, "claim-routes", claimId],
+    queryFn: async () =>
+      normalizeList<MileageRoute>(await payrollApi.listMileageRoutes(claimId!)).results,
+    enabled: !!claimId,
+  });
+}
+
+export function useAddMileageRoute(claimId: number | string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (data: Partial<MileageRoute>) => payrollApi.createMileageRoute(claimId, data),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: [KEY, "claim-routes", claimId] });
+      qc.invalidateQueries({ queryKey: [KEY, "claim", claimId] });
+      qc.invalidateQueries({ queryKey: [KEY, "claims"] });
+    },
+    onError: (e) => toast.error(extractApiError(e, "Failed to add route")),
+  });
+}
+
+export function useDeleteMileageRoute(claimId: number | string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (routeId: number | string) => payrollApi.deleteMileageRoute(claimId, routeId),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: [KEY, "claim-routes", claimId] });
+      qc.invalidateQueries({ queryKey: [KEY, "claim", claimId] });
+      qc.invalidateQueries({ queryKey: [KEY, "claims"] });
+    },
+    onError: (e) => toast.error(extractApiError(e, "Failed to remove route")),
+  });
+}
+
+// ---- Claim attachment upload (multipart) ----
+export function useUploadClaimAttachment(claimId: number | string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (file: File) => payrollApi.uploadClaimAttachment(claimId, file),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: [KEY, "claim", claimId] });
+      qc.invalidateQueries({ queryKey: [KEY, "claims"] });
+      toast.success("Attachment uploaded");
+    },
+    onError: (e) => toast.error(extractApiError(e, "Failed to upload attachment")),
+  });
+}
+
 // ---- Casual / subcontracted labour ----
 export function useCasualLabor(params?: ListParams) {
   return useQuery({
@@ -257,6 +354,31 @@ export function useDeleteAdvance() {
   });
 }
 
+/** Approve (→ Scheduled) or disapprove (→ Disapproved) a salary advance. */
+export function useSetAdvanceApproval() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, approve }: { id: number | string; approve: boolean }) =>
+      approve ? payrollApi.approveAdvance(id) : payrollApi.disapproveAdvance(id),
+    onSuccess: (_r, v) => {
+      qc.invalidateQueries({ queryKey: [KEY, "advances"] });
+      toast.success(v.approve ? "Advance approved & scheduled" : "Advance disapproved");
+    },
+    onError: (e) => toast.error(extractApiError(e, "Failed to update advance")),
+  });
+}
+
+/** Salary advances as `{value,label}` options — used to link a casual-labour engagement to an
+ * imprest/float advance (the advance the engaging employee drew to pay the casual worker). */
+export function useAdvanceOptions() {
+  const { data, isLoading } = useAdvances({ limit: 200 });
+  const options = normalizeList<PayComponentRecord>(data).results.map((a) => ({
+    value: String(a.id),
+    label: `${a.employee_name || a.employee_id || "Advance"} — ${a.amount ?? ""}`,
+  }));
+  return { options, isLoading };
+}
+
 // ---- Losses & damages ----
 export function useLossDamages(params?: ListParams) {
   return useQuery({
@@ -287,5 +409,19 @@ export function useDeleteLossDamage() {
       toast.success("Record deleted");
     },
     onError: (e) => toast.error(extractApiError(e, "Failed to delete record")),
+  });
+}
+
+/** Approve (→ Scheduled) or disapprove (→ Disapproved) a loss/damage recovery. */
+export function useSetLossDamageApproval() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, approve }: { id: number | string; approve: boolean }) =>
+      approve ? payrollApi.approveLossDamage(id) : payrollApi.disapproveLossDamage(id),
+    onSuccess: (_r, v) => {
+      qc.invalidateQueries({ queryKey: [KEY, "losses"] });
+      toast.success(v.approve ? "Recovery approved & scheduled" : "Recovery disapproved");
+    },
+    onError: (e) => toast.error(extractApiError(e, "Failed to update record")),
   });
 }

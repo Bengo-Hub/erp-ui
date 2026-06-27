@@ -157,6 +157,11 @@ export const payrollApi = {
   updateAdvance: (id: number | string, data: Partial<PayComponentRecord>) =>
     apiClient.put<PayComponentRecord>(`${PAY}/advances/${id}/`, data),
   deleteAdvance: (id: number | string) => apiClient.delete<void>(`${PAY}/advances/${id}/`),
+  // Approve → Scheduled (approved+active); Disapprove → Disapproved (approved=false).
+  approveAdvance: (id: number | string) =>
+    apiClient.post<PayComponentRecord>(`${PAY}/advances/${id}/approve`, {}),
+  disapproveAdvance: (id: number | string) =>
+    apiClient.post<PayComponentRecord>(`${PAY}/advances/${id}/disapprove`, {}),
 
   // Losses & damages
   listLossDamages: (params?: ListParams) =>
@@ -166,6 +171,10 @@ export const payrollApi = {
   updateLossDamage: (id: number | string, data: Partial<PayComponentRecord>) =>
     apiClient.put<PayComponentRecord>(`${PAY}/losses-damages/${id}/`, data),
   deleteLossDamage: (id: number | string) => apiClient.delete<void>(`${PAY}/losses-damages/${id}/`),
+  approveLossDamage: (id: number | string) =>
+    apiClient.post<PayComponentRecord>(`${PAY}/losses-damages/${id}/approve`, {}),
+  disapproveLossDamage: (id: number | string) =>
+    apiClient.post<PayComponentRecord>(`${PAY}/losses-damages/${id}/disapprove`, {}),
 
   // Claims
   listClaims: (params?: ListParams) =>
@@ -178,6 +187,36 @@ export const payrollApi = {
   // Approve a claim -> emits erp.expense_claim.approved so treasury posts the reimbursement to GL.
   approveClaim: (id: number | string) =>
     apiClient.post<Claim>(`${HRM}/payroll/claims/${id}/approve`, {}),
+
+  // Claim line items (reimbursement / other) — date/description/expense_type/quantity/unit_cost/amount.
+  listClaimItems: (claimId: number | string) =>
+    apiClient.get<{ results?: ClaimItem[]; data?: ClaimItem[] } | ClaimItem[]>(
+      `${HRM}/payroll/claims/${claimId}/items`,
+    ),
+  createClaimItem: (claimId: number | string, data: Partial<ClaimItem>) =>
+    apiClient.post<ClaimItem>(`${HRM}/payroll/claims/${claimId}/items`, data),
+  deleteClaimItem: (claimId: number | string, itemId: number | string) =>
+    apiClient.delete<void>(`${HRM}/payroll/claims/${claimId}/items/${itemId}`),
+
+  // Claim mileage routes (mileage claim_type) — from/to/distance/rate → amount.
+  listMileageRoutes: (claimId: number | string) =>
+    apiClient.get<{ results?: MileageRoute[]; data?: MileageRoute[] } | MileageRoute[]>(
+      `${HRM}/payroll/claims/${claimId}/mileage-routes`,
+    ),
+  createMileageRoute: (claimId: number | string, data: Partial<MileageRoute>) =>
+    apiClient.post<MileageRoute>(`${HRM}/payroll/claims/${claimId}/mileage-routes`, data),
+  deleteMileageRoute: (claimId: number | string, routeId: number | string) =>
+    apiClient.delete<void>(`${HRM}/payroll/claims/${claimId}/mileage-routes/${routeId}`),
+
+  // Multipart attachment upload (form field name: `file`) → sets attachment_url on the claim.
+  uploadClaimAttachment: (claimId: number | string, file: File) => {
+    const fd = new FormData();
+    fd.append("file", file);
+    return apiClient.post<{ attachment_url?: string; attachment_path?: string }>(
+      `${HRM}/payroll/claims/${claimId}/attachment`,
+      fd,
+    );
+  },
 
   // Casual / subcontracted labour register.
   listCasualLabor: (params?: ListParams) =>
@@ -230,6 +269,8 @@ export interface CasualLabor {
   project_id?: string;
   cost_center_id?: string;
   engaged_by_employee_id?: string;
+  /** Optional link to a salary advance used as a float/imprest to pay the casual worker. */
+  imprest_advance_id?: string;
   created_at?: string;
   [key: string]: unknown;
 }
@@ -237,29 +278,71 @@ export interface CasualLabor {
 export interface PayComponentRecord {
   id: number | string;
   employee?: number;
+  employee_id?: string;
   employee_name?: string;
   amount?: string | number;
+  amount_repaid?: string | number;
   description?: string;
   reason?: string;
   date?: string;
   status?: string;
+  approved?: boolean;
+  is_active?: boolean;
+  // Installment recovery: no_of_installments>=2 makes the backend create/update a RepayOption.
+  repay_option_id?: string | null;
+  no_of_installments?: number;
   [key: string]: unknown;
 }
 
 export interface Claim {
   id: number | string;
   employee?: number;
+  employee_id?: string;
   employee_name?: string;
   claim_type?: string;
+  category?: string;
   amount?: string | number;
   description?: string;
   status?: string;
   date?: string;
   created_at?: string;
+  attachment_url?: string;
   // Analytic + tax linkage (treasury posts non-taxable claims to AP, taxable via payslip).
   project_id?: string;
   cost_center_id?: string;
   taxable?: boolean;
   approved?: boolean;
+  [key: string]: unknown;
+}
+
+/** Itemized expense line (reimbursement / other claims). quantity/unit_cost are calc-only;
+ * the backend persists only `amount` (= quantity × unit_cost when not given explicitly). */
+export interface ClaimItem {
+  id: number | string;
+  expense_claim_id?: string;
+  date?: string;
+  description?: string;
+  expense_type?: string;
+  quantity?: string | number;
+  unit_cost?: string | number;
+  amount?: string | number;
+  created_at?: string;
+  [key: string]: unknown;
+}
+
+/** Mileage trip line (mileage claims). amount = distance × rate. The backend accepts both
+ * `from`/`to` and `from_location`/`to_location` and echoes both in the view. */
+export interface MileageRoute {
+  id: number | string;
+  expense_claim_id?: string;
+  date?: string;
+  from?: string;
+  to?: string;
+  from_location?: string;
+  to_location?: string;
+  distance?: string | number;
+  rate?: string | number;
+  amount?: string | number;
+  created_at?: string;
   [key: string]: unknown;
 }

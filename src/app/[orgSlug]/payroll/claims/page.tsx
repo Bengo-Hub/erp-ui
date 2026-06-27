@@ -1,45 +1,35 @@
 "use client";
 
-import { CrudManager, type CrudFieldDef } from "@/components/crud/crud-manager";
-import { Badge, Button } from "@/components/ui/base";
-import { type Column } from "@/components/ui/data-table";
+import { Plus, Trash2 } from "lucide-react";
+import { useParams, useRouter } from "next/navigation";
+import { useState } from "react";
+
+import { PermissionGate } from "@/components/auth/permission-gate";
+import { Badge, Button, Card } from "@/components/ui/base";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { DataTable, type Column } from "@/components/ui/data-table";
 import { PageHeader } from "@/components/ui/page-header";
-import { useEmployeeOptions } from "@/hooks/use-employee-options";
-import { useCostCenterOptions, useProjectOptions } from "@/hooks/use-option-hooks";
-import { useApproveClaim, useClaims, useDeleteClaim, useSaveClaim } from "@/hooks/use-payroll";
+import { IconButton } from "@/components/ui/tooltip";
+import { useApproveClaim, useClaims, useDeleteClaim } from "@/hooks/use-payroll";
 import { normalizeList } from "@/lib/api/drf";
 import { type Claim } from "@/lib/api/payroll";
 import { formatDate, formatMoney } from "@/lib/utils";
 
-const fields: CrudFieldDef[] = [
-  { name: "employee", label: "Employee", type: "combobox", optionsHook: useEmployeeOptions, required: true, placeholder: "Select employee" },
-  {
-    name: "claim_type",
-    label: "Claim Type",
-    type: "select",
-    options: [
-      { value: "reimbursement", label: "Reimbursement (non-taxable)" },
-      { value: "per_diem", label: "Per Diem" },
-      { value: "mileage", label: "Mileage" },
-      { value: "other", label: "Other" },
-    ],
-  },
-  { name: "amount", label: "Amount", type: "number", step: "0.01", required: true },
-  { name: "date", label: "Date", type: "date" },
-  // Analytic tagging: cost posts against this project/cost-center in treasury.
-  { name: "project_id", label: "Project (optional)", type: "combobox", optionsHook: useProjectOptions, placeholder: "Select project" },
-  { name: "cost_center_id", label: "Cost Center (optional)", type: "combobox", optionsHook: useCostCenterOptions, placeholder: "Select cost center" },
-  // Taxable excess (per-diem/mileage over KRA caps, taxable allowances) flows to the payslip;
-  // non-taxable reimbursements are paid via treasury AP and never inflate PAYE.
-  { name: "taxable", label: "Taxable (flows to payslip / PAYE)", type: "switch" },
-  { name: "description", label: "Description", type: "richtext", span2: true },
-];
+const TYPE_LABEL: Record<string, string> = {
+  reimbursement: "Reimbursement",
+  per_diem: "Per Diem",
+  mileage: "Mileage",
+  other: "Other",
+};
 
 export default function ClaimsPage() {
+  const params = useParams();
+  const router = useRouter();
+  const orgSlug = params?.orgSlug as string;
   const { data, isLoading, error, refetch } = useClaims();
-  const save = useSaveClaim();
   const del = useDeleteClaim();
   const approve = useApproveClaim();
+  const [toDelete, setToDelete] = useState<Claim | null>(null);
   const rows = normalizeList<Claim>(data).results;
 
   const columns: Column<Claim>[] = [
@@ -47,7 +37,7 @@ export default function ClaimsPage() {
       header: "Employee",
       cell: (c) => <span className="font-medium">{c.employee_name || c.employee || "—"}</span>,
     },
-    { header: "Type", cell: (c) => c.claim_type || "—" },
+    { header: "Type", cell: (c) => TYPE_LABEL[c.claim_type ?? ""] ?? c.claim_type ?? "—" },
     {
       header: "Amount",
       className: "text-right",
@@ -55,13 +45,21 @@ export default function ClaimsPage() {
       cell: (c) => formatMoney(c.amount),
     },
     { header: "Date", cell: (c) => formatDate(c.date || c.created_at) },
-    { header: "Taxable", cell: (c) => (c.taxable ? <Badge variant="warning">Taxable</Badge> : <Badge variant="outline">Non-taxable</Badge>) },
+    {
+      header: "Taxable",
+      cell: (c) =>
+        c.taxable ? (
+          <Badge variant="warning">Taxable</Badge>
+        ) : (
+          <Badge variant="outline">Non-taxable</Badge>
+        ),
+    },
     {
       header: "Status",
       cell: (c) => {
         const v = (c.status || "pending").toLowerCase();
         return (
-          <Badge variant={v.includes("approv") ? "success" : v.includes("reject") ? "error" : "warning"}>
+          <Badge variant={v.includes("approv") || v === "paid" ? "success" : v.includes("reject") || v.includes("disapprov") ? "error" : "warning"}>
             {c.status || "Pending"}
           </Badge>
         );
@@ -71,59 +69,65 @@ export default function ClaimsPage() {
       header: "",
       headerClassName: "text-right",
       className: "text-right",
-      cell: (c) =>
-        c.approved ? null : (
-          <Button
-            size="sm"
-            variant="ghost"
-            disabled={approve.isPending}
-            onClick={() => approve.mutate(c.id)}
-            title="Approve — posts the reimbursement to finance"
-          >
-            Approve
-          </Button>
-        ),
+      cell: (c) => (
+        <div className="flex items-center justify-end gap-1" onClick={(e) => e.stopPropagation()}>
+          {!c.approved && (
+            <Button
+              size="sm"
+              variant="ghost"
+              disabled={approve.isPending}
+              onClick={() => approve.mutate(c.id)}
+              title="Approve — posts the reimbursement to finance"
+            >
+              Approve
+            </Button>
+          )}
+          <PermissionGate permission="delete_expenseclaims">
+            <IconButton label="Delete claim" onClick={() => setToDelete(c)}>
+              <Trash2 className="size-4 text-destructive" />
+            </IconButton>
+          </PermissionGate>
+        </div>
+      ),
     },
   ];
 
   return (
     <div className="space-y-4 p-4 sm:p-6">
-      <PageHeader title="Expense Claims" subtitle="Employee reimbursement claims" />
-      <CrudManager
-        rows={rows}
-        columns={columns}
-        fields={fields}
-        isLoading={isLoading}
-        error={error}
-        onRetry={refetch}
-        entityLabel="Claim"
-        emptyDescription="No expense claims have been submitted."
-        toForm={(c) => ({
-          employee: c?.employee ?? "",
-          claim_type: c?.claim_type ?? "reimbursement",
-          amount: c?.amount ?? "",
-          date: c?.date ?? "",
-          project_id: c?.project_id ?? "",
-          cost_center_id: c?.cost_center_id ?? "",
-          taxable: c?.taxable ?? false,
-          description: c?.description ?? "",
-        })}
-        onSave={({ id, data }, done) =>
-          save.mutate(
-            {
-              id,
-              data: {
-                ...data,
-                employee: data.employee ? Number(data.employee) : undefined,
-                taxable: Boolean(data.taxable),
-              } as Partial<Claim>,
-            },
-            { onSuccess: done },
-          )
+      <PageHeader
+        title="Expense Claims"
+        subtitle="Itemised reimbursement, per-diem & mileage claims"
+        actions={
+          <PermissionGate permission="add_expenseclaims">
+            <Button size="sm" onClick={() => router.push(`/${orgSlug}/payroll/claims/new`)}>
+              <Plus className="mr-1.5 size-4" /> Submit Claim
+            </Button>
+          </PermissionGate>
         }
-        onDelete={(id, done) => del.mutate(id, { onSuccess: done })}
-        saving={save.isPending}
-        deleting={del.isPending}
+      />
+
+      <Card>
+        <DataTable
+          columns={columns}
+          rows={rows}
+          rowKey={(c) => c.id}
+          isLoading={isLoading}
+          error={error}
+          onRetry={refetch}
+          emptyTitle="No expense claims yet"
+          emptyDescription="No expense claims have been submitted."
+          onRowClick={(c) => router.push(`/${orgSlug}/payroll/claims/${c.id}`)}
+        />
+      </Card>
+
+      <ConfirmDialog
+        open={!!toDelete}
+        title="Delete claim?"
+        description="This action cannot be undone."
+        destructive
+        loading={del.isPending}
+        onCancel={() => setToDelete(null)}
+        onConfirm={() => toDelete && del.mutate(toDelete.id, { onSuccess: () => setToDelete(null) })}
       />
     </div>
   );
