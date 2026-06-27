@@ -7,6 +7,7 @@ import { Combobox } from "@/components/ui/combobox";
 import { Dialog } from "@/components/ui/dialog";
 import { Field, Input, Select, Switch } from "@/components/ui/form";
 import { RichTextEditor } from "@/components/ui/rich-text-editor";
+import { Stepper } from "@/components/ui/stepper";
 import { useDepartmentOptions } from "@/hooks/use-option-hooks";
 import { useOutlets } from "@/hooks/use-outlets";
 import { LOCATION_OPTIONS } from "@/lib/data/africa-cities";
@@ -106,8 +107,11 @@ interface Props {
  * responsibilities, a searchable Africa-cities location picker pre-filled to the
  * tenant HQ branch, salary band + currency, and the standard posting metadata.
  */
+const STEPS = ["Role & pay", "Details", "Publishing"];
+
 export function JobFormDialog({ open, job, orgSlug, saving, onClose, onSave }: Props) {
   const [form, setForm] = useState<JobForm>(emptyForm);
+  const [step, setStep] = useState(0);
   const departments = useDepartmentOptions();
   const { data: outlets } = useOutlets(orgSlug, open);
 
@@ -127,12 +131,14 @@ export function JobFormDialog({ open, job, orgSlug, saving, onClose, onSave }: P
     const seeded = toForm(job);
     if (!job && !seeded.location && hqLocation) seeded.location = hqLocation;
     setForm(seeded);
+    setStep(0);
   }, [open, job, hqLocation]);
 
   const set = <K extends keyof JobForm>(key: K, value: JobForm[K]) =>
     setForm((f) => ({ ...f, [key]: value }));
 
   const titleMissing = !form.title.trim();
+  const isLast = step === STEPS.length - 1;
 
   const submit = () => {
     if (titleMissing) return;
@@ -167,13 +173,28 @@ export function JobFormDialog({ open, job, orgSlug, saving, onClose, onSave }: P
           <Button variant="outline" size="sm" onClick={onClose} disabled={saving}>
             Cancel
           </Button>
-          <Button size="sm" onClick={submit} disabled={saving || titleMissing}>
-            {saving ? "Saving…" : job ? "Save Changes" : "Create Posting"}
-          </Button>
+          {step > 0 && (
+            <Button variant="outline" size="sm" onClick={() => setStep((s) => s - 1)} disabled={saving}>
+              Back
+            </Button>
+          )}
+          {!isLast ? (
+            <Button size="sm" onClick={() => setStep((s) => s + 1)} disabled={step === 0 && titleMissing}>
+              Next
+            </Button>
+          ) : (
+            <Button size="sm" onClick={submit} disabled={saving || titleMissing}>
+              {saving ? "Saving…" : job ? "Save Changes" : "Create Posting"}
+            </Button>
+          )}
         </>
       }
     >
       <div className="space-y-6">
+        <Stepper steps={STEPS} current={step} />
+
+        {step === 0 && (
+        <>
         {/* ---- Role basics ---- */}
         <Section title="Role">
           <div className="grid gap-4 sm:grid-cols-2">
@@ -273,7 +294,11 @@ export function JobFormDialog({ open, job, orgSlug, saving, onClose, onSave }: P
             </Field>
           </div>
         </Section>
+        </>
+        )}
 
+        {step === 1 && (
+        <>
         {/* ---- Description ---- */}
         <Section title="Description" hint="The overview applicants see first.">
           <RichTextEditor
@@ -303,8 +328,11 @@ export function JobFormDialog({ open, job, orgSlug, saving, onClose, onSave }: P
             placeholder="List the key responsibilities…"
           />
         </Section>
+        </>
+        )}
 
         {/* ---- Publishing ---- */}
+        {step === 2 && (
         <Section title="Publishing">
           <div className="grid gap-4 sm:grid-cols-2">
             <Field label="Status" htmlFor="status">
@@ -335,6 +363,7 @@ export function JobFormDialog({ open, job, orgSlug, saving, onClose, onSave }: P
             </div>
           </div>
         </Section>
+        )}
       </div>
     </Dialog>
   );

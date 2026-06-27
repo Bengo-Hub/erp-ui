@@ -1,13 +1,14 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 
 import { Button } from "@/components/ui/base";
 import { Dialog } from "@/components/ui/dialog";
 import { Field, Input, Select } from "@/components/ui/form";
+import { Stepper } from "@/components/ui/stepper";
 import { useSaveEmployee } from "@/hooks/use-employees";
 import { useDepartments, useJobGroups, useJobTitles } from "@/hooks/use-hrm-settings";
 import { normalizeList } from "@/lib/api/drf";
@@ -90,12 +91,21 @@ export function EmployeeFormDialog({
   const jobTitles = normalizeList(titleData).results;
   const jobGroups = normalizeList(groupData).results;
 
-  const { register, handleSubmit, reset, formState: { errors } } = useForm<FormValues>({
+  const [step, setStep] = useState(0);
+  const { register, handleSubmit, reset, trigger, formState: { errors } } = useForm<FormValues>({
     resolver: zodResolver(employeeSchema),
   });
   useEffect(() => {
-    if (open) reset(toFormValues(employee));
+    if (open) {
+      reset(toFormValues(employee));
+      setStep(0);
+    }
   }, [open, employee, reset]);
+
+  const next = async () => {
+    const ok = await trigger(["first_name", "last_name", "email", "phone_number", "national_id", "kra_pin", "date_of_birth"]);
+    if (ok) setStep(1);
+  };
 
   const onSubmit = (v: FormValues) => {
     // Keep FK ids as their raw select value (string) — erp-api entity ids may be UUID
@@ -128,14 +138,26 @@ export function EmployeeFormDialog({
           <Button variant="outline" size="sm" onClick={onClose} disabled={save.isPending}>
             Cancel
           </Button>
-          <Button size="sm" onClick={handleSubmit(onSubmit)} disabled={save.isPending}>
-            {save.isPending ? "Saving…" : isEdit ? "Save Changes" : "Create Employee"}
-          </Button>
+          {step === 1 && (
+            <Button variant="outline" size="sm" onClick={() => setStep(0)} disabled={save.isPending}>
+              Back
+            </Button>
+          )}
+          {step === 0 ? (
+            <Button size="sm" onClick={next}>
+              Next
+            </Button>
+          ) : (
+            <Button size="sm" onClick={handleSubmit(onSubmit)} disabled={save.isPending}>
+              {save.isPending ? "Saving…" : isEdit ? "Save Changes" : "Create Employee"}
+            </Button>
+          )}
         </>
       }
     >
       <div className="space-y-4">
-        <div>
+        <Stepper steps={["Personal", "Employment"]} current={step} />
+        <div className={step === 0 ? undefined : "hidden"}>
           <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Personal</h3>
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             <Field label="First Name" required error={errors.first_name?.message}>
@@ -161,7 +183,7 @@ export function EmployeeFormDialog({
           </div>
         </div>
 
-        <div>
+        <div className={step === 1 ? undefined : "hidden"}>
           <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Employment</h3>
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             <Field label="Department">
