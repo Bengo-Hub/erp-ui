@@ -1,8 +1,8 @@
 "use client";
 
-import { ArrowLeft, Download, Printer } from "lucide-react";
+import { PdfPreview, useDocumentPreview } from "@bengo-hub/shared-ui-lib/documents";
+import { ArrowLeft, FileText, Printer } from "lucide-react";
 import { useParams, useRouter } from "next/navigation";
-import { useState } from "react";
 
 import { Button } from "@/components/ui/base";
 import { PageHeader } from "@/components/ui/page-header";
@@ -18,29 +18,17 @@ export default function PayslipDetailPage() {
   const orgSlug = params?.orgSlug as string;
   // Payslip ids are UUIDs — use the raw route param (Number() would NaN a UUID).
   const id = (params?.id as string) ?? "";
-  const [downloading, setDownloading] = useState(false);
 
   const { data: payslip, isLoading, error, refetch } = usePayslip(id);
+  // Shared "preview-first" flow: opens the server PDF in a modal with Download / Print / Open-in-tab.
+  const { openPreview, previewProps } = useDocumentPreview();
 
-  async function downloadPdf() {
+  function previewPdf() {
     if (!id) return;
-    setDownloading(true);
-    try {
-      const { blob, fileName } = await payrollApi.payslipPdf(id);
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = fileName;
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      URL.revokeObjectURL(url);
-    } catch {
-      // Server enforces self-or-manager; fall back to the browser print path below.
-      window.print();
-    } finally {
-      setDownloading(false);
-    }
+    openPreview(() => payrollApi.payslipPdf(id).then((r) => r.blob), {
+      fileName: `payslip_${id}.pdf`,
+      title: payslip?.employee_name ? `Payslip — ${payslip.employee_name}` : "Payslip",
+    });
   }
 
   return (
@@ -63,8 +51,8 @@ export default function PayslipDetailPage() {
               subtitle={payslip.employee_name}
               actions={
                 <div className="flex gap-2">
-                  <Button variant="primary" size="sm" onClick={downloadPdf} disabled={downloading}>
-                    <Download className="mr-1.5 size-4" /> {downloading ? "Preparing…" : "Download PDF"}
+                  <Button variant="primary" size="sm" onClick={previewPdf}>
+                    <FileText className="mr-1.5 size-4" /> Preview PDF
                   </Button>
                   <Button variant="outline" size="sm" onClick={() => window.print()}>
                     <Printer className="mr-1.5 size-4" /> Print
@@ -76,6 +64,8 @@ export default function PayslipDetailPage() {
           <PayslipView payslip={payslip} />
         </>
       )}
+
+      <PdfPreview {...previewProps} />
     </div>
   );
 }
