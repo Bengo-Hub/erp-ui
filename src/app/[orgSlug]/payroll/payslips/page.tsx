@@ -2,24 +2,23 @@
 
 import { useParams, useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
-import { BadgeCheck, Banknote, ListChecks } from "lucide-react";
+import { BadgeCheck, Banknote, ChevronDown, ChevronRight, ListChecks, Printer } from "lucide-react";
 
 import { PermissionGate } from "@/components/auth/permission-gate";
 import { OutletFilter } from "@/components/outlet/outlet-filter";
 import { Badge, Card } from "@/components/ui/base";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
-import { DataTable, Pagination, type Column } from "@/components/ui/data-table";
 import { Input } from "@/components/ui/form";
 import { PageHeader } from "@/components/ui/page-header";
 import { SearchInput } from "@/components/ui/search-input";
+import { EmptyState, ErrorState, LoadingState } from "@/components/ui/states";
 import { Tabs } from "@/components/ui/tabs";
 import { IconButton } from "@/components/ui/tooltip";
 import { useDebounce } from "@/hooks/use-debounce";
 import { useApprovePayroll, useDisbursePayroll, usePayslips } from "@/hooks/use-payroll";
 import { normalizeList } from "@/lib/api/drf";
-import { type PayrollRun } from "@/lib/api/payroll";
-import { PAGE_SIZE } from "@/lib/hrm";
-import { formatDate, formatMoney } from "@/lib/utils";
+import { type Payslip } from "@/lib/api/payroll";
+import { formatMoney } from "@/lib/utils";
 
 const STATUS_TABS = [
   { key: "all", label: "All" },
@@ -29,12 +28,64 @@ const STATUS_TABS = [
   { key: "disbursed", label: "Disbursed" },
 ];
 
+const MONTHS = [
+  "January", "February", "March", "April", "May", "June",
+  "July", "August", "September", "October", "November", "December",
+];
+
+function num(v: unknown): number {
+  const n = typeof v === "string" ? parseFloat(v) : (v as number);
+  return Number.isFinite(n) ? n : 0;
+}
+
 function statusKey(s?: string): string {
   const v = (s || "").toLowerCase();
   if (v.includes("disburs") || v.includes("paid") || v.includes("publish")) return "disbursed";
   if (v.includes("approv")) return "approved";
   if (v.includes("pending") || v.includes("process")) return "pending";
   return "draft";
+}
+
+function periodKey(p: Payslip): string {
+  return (
+    p.payment_period ||
+    p.period ||
+    p.pay_period ||
+    (typeof p.from_date === "string" ? p.from_date.slice(0, 7) : "") ||
+    "—"
+  );
+}
+
+function formatPeriod(p: string): string {
+  const m = /^(\d{4})-(\d{2})/.exec(p);
+  if (!m) return p || "—";
+  return `${MONTHS[Number(m[2]) - 1] ?? p} ${m[1]}`;
+}
+
+type PeriodGroup = {
+  period: string;
+  label: string;
+  payslips: Payslip[];
+  count: number;
+  totalGross: number;
+  totalNet: number;
+  status: string;
+};
+
+function groupStatus(payslips: Payslip[]): string {
+  const keys = payslips.map((p) => statusKey(p.status ?? (p.payment_status as string)));
+  if (keys.length && keys.every((k) => k === "disbursed")) return "disbursed";
+  if (keys.length && keys.every((k) => k === "approved" || k === "disbursed")) return "approved";
+  if (keys.some((k) => k === "pending" || k === "approved")) return "pending";
+  return "draft";
+}
+
+function StatusBadge({ status }: { status: string }) {
+  const k = statusKey(status);
+  if (k === "disbursed") return <Badge variant="success">Disbursed</Badge>;
+  if (k === "approved") return <Badge variant="success">Approved</Badge>;
+  if (k === "pending") return <Badge variant="default">Pending</Badge>;
+  return <Badge variant="secondary">Draft</Badge>;
 }
 
 export default function PayslipsPage() {
@@ -45,89 +96,54 @@ export default function PayslipsPage() {
   const [search, setSearch] = useState("");
   const [period, setPeriod] = useState("");
   const [tab, setTab] = useState("all");
-  const [page, setPage] = useState(1);
+  const [expanded, setExpanded] = useState<Record<string, boolean>>({});
   const debounced = useDebounce(search);
 
   const approve = useApprovePayroll();
   const disburse = useDisbursePayroll();
-  const [confirm, setConfirm] = useState<{ kind: "approve" | "disburse"; period: string } | null>(null);
+  const [confirm, setConfirm] = useState<{ kind: "approve" | "disburse"; period: string; label: string } | null>(null);
 
+  // Pull the full set so we can group by month client-side (the API returns individual payslips).
   const queryParams = useMemo(
-    () => ({
-      page,
-      page_size: PAGE_SIZE,
-      search: debounced || undefined,
-      payment_period: period || undefined,
-    }),
-    [page, debounced, period],
+    () => ({ page: 1, page_size: 500, payment_period: period || undefined }),
+    [period],
   );
-
   const { data, isLoading, error, refetch } = usePayslips(queryParams);
-  const { results, count } = normalizeList<PayrollRun>(data);
-  const rows = useMemo(
-    () => (tab === "all" ? results : results.filter((r) => statusKey(r.status) === tab)),
-    [results, tab],
-  );
+  const { results } = normalizeList<Payslip>(data);
 
-  const statusBadge = (s?: string) => {
-    const k = statusKey(s);
-    if (k === "disbursed") return <Badge variant="success">{s || "Disbursed"}</Badge>;
-    if (k === "approved") return <Badge variant="success">{s || "Approved"}</Badge>;
-    if (k === "pending") return <Badge variant="default">{s || "Pending"}</Badge>;
-    return <Badge variant="secondary">{s || "Draft"}</Badge>;
-  };
+  const groups = useMemo<PeriodGroup[]>(() => {
+    const q = debounced.trim().toLowerCase();
+    const map = new Map<string, Payslip[]>();
+    for (const ps of results) {
+      if (q) {
+        const hay = `${ps.employee_name ?? ""} ${ps.employee_number ?? ""}`.toLowerCase();
+        if (!hay.includes(q)) continue;
+      }
+      const key = periodKey(ps);
+      const bucket = map.get(key);
+      if (bucket) bucket.push(ps);
+      else map.set(key, [ps]);
+    }
+    const arr: PeriodGroup[] = [...map.entries()].map(([p, payslips]) => ({
+      period: p,
+      label: formatPeriod(p),
+      payslips,
+      count: payslips.length,
+      totalGross: payslips.reduce((a, x) => a + num(x.gross_pay ?? x.total_earnings), 0),
+      totalNet: payslips.reduce((a, x) => a + num(x.net_pay), 0),
+      status: groupStatus(payslips),
+    }));
+    arr.sort((a, b) => b.period.localeCompare(a.period));
+    return tab === "all" ? arr : arr.filter((g) => g.status === tab);
+  }, [results, debounced, tab]);
 
-  const columns: Column<PayrollRun>[] = [
-    {
-      header: "Period",
-      cell: (r) => (
-        <span className="font-medium">
-          {r.payment_period || r.period || `${formatDate(r.from_date)} – ${formatDate(r.to_date)}`}
-        </span>
-      ),
-    },
-    { header: "Type", cell: (r) => <span className="capitalize">{r.employment_type || "—"}</span> },
-    { header: "Payslips", cell: (r) => r.employee_count ?? "—" },
-    { header: "Gross", className: "text-right", headerClassName: "text-right", cell: (r) => formatMoney(r.total_gross_pay) },
-    { header: "Net Pay", className: "text-right font-semibold", headerClassName: "text-right", cell: (r) => formatMoney(r.total_net_pay) },
-    { header: "Status", cell: (r) => statusBadge(r.status) },
-    {
-      header: "",
-      headerClassName: "text-right",
-      className: "text-right",
-      cell: (r) => {
-        const k = statusKey(r.status);
-        const p = r.payment_period || r.period || "";
-        return (
-          <div className="flex items-center justify-end gap-1" onClick={(e) => e.stopPropagation()}>
-            <IconButton label="View Muster Roll" onClick={() => router.push(`/${orgSlug}/reports/muster-roll`)}>
-              <ListChecks className="size-4" />
-            </IconButton>
-            {k !== "approved" && k !== "disbursed" && (
-              <PermissionGate permission={["hrm.payroll.manage"]}>
-                <IconButton label="Approve period" onClick={() => p && setConfirm({ kind: "approve", period: p })}>
-                  <BadgeCheck className="size-4 text-green-600" />
-                </IconButton>
-              </PermissionGate>
-            )}
-            {k === "approved" && (
-              <PermissionGate permission={["hrm.payroll.disburse"]}>
-                <IconButton label="Disburse period" onClick={() => p && setConfirm({ kind: "disburse", period: p })}>
-                  <Banknote className="size-4 text-primary" />
-                </IconButton>
-              </PermissionGate>
-            )}
-          </div>
-        );
-      },
-    },
-  ];
+  const toggle = (p: string) => setExpanded((e) => ({ ...e, [p]: !e[p] }));
 
   return (
     <div className="space-y-4 p-4 sm:p-6">
       <PageHeader
         title="Payslips"
-        subtitle="Processed payroll runs grouped by period — review, approve and disburse"
+        subtitle="Processed payroll runs grouped by month — expand a period to review, approve and disburse"
         actions={<OutletFilter tenantSlug={orgSlug} />}
       />
 
@@ -135,31 +151,120 @@ export default function PayslipsPage() {
         <div className="flex flex-wrap items-center gap-3 border-b border-border p-4">
           <SearchInput
             value={search}
-            onChange={(v) => { setSearch(v); setPage(1); }}
-            placeholder="Search employee or period…"
+            onChange={setSearch}
+            placeholder="Search employee…"
             className="min-w-[220px] flex-1"
           />
-          <Input type="month" value={period} onChange={(e) => { setPeriod(e.target.value); setPage(1); }} className="w-auto" />
+          <Input type="month" value={period} onChange={(e) => setPeriod(e.target.value)} className="w-auto" />
         </div>
 
         <div className="border-b border-border px-4 pt-3">
           <Tabs tabs={STATUS_TABS} active={tab} onChange={setTab} />
         </div>
 
-        <DataTable
-          columns={columns}
-          rows={rows}
-          rowKey={(r) => r.id}
-          isLoading={isLoading}
-          error={error}
-          onRetry={refetch}
-          emptyTitle="No payslips"
-          emptyDescription="Process a payroll run to generate payslips."
-          onRowClick={(r) => router.push(`/${orgSlug}/payroll/payslips/${r.id}`)}
-        />
-        {rows.length > 0 && (
-          <div className="border-t border-border">
-            <Pagination page={page} pageSize={PAGE_SIZE} total={count} onPageChange={setPage} />
+        {isLoading ? (
+          <LoadingState />
+        ) : error ? (
+          <ErrorState error={error} onRetry={refetch} />
+        ) : groups.length === 0 ? (
+          <div className="p-6">
+            <EmptyState title="No payslips" description="Process a payroll run to generate payslips." />
+          </div>
+        ) : (
+          <div className="divide-y divide-border">
+            {/* Column header */}
+            <div className="hidden items-center gap-3 px-4 py-2 text-xs font-medium uppercase tracking-wide text-muted-foreground sm:flex">
+              <span className="w-6" />
+              <span className="flex-1">Payroll month</span>
+              <span className="w-24 text-center">Payslips</span>
+              <span className="w-32 text-right">Gross</span>
+              <span className="w-32 text-right">Net pay</span>
+              <span className="w-28 text-center">Status</span>
+              <span className="w-28 text-right">Actions</span>
+            </div>
+
+            {groups.map((g) => {
+              const open = !!expanded[g.period];
+              const k = statusKey(g.status);
+              return (
+                <div key={g.period}>
+                  {/* Period row */}
+                  <div
+                    className="flex cursor-pointer items-center gap-3 px-4 py-3 hover:bg-muted/40"
+                    onClick={() => toggle(g.period)}
+                  >
+                    <span className="text-muted-foreground">
+                      {open ? <ChevronDown className="size-4" /> : <ChevronRight className="size-4" />}
+                    </span>
+                    <span className="flex-1 font-semibold text-foreground">{g.label}</span>
+                    <span className="w-24 text-center text-sm">{g.count}</span>
+                    <span className="w-32 text-right text-sm text-muted-foreground">{formatMoney(g.totalGross)}</span>
+                    <span className="w-32 text-right text-sm font-semibold">{formatMoney(g.totalNet)}</span>
+                    <span className="w-28 text-center"><StatusBadge status={g.status} /></span>
+                    <div className="flex w-28 items-center justify-end gap-1" onClick={(e) => e.stopPropagation()}>
+                      <IconButton label="View muster roll" onClick={() => router.push(`/${orgSlug}/reports/muster-roll?period=${g.period}`)}>
+                        <ListChecks className="size-4" />
+                      </IconButton>
+                      {k !== "approved" && k !== "disbursed" && (
+                        <PermissionGate permission={["hrm.payroll.manage"]}>
+                          <IconButton label="Approve period" onClick={() => setConfirm({ kind: "approve", period: g.period, label: g.label })}>
+                            <BadgeCheck className="size-4 text-green-600" />
+                          </IconButton>
+                        </PermissionGate>
+                      )}
+                      {k === "approved" && (
+                        <PermissionGate permission={["hrm.payroll.disburse"]}>
+                          <IconButton label="Disburse period" onClick={() => setConfirm({ kind: "disburse", period: g.period, label: g.label })}>
+                            <Banknote className="size-4 text-primary" />
+                          </IconButton>
+                        </PermissionGate>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Expanded employee payslips */}
+                  {open && (
+                    <div className="bg-muted/20 px-4 pb-3 pt-1">
+                      <table className="w-full text-sm">
+                        <thead>
+                          <tr className="text-xs uppercase tracking-wide text-muted-foreground">
+                            <th className="py-1.5 text-left font-medium">Employee</th>
+                            <th className="py-1.5 text-right font-medium">Gross</th>
+                            <th className="py-1.5 text-right font-medium">Net pay</th>
+                            <th className="py-1.5 text-center font-medium">Status</th>
+                            <th className="py-1.5 text-right font-medium" />
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {g.payslips.map((ps) => (
+                            <tr
+                              key={ps.id}
+                              className="cursor-pointer border-t border-border/60 hover:bg-background"
+                              onClick={() => router.push(`/${orgSlug}/payroll/payslips/${ps.id}`)}
+                            >
+                              <td className="py-2">
+                                <span className="font-medium text-foreground">{ps.employee_name || "Employee"}</span>
+                                {ps.employee_number ? (
+                                  <span className="ml-2 text-xs text-muted-foreground">{ps.employee_number}</span>
+                                ) : null}
+                              </td>
+                              <td className="py-2 text-right text-muted-foreground">{formatMoney(ps.gross_pay ?? ps.total_earnings)}</td>
+                              <td className="py-2 text-right font-medium">{formatMoney(ps.net_pay)}</td>
+                              <td className="py-2 text-center"><StatusBadge status={ps.status ?? (ps.payment_status as string)} /></td>
+                              <td className="py-2 text-right" onClick={(e) => e.stopPropagation()}>
+                                <IconButton label="Print payslip" onClick={() => router.push(`/${orgSlug}/payroll/payslips/${ps.id}`)}>
+                                  <Printer className="size-4" />
+                                </IconButton>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
           </div>
         )}
       </Card>
@@ -169,8 +274,8 @@ export default function PayslipsPage() {
         title={confirm?.kind === "disburse" ? "Disburse this period?" : "Approve this period?"}
         description={
           confirm?.kind === "disburse"
-            ? `Disburse net pay for ${confirm?.period}. This posts to the GL and triggers payout — a significant action.`
-            : `Approve all payslips for ${confirm?.period} so they can be disbursed.`
+            ? `Disburse net pay for ${confirm?.label}. This posts to the GL and triggers payout — a significant action.`
+            : `Approve all payslips for ${confirm?.label} so they can be disbursed.`
         }
         confirmLabel={confirm?.kind === "disburse" ? "Disburse" : "Approve"}
         loading={approve.isPending || disburse.isPending}
