@@ -2,7 +2,7 @@
 
 import { ChevronDown, LogOut, Menu, Settings, User } from "lucide-react";
 import Link from "next/link";
-import { useParams } from "next/navigation";
+import { useParams, usePathname } from "next/navigation";
 import { useState } from "react";
 
 import { OutletFilter } from "@/components/outlet/outlet-filter";
@@ -13,7 +13,11 @@ import { useAuthStore } from "@/store/auth";
 
 export function AppTopbar({ onMenuClick }: { onMenuClick?: () => void }) {
   const params = useParams();
+  const pathname = usePathname() || "";
   const orgSlug = (params?.orgSlug as string) || "codevertex";
+  // The cross-tenant drill-in is confined to the platform section: the main app
+  // always operates on the owner's OWN business (see OrgShell off-platform reset).
+  const isPlatformRoute = /\/platform(\/|$)/.test(pathname);
   const user = useAuthStore((s) => s.user);
   const logout = useAuthStore((s) => s.logout);
   const { getServiceTitle } = useBranding();
@@ -36,7 +40,7 @@ export function AppTopbar({ onMenuClick }: { onMenuClick?: () => void }) {
         <h1 className="text-base sm:text-lg font-bold text-foreground truncate max-w-40 sm:max-w-none">
           {getServiceTitle("HR")}
         </h1>
-        <TenantFilter className="hidden md:block" />
+        {isPlatformRoute && <TenantFilter className="hidden md:block" />}
         <OutletFilter className="hidden md:block" />
       </div>
 

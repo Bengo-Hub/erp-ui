@@ -10,6 +10,7 @@ import { SubscriptionBanner } from "@/components/subscription/subscription-banne
 import { AuthProvider } from "@/providers/auth-provider";
 import { BrandingProvider } from "@/providers/branding-provider";
 import { QueryProvider } from "@/providers/query-provider";
+import { useTenantFilterStore } from "@/store/tenant-filter";
 
 /** Injects the per-tenant manifest link so PWA installs are tenant-scoped. */
 function ManifestLink() {
@@ -35,6 +36,15 @@ export function OrgShell({ children }: { children: ReactNode }) {
   const pathname = usePathname() || "";
   // Auth pages render full-screen, without the sidebar/topbar chrome.
   const isAuthPage = /\/auth(\/|$)/.test(pathname);
+  // Dedicated Platform section: the cross-tenant drill-in (?tenantId=) is confined
+  // to /platform. Anywhere else, the platform owner manages their OWN business, so
+  // clear any active drill-in to keep business pages scoped to the owner's tenant.
+  const isPlatformRoute = /\/platform(\/|$)/.test(pathname);
+  useEffect(() => {
+    if (isPlatformRoute) return;
+    const { selected, select } = useTenantFilterStore.getState();
+    if (selected) select(null);
+  }, [isPlatformRoute]);
 
   if (isAuthPage) {
     return (
