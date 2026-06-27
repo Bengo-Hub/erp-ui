@@ -7,6 +7,7 @@ import { PageHeader } from "@/components/ui/page-header";
 import { useEmployeeOptions } from "@/hooks/use-employee-options";
 import { useCostCenterOptions, useProjectOptions } from "@/hooks/use-option-hooks";
 import {
+  useAdvanceOptions,
   useApproveCasualLabor,
   useCasualLabor,
   useDeleteCasualLabor,
@@ -25,6 +26,8 @@ const fields: CrudFieldDef[] = [
   { name: "engaged_by_employee_id", label: "Engaged By", type: "combobox", optionsHook: useEmployeeOptions, placeholder: "Select employee" },
   { name: "project_id", label: "Project (optional)", type: "combobox", optionsHook: useProjectOptions, placeholder: "Select project" },
   { name: "cost_center_id", label: "Cost Center (optional)", type: "combobox", optionsHook: useCostCenterOptions, placeholder: "Select cost center" },
+  // Optional link to the salary advance / imprest float the engaging employee drew to pay this worker.
+  { name: "imprest_advance_id", label: "Imprest / Float Advance (optional)", type: "combobox", optionsHook: useAdvanceOptions, placeholder: "Link to an advance" },
   { name: "task_description", label: "Task Description", type: "richtext", span2: true },
 ];
 
@@ -90,6 +93,7 @@ export default function CasualLaborPage() {
           engaged_by_employee_id: c?.engaged_by_employee_id ?? "",
           project_id: c?.project_id ?? "",
           cost_center_id: c?.cost_center_id ?? "",
+          imprest_advance_id: c?.imprest_advance_id ?? "",
           task_description: c?.task_description ?? "",
         })}
         onSave={({ id, data }, done) => save.mutate({ id, data: data as Partial<CasualLabor> }, { onSuccess: done })}
