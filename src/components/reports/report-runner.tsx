@@ -1,13 +1,15 @@
 "use client";
 
+import { PdfPreview, useDocumentPreview } from "@bengo-hub/shared-ui-lib/documents";
 import { FileDown, FileSpreadsheet, Printer } from "lucide-react";
 import { useMemo, useState } from "react";
+import { toast } from "sonner";
 
 import { Button, Card } from "@/components/ui/base";
 import { DataTable, type Column } from "@/components/ui/data-table";
 import { PageHeader } from "@/components/ui/page-header";
 import { useReport, useReportExport } from "@/hooks/use-reports";
-import { type ReportParams, type ReportRow } from "@/lib/api/reports";
+import { reportsApi, type ReportParams, type ReportRow } from "@/lib/api/reports";
 import { type ReportColumn, type ReportConfig, type ReportFilterKey } from "@/lib/reports-config";
 import { formatCurrency, formatPercent } from "@/lib/format";
 import { ReportFilters, type ReportFilterValues } from "./report-filters";
@@ -52,6 +54,14 @@ export function ReportRunner({ config }: { config: ReportConfig }) {
   const params = useMemo(() => toParams(config.filters, values), [config.filters, values]);
   const { rows, summary, isFetching, error, refetch } = useReport(config, params, enabled);
   const exporter = useReportExport(config, params);
+  // Preview-first for PDF (Excel stays a direct download): open the server-rendered PDF in the
+  // shared modal with Download / Print / Open-in-tab.
+  const { openPreview, previewProps } = useDocumentPreview({ onError: (m) => toast.error(m) });
+  const previewPdf = () =>
+    openPreview(
+      () => reportsApi.export(config.exportType, "pdf", { ...config.staticParams, ...params }).then((r) => r.blob),
+      { fileName: `${config.exportType}_report.pdf`, title: config.title },
+    );
 
   const generate = () => {
     const need = (config.required ?? []).find((k) => {
@@ -111,12 +121,7 @@ export function ReportRunner({ config }: { config: ReportConfig }) {
               <Button size="sm" variant="outline" onClick={() => window.print()}>
                 <Printer className="mr-1.5 size-4" /> Print
               </Button>
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => exporter.mutate("pdf")}
-                disabled={exporter.isPending}
-              >
+              <Button size="sm" variant="outline" onClick={previewPdf}>
                 <FileDown className="mr-1.5 size-4" /> PDF
               </Button>
               <Button
@@ -177,6 +182,8 @@ export function ReportRunner({ config }: { config: ReportConfig }) {
           }
         />
       </Card>
+
+      <PdfPreview {...previewProps} />
     </div>
   );
 }
