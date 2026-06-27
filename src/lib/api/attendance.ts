@@ -153,15 +153,28 @@ export interface ShiftAssignment {
   [key: string]: unknown;
 }
 
-/** A resolved per-employee/per-day planner cell from /shift-planner/. */
+/** A resolved per-employee/per-day planner cell from /shift-planner. */
 export interface PlannerCell {
   employee?: number | string;
   employee_name?: string;
   date?: string;
+  work_shift_id?: string;
   shift_name?: string;
   start_time?: string;
   end_time?: string;
+  is_off?: boolean;
+  override_id?: string;
   [key: string]: unknown;
+}
+
+/** Upsert payload for a single drawable planner cell. */
+export interface PlannerCellInput {
+  employee_id: string;
+  date: string;
+  /** Omit / empty => an explicit off-duty cell. */
+  work_shift_id?: string;
+  start_time?: string;
+  end_time?: string;
 }
 
 function crud<T extends { id: number | string }>(segment: string) {
@@ -274,11 +287,18 @@ export const attendanceApi = {
     apiClient.get<Paginated<AttendanceOverride> | AttendanceOverride[]>(`${ATT}/overrides/`, params),
   createOverride: (data: Partial<AttendanceOverride>) =>
     apiClient.post<AttendanceOverride>(`${ATT}/overrides/`, data),
-  // NOTE: no resolved-planner-grid endpoint in erp-api (gap); the planner UI
-  // composes rosters + assignments client-side. Falls back to assignments.
+  // Resolved per-cell planner grid (erp-api GET /hrm/attendance/shift-planner).
   resolvePlanner: (params: { from: string; to: string; employee_ids?: string }) =>
     apiClient.get<{ results?: PlannerCell[]; data?: PlannerCell[] } | PlannerCell[]>(
-      `${ATT}/assignments/`,
+      `${ATT}/shift-planner`,
       params,
+    ),
+  // Upsert one drawable cell (PUT) — assigns a shift onto (employee, date).
+  upsertPlannerCell: (data: PlannerCellInput) =>
+    apiClient.put<PlannerCell>(`${ATT}/shift-planner/cell`, data),
+  // Clear one cell (DELETE by employee_id + date query).
+  clearPlannerCell: (employeeId: string, date: string) =>
+    apiClient.delete<void>(
+      `${ATT}/shift-planner/cell?employee_id=${encodeURIComponent(employeeId)}&date=${encodeURIComponent(date)}`,
     ),
 };
