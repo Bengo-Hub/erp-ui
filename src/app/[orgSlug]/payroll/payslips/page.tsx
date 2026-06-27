@@ -3,11 +3,11 @@
 import { PdfPreview, useDocumentPreview } from "@bengo-hub/shared-ui-lib/documents";
 import { useParams, useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
-import { BadgeCheck, Banknote, ChevronDown, ChevronRight, ListChecks, Printer } from "lucide-react";
+import { BadgeCheck, Banknote, ChevronDown, ChevronRight, ListChecks, Mail, Printer } from "lucide-react";
 
 import { PermissionGate } from "@/components/auth/permission-gate";
 import { OutletFilter } from "@/components/outlet/outlet-filter";
-import { Badge, Card } from "@/components/ui/base";
+import { Badge, Button, Card } from "@/components/ui/base";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Input } from "@/components/ui/form";
 import { PageHeader } from "@/components/ui/page-header";
@@ -100,6 +100,7 @@ export default function PayslipsPage() {
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
   const debounced = useDebounce(search);
 
+  const [menuOpen, setMenuOpen] = useState(false);
   const approve = useApprovePayroll();
   const disburse = useDisbursePayroll();
   // Server-rendered payslip PDF preview (Print / Download / Open-in-tab) — never browser print.
@@ -153,7 +154,42 @@ export default function PayslipsPage() {
       <PageHeader
         title="Payslips"
         subtitle="Processed payroll runs grouped by month — expand a period to review, approve and disburse"
-        actions={<OutletFilter tenantSlug={orgSlug} />}
+        actions={
+          <div className="flex items-center gap-2">
+            <OutletFilter tenantSlug={orgSlug} />
+            {/* Process Payroll ▾ — wingubox-style split action menu. */}
+            <div className="relative">
+              <Button size="sm" onClick={() => setMenuOpen((o) => !o)}>
+                <Banknote className="mr-1.5 size-4" /> Process Payroll <ChevronDown className="ml-1 size-3.5" />
+              </Button>
+              {menuOpen && (
+                <>
+                  <div className="fixed inset-0 z-10" onClick={() => setMenuOpen(false)} />
+                  <div className="absolute right-0 z-20 mt-1 w-48 rounded-md border border-border bg-popover py-1 shadow-md">
+                    <button
+                      className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-muted"
+                      onClick={() => { setMenuOpen(false); router.push(`/${orgSlug}/payroll/process`); }}
+                    >
+                      <Banknote className="size-4" /> Process Payroll
+                    </button>
+                    <button
+                      className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-muted"
+                      onClick={() => { setMenuOpen(false); router.push(`/${orgSlug}/payroll/email-payslips`); }}
+                    >
+                      <Mail className="size-4" /> Email Pay Slips
+                    </button>
+                    <button
+                      className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-muted"
+                      onClick={() => { setMenuOpen(false); router.push(`/${orgSlug}/reports/muster-roll`); }}
+                    >
+                      <Printer className="size-4" /> Print Payslips
+                    </button>
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
+        }
       />
 
       <Card>

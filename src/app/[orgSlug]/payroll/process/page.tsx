@@ -9,10 +9,12 @@ import { PermissionGate } from "@/components/auth/permission-gate";
 import { OutletFilter } from "@/components/outlet/outlet-filter";
 import { SubscriptionGate } from "@/components/subscription/subscription-gate";
 import { Button, Card, CardContent, CardHeader } from "@/components/ui/base";
+import { Combobox } from "@/components/ui/combobox";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Field, Input, Select } from "@/components/ui/form";
 import { PageHeader } from "@/components/ui/page-header";
 import { Stepper } from "@/components/ui/stepper";
+import { useDepartmentOptions, useProjectOptions } from "@/hooks/use-option-hooks";
 import { useDisbursePayroll, useProcessPayroll, usePayrollPreview } from "@/hooks/use-payroll";
 import { type PayrollPreviewRow, type PayrollProcessPayload } from "@/lib/api/payroll";
 import { EMPLOYMENT_TYPES } from "@/lib/hrm";
@@ -35,8 +37,12 @@ export default function ProcessPayrollPage() {
 
   const [step, setStep] = useState(0);
   const [employmentType, setEmploymentType] = useState("permanent");
+  const [departmentId, setDepartmentId] = useState("");
+  const [projectId, setProjectId] = useState("");
   const [fromDate, setFromDate] = useState("");
   const [toDate, setToDate] = useState("");
+  const departments = useDepartmentOptions();
+  const projects = useProjectOptions();
   const [preview, setPreview] = useState<PayrollPreviewRow[]>([]);
   const [confirmRun, setConfirmRun] = useState(false);
   const [confirmDisburse, setConfirmDisburse] = useState(false);
@@ -52,8 +58,10 @@ export default function ProcessPayrollPage() {
       to_date: toDate || undefined,
       payment_period: fromDate && toDate ? `${fromDate} – ${toDate}` : undefined,
       outlet_id: selectedOutlet?.id || undefined,
+      department_id: departmentId || undefined,
+      project_id: projectId || undefined,
     }),
-    [employmentType, fromDate, toDate, selectedOutlet],
+    [employmentType, fromDate, toDate, selectedOutlet, departmentId, projectId],
   );
 
   const runPreview = () => {
@@ -112,6 +120,24 @@ export default function ProcessPayrollPage() {
                   </option>
                 ))}
               </Select>
+            </Field>
+            <Field label="Department">
+              <Combobox
+                value={departmentId}
+                onChange={setDepartmentId}
+                options={departments.options}
+                loading={departments.isLoading}
+                placeholder="All departments"
+              />
+            </Field>
+            <Field label="Project">
+              <Combobox
+                value={projectId}
+                onChange={setProjectId}
+                options={projects.options}
+                loading={projects.isLoading}
+                placeholder="All projects"
+              />
             </Field>
             <Field label="From Date" required>
               <Input type="date" value={fromDate} onChange={(e) => setFromDate(e.target.value)} />
