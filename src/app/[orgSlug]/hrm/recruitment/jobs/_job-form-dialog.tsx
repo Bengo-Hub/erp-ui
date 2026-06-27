@@ -1,5 +1,6 @@
 "use client";
 
+import { Plus } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 
 import { Button } from "@/components/ui/base";
@@ -8,11 +9,13 @@ import { Dialog } from "@/components/ui/dialog";
 import { Field, Input, Select, Switch } from "@/components/ui/form";
 import { RichTextEditor } from "@/components/ui/rich-text-editor";
 import { Stepper } from "@/components/ui/stepper";
-import { useDepartmentOptions } from "@/hooks/use-option-hooks";
+import { useDepartmentOptions, useJobTitleOptions } from "@/hooks/use-option-hooks";
 import { useOutlets } from "@/hooks/use-outlets";
 import { LOCATION_OPTIONS } from "@/lib/data/africa-cities";
 import { type JobPosting } from "@/lib/api/recruitment";
 import { EMPLOYMENT_TYPES } from "@/lib/hrm";
+
+import { JobTitleModal } from "./_job-title-modal";
 
 /** Currencies relevant to the Africa-focused tenant base. */
 const CURRENCIES = ["KES", "USD", "EUR", "GBP", "TZS", "UGX", "NGN", "ZAR", "GHS", "RWF"];
@@ -112,8 +115,19 @@ const STEPS = ["Role & pay", "Details", "Publishing"];
 export function JobFormDialog({ open, job, orgSlug, saving, onClose, onSave }: Props) {
   const [form, setForm] = useState<JobForm>(emptyForm);
   const [step, setStep] = useState(0);
+  const [jobTitleModalOpen, setJobTitleModalOpen] = useState(false);
   const departments = useDepartmentOptions();
+  const jobTitles = useJobTitleOptions();
   const { data: outlets } = useOutlets(orgSlug, open);
+
+  // Ensure the current title is selectable even if it isn't (yet) in the job-title master.
+  const titleOptions = useMemo(() => {
+    const opts = jobTitles.options;
+    if (form.title && !opts.some((o) => o.value === form.title)) {
+      return [{ value: form.title, label: form.title }, ...opts];
+    }
+    return opts;
+  }, [jobTitles.options, form.title]);
 
   // Default location = the tenant HQ branch matched to a bundled city (else Nairobi).
   const hqLocation = useMemo(() => {
@@ -199,12 +213,26 @@ export function JobFormDialog({ open, job, orgSlug, saving, onClose, onSave }: P
         <Section title="Role">
           <div className="grid gap-4 sm:grid-cols-2">
             <Field label="Job Title" htmlFor="title" required className="sm:col-span-2">
-              <Input
-                id="title"
-                value={form.title}
-                placeholder="e.g. Senior Accountant"
-                onChange={(e) => set("title", e.target.value)}
-              />
+              <div className="flex items-center gap-2">
+                <Combobox
+                  id="title"
+                  value={form.title}
+                  onChange={(v) => set("title", v)}
+                  options={titleOptions}
+                  loading={jobTitles.isLoading}
+                  placeholder="Select or add a job title"
+                  className="flex-1"
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setJobTitleModalOpen(true)}
+                  title="Add a new job title"
+                >
+                  <Plus className="size-4" />
+                </Button>
+              </div>
             </Field>
             <Field label="Department" htmlFor="department">
               <Combobox
@@ -365,6 +393,12 @@ export function JobFormDialog({ open, job, orgSlug, saving, onClose, onSave }: P
         </Section>
         )}
       </div>
+
+      <JobTitleModal
+        open={jobTitleModalOpen}
+        onClose={() => setJobTitleModalOpen(false)}
+        onCreated={(name) => set("title", name)}
+      />
     </Dialog>
   );
 }

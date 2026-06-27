@@ -1,7 +1,7 @@
 "use client";
 
 import { PdfPreview, useDocumentPreview } from "@bengo-hub/shared-ui-lib/documents";
-import { ArrowLeft, FileText, Printer } from "lucide-react";
+import { ArrowLeft, Printer } from "lucide-react";
 import { useParams, useRouter } from "next/navigation";
 
 import { Button } from "@/components/ui/base";
@@ -51,11 +51,9 @@ export default function PayslipDetailPage() {
               subtitle={payslip.employee_name}
               actions={
                 <div className="flex gap-2">
+                  {/* Both open the server-rendered PDF; the preview modal offers Print / Download / Open-in-tab. */}
                   <Button variant="primary" size="sm" onClick={previewPdf}>
-                    <FileText className="mr-1.5 size-4" /> Preview PDF
-                  </Button>
-                  <Button variant="outline" size="sm" onClick={() => window.print()}>
-                    <Printer className="mr-1.5 size-4" /> Print
+                    <Printer className="mr-1.5 size-4" /> Print / Preview PDF
                   </Button>
                 </div>
               }

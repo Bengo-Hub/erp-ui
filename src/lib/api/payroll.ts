@@ -100,9 +100,13 @@ export const payrollApi = {
   getPayslip: (id: number | string) => apiClient.get<Payslip>(`${PAY}/payroll/${id}/`),
   deleteRecord: (id: number | string) => apiClient.delete<void>(`${PAY}/payroll/${id}/`),
 
-  /** Download a tenant-branded payslip PDF (auth-only; server enforces self-or-manager). */
+  /**
+   * Download a tenant-branded payslip PDF (auth-only; server enforces self-or-manager).
+   * NOTE: the PDF route is `/hrm/payroll/{id}/pdf` (single `payroll`), registered by the
+   * DocumentsHandler — NOT under the `/hrm/payroll/payroll/...` CRUD subroute.
+   */
   payslipPdf: (id: number | string) =>
-    apiClient.getBlob(`${PAY}/payroll/${id}/pdf`, `payslip_${id}.pdf`),
+    apiClient.getBlob(`${PAY}/${id}/pdf`, `payslip_${id}.pdf`),
 
   // Employees eligible for a payroll run
   payrollEmployees: (params?: ListParams) =>

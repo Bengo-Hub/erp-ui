@@ -2,6 +2,7 @@
 
 import { useQuery } from "@tanstack/react-query";
 
+import { resolveApiBaseUrl } from "@/lib/api/client";
 import { SSO_ME_URL } from "@/lib/auth/api";
 import type { UserProfile } from "@/lib/auth/types";
 import { useAuthStore } from "@/store/auth";
@@ -9,9 +10,7 @@ import { useAuthStore } from "@/store/auth";
 const ME_QUERY_KEY = ["auth", "me"] as const;
 const ME_STALE_MS = 5 * 60 * 1000; // 5 min TTL (matches the Vue meService cache)
 
-const ERP_API_URL = (
-  process.env.NEXT_PUBLIC_API_URL || "https://erpapi.masterspace.co.ke"
-).replace(/\/$/, "");
+const ERP_API_URL = resolveApiBaseUrl().replace(/\/$/, "");
 
 function mergeUnique(a: string[], b: string[]): string[] {
   return Array.from(new Set([...a, ...b]));

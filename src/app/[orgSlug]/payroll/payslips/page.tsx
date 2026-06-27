@@ -1,5 +1,6 @@
 "use client";
 
+import { PdfPreview, useDocumentPreview } from "@bengo-hub/shared-ui-lib/documents";
 import { useParams, useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 import { BadgeCheck, Banknote, ChevronDown, ChevronRight, ListChecks, Printer } from "lucide-react";
@@ -17,7 +18,7 @@ import { IconButton } from "@/components/ui/tooltip";
 import { useDebounce } from "@/hooks/use-debounce";
 import { useApprovePayroll, useDisbursePayroll, usePayslips } from "@/hooks/use-payroll";
 import { normalizeList } from "@/lib/api/drf";
-import { type Payslip } from "@/lib/api/payroll";
+import { payrollApi, type Payslip } from "@/lib/api/payroll";
 import { formatMoney } from "@/lib/utils";
 
 const STATUS_TABS = [
@@ -101,6 +102,14 @@ export default function PayslipsPage() {
 
   const approve = useApprovePayroll();
   const disburse = useDisbursePayroll();
+  // Server-rendered payslip PDF preview (Print / Download / Open-in-tab) — never browser print.
+  const { openPreview, previewProps } = useDocumentPreview();
+  function printPayslip(ps: Payslip) {
+    openPreview(() => payrollApi.payslipPdf(ps.id).then((r) => r.blob), {
+      fileName: `payslip_${ps.id}.pdf`,
+      title: ps.employee_name ? `Payslip — ${ps.employee_name}` : "Payslip",
+    });
+  }
   const [confirm, setConfirm] = useState<{ kind: "approve" | "disburse"; period: string; label: string } | null>(null);
 
   // Pull the full set so we can group by month client-side (the API returns individual payslips).
@@ -252,7 +261,7 @@ export default function PayslipsPage() {
                               <td className="py-2 text-right font-medium">{formatMoney(ps.net_pay)}</td>
                               <td className="py-2 text-center"><StatusBadge status={ps.status ?? (ps.payment_status as string)} /></td>
                               <td className="py-2 text-right" onClick={(e) => e.stopPropagation()}>
-                                <IconButton label="Print payslip" onClick={() => router.push(`/${orgSlug}/payroll/payslips/${ps.id}`)}>
+                                <IconButton label="Print payslip" onClick={() => printPayslip(ps)}>
                                   <Printer className="size-4" />
                                 </IconButton>
                               </td>
@@ -287,6 +296,8 @@ export default function PayslipsPage() {
           else approve.mutate({ approve: true, payment_period: confirm.period }, opts);
         }}
       />
+
+      <PdfPreview {...previewProps} />
     </div>
   );
 }

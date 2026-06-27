@@ -34,7 +34,7 @@ export default function LeaveBalancesPage() {
       header: "Employee",
       cell: (b) => <span className="font-medium">{b.employee_name || b.employee || "—"}</span>,
     },
-    { header: "Leave Type", cell: (b) => b.leave_category_name || b.category_name || "—" },
+    { header: "Leave Type", cell: (b) => b.leave_type_name || b.leave_category_name || b.category_name || "—" },
     { header: "Year", cell: (b) => num(b.year) },
     {
       header: "Entitled",

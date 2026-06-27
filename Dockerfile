@@ -14,12 +14,15 @@ COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
 # Build-time public config (NEXT_PUBLIC_* are inlined at build).
-ARG NEXT_PUBLIC_API_URL=https://erpapi.masterspace.co.ke
+# NEXT_PUBLIC_API_URL / WEBSOCKET_URL are intentionally EMPTY: the single multi-tenant
+# image derives the erp-api host at runtime from the UI host (erp.<domain> → erpapi.<domain>),
+# falling back to the platform backend. Baking a tenant-specific value here would defeat that.
+ARG NEXT_PUBLIC_API_URL=
 ARG NEXT_PUBLIC_SSO_URL=https://sso.codevertexitsolutions.com
 ARG NEXT_PUBLIC_AUTH_API_URL=https://sso.codevertexitsolutions.com
 ARG NEXT_PUBLIC_SSO_CLIENT_ID=erp-ui
 ARG NEXT_PUBLIC_SUBSCRIPTIONS_API_URL=https://pricingapi.codevertexitsolutions.com
-ARG NEXT_PUBLIC_WEBSOCKET_URL=wss://erpapi.masterspace.co.ke/ws/payroll/
+ARG NEXT_PUBLIC_WEBSOCKET_URL=
 ARG NEXT_PUBLIC_TREASURY_UI_URL=https://books.codevertexitsolutions.com
 ARG NEXT_PUBLIC_MARKETFLOW_UI_URL=https://marketflow.codevertexitsolutions.com
 ARG NEXT_PUBLIC_INVENTORY_UI_URL=https://inventory.codevertexitsolutions.com

@@ -118,7 +118,9 @@ export function ReportRunner({ config }: { config: ReportConfig }) {
         actions={
           hasData ? (
             <div className="flex items-center gap-2 print:hidden">
-              <Button size="sm" variant="outline" onClick={() => window.print()}>
+              {/* Print + PDF both open the server-rendered document; the preview modal
+                  offers Print / Download / Open-in-tab (never a browser HTML print). */}
+              <Button size="sm" variant="outline" onClick={previewPdf}>
                 <Printer className="mr-1.5 size-4" /> Print
               </Button>
               <Button size="sm" variant="outline" onClick={previewPdf}>

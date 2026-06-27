@@ -20,10 +20,8 @@ const withPWA = withPWAInit({
       {
         urlPattern: ({ url }: { url: URL }) =>
           url.pathname.includes("/api/") ||
-          /(erpapi\.masterspace\.co\.ke|sso|accounts|pricingapi)\.?codevertexitsolutions\.com$/.test(
-            url.hostname,
-          ) ||
-          url.hostname === "erpapi.masterspace.co.ke",
+          // Any erp-api / auth host across tenant domains (erpapi.<domain>, sso.*, …).
+          /^(erpapi|sso|accounts|pricingapi)[.-]/.test(url.hostname),
         handler: "NetworkOnly" as const,
       },
     ],
@@ -39,9 +37,11 @@ const nextConfig: NextConfig = {
   },
   images: {
     remotePatterns: [
-      { protocol: "https", hostname: "erpapi.masterspace.co.ke" },
-      { protocol: "https", hostname: "accounts.codevertexitsolutions.com" },
-      { protocol: "https", hostname: "sso.codevertexitsolutions.com" },
+      // Platform backend + any tenant subdomain under the platform domain.
+      { protocol: "https", hostname: "erpapi.codevertexitsolutions.com" },
+      { protocol: "https", hostname: "*.codevertexitsolutions.com" },
+      // Known tenant custom domains (wildcard covers erpapi.<tenant>).
+      { protocol: "https", hostname: "*.masterspace.co.ke" },
     ],
   },
   turbopack: {},

@@ -9,7 +9,9 @@
 //
 // Error envelope from erp-api is { error: string, code: string } — NOT { message }.
 
-const BASE = `${(process.env.NEXT_PUBLIC_API_URL || "https://erpapi.masterspace.co.ke").replace(/\/$/, "")}/api/v1`;
+import { resolveApiBaseUrl } from "@/lib/api/client";
+
+const BASE = `${resolveApiBaseUrl().replace(/\/$/, "")}/api/v1`;
 
 export interface PublicPosting {
   slug: string;
