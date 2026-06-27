@@ -42,6 +42,13 @@ export interface Employee {
   is_active?: boolean;
   date_joined?: string;
   basic_salary?: string | number;
+  // Reporting line (surfaced from hr_details by the enriched employee view). `manager` mirrors
+  // reports_to_id so the org-chart can build the tree from a single, stable field.
+  department_id?: string | null;
+  job_title_id?: string | null;
+  manager?: string | null;
+  reports_to_id?: string | null;
+  reports_to_name?: string;
   [key: string]: unknown;
 }
 
