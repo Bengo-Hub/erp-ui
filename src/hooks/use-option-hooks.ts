@@ -1,17 +1,14 @@
 "use client";
 
 import { useMemo } from "react";
+import { useQuery } from "@tanstack/react-query";
 
 import { useDepartments, useJobGroups } from "@/hooks/use-hrm-settings";
 import { useLeaveCategories } from "@/hooks/use-leave";
-import {
-  useCasualLabor,
-  useProjectAllocations,
-} from "@/hooks/use-payroll";
+import { apiClient } from "@/lib/api/client";
 import { normalizeList } from "@/lib/api/drf";
 import { type Department, type JobGroup } from "@/lib/api/hrm-settings";
 import { type LeaveCategory } from "@/lib/api/leave";
-import { type CasualLabor, type ProjectAllocation } from "@/lib/api/payroll";
 
 export interface Option {
   value: string;
@@ -64,52 +61,26 @@ export function useLeaveTypeOptions(): OptionsResult {
   return { options, isLoading };
 }
 
-/**
- * Project options.
- *
- * NOTE: erp-api has no Projects master endpoint (projects/cost-centers are stored as
- * free-text IDs on payroll records — confirmed by audit, no backend list exists). Until a
- * master is added, options are derived from the project IDs already used on existing project
- * allocations + casual-labour records, so users can re-select known projects. The backing
- * combobox still accepts a typed value, so brand-new IDs remain enterable.
- */
-export function useProjectOptions(): OptionsResult {
-  const alloc = useProjectAllocations({ limit: 500 });
-  const casual = useCasualLabor({ limit: 500 });
-  const options = useMemo(() => {
-    const map = new Map<string, string>();
-    for (const a of normalizeList<ProjectAllocation>(alloc.data).results) {
-      const id = a.project_id ? String(a.project_id) : "";
-      if (id) map.set(id, a.project_name ? `${a.project_name} (${id})` : id);
-    }
-    for (const c of normalizeList<CasualLabor>(casual.data).results) {
-      const id = c.project_id ? String(c.project_id) : "";
-      if (id && !map.has(id)) map.set(id, id);
-    }
-    return Array.from(map, ([value, label]) => ({ value, label }));
-  }, [alloc.data, casual.data]);
-  return { options, isLoading: alloc.isLoading || casual.isLoading };
+/** Shared loader for the erp-api cost-allocation lookup endpoints (S2S proxy to projects-service /
+ * treasury, with a server-side distinct-values fallback). Returns {results|data: [{value,label}]}. */
+function useLookup(path: string, key: string): OptionsResult {
+  const { data, isLoading } = useQuery({
+    queryKey: ["pay-lookup", key],
+    queryFn: () => apiClient.get<{ results?: Option[]; data?: Option[] }>(path),
+    staleTime: 5 * 60 * 1000,
+  });
+  const options = useMemo(() => data?.results ?? data?.data ?? [], [data]);
+  return { options, isLoading };
 }
 
-/**
- * Cost-center options.
- *
- * NOTE: erp-api has no Cost-Centers master endpoint (gap — same as projects). Options are
- * derived from cost_center_id values already present on project allocations + casual-labour
- * records. The combobox still accepts typed values for new cost centers.
- */
+/** Project options — from GET /hrm/payroll/lookups/projects (projects-service S2S, fallback to
+ * distinct project IDs on erp records). The combobox still accepts typed values for new IDs. */
+export function useProjectOptions(): OptionsResult {
+  return useLookup("/hrm/payroll/lookups/projects", "projects");
+}
+
+/** Cost-center options — from GET /hrm/payroll/lookups/cost-centers (treasury S2S, fallback to
+ * distinct cost_center IDs on erp records). */
 export function useCostCenterOptions(): OptionsResult {
-  const alloc = useProjectAllocations({ limit: 500 });
-  const casual = useCasualLabor({ limit: 500 });
-  const options = useMemo(() => {
-    const set = new Set<string>();
-    for (const a of normalizeList<ProjectAllocation>(alloc.data).results) {
-      if (a.cost_center_id) set.add(String(a.cost_center_id));
-    }
-    for (const c of normalizeList<CasualLabor>(casual.data).results) {
-      if (c.cost_center_id) set.add(String(c.cost_center_id));
-    }
-    return Array.from(set, (value) => ({ value, label: value }));
-  }, [alloc.data, casual.data]);
-  return { options, isLoading: alloc.isLoading || casual.isLoading };
+  return useLookup("/hrm/payroll/lookups/cost-centers", "cost-centers");
 }
