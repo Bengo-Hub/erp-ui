@@ -74,6 +74,9 @@ export interface PayrollProcessPayload {
   to_date?: string;
   payment_period?: string;
   outlet_id?: string | null;
+  department_id?: string;
+  region_id?: string;
+  project_id?: string;
   employee_ids?: number[];
 }
 
