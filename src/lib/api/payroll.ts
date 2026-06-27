@@ -266,12 +266,25 @@ export interface ProjectAllocation {
 
 export interface CasualLabor {
   id: number | string;
+  // settlement_mode: direct_payout (casual employee) | reimburse_engager (informal worker).
+  settlement_mode?: string;
+  employee_id?: string;
+  employee_name?: string;
+  employee_number?: string;
   worker_name?: string;
   worker_id_number?: string;
   worker_phone?: string;
   task_description?: string;
+  // wage_type: daily_wages | hourly_wages | overtime_1_5x | overtime_2x | payment_in_lieu | lump_sum
+  wage_type?: string;
+  quantity?: string | number;
+  rate?: string | number;
   amount?: string | number;
+  payment_option?: string;
   payment_method?: string;
+  payment_date?: string;
+  payroll_month?: string;
+  work_date?: string;
   status?: string;
   project_id?: string;
   cost_center_id?: string;
@@ -281,6 +294,24 @@ export interface CasualLabor {
   created_at?: string;
   [key: string]: unknown;
 }
+
+/** Wingubox casual wage-addition types (the Add Casual Payments dropdown). */
+export const CASUAL_WAGE_TYPES = [
+  { value: "daily_wages", label: "Daily Wages" },
+  { value: "hourly_wages", label: "Hourly Wages" },
+  { value: "overtime_1_5x", label: "Overtime @1.5x" },
+  { value: "overtime_2x", label: "Overtime @2x" },
+  { value: "payment_in_lieu", label: "Payment in Lieu of Leave" },
+] as const;
+
+/** Settlement rails for casual payouts (Salary Payment Option). */
+export const CASUAL_PAYMENT_OPTIONS = [
+  { value: "bank_transfer", label: "Bank Transfer" },
+  { value: "equity_bank", label: "Equity Bank" },
+  { value: "mobile_money", label: "Mobile Money" },
+  { value: "cash", label: "Cash" },
+  { value: "cheque", label: "Cheque" },
+] as const;
 
 export interface PayComponentRecord {
   id: number | string;
