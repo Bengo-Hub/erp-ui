@@ -29,7 +29,7 @@ export default function LeaveTypesPage() {
 
   const columns: Column<LeaveCategory>[] = [
     { header: "Name", cell: (c) => <span className="font-medium">{c.name || "—"}</span> },
-    { header: "Max Days", cell: (c) => c.max_days ?? c.days_allowed ?? "—" },
+    { header: "Max Days", cell: (c) => c.max_days ?? c.days_allowed ?? c.default_annual_days ?? "—" },
     {
       header: "Paid",
       cell: (c) => (
@@ -38,7 +38,7 @@ export default function LeaveTypesPage() {
     },
     {
       header: "Carry-Forward",
-      cell: (c) => (c.carry_forward ? "Yes" : "No"),
+      cell: (c) => (c.carry_forward ?? c.allow_carryover ? "Yes" : "No"),
     },
   ];
 
@@ -57,9 +57,9 @@ export default function LeaveTypesPage() {
         emptyDescription="No leave types configured yet."
         toForm={(c) => ({
           name: c?.name ?? "",
-          max_days: c?.max_days ?? "",
+          max_days: c?.max_days ?? c?.default_annual_days ?? "",
           is_paid: c?.is_paid ?? true,
-          carry_forward: c?.carry_forward ?? false,
+          carry_forward: c?.carry_forward ?? c?.allow_carryover ?? false,
           requires_approval: c?.requires_approval ?? true,
           description: c?.description ?? "",
         })}

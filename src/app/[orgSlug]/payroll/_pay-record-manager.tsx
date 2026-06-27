@@ -253,6 +253,7 @@ export function PayRecordManager({
         open={dialogOpen}
         onClose={() => setDialogOpen(false)}
         title={`${editing ? "Edit" : "Add"} ${entityLabel}`}
+        maxWidth="max-w-2xl"
         footer={
           <>
             <Button variant="outline" size="sm" onClick={() => setDialogOpen(false)} disabled={save.isPending}>

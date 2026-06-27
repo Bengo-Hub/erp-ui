@@ -30,6 +30,9 @@ export interface LeaveCategory {
   description?: string;
   max_days?: string | number;
   days_allowed?: string | number;
+  // erp-api field names (the canonical source).
+  default_annual_days?: string | number;
+  allow_carryover?: boolean;
   is_paid?: boolean;
   carry_forward?: boolean;
   requires_approval?: boolean;
@@ -42,6 +45,7 @@ export interface LeaveBalance {
   employee_name?: string;
   leave_category?: number;
   leave_category_name?: string;
+  leave_type_name?: string;
   category_name?: string;
   year?: number | string;
   entitled?: string | number;

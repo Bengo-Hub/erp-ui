@@ -1,6 +1,6 @@
 "use client";
 
-import { Plus, Upload, Users } from "lucide-react";
+import { Eye, Pencil, Plus, Trash2, Upload, Users } from "lucide-react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
@@ -9,12 +9,14 @@ import { PermissionGate } from "@/components/auth/permission-gate";
 import { OutletFilter } from "@/components/outlet/outlet-filter";
 import { Badge, Button } from "@/components/ui/base";
 import { Card } from "@/components/ui/base";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { DataTable, Pagination, type Column } from "@/components/ui/data-table";
 import { Select } from "@/components/ui/form";
 import { PageHeader } from "@/components/ui/page-header";
 import { SearchInput } from "@/components/ui/search-input";
+import { IconButton } from "@/components/ui/tooltip";
 import { useDebounce } from "@/hooks/use-debounce";
-import { useEmployees } from "@/hooks/use-employees";
+import { useDeleteEmployee, useEmployees } from "@/hooks/use-employees";
 import { useDepartments } from "@/hooks/use-hrm-settings";
 import { normalizeList } from "@/lib/api/drf";
 import { type Employee } from "@/lib/api/employees";
@@ -36,6 +38,9 @@ export default function EmployeesPage() {
   const [page, setPage] = useState(1);
   const [importOpen, setImportOpen] = useState(false);
   const [formOpen, setFormOpen] = useState(false);
+  const [editEmployee, setEditEmployee] = useState<Employee | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<Employee | null>(null);
+  const del = useDeleteEmployee();
   const debouncedSearch = useDebounce(search);
 
   const queryParams = useMemo(
@@ -90,6 +95,28 @@ export default function EmployeesPage() {
           </Badge>
         );
       },
+    },
+    {
+      header: "Actions",
+      headerClassName: "text-right",
+      className: "text-right",
+      cell: (e) => (
+        <div className="flex items-center justify-end gap-1" onClick={(ev) => ev.stopPropagation()}>
+          <IconButton label="View" onClick={() => router.push(`/${orgSlug}/hrm/employees/${e.id}`)}>
+            <Eye className="size-4" />
+          </IconButton>
+          <PermissionGate permission="change_employee">
+            <IconButton label="Edit" onClick={() => setEditEmployee(e)}>
+              <Pencil className="size-4" />
+            </IconButton>
+          </PermissionGate>
+          <PermissionGate permission="delete_employee">
+            <IconButton label="Delete" onClick={() => setDeleteTarget(e)}>
+              <Trash2 className="size-4 text-destructive" />
+            </IconButton>
+          </PermissionGate>
+        </div>
+      ),
     },
   ];
 
@@ -184,6 +211,23 @@ export default function EmployeesPage() {
         open={formOpen}
         onClose={() => setFormOpen(false)}
         onCreated={(id) => router.push(`/${orgSlug}/hrm/employees/${id}`)}
+      />
+      <EmployeeFormDialog
+        open={!!editEmployee}
+        employee={editEmployee}
+        onClose={() => setEditEmployee(null)}
+      />
+      <ConfirmDialog
+        open={!!deleteTarget}
+        title="Delete employee?"
+        description={`Remove ${deleteTarget ? employeeName(deleteTarget) : "this employee"}? This cannot be undone.`}
+        confirmLabel="Delete"
+        loading={del.isPending}
+        onCancel={() => setDeleteTarget(null)}
+        onConfirm={() => {
+          if (!deleteTarget) return;
+          del.mutate(deleteTarget.id, { onSuccess: () => setDeleteTarget(null) });
+        }}
       />
 
       <p className="text-center text-xs text-muted-foreground">

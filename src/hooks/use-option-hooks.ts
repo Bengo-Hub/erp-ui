@@ -3,11 +3,11 @@
 import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 
-import { useDepartments, useJobGroups } from "@/hooks/use-hrm-settings";
+import { useDepartments, useJobGroups, useJobTitles } from "@/hooks/use-hrm-settings";
 import { useLeaveCategories } from "@/hooks/use-leave";
 import { apiClient } from "@/lib/api/client";
 import { normalizeList } from "@/lib/api/drf";
-import { type Department, type JobGroup } from "@/lib/api/hrm-settings";
+import { type Department, type JobGroup, type NamedRecord } from "@/lib/api/hrm-settings";
 import { type LeaveCategory } from "@/lib/api/leave";
 
 export interface Option {
@@ -42,6 +42,21 @@ export function useJobGroupOptions(): OptionsResult {
         value: String(g.id),
         label: g.grade ? `${g.name} (${g.grade})` : g.name,
       })),
+    [data],
+  );
+  return { options, isLoading };
+}
+
+/** Job titles as `{value,label}` options. A job posting's `title` is a text label, so the
+ * option value is the title NAME (the combobox also accepts a freely-typed new title). */
+export function useJobTitleOptions(): OptionsResult {
+  const { data, isLoading } = useJobTitles({ limit: 500 });
+  const options = useMemo(
+    () =>
+      normalizeList<NamedRecord>(data).results.map((t) => {
+        const label = t.name ?? (t as { title?: string }).title ?? String(t.id);
+        return { value: label, label };
+      }),
     [data],
   );
   return { options, isLoading };

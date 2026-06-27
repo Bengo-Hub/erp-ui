@@ -5,10 +5,44 @@ import axios, {
   InternalAxiosRequestConfig,
 } from "axios";
 
+// Platform backend — the default when a tenant has not configured its own domain.
+// NEVER hardcode an individual tenant host (e.g. masterspace) as the fallback.
+const PLATFORM_API_BASE = "https://erpapi.codevertexitsolutions.com";
+
+/**
+ * Resolve the erp-api base URL.
+ *
+ * Order of precedence:
+ *  1. Browser host derivation — map the UI host's leading `erp.` label to `erpapi.`
+ *     (e.g. `erp.codevertexitsolutions.com` → `erpapi.codevertexitsolutions.com`, a
+ *     tenant on `erp.acme.com` → `erpapi.acme.com`). Wins over the baked env so a stale
+ *     CI value can never point one tenant at another tenant's backend.
+ *  2. `NEXT_PUBLIC_API_URL` — explicit localhost/dev/SSR override (e.g. http://localhost:8000).
+ *  3. Platform default (`erpapi.codevertexitsolutions.com`).
+ */
+export function resolveApiBaseUrl(): string {
+  // In the browser, ALWAYS derive from the current host when it follows the `erp.`
+  // convention. This takes precedence over any build-time `NEXT_PUBLIC_API_URL` baked
+  // into the bundle (which may be a stale, tenant-specific value from CI secrets) so a
+  // tenant on `erp.<domain>` always reaches `erpapi.<domain>`, never another tenant's host.
+  if (typeof window !== "undefined" && window.location?.host) {
+    const { protocol, host } = window.location;
+    if (/^erp[.-]/i.test(host)) {
+      return `${protocol}//${host.replace(/^erp([.-])/i, "erpapi$1")}`;
+    }
+  }
+
+  // Localhost/dev/SSR override (e.g. http://localhost:8000) or non-`erp.` hosts.
+  const explicit = process.env.NEXT_PUBLIC_API_URL;
+  if (explicit) return explicit;
+
+  // Default to the platform backend when nothing else applies.
+  return PLATFORM_API_BASE;
+}
+
 // erp-api base. The Vue app appended `/api/v1` to VITE_API_URL; we do the same so
 // callers pass DRF paths like `/hrm/employees/`.
-const rawBase = process.env.NEXT_PUBLIC_API_URL || "https://erpapi.masterspace.co.ke";
-const apiBaseUrl = `${rawBase.replace(/\/$/, "")}/api/v1`;
+const apiBaseUrl = `${resolveApiBaseUrl().replace(/\/$/, "")}/api/v1`;
 
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 

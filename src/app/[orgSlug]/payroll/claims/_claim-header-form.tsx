@@ -61,6 +61,22 @@ export function ClaimHeaderForm({
   const projects = useProjectOptions();
   const costCenters = useCostCenterOptions();
 
+  const isPerDiem = values.claim_type === "per_diem";
+  const isMileage = values.claim_type === "mileage";
+  const isItemised = values.claim_type === "reimbursement" || values.claim_type === "other";
+
+  const amountHelp = isPerDiem
+    ? "Auto-calculated from days × rate (set on the next step)"
+    : isMileage
+      ? "Auto-calculated from the mileage routes (distance × rate) on the next step"
+      : "Auto-calculated from the itemised lines on the next step";
+
+  const nextStepHint = isPerDiem
+    ? "Per-diem claim: after creating, set the number of days and the daily rate."
+    : isMileage
+      ? "Mileage claim: after creating, add each route leg (from / to / distance) and the rate per km."
+      : "Itemised claim: after creating, add each expense line and attach receipts.";
+
   return (
     <div className="grid gap-4 sm:grid-cols-2">
       <Field label="Employee" htmlFor="employee" required>
@@ -99,15 +115,23 @@ export function ClaimHeaderForm({
         />
       </Field>
 
-      <Field
-        label="Total Amount"
-        htmlFor="amount"
-        help="Auto-calculated from the lines below"
-      >
+      <Field label="Total Amount" htmlFor="amount" help={amountHelp}>
         {amountSlot ?? (
           <Input id="amount" value={values.amount ? String(values.amount) : "0.00"} readOnly disabled />
         )}
       </Field>
+
+      {/* Category applies only to itemised claims (reimbursement / other). */}
+      {isItemised && (
+        <Field label="Category" htmlFor="category">
+          <Input
+            id="category"
+            value={values.category}
+            placeholder="e.g. Travel, Office, Meals"
+            onChange={(e) => setField("category", e.target.value)}
+          />
+        </Field>
+      )}
 
       <Field label="Project (optional)" htmlFor="project_id">
         <Combobox
@@ -153,6 +177,12 @@ export function ClaimHeaderForm({
           placeholder="Purpose / notes for this claim"
         />
       </Field>
+
+      {!lockType && (
+        <p className="sm:col-span-2 rounded-md bg-muted/50 px-3 py-2 text-xs text-muted-foreground">
+          {nextStepHint}
+        </p>
+      )}
     </div>
   );
 }
