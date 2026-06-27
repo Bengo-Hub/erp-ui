@@ -1,13 +1,16 @@
 "use client";
 
+import { Pencil, Plus, Trash2 } from "lucide-react";
 import { useParams, useRouter } from "next/navigation";
+import { useState } from "react";
 
-import { CrudManager, type CrudFieldDef } from "@/components/crud/crud-manager";
+import { PermissionGate } from "@/components/auth/permission-gate";
 import { StatusBadge } from "@/components/hrm/status-badge";
-import { Badge } from "@/components/ui/base";
-import { type Column } from "@/components/ui/data-table";
+import { Badge, Button, Card } from "@/components/ui/base";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { DataTable, type Column } from "@/components/ui/data-table";
 import { PageHeader } from "@/components/ui/page-header";
-import { EMPLOYMENT_TYPES } from "@/lib/hrm";
+import { IconButton } from "@/components/ui/tooltip";
 import {
   useDeleteJobPosting,
   useJobPostings,
@@ -17,30 +20,17 @@ import { normalizeList } from "@/lib/api/drf";
 import { type JobPosting } from "@/lib/api/recruitment";
 import { formatDate } from "@/lib/utils";
 
-const fields: CrudFieldDef[] = [
-  { name: "title", label: "Job Title", required: true, span2: true },
-  { name: "location", label: "Location" },
-  {
-    name: "employment_type",
-    label: "Employment Type",
-    type: "select",
-    options: EMPLOYMENT_TYPES,
-  },
-  { name: "num_positions", label: "Openings", type: "number" },
-  {
-    name: "status",
-    label: "Status",
-    type: "select",
-    options: [
-      { value: "draft", label: "Draft" },
-      { value: "open", label: "Open" },
-      { value: "closed", label: "Closed" },
-    ],
-  },
-  { name: "application_deadline", label: "Closing Date", type: "date" },
-  { name: "is_public", label: "Publish to public careers portal", type: "switch" },
-  { name: "description", label: "Description", type: "textarea", span2: true },
-];
+import { JobFormDialog } from "./_job-form-dialog";
+
+function salaryLabel(j: JobPosting): string {
+  const min = j.salary_min ? Number(j.salary_min) : null;
+  const max = j.salary_max ? Number(j.salary_max) : null;
+  if (min == null && max == null) return "—";
+  const cur = j.salary_currency || "";
+  const fmt = (n: number) => n.toLocaleString();
+  if (min != null && max != null) return `${cur} ${fmt(min)} – ${fmt(max)}`.trim();
+  return `${cur} ${fmt((min ?? max) as number)}`.trim();
+}
 
 export default function JobsPage() {
   const router = useRouter();
@@ -50,10 +40,31 @@ export default function JobsPage() {
   const del = useDeleteJobPosting();
   const rows = normalizeList<JobPosting>(data).results;
 
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [editing, setEditing] = useState<JobPosting | null>(null);
+  const [toDelete, setToDelete] = useState<JobPosting | null>(null);
+
+  const openCreate = () => {
+    setEditing(null);
+    setDialogOpen(true);
+  };
+  const openEdit = (job: JobPosting) => {
+    setEditing(job);
+    setDialogOpen(true);
+  };
+
+  const handleSave = (payload: Partial<JobPosting>) =>
+    save.mutate(
+      { id: editing?.id, data: payload },
+      { onSuccess: () => setDialogOpen(false) },
+    );
+
   const columns: Column<JobPosting>[] = [
     { header: "Title", cell: (j) => <span className="font-medium">{j.title || "—"}</span> },
+    { header: "Department", cell: (j) => j.department_name || "—" },
     { header: "Location", cell: (j) => j.location || "—" },
     { header: "Type", cell: (j) => <span className="capitalize">{j.employment_type || "—"}</span> },
+    { header: "Salary", cell: (j) => <span className="whitespace-nowrap text-xs">{salaryLabel(j)}</span> },
     { header: "Openings", cell: (j) => j.num_positions ?? j.openings ?? "—" },
     { header: "Closing", cell: (j) => formatDate(j.application_deadline ?? j.closing_date) },
     { header: "Status", cell: (j) => <StatusBadge status={j.status} /> },
@@ -62,6 +73,25 @@ export default function JobsPage() {
       cell: (j) =>
         j.is_public ? <Badge variant="success">Live</Badge> : <Badge variant="secondary">Private</Badge>,
     },
+    {
+      header: "",
+      headerClassName: "text-right",
+      className: "text-right",
+      cell: (j) => (
+        <div className="flex justify-end gap-1">
+          <PermissionGate permission="change_jobposting">
+            <IconButton label="Edit posting" onClick={() => openEdit(j)}>
+              <Pencil className="size-4" />
+            </IconButton>
+          </PermissionGate>
+          <PermissionGate permission="delete_jobposting">
+            <IconButton label="Delete posting" onClick={() => setToDelete(j)}>
+              <Trash2 className="size-4 text-destructive" />
+            </IconButton>
+          </PermissionGate>
+        </div>
+      ),
+    },
   ];
 
   return (
@@ -69,43 +99,27 @@ export default function JobsPage() {
       <PageHeader
         title="Job Postings"
         subtitle="Open requisitions and postings"
-      />
-      <CrudManager
-        rows={rows}
-        columns={columns}
-        fields={fields}
-        isLoading={isLoading}
-        error={error}
-        onRetry={refetch}
-        entityLabel="Job Posting"
-        perms={{ add: "add_jobposting", change: "change_jobposting", delete: "delete_jobposting" }}
-        emptyDescription="No job postings yet. Create one to start recruiting."
-        toForm={(j) => ({
-          title: j?.title ?? "",
-          location: j?.location ?? "",
-          employment_type: j?.employment_type ?? "",
-          num_positions: j?.num_positions ?? j?.openings ?? 1,
-          status: j?.status ?? "draft",
-          application_deadline: j?.application_deadline ?? j?.closing_date ?? "",
-          is_public: j?.is_public ?? false,
-          description: j?.description ?? "",
-        })}
-        onSave={({ id, data }, done) =>
-          save.mutate(
-            {
-              id,
-              data: {
-                ...data,
-                num_positions: data.num_positions ? Number(data.num_positions) : undefined,
-              } as Partial<JobPosting>,
-            },
-            { onSuccess: done },
-          )
+        actions={
+          <PermissionGate permission="add_jobposting">
+            <Button size="sm" onClick={openCreate}>
+              <Plus className="mr-1.5 size-4" /> New Posting
+            </Button>
+          </PermissionGate>
         }
-        onDelete={(id, done) => del.mutate(id, { onSuccess: done })}
-        saving={save.isPending}
-        deleting={del.isPending}
       />
+
+      <Card>
+        <DataTable
+          columns={columns}
+          rows={rows}
+          rowKey={(j) => j.id}
+          isLoading={isLoading}
+          error={error}
+          onRetry={refetch}
+          emptyTitle="No job postings yet"
+          emptyDescription="No job postings yet. Create one to start recruiting."
+        />
+      </Card>
 
       <p className="text-center text-xs text-muted-foreground">
         Track applicants in the{" "}
@@ -117,6 +131,25 @@ export default function JobsPage() {
         </button>
         .
       </p>
+
+      <JobFormDialog
+        open={dialogOpen}
+        job={editing}
+        orgSlug={orgSlug}
+        saving={save.isPending}
+        onClose={() => setDialogOpen(false)}
+        onSave={handleSave}
+      />
+
+      <ConfirmDialog
+        open={!!toDelete}
+        title="Delete job posting?"
+        description="This action cannot be undone."
+        destructive
+        loading={del.isPending}
+        onCancel={() => setToDelete(null)}
+        onConfirm={() => toDelete && del.mutate(toDelete.id, { onSuccess: () => setToDelete(null) })}
+      />
     </div>
   );
 }
