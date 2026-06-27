@@ -133,6 +133,12 @@ export const payrollApi = {
       ...payload,
     }),
 
+  // Approve / reject a processed period (the review step between process and disburse).
+  approve: (payload: { payment_period?: string; outlet_id?: string }) =>
+    apiClient.post<{ status?: string; count?: number }>(`${PAY}/payroll/`, { command: "approve", ...payload }),
+  reject: (payload: { payment_period?: string; outlet_id?: string }) =>
+    apiClient.post<{ status?: string; count?: number }>(`${PAY}/payroll/`, { command: "reject", ...payload }),
+
   taskStatus: (taskId: string) =>
     apiClient.get<{ state?: string; progress?: number; status?: string; result?: unknown }>(
       `${HRM}/payroll/task_status/`,

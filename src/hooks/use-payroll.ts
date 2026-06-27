@@ -79,6 +79,20 @@ export function useDisbursePayroll() {
   });
 }
 
+/** Approve or reject a processed period (review step before disburse). */
+export function useApprovePayroll() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ approve, ...payload }: { approve: boolean; payment_period?: string; outlet_id?: string }) =>
+      approve ? payrollApi.approve(payload) : payrollApi.reject(payload),
+    onSuccess: (_r, v) => {
+      qc.invalidateQueries({ queryKey: [KEY] });
+      toast.success(v.approve ? "Payroll approved" : "Payroll rejected");
+    },
+    onError: (e) => toast.error(extractApiError(e, "Failed to update approval")),
+  });
+}
+
 export function useEmailPayslips() {
   return useMutation({
     mutationFn: (data: Record<string, unknown>) => payrollApi.emailPayslips(data),
