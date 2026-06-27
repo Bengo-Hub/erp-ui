@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/base";
 import { Dialog } from "@/components/ui/dialog";
 import { TransferList, type TransferItem } from "@/components/ui/transfer-list";
 import { useRoles, useUserActions } from "@/hooks/use-users";
+import { isErpRole } from "@/lib/erp-roles";
 import { type ManagedUser } from "@/lib/api/users";
 
 /**
@@ -23,9 +24,15 @@ export function UserRolesDialog({
   const { data: roleOptions = [] } = useRoles();
   const { setRoles } = useUserActions();
 
+  // Only offer ERP-relevant roles (hide POS/logistics/ISP/pharmacy roles that live in the shared
+  // registry). Already-assigned legacy roles stay visible so they can be removed.
+  const assigned = user?.roles ?? [];
   const items: TransferItem[] = useMemo(
-    () => roleOptions.map((r) => ({ value: r.id, label: r.name })),
-    [roleOptions],
+    () =>
+      roleOptions
+        .filter((r) => isErpRole(r.id) || isErpRole(r.name) || assigned.includes(r.id))
+        .map((r) => ({ value: r.id, label: r.name })),
+    [roleOptions, assigned],
   );
 
   const openKey = user ? String(user.id) : "";
