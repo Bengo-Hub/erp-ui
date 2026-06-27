@@ -9,6 +9,7 @@ import {
   type AttendanceRecord,
   type AttendanceRule,
   type OffDay,
+  type PlannerCellInput,
   type RosterSlot,
   type ShiftAssignment,
   type ShiftRoster,
@@ -177,6 +178,32 @@ export function usePlannerResolve(range: { from: string; to: string } | null) {
     queryKey: ["shift-planner", range],
     queryFn: () => attendanceApi.resolvePlanner({ from: range!.from, to: range!.to }),
     enabled: !!range?.from && !!range?.to,
+  });
+}
+
+/** Assign a shift onto a planner cell (employee, date). Optimistic-friendly: the
+ *  caller refetches the resolved grid on settle. */
+export function useUpsertPlannerCell() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (data: PlannerCellInput) => attendanceApi.upsertPlannerCell(data),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["shift-planner"] });
+    },
+    onError: (e) => toast.error(extractApiError(e, "Failed to save shift")),
+  });
+}
+
+/** Clear a planner cell (employee, date). */
+export function useClearPlannerCell() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ employeeId, date }: { employeeId: string; date: string }) =>
+      attendanceApi.clearPlannerCell(employeeId, date),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["shift-planner"] });
+    },
+    onError: (e) => toast.error(extractApiError(e, "Failed to clear shift")),
   });
 }
 

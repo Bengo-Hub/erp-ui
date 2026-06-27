@@ -14,6 +14,11 @@ export interface JobPosting {
   location?: string;
   employment_type?: string;
   description?: string;
+  requirements?: string;
+  responsibilities?: string;
+  salary_min?: string;
+  salary_max?: string;
+  salary_currency?: string;
   status?: string;
   openings?: number;
   num_positions?: number;
