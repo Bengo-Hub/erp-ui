@@ -3,7 +3,7 @@
 import { PdfPreview, useDocumentPreview } from "@bengo-hub/shared-ui-lib/documents";
 import { useParams, useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
-import { BadgeCheck, Banknote, ChevronDown, ChevronRight, ListChecks, Mail, Printer } from "lucide-react";
+import { BadgeCheck, Banknote, ChevronDown, ChevronRight, FileDown, ListChecks, Mail, Printer, RefreshCw } from "lucide-react";
 
 import { PermissionGate } from "@/components/auth/permission-gate";
 import { OutletFilter } from "@/components/outlet/outlet-filter";
@@ -68,8 +68,10 @@ type PeriodGroup = {
   label: string;
   payslips: Payslip[];
   count: number;
+  totalBasic: number;
   totalGross: number;
   totalNet: number;
+  publishedCount: number;
   status: string;
 };
 
@@ -139,8 +141,10 @@ export default function PayslipsPage() {
       label: formatPeriod(p),
       payslips,
       count: payslips.length,
+      totalBasic: payslips.reduce((a, x) => a + num(x.basic_salary ?? x.gross_pay), 0),
       totalGross: payslips.reduce((a, x) => a + num(x.gross_pay ?? x.total_earnings), 0),
       totalNet: payslips.reduce((a, x) => a + num(x.net_pay), 0),
+      publishedCount: payslips.filter((x) => x.published === true || statusKey(x.status) === "disbursed").length,
       status: groupStatus(payslips),
     }));
     arr.sort((a, b) => b.period.localeCompare(a.period));
@@ -148,6 +152,22 @@ export default function PayslipsPage() {
   }, [results, debounced, tab]);
 
   const toggle = (p: string) => setExpanded((e) => ({ ...e, [p]: !e[p] }));
+
+  const exportCsv = () => {
+    const header = ["Month", "No. of Payslips", "Basic Pay", "Net Pay", "Approval", "Publish"];
+    const lines = groups.map((g) =>
+      [g.label, g.count, g.totalBasic.toFixed(2), g.totalNet.toFixed(2), g.status, `${g.publishedCount}/${g.count}`]
+        .map((c) => `"${String(c).replace(/"/g, '""')}"`)
+        .join(","),
+    );
+    const blob = new Blob([[header.join(","), ...lines].join("\n")], { type: "text/csv" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "payslips.csv";
+    a.click();
+    URL.revokeObjectURL(url);
+  };
 
   return (
     <div className="space-y-4 p-4 sm:p-6">
@@ -201,6 +221,12 @@ export default function PayslipsPage() {
             className="min-w-[220px] flex-1"
           />
           <Input type="month" value={period} onChange={(e) => setPeriod(e.target.value)} className="w-auto" />
+          <Button size="sm" variant="outline" onClick={() => refetch()} disabled={isLoading}>
+            <RefreshCw className="mr-1.5 size-4" /> Refresh Data
+          </Button>
+          <Button size="sm" variant="outline" onClick={exportCsv} disabled={groups.length === 0}>
+            <FileDown className="mr-1.5 size-4" /> CSV
+          </Button>
         </div>
 
         <div className="border-b border-border px-4 pt-3">
@@ -221,10 +247,11 @@ export default function PayslipsPage() {
             <div className="hidden items-center gap-3 px-4 py-2 text-xs font-medium uppercase tracking-wide text-muted-foreground sm:flex">
               <span className="w-6" />
               <span className="flex-1">Payroll month</span>
-              <span className="w-24 text-center">Payslips</span>
-              <span className="w-32 text-right">Gross</span>
+              <span className="w-20 text-center">Payslips</span>
+              <span className="w-32 text-right">Basic Pay</span>
               <span className="w-32 text-right">Net pay</span>
-              <span className="w-28 text-center">Status</span>
+              <span className="w-28 text-center">Approval</span>
+              <span className="w-24 text-center">Publish (ESS)</span>
               <span className="w-28 text-right">Actions</span>
             </div>
 
@@ -242,10 +269,17 @@ export default function PayslipsPage() {
                       {open ? <ChevronDown className="size-4" /> : <ChevronRight className="size-4" />}
                     </span>
                     <span className="flex-1 font-semibold text-foreground">{g.label}</span>
-                    <span className="w-24 text-center text-sm">{g.count}</span>
-                    <span className="w-32 text-right text-sm text-muted-foreground">{formatMoney(g.totalGross)}</span>
+                    <span className="w-20 text-center text-sm">{g.count}</span>
+                    <span className="w-32 text-right text-sm text-muted-foreground">{formatMoney(g.totalBasic)}</span>
                     <span className="w-32 text-right text-sm font-semibold">{formatMoney(g.totalNet)}</span>
                     <span className="w-28 text-center"><StatusBadge status={g.status} /></span>
+                    <span className="w-24 text-center">
+                      {g.publishedCount > 0 ? (
+                        <Badge variant="success">{g.publishedCount === g.count ? "Published" : `${g.publishedCount}/${g.count}`}</Badge>
+                      ) : (
+                        <Badge variant="secondary">Not published</Badge>
+                      )}
+                    </span>
                     <div className="flex w-28 items-center justify-end gap-1" onClick={(e) => e.stopPropagation()}>
                       <IconButton label="View muster roll" onClick={() => router.push(`/${orgSlug}/reports/muster-roll?period=${g.period}`)}>
                         <ListChecks className="size-4" />
