@@ -16,6 +16,15 @@ const BASE = "/reports";
 /** A single report row is an open record (columns are config-driven). */
 export type ReportRow = Record<string, unknown>;
 
+/** Backend-driven column definition (e.g. dynamic muster-roll per-component columns). */
+export interface ReportColumnDef {
+  key: string;
+  header: string;
+  money?: boolean;
+  numeric?: boolean;
+  sticky?: boolean;
+}
+
 /**
  * erp-api report response: `{report, period, columns, rows, totals}`.
  * Legacy `data`/`results`/`summary` keys are tolerated for older callers.
@@ -24,6 +33,7 @@ export interface ReportResponse {
   report?: string;
   period?: { start?: string; end?: string };
   columns?: string[];
+  column_defs?: ReportColumnDef[];
   rows?: ReportRow[];
   totals?: Record<string, unknown>;
   // legacy shapes
@@ -71,13 +81,15 @@ export const reportsApi = {
     ),
 };
 
-/** Normalize a report response into a flat row array + optional summary. */
+/** Normalize a report response into rows + optional summary + backend column defs + totals. */
 export function normalizeReport(res: ReportResponse | ReportRow[] | null | undefined): {
   rows: ReportRow[];
   summary: Record<string, unknown> | undefined;
+  columnDefs: ReportColumnDef[] | undefined;
+  totals: Record<string, unknown> | undefined;
 } {
-  if (Array.isArray(res)) return { rows: res, summary: undefined };
-  if (!res) return { rows: [], summary: undefined };
+  if (Array.isArray(res)) return { rows: res, summary: undefined, columnDefs: undefined, totals: undefined };
+  if (!res) return { rows: [], summary: undefined, columnDefs: undefined, totals: undefined };
   const rows = Array.isArray(res.rows)
     ? res.rows
     : Array.isArray(res.data)
@@ -85,5 +97,10 @@ export function normalizeReport(res: ReportResponse | ReportRow[] | null | undef
       : Array.isArray(res.results)
         ? res.results
         : [];
-  return { rows, summary: res.totals ?? res.summary };
+  return {
+    rows,
+    summary: res.totals ?? res.summary,
+    columnDefs: res.column_defs,
+    totals: res.totals,
+  };
 }

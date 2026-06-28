@@ -36,8 +36,8 @@ export function useReport(config: ReportConfig, params: ReportParams, enabled: b
     queryFn: () => reportsApi.run(config.path, merged),
     enabled,
   });
-  const { rows, summary } = normalizeReport(query.data);
-  return { ...query, rows, summary };
+  const { rows, summary, columnDefs, totals } = normalizeReport(query.data);
+  return { ...query, rows, summary, columnDefs, totals };
 }
 
 /** Export a report to pdf/excel; streams + downloads the blob. */

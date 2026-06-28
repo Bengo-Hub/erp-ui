@@ -1,8 +1,9 @@
 "use client";
 
 import { PdfPreview, useDocumentPreview } from "@bengo-hub/shared-ui-lib/documents";
-import { FileDown, FileSpreadsheet, Printer } from "lucide-react";
-import { useMemo, useState } from "react";
+import { Columns3, FileDown, FileSpreadsheet, Printer } from "lucide-react";
+import { useSearchParams } from "next/navigation";
+import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 
 import { Button, Card } from "@/components/ui/base";
@@ -12,6 +13,7 @@ import { useReport, useReportExport } from "@/hooks/use-reports";
 import { reportsApi, type ReportParams, type ReportRow } from "@/lib/api/reports";
 import { type ReportColumn, type ReportConfig, type ReportFilterKey } from "@/lib/reports-config";
 import { formatCurrency, formatPercent } from "@/lib/format";
+import { DynamicReportTable } from "./dynamic-report-table";
 import { ReportFilters, type ReportFilterValues } from "./report-filters";
 
 function renderCell(col: ReportColumn, row: ReportRow) {
@@ -45,14 +47,29 @@ function toParams(show: ReportFilterKey[], v: ReportFilterValues): ReportParams 
  * renders through this — there are no per-report page bodies.
  */
 export function ReportRunner({ config }: { config: ReportConfig }) {
+  const searchParams = useSearchParams();
   const [values, setValues] = useState<ReportFilterValues>({
     year: String(new Date().getFullYear()),
   });
   const [enabled, setEnabled] = useState(false);
   const [missing, setMissing] = useState<string | null>(null);
+  const [hiddenCols, setHiddenCols] = useState<Set<string>>(new Set());
+  const [colMenuOpen, setColMenuOpen] = useState(false);
+
+  // Auto-load from ?period=YYYY-MM (e.g. "View Muster Roll" for a payroll period) — hydrate the
+  // year/month filters and run immediately so the report opens for that period without a manual step.
+  useEffect(() => {
+    const period = searchParams?.get("period");
+    const m = period ? /^(\d{4})-(\d{2})/.exec(period) : null;
+    if (m) {
+      setValues((v) => ({ ...v, year: m[1], month: String(Number(m[2])) }));
+      setEnabled(true);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams]);
 
   const params = useMemo(() => toParams(config.filters, values), [config.filters, values]);
-  const { rows, summary, isFetching, error, refetch } = useReport(config, params, enabled);
+  const { rows, summary, columnDefs, totals, isFetching, error, refetch } = useReport(config, params, enabled);
   const exporter = useReportExport(config, params);
   // Preview-first for PDF (Excel stays a direct download): open the server-rendered PDF in the
   // shared modal with Download / Print / Open-in-tab.
@@ -108,6 +125,21 @@ export function ReportRunner({ config }: { config: ReportConfig }) {
     [config.summary, rows],
   );
 
+  // Backend-driven dynamic columns (e.g. muster roll). When present they replace the static config
+  // columns and enable horizontal scroll + Edit-Columns + a Grand Totals footer row.
+  const dynamic = !!columnDefs && columnDefs.length > 0;
+  const visibleDefs = useMemo(
+    () => (columnDefs ?? []).filter((c) => !hiddenCols.has(c.key)),
+    [columnDefs, hiddenCols],
+  );
+  const toggleCol = (key: string) =>
+    setHiddenCols((s) => {
+      const n = new Set(s);
+      if (n.has(key)) n.delete(key);
+      else n.add(key);
+      return n;
+    });
+
   const hasData = enabled && rows.length > 0;
 
   return (
@@ -118,6 +150,30 @@ export function ReportRunner({ config }: { config: ReportConfig }) {
         actions={
           hasData ? (
             <div className="flex items-center gap-2 print:hidden">
+              {dynamic && (
+                <div className="relative">
+                  <Button size="sm" variant="outline" onClick={() => setColMenuOpen((o) => !o)}>
+                    <Columns3 className="mr-1.5 size-4" /> Edit Columns
+                  </Button>
+                  {colMenuOpen && (
+                    <>
+                      <div className="fixed inset-0 z-10" onClick={() => setColMenuOpen(false)} />
+                      <div className="absolute right-0 z-20 mt-1 max-h-80 w-56 overflow-y-auto rounded-md border border-border bg-popover py-1 shadow-md">
+                        {(columnDefs ?? []).map((c) => (
+                          <label key={c.key} className="flex cursor-pointer items-center gap-2 px-3 py-1.5 text-sm hover:bg-muted">
+                            <input
+                              type="checkbox"
+                              checked={!hiddenCols.has(c.key)}
+                              onChange={() => toggleCol(c.key)}
+                            />
+                            {c.header}
+                          </label>
+                        ))}
+                      </div>
+                    </>
+                  )}
+                </div>
+              )}
               {/* Print + PDF both open the server-rendered document; the preview modal
                   offers Print / Download / Open-in-tab (never a browser HTML print). */}
               <Button size="sm" variant="outline" onClick={previewPdf}>
@@ -169,20 +225,24 @@ export function ReportRunner({ config }: { config: ReportConfig }) {
       )}
 
       <Card>
-        <DataTable
-          columns={columns}
-          rows={enabled ? rows : []}
-          rowKey={(_r) => rows.indexOf(_r)}
-          isLoading={enabled && isFetching}
-          error={enabled ? error : undefined}
-          onRetry={refetch}
-          emptyTitle={enabled ? "No data for these filters" : "Select filters and generate"}
-          emptyDescription={
-            enabled
-              ? "Try a different period or scope."
-              : "Choose a period above, then press Generate to run this report."
-          }
-        />
+        {dynamic && hasData ? (
+          <DynamicReportTable columns={visibleDefs} rows={rows} totals={totals} />
+        ) : (
+          <DataTable
+            columns={columns}
+            rows={enabled ? rows : []}
+            rowKey={(_r) => rows.indexOf(_r)}
+            isLoading={enabled && isFetching}
+            error={enabled ? error : undefined}
+            onRetry={refetch}
+            emptyTitle={enabled ? "No data for these filters" : "Select filters and generate"}
+            emptyDescription={
+              enabled
+                ? "Try a different period or scope."
+                : "Choose a period above, then press Generate to run this report."
+            }
+          />
+        )}
       </Card>
 
       <PdfPreview {...previewProps} />
