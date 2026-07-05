@@ -10,6 +10,7 @@ import { SubscriptionBanner } from "@/components/subscription/subscription-banne
 import { AuthProvider } from "@/providers/auth-provider";
 import { BrandingProvider } from "@/providers/branding-provider";
 import { QueryProvider } from "@/providers/query-provider";
+import { SubscriptionEntitlementsProvider } from "@/providers/subscription-entitlements-provider";
 import { useTenantFilterStore } from "@/store/tenant-filter";
 
 /** Injects the per-tenant manifest link so PWA installs are tenant-scoped. */
@@ -63,6 +64,7 @@ export function OrgShell({ children }: { children: ReactNode }) {
     <QueryProvider>
       <BrandingProvider>
         <AuthProvider>
+          <SubscriptionEntitlementsProvider>
           <ManifestLink />
           <a
             href="#main-content"
@@ -81,6 +83,7 @@ export function OrgShell({ children }: { children: ReactNode }) {
               </main>
             </div>
           </div>
+          </SubscriptionEntitlementsProvider>
         </AuthProvider>
       </BrandingProvider>
     </QueryProvider>
