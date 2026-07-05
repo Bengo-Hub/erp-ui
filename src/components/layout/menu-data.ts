@@ -90,6 +90,7 @@ export const APP_MENU: MenuSection[] = [
           { label: "Advances", to: "/payroll/advances", permissions: ["view_advances"] },
           { label: "Claims", to: "/payroll/claims" },
           { label: "Losses & Damages", to: "/payroll/losses-damages", permissions: ["view_lossesanddamages"] },
+          { label: "Staff Purchases", to: "/payroll/staff-purchases", permissions: ["view_advances"] },
           { label: "Formulas", to: "/settings/payroll/formulas", permissions: ["view_payrollcomponents"] },
         ],
       },
