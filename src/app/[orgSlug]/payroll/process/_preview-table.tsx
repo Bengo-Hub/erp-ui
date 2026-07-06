@@ -2,6 +2,7 @@
 
 import { Card } from "@/components/ui/base";
 import { DataTable, type Column } from "@/components/ui/data-table";
+import { useStatutoryToggles } from "@/hooks/use-payroll-settings";
 import { type PayrollPreviewRow } from "@/lib/api/payroll";
 import { formatMoney } from "@/lib/utils";
 
@@ -29,18 +30,32 @@ export function PreviewTable({
     { gross: 0, deductions: 0, net: 0 },
   );
 
+  // Statutory columns follow the tenant's toggles (Settings → Payroll → Statutory):
+  // disabled deductions are not processed by the engine, so their columns are hidden.
+  const toggles = useStatutoryToggles();
+
   const columns: Column<PayrollPreviewRow>[] = [
     { header: "Employee", cell: (r) => <span className="font-medium">{r.employee_name || r.employee || "—"}</span> },
     { header: "Gross", className: "text-right", headerClassName: "text-right", cell: (r) => formatMoney(r.gross_pay) },
-    { header: "PAYE", className: "text-right", headerClassName: "text-right", cell: (r) => formatMoney(r.paye) },
-    { header: "NSSF", className: "text-right", headerClassName: "text-right", cell: (r) => formatMoney(r.nssf) },
-    { header: "SHIF", className: "text-right", headerClassName: "text-right", cell: (r) => formatMoney(r.shif) },
-    {
-      header: "Housing",
-      className: "text-right",
-      headerClassName: "text-right",
-      cell: (r) => formatMoney(r.housing_levy),
-    },
+    ...(toggles.paye
+      ? [{ header: "PAYE", className: "text-right", headerClassName: "text-right", cell: (r: PayrollPreviewRow) => formatMoney(r.paye) }]
+      : []),
+    ...(toggles.nssf
+      ? [{ header: "NSSF", className: "text-right", headerClassName: "text-right", cell: (r: PayrollPreviewRow) => formatMoney(r.nssf) }]
+      : []),
+    ...(toggles.shif
+      ? [{ header: "SHIF", className: "text-right", headerClassName: "text-right", cell: (r: PayrollPreviewRow) => formatMoney(r.shif) }]
+      : []),
+    ...(toggles.housingLevy
+      ? [
+          {
+            header: "Housing",
+            className: "text-right",
+            headerClassName: "text-right",
+            cell: (r: PayrollPreviewRow) => formatMoney(r.housing_levy),
+          },
+        ]
+      : []),
     {
       header: "Net Pay",
       className: "text-right font-semibold",

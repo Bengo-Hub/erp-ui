@@ -43,12 +43,14 @@ export function PayslipView({ payslip }: { payslip: Payslip }) {
   const hasEarningLines = !!payslip.earnings?.length;
   const hasDeductionLines = !!payslip.deductions?.length;
 
+  // Zero rows are dropped: a statutory item the tenant disabled (or that didn't apply)
+  // shouldn't print as "KES 0.00" on the payslip.
   const statutory = [
     { label: "PAYE", value: payslip.paye },
     { label: "NSSF", value: payslip.nssf },
     { label: "SHIF / NHIF", value: payslip.shif ?? payslip.nhif },
     { label: "Housing Levy", value: payslip.housing_levy },
-  ];
+  ].filter((s) => num(s.value) > 0);
   const totalStatutory = statutory.reduce((a, s) => a + num(s.value), 0);
 
   return (
@@ -91,8 +93,10 @@ export function PayslipView({ payslip }: { payslip: Payslip }) {
             </h4>
             {hasDeductionLines ? (
               <LineRows lines={payslip.deductions} />
-            ) : (
+            ) : statutory.length ? (
               statutory.map((s) => <StatRow key={s.label} label={s.label} value={formatMoney(s.value)} />)
+            ) : (
+              <p className="text-sm text-muted-foreground">None</p>
             )}
             <div className="my-2 border-t border-border" />
             <StatRow
