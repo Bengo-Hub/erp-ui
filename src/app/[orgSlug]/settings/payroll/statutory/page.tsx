@@ -1,65 +1,55 @@
 "use client";
 
+import Link from "next/link";
+import { useParams } from "next/navigation";
 import { useEffect } from "react";
 import { useForm } from "react-hook-form";
 
 import { PermissionGate } from "@/components/auth/permission-gate";
 import { Button, Card, CardContent, CardHeader } from "@/components/ui/base";
-import { Field, Input, Switch } from "@/components/ui/form";
+import { Switch } from "@/components/ui/form";
 import { PageHeader } from "@/components/ui/page-header";
 import { LoadingState } from "@/components/ui/states";
 import { Tabs } from "@/components/ui/tabs";
-import { useGeneralHrSettings, useSaveGeneralHrSettings } from "@/hooks/use-payroll-settings";
-import { normalizeList } from "@/lib/api/drf";
+import {
+  generalHrSingleton,
+  useGeneralHrSettings,
+  useSaveGeneralHrSettings,
+} from "@/hooks/use-payroll-settings";
 import { type GeneralHrSettings } from "@/lib/api/payroll-settings";
 
 import { usePayrollSettingsTabs } from "../_tabs";
 
-type FormValues = Record<string, string | boolean | undefined>;
+type FormValues = Record<string, boolean | undefined>;
 
-const TOGGLES: { key: keyof GeneralHrSettings; label: string }[] = [
-  { key: "paye_enabled", label: "PAYE (Income Tax)" },
-  { key: "nssf_enabled", label: "NSSF" },
-  { key: "shif_enabled", label: "SHIF / NHIF" },
-  { key: "housing_levy_enabled", label: "Housing Levy" },
-  { key: "nita_enabled", label: "NITA Levy" },
+const TOGGLES: { key: keyof GeneralHrSettings; label: string; hint: string }[] = [
+  { key: "paye_enabled", label: "PAYE (Income Tax)", hint: "Withheld from employees and remitted to KRA monthly." },
+  { key: "nssf_enabled", label: "NSSF", hint: "Pension contribution, matched by the employer." },
+  { key: "shif_enabled", label: "SHIF / NHIF", hint: "Health contribution (2.75% of gross), employee-only." },
+  { key: "housing_levy_enabled", label: "Housing Levy", hint: "1.5% of gross, matched by the employer." },
+  { key: "nita_enabled", label: "NITA Levy", hint: "Employer-only training levy (KES 50/employee/month)." },
 ];
 
-function singleton(data: unknown): GeneralHrSettings | undefined {
-  if (Array.isArray(data) || (data && typeof data === "object" && "results" in (data as object))) {
-    return normalizeList<GeneralHrSettings>(data as never).results[0];
-  }
-  return (data as GeneralHrSettings) || undefined;
-}
-
 export default function StatutorySettingsPage() {
+  const { orgSlug } = useParams<{ orgSlug: string }>();
   const { tabs, active, onChange } = usePayrollSettingsTabs("statutory");
   const { data, isLoading } = useGeneralHrSettings();
   const save = useSaveGeneralHrSettings();
-  const current = singleton(data);
+  const current = generalHrSingleton(data);
 
-  const { register, handleSubmit, reset, watch, setValue } = useForm<FormValues>();
+  const { handleSubmit, reset, watch, setValue } = useForm<FormValues>({
+    // Default ON: disabled statutory deductions are the exception, not the rule.
+    defaultValues: Object.fromEntries(TOGGLES.map((t) => [t.key, true])),
+  });
 
   useEffect(() => {
     if (current) {
-      reset({
-        personal_relief: current.personal_relief != null ? String(current.personal_relief) : "",
-        insurance_relief_rate:
-          current.insurance_relief_rate != null ? String(current.insurance_relief_rate) : "",
-        housing_levy_rate: current.housing_levy_rate != null ? String(current.housing_levy_rate) : "",
-        shif_rate: current.shif_rate != null ? String(current.shif_rate) : "",
-        ...Object.fromEntries(TOGGLES.map((t) => [t.key, current[t.key] !== false])),
-      });
+      reset(Object.fromEntries(TOGGLES.map((t) => [t.key, current[t.key] !== false])));
     }
   }, [current, reset]);
 
   const onSubmit = (v: FormValues) => {
-    const payload: Partial<GeneralHrSettings> = { ...(v as Partial<GeneralHrSettings>) };
-    Object.keys(payload).forEach((k) => {
-      const val = (payload as Record<string, unknown>)[k];
-      if (val === "") delete (payload as Record<string, unknown>)[k];
-    });
-    save.mutate({ id: current?.id, data: payload });
+    save.mutate({ id: current?.id, data: v as Partial<GeneralHrSettings> });
   };
 
   return (
@@ -77,6 +67,11 @@ export default function StatutorySettingsPage() {
           <Card>
             <CardHeader>
               <h3 className="text-sm font-bold text-foreground">Statutory Deductions</h3>
+              <p className="mt-1 text-xs text-muted-foreground">
+                Disabled deductions are skipped entirely when payroll is processed. All
+                registered Kenyan employers must remit these — only turn one off if it
+                genuinely doesn&apos;t apply to your business.
+              </p>
             </CardHeader>
             <CardContent className="grid gap-4 sm:grid-cols-2">
               {TOGGLES.map((t) => {
@@ -84,12 +79,15 @@ export default function StatutorySettingsPage() {
                 return (
                   <div
                     key={t.key as string}
-                    className="flex items-center justify-between rounded-lg border border-border px-4 py-3"
+                    className="flex items-center justify-between gap-3 rounded-lg border border-border px-4 py-3"
                   >
-                    <span className="text-sm font-medium text-foreground">{t.label}</span>
+                    <div>
+                      <span className="text-sm font-medium text-foreground">{t.label}</span>
+                      <p className="text-xs text-muted-foreground">{t.hint}</p>
+                    </div>
                     <Switch
                       checked={!!checked}
-                      onChange={(c) => setValue(t.key as string, c)}
+                      onChange={(c) => setValue(t.key as string, c, { shouldDirty: true })}
                       id={t.key as string}
                     />
                   </div>
@@ -99,22 +97,18 @@ export default function StatutorySettingsPage() {
           </Card>
 
           <Card>
-            <CardHeader>
-              <h3 className="text-sm font-bold text-foreground">Relief & Rates</h3>
-            </CardHeader>
-            <CardContent className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-              <Field label="Personal Relief (monthly)">
-                <Input type="number" step="0.01" {...register("personal_relief")} />
-              </Field>
-              <Field label="Insurance Relief Rate (%)">
-                <Input type="number" step="0.01" {...register("insurance_relief_rate")} />
-              </Field>
-              <Field label="Housing Levy Rate (%)">
-                <Input type="number" step="0.01" {...register("housing_levy_rate")} />
-              </Field>
-              <Field label="SHIF Rate (%)">
-                <Input type="number" step="0.01" {...register("shif_rate")} />
-              </Field>
+            <CardContent>
+              <p className="text-sm text-muted-foreground">
+                Rates, bands and reliefs (PAYE bands, NSSF tiers, SHIF/Housing rates, personal
+                relief) are managed in{" "}
+                <Link
+                  href={`/${orgSlug}/settings/payroll/formulas`}
+                  className="font-medium text-primary underline-offset-2 hover:underline"
+                >
+                  Formulas
+                </Link>
+                .
+              </p>
             </CardContent>
           </Card>
 

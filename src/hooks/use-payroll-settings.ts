@@ -3,7 +3,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 
-import { type ListParams, type Paginated } from "@/lib/api/drf";
+import { normalizeList, type ListParams, type Paginated } from "@/lib/api/drf";
 import { extractApiError } from "@/lib/api/error";
 import {
   benefitsApi,
@@ -129,6 +129,31 @@ export function useUpdateRelief() {
 // ---- General HR / statutory settings (singleton) ----
 export function useGeneralHrSettings() {
   return useQuery({ queryKey: ["general-hr-settings"], queryFn: () => generalHrApi.get() });
+}
+
+/** Resolve the general-hr-settings response (list envelope or plain object) to the singleton. */
+export function generalHrSingleton(data: unknown): GeneralHrSettings | undefined {
+  if (Array.isArray(data) || (data && typeof data === "object" && "results" in (data as object))) {
+    return normalizeList<GeneralHrSettings>(data as never).results[0];
+  }
+  return (data as GeneralHrSettings) || undefined;
+}
+
+/**
+ * Tenant statutory deduction toggles (Settings → Payroll → Statutory). Missing settings or
+ * a still-loading query read as all-enabled — the engine's default — so nothing is hidden
+ * prematurely.
+ */
+export function useStatutoryToggles() {
+  const { data } = useGeneralHrSettings();
+  const s = generalHrSingleton(data);
+  return {
+    paye: s?.paye_enabled !== false,
+    nssf: s?.nssf_enabled !== false,
+    shif: s?.shif_enabled !== false,
+    housingLevy: s?.housing_levy_enabled !== false,
+    nita: s?.nita_enabled !== false,
+  };
 }
 
 export function useSaveGeneralHrSettings() {
