@@ -1,7 +1,7 @@
 # ERP-UI Documentation
 
 `erp-ui` (package `bengobox-erp-ui`) is the **HR & internal-operations** frontend of the
-BengoBox / Codevertex platform — **Next.js 16 (App Router) + React 19 + TypeScript +
+Codevertex / Codevertex platform — **Next.js 16 (App Router) + React 19 + TypeScript +
 TanStack Query + shadcn on @base-ui + Tailwind v4**, matching treasury-ui / pos-ui.
 
 After the platform was decomposed into microservices, ERP-UI owns **HR/Ops only**

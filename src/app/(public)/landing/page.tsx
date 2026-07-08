@@ -8,7 +8,7 @@ export default function LandingPage() {
         <span className="text-2xl font-black text-primary-foreground">B</span>
       </div>
       <div>
-        <h1 className="text-3xl font-bold text-foreground">BengoBox ERP</h1>
+        <h1 className="text-3xl font-bold text-foreground">Codevertex ERP</h1>
         <p className="mt-2 max-w-md text-sm text-muted-foreground">
           HR and internal operations for the Codevertex platform — payroll, leave,
           attendance, appraisals and reporting.

@@ -1,6 +1,6 @@
-# BengoBox ERP UI (Next.js 16)
+# Codevertex ERP UI (Next.js 16)
 
-HR + internal-operations frontend for the BengoBox / Codevertex platform —
+HR + internal-operations frontend for the Codevertex / Codevertex platform —
 rebuilt from Vue 3 / Vite / PrimeVue to **Next.js 16 (App Router) + React 19**,
 matching the platform's other UIs (treasury-ui, pos-ui, ordering-frontend).
 
