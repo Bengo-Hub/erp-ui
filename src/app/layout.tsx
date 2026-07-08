@@ -17,10 +17,10 @@ export const viewport: Viewport = {
 };
 
 export const metadata: Metadata = {
-  title: "BengoBox ERP",
-  description: "HR and internal operations for the BengoBox / Codevertex platform",
+  title: "Codevertex ERP",
+  description: "HR and internal operations for the Codevertex / Codevertex platform",
   icons: { icon: "/favicon.ico" },
-  appleWebApp: { capable: true, statusBarStyle: "default", title: "BengoBox ERP" },
+  appleWebApp: { capable: true, statusBarStyle: "default", title: "Codevertex ERP" },
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
