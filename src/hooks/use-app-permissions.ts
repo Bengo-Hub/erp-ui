@@ -56,6 +56,82 @@ export const PERMISSION_CATEGORIES = {
 } as const;
 
 /**
+ * Legacy Django-style `{action}_{model}` codes (e.g. "add_employee", "view_payslip") still
+ * used across many older page components — but erp-api's RBAC catalog only ever issues
+ * dotted `{module}.{action}` codes (e.g. "hrm.employee.manage", "hrm.payroll.view"; see
+ * erp-api cmd/seed/main.go permissionCodes). Nothing in the merged /auth/me `permissions`
+ * array can ever equal a legacy code, so every gated button/link using one was silently
+ * unreachable for every role except superuser/platform-owner — including page-level checks
+ * for roles (like CTO) that DO hold the real backend permission. This map translates legacy
+ * codes to their real dotted equivalent so existing call sites resolve correctly without a
+ * mass rewrite of every page.
+ */
+const LEGACY_MODEL_TO_MODULE: Record<string, string> = {
+  advances: "hrm.payroll",
+  appraisal: "hrm.appraisal",
+  appraisalcycle: "hrm.appraisal",
+  appraisalquestion: "hrm.appraisal",
+  appraisaltemplate: "hrm.appraisal",
+  attendancerecord: "hrm.attendance",
+  attendancerule: "hrm.attendance",
+  benefits: "hrm.payroll",
+  business: "business",
+  candidate: "hrm.recruitment",
+  deductions: "hrm.payroll",
+  defaultpayrollsettings: "hrm.payroll",
+  department: "hrm.employee",
+  earnings: "hrm.payroll",
+  employee: "hrm.employee",
+  expenseclaims: "hrm.payroll",
+  generalhrsettings: "business",
+  goal: "hrm.performance",
+  jobapplication: "hrm.recruitment",
+  jobposting: "hrm.recruitment",
+  leavebalance: "hrm.leave",
+  leavecategory: "hrm.leave",
+  leaveentitlement: "hrm.leave",
+  leaverequest: "hrm.leave",
+  loans: "hrm.payroll",
+  lossesanddamages: "hrm.payroll",
+  offday: "hrm.attendance",
+  onboarding: "hrm.recruitment",
+  payrollcomponents: "hrm.payroll",
+  payslip: "hrm.payroll",
+  performancereview: "hrm.performance",
+  permission: "rbac",
+  publicholiday: "hrm.leave",
+  regionalsettings: "business",
+  role: "rbac",
+  salarydetails: "hrm.payroll",
+  shiftrotation: "hrm.attendance",
+  timesheet: "hrm.attendance",
+  trainingcourse: "hrm.training",
+  trainingenrollment: "hrm.training",
+  trainingevaluation: "hrm.training",
+  user: "rbac",
+  workshift: "hrm.attendance",
+};
+
+const LEGACY_ACTION_TO_ACTION: Record<string, string> = {
+  view: "view",
+  add: "manage",
+  change: "manage",
+  delete: "manage",
+};
+
+/** Translates a legacy `{action}_{model}` code to its dotted erp-api equivalent; passes
+ * already-dotted (or unrecognized) codes through unchanged. */
+function normalizeLegacyPermission(perm: string): string {
+  if (perm.includes(".")) return perm;
+  const match = /^(view|add|change|delete)_([a-z]+)$/.exec(perm);
+  if (!match) return perm;
+  const [, legacyAction, model] = match;
+  const module = LEGACY_MODEL_TO_MODULE[model];
+  if (!module) return perm;
+  return `${module}.${LEGACY_ACTION_TO_ACTION[legacyAction]}`;
+}
+
+/**
  * RBAC helpers backed by the merged /auth/me profile.
  * Superusers and platform owners bypass all permission checks.
  */
@@ -69,11 +145,12 @@ export function useAppPermissions() {
     const isPlatformOwner = !!me?.isPlatformOwner;
     const bypass = isSuperuser || isPlatformOwner;
 
-    const hasPermission = (perm: string) => bypass || permissions.includes(perm);
+    const hasPermission = (perm: string) =>
+      bypass || permissions.includes(normalizeLegacyPermission(perm));
     const hasAnyPermission = (perms: string[]) =>
-      bypass || perms.some((p) => permissions.includes(p));
+      bypass || perms.some((p) => permissions.includes(normalizeLegacyPermission(p)));
     const hasAllPermissions = (perms: string[]) =>
-      bypass || perms.every((p) => permissions.includes(p));
+      bypass || perms.every((p) => permissions.includes(normalizeLegacyPermission(p)));
 
     /** CRUD helper: e.g. can("view", "employee") → checks "view_employee". */
     const can = (action: "view" | "add" | "change" | "delete", model: string) =>

@@ -22,7 +22,14 @@ export function useSubscription() {
   const isSuperuser = roles.includes("superuser") || roles.includes("super_admin");
   const isPlatformOwner = !!user?.isPlatformOwner || isSuperuser || tenantSlug === "codevertex";
   const isDemo = tenantSlug === "codevertex-demo";
-  const isExempt = isPlatformOwner || isDemo;
+  // Mirrors the backend IsGatingExempt funnel (shared-auth-client Claims.IsGatingExempt):
+  // platform owner, demo tenant, platform-granted per-tenant exemption (sub_exempt JWT
+  // claim), or service-charge billing mode all bypass subscription gating entirely. Without
+  // sub_exempt here, an explicitly-exempt tenant still saw the "no active subscription" /
+  // Upgrade banner and feature locks whenever the subscription-info fetch was slow, failed,
+  // or the tenant's local subscriptions-api tenant shadow hadn't been JIT-synced yet.
+  const isExempt =
+    isPlatformOwner || isDemo || !!user?.subExempt || user?.billingMode === "service_charge";
 
   useEffect(() => {
     if (status !== "authenticated" || !session?.accessToken || !user) return;
