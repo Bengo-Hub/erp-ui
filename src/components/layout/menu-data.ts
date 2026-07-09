@@ -39,6 +39,14 @@ export interface MenuExternalLink {
   url: string;
   icon?: LucideIcon;
   external: true;
+  /**
+   * Auth-api Layer-1 permission resource prefixes (e.g. "treasury", "pos") — visible if the
+   * user holds ANY permission under one of these resources. Omit + `adminOnly: true` for
+   * services with no dedicated resource in the Layer-1 catalog yet (CRM, notifications,
+   * projects, billing) — restricted to admin-tier roles only. Omit both = always visible.
+   */
+  resourcePrefixes?: string[];
+  adminOnly?: boolean;
 }
 
 export interface MenuGroup {
@@ -238,14 +246,14 @@ export const PLATFORM_MENU: MenuLink[] = [
 ];
 
 export const EXTERNAL_SERVICES_MENU: MenuExternalLink[] = [
-  { label: "Finance", url: EXTERNAL_SERVICES.finance, icon: CreditCard, external: true },
-  { label: "CRM", url: EXTERNAL_SERVICES.crm, icon: Megaphone, external: true },
-  { label: "Inventory & Products", url: EXTERNAL_SERVICES.inventory, icon: Boxes, external: true },
-  { label: "Procurement", url: EXTERNAL_SERVICES.inventory, icon: Package, external: true },
-  { label: "Manufacturing", url: EXTERNAL_SERVICES.inventory, icon: Workflow, external: true },
-  { label: "Point of Sale", url: EXTERNAL_SERVICES.pos, icon: ShoppingCart, external: true },
-  { label: "Orders & Shop", url: EXTERNAL_SERVICES.ordering, icon: Truck, external: true },
-  { label: "Notifications", url: EXTERNAL_SERVICES.notifications, icon: Megaphone, external: true },
-  { label: "Projects", url: EXTERNAL_SERVICES.projects, icon: ClipboardList, external: true },
-  { label: "Billing & Subscriptions", url: EXTERNAL_SERVICES.billing, icon: CreditCard, external: true },
+  { label: "Finance", url: EXTERNAL_SERVICES.finance, icon: CreditCard, external: true, resourcePrefixes: ["treasury"] },
+  { label: "CRM", url: EXTERNAL_SERVICES.crm, icon: Megaphone, external: true, adminOnly: true },
+  { label: "Inventory & Products", url: EXTERNAL_SERVICES.inventory, icon: Boxes, external: true, resourcePrefixes: ["inventory"] },
+  { label: "Procurement", url: EXTERNAL_SERVICES.inventory, icon: Package, external: true, resourcePrefixes: ["inventory"] },
+  { label: "Manufacturing", url: EXTERNAL_SERVICES.inventory, icon: Workflow, external: true, resourcePrefixes: ["inventory"] },
+  { label: "Point of Sale", url: EXTERNAL_SERVICES.pos, icon: ShoppingCart, external: true, resourcePrefixes: ["pos"] },
+  { label: "Orders & Shop", url: EXTERNAL_SERVICES.ordering, icon: Truck, external: true, resourcePrefixes: ["ordering"] },
+  { label: "Notifications", url: EXTERNAL_SERVICES.notifications, icon: Megaphone, external: true, adminOnly: true },
+  { label: "Projects", url: EXTERNAL_SERVICES.projects, icon: ClipboardList, external: true, adminOnly: true },
+  { label: "Billing & Subscriptions", url: EXTERNAL_SERVICES.billing, icon: CreditCard, external: true, adminOnly: true },
 ];

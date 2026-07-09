@@ -10,6 +10,7 @@ import {
   EXTERNAL_SERVICES_MENU,
   isMenuGroup,
   PLATFORM_MENU,
+  type MenuExternalLink,
   type MenuGroup,
   type MenuLink,
 } from "@/components/layout/menu-data";
@@ -30,7 +31,7 @@ export function AppSidebar({ open = false, onClose }: SidebarProps) {
   const user = useAuthStore((s) => s.user);
   const logout = useAuthStore((s) => s.logout);
   const { tenant, getServiceTitle } = useBranding();
-  const { hasAnyPermission, isPlatformOwner } = useAppPermissions();
+  const { hasAnyPermission, hasResourceAccess, isAdminTier, isPlatformOwner } = useAppPermissions();
 
   const showPlatform = isPlatformOwner || user?.isPlatformOwner || orgSlug === "codevertex";
 
@@ -46,6 +47,23 @@ export function AppSidebar({ open = false, onClose }: SidebarProps) {
   const canSee = useCallback(
     (link: MenuLink) => !link.permissions?.length || hasAnyPermission(link.permissions),
     [hasAnyPermission],
+  );
+
+  // External services (Finance/Treasury, POS, Inventory, ...) are other business domains
+  // entirely — a staff/cashier-tier role has no business opening Treasury or Billing just
+  // because they're logged into ERP. adminOnly links need an admin-tier role; resourcePrefixes
+  // links need at least one Layer-1 permission under that service's resource namespace.
+  const canSeeExternal = useCallback(
+    (link: MenuExternalLink) => {
+      if (link.adminOnly) return isAdminTier;
+      if (!link.resourcePrefixes?.length) return true;
+      return hasResourceAccess(link.resourcePrefixes);
+    },
+    [isAdminTier, hasResourceAccess],
+  );
+  const visibleExternalServices = useMemo(
+    () => EXTERNAL_SERVICES_MENU.filter(canSeeExternal),
+    [canSeeExternal],
   );
 
   const userName = user?.fullName || user?.email?.split("@")[0] || "Account";
@@ -118,10 +136,11 @@ export function AppSidebar({ open = false, onClose }: SidebarProps) {
           </div>
         )}
 
+        {visibleExternalServices.length > 0 && (
         <div>
           <p className="px-3 mb-1.5 text-[10px] font-bold uppercase tracking-[0.15em] text-sidebar-foreground/30">External Services</p>
           <ul className="space-y-0.5">
-            {EXTERNAL_SERVICES_MENU.map((svc) => {
+            {visibleExternalServices.map((svc) => {
               const Icon = svc.icon;
               return (
                 <li key={svc.label}>
@@ -145,6 +164,7 @@ export function AppSidebar({ open = false, onClose }: SidebarProps) {
             })}
           </ul>
         </div>
+        )}
       </nav>
 
       <div className="px-3 py-4 border-t border-sidebar-border">
