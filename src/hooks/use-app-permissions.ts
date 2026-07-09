@@ -131,9 +131,24 @@ function normalizeLegacyPermission(perm: string): string {
   return `${module}.${LEGACY_ACTION_TO_ACTION[legacyAction]}`;
 }
 
+/** True for any role name that denotes admin-tier authority: the exact "erp_admin"/
+ * "superuser(s)" system roles, or any global/SSO role containing "admin" as a substring
+ * (e.g. "admin", "isp_admin", "library_admin", a hypothetical "inventory_admin", ...).
+ * Mirrors erp-api's MapGlobalRolesToERP admin-pattern mapping so an admin-tier tenant
+ * member is never left staring at an empty sidebar because their exact permission set
+ * didn't merge correctly (network hiccup, catalog drift, a not-yet-synced role) — an
+ * admin role is a reliable full-access signal on its own, independent of the granular
+ * permissions array. Backend mutations remain independently authorized either way. */
+function isAdminTierRole(roles: string[]): boolean {
+  return roles.some((r) => {
+    const lower = r.toLowerCase();
+    return lower === "erp_admin" || lower === "superuser" || lower === "superusers" || lower.includes("admin");
+  });
+}
+
 /**
  * RBAC helpers backed by the merged /auth/me profile.
- * Superusers and platform owners bypass all permission checks.
+ * Superusers, platform owners, and any admin-tier role bypass all permission checks.
  */
 export function useAppPermissions() {
   const { data: me } = useMe();
@@ -143,7 +158,7 @@ export function useAppPermissions() {
     const roles = me?.roles ?? [];
     const isSuperuser = !!me?.isSuperUser || roles.includes("superuser");
     const isPlatformOwner = !!me?.isPlatformOwner;
-    const bypass = isSuperuser || isPlatformOwner;
+    const bypass = isSuperuser || isPlatformOwner || isAdminTierRole(roles);
 
     const hasPermission = (perm: string) =>
       bypass || permissions.includes(normalizeLegacyPermission(perm));
@@ -156,14 +171,28 @@ export function useAppPermissions() {
     const can = (action: "view" | "add" | "change" | "delete", model: string) =>
       hasPermission(`${action}_${model}`);
 
+    /**
+     * Resource-prefix check for gating links to external services (Finance/Treasury,
+     * Inventory, POS, Orders, ...). `me.permissions` is a merge of erp-api's local dotted
+     * codes AND auth-api's own Layer-1 catalog, which issues per-service resource codes
+     * like "treasury.payments.view", "pos.reports.view", "inventory.items.view" — this
+     * checks for ANY permission under a given resource prefix (e.g. "treasury"), not an
+     * exact action match, since we only care whether the user has business in that service
+     * at all, not which specific action.
+     */
+    const hasResourceAccess = (prefixes: string[]) =>
+      bypass || permissions.some((p) => prefixes.some((prefix) => p.startsWith(`${prefix}.`)));
+
     return {
       permissions,
       roles,
       isSuperuser,
       isPlatformOwner,
+      isAdminTier: bypass,
       hasPermission,
       hasAnyPermission,
       hasAllPermissions,
+      hasResourceAccess,
       can,
     };
   }, [me]);
