@@ -58,6 +58,8 @@ function profileFromClaims(claims: Record<string, unknown>): UserProfile {
     isHqUser: claims.is_hq_user === true,
     isPlatformOwner: claims.is_platform_owner === true || slug === "codevertex",
     isSuperUser: Array.isArray(claims.roles) && (claims.roles as string[]).includes("superuser"),
+    subExempt: claims.sub_exempt === true,
+    billingMode: (claims.billing_mode as string) ?? "",
   };
 }
 

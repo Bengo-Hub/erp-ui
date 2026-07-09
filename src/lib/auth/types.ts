@@ -12,6 +12,14 @@ export interface UserProfile {
   isHqUser?: boolean;
   isPlatformOwner?: boolean;
   isSuperUser?: boolean;
+  /**
+   * Platform-granted per-tenant subscription exemption (JWT `sub_exempt` claim, source of
+   * truth = auth-api Tenant.subscription_exempt). When true the tenant bypasses ALL
+   * subscription gating — the Upgrade banner and every FeatureLock must stay hidden.
+   */
+  subExempt?: boolean;
+  /** Resolved billing mode (`service_charge` = pay-per-transaction, also bypasses gating). */
+  billingMode?: string;
 }
 
 export interface Session {

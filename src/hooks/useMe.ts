@@ -6,6 +6,7 @@ import { resolveApiBaseUrl } from "@/lib/api/client";
 import { SSO_ME_URL } from "@/lib/auth/api";
 import type { UserProfile } from "@/lib/auth/types";
 import { useAuthStore } from "@/store/auth";
+import { parseJwt } from "@/lib/utils";
 
 const ME_QUERY_KEY = ["auth", "me"] as const;
 const ME_STALE_MS = 5 * 60 * 1000; // 5 min TTL (matches the Vue meService cache)
@@ -73,6 +74,11 @@ async function fetchMe(): Promise<UserProfile> {
     permissions = mergeUnique(serviceData.permissions, permissions);
   }
 
+  // The SSO /auth/me response has no top-level sub_exempt/billing_mode field — those live
+  // only in the JWT claims (stamped by auth-api from Tenant.subscription_exempt). Decode
+  // the token so this profile doesn't clobber the exemption profileFromClaims already set.
+  const jwtClaims = parseJwt(token);
+
   const profile: UserProfile = {
     id: data.id ?? data.sub ?? "",
     email: data.email ?? "",
@@ -86,6 +92,8 @@ async function fetchMe(): Promise<UserProfile> {
     isHqUser: data.is_hq_user === true,
     isPlatformOwner: data.is_platform_owner === true || slug === "codevertex",
     isSuperUser: roles.includes("superuser") || data.is_superuser === true,
+    subExempt: jwtClaims.sub_exempt === true,
+    billingMode: (jwtClaims.billing_mode as string) ?? "",
   };
 
   // Keep the store + ApiClient in sync with the authoritative profile.
