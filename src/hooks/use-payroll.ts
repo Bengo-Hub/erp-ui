@@ -75,9 +75,20 @@ export function useDisbursePayroll() {
   return useMutation({
     mutationFn: (payload: { payment_period?: string; from_date?: string; to_date?: string; run_id?: number }) =>
       payrollApi.disburse(payload),
-    onSuccess: () => {
+    onSuccess: (data: any) => {
       qc.invalidateQueries({ queryKey: [KEY] });
-      toast.success("Payroll disbursed");
+      // Treasury gates payroll net-pay behind a finance approval (+OTP). When it does, the GL is
+      // posted but money is NOT released until an approver signs off — reflect that honestly.
+      if (data?.pending_approval || data?.result?.pending_approval) {
+        toast.warning(
+          "Payroll submitted for finance approval. An approver must approve it (with OTP) in Treasury before net pay is released, then disburse again.",
+          { duration: 8000 },
+        );
+      } else if (data?.disburse_error || data?.result?.disburse_error) {
+        toast.warning(`Payroll GL posted, but disbursement reported an issue: ${data.disburse_error ?? data.result?.disburse_error}`);
+      } else {
+        toast.success("Payroll disbursed");
+      }
     },
     onError: (e) => toast.error(extractApiError(e, "Failed to disburse payroll")),
   });
