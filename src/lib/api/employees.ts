@@ -115,6 +115,11 @@ export interface EmployeeSalaryDetail {
   effective_date?: string;
   /** PAYE category: primary | secondary | none. Drives which PAYE table the engine applies. */
   income_tax?: string;
+  /** KRA relief inputs (monthly actual amounts; the engine applies the statutory caps). */
+  insurance_premium?: string | number;
+  pension_contribution?: string | number;
+  mortgage_interest?: string | number;
+  disability_exempt?: boolean;
   [key: string]: unknown;
 }
 
@@ -251,6 +256,14 @@ export const employeesApi = {
       // PAYE category: primary (full bands + relief) | secondary (flat top-rate, no relief) | none.
       income_tax: data.income_tax,
       currency: data.currency,
+      // KRA relief inputs (decimal strings; engine applies the statutory caps).
+      insurance_premium:
+        data.insurance_premium != null ? String(data.insurance_premium) : undefined,
+      pension_contribution:
+        data.pension_contribution != null ? String(data.pension_contribution) : undefined,
+      mortgage_interest:
+        data.mortgage_interest != null ? String(data.mortgage_interest) : undefined,
+      disability_exempt: data.disability_exempt ?? false,
     }),
 
   /** Marks a bank account primary (the only mutation erp-api exposes for banks). */
