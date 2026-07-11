@@ -65,8 +65,13 @@ export const REPORTS: ReportConfig[] = [
       PIN,
       { field: "national_id", header: "National ID" },
       { field: "total_gross_pay", header: "Gross Pay", money: true },
+      { field: "nssf", header: "NSSF", money: true },
+      { field: "shif", header: "SHIF", money: true },
+      { field: "housing_levy", header: "Housing Levy", money: true },
       { field: "total_deductions", header: "Deductions", money: true },
       { field: "chargeable_pay", header: "Chargeable Pay", money: true },
+      { field: "tax_charged", header: "Tax Charged", money: true },
+      { field: "personal_relief", header: "Personal Relief", money: true },
       { field: "total_tax", header: "PAYE Tax", money: true },
     ],
     summary: [
@@ -89,7 +94,8 @@ export const REPORTS: ReportConfig[] = [
       { field: "total_gross_pay", header: "Total Gross Pay", money: true },
       { field: "total_paye", header: "Total PAYE", money: true },
       { field: "total_nssf", header: "Total NSSF", money: true },
-      { field: "total_nhif", header: "Total NHIF", money: true },
+      { field: "total_shif", header: "Total SHIF", money: true },
+      { field: "total_housing_levy", header: "Total Housing Levy", money: true },
     ],
     summary: [
       { label: "Total Gross", field: "total_gross_pay", money: true },
