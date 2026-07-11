@@ -18,6 +18,11 @@ type FormValues = {
   payment_method?: string;
   effective_date?: string;
   income_tax?: string;
+  // KRA relief inputs (monthly actual amounts; the payroll engine applies the statutory caps).
+  insurance_premium?: string;
+  pension_contribution?: string;
+  mortgage_interest?: string;
+  disability_exempt?: boolean;
 };
 
 export function SalaryTab({ employeeId }: { employeeId: number | string }) {
@@ -36,6 +41,10 @@ export function SalaryTab({ employeeId }: { employeeId: number | string }) {
         payment_method: current.payment_method ?? "",
         effective_date: current.effective_date ?? "",
         income_tax: (current.income_tax as string) ?? "primary",
+        insurance_premium: current.insurance_premium != null ? String(current.insurance_premium) : "",
+        pension_contribution: current.pension_contribution != null ? String(current.pension_contribution) : "",
+        mortgage_interest: current.mortgage_interest != null ? String(current.mortgage_interest) : "",
+        disability_exempt: Boolean(current.disability_exempt),
       });
     } else {
       reset({ currency: "KES", pay_frequency: "monthly", income_tax: "primary" });
@@ -99,6 +108,34 @@ export function SalaryTab({ employeeId }: { employeeId: number | string }) {
               <option value="secondary">Secondary employment</option>
               <option value="none">Tax exempt</option>
             </Select>
+          </Field>
+        </CardContent>
+      </Card>
+
+      <Card className="mt-4">
+        <CardHeader>
+          <h3 className="text-sm font-bold text-foreground">KRA Tax Reliefs</h3>
+          <p className="text-xs text-muted-foreground">
+            Monthly actual amounts. The payroll engine applies the statutory caps automatically
+            (insurance 15% up to 5,000; pension &amp; mortgage up to 30,000; PWD exemption 150,000).
+            Leave at 0 if not applicable. Not applied to secondary employees.
+          </p>
+        </CardHeader>
+        <CardContent className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <Field label="Insurance Premium (monthly)" help="Life / health / education premiums → 15% relief, cap 5,000/mo.">
+            <Input type="number" step="0.01" min="0" {...register("insurance_premium")} />
+          </Field>
+          <Field label="Pension Contribution (monthly)" help="Registered scheme → deductible pre-tax, cap 30,000/mo.">
+            <Input type="number" step="0.01" min="0" {...register("pension_contribution")} />
+          </Field>
+          <Field label="Mortgage Interest (monthly)" help="Owner-occupier interest → deductible pre-tax, cap 30,000/mo.">
+            <Input type="number" step="0.01" min="0" {...register("mortgage_interest")} />
+          </Field>
+          <Field label="Disability Exemption" help="Holds a PWD tax-exemption certificate (first 150,000/mo exempt).">
+            <label className="flex items-center gap-2 text-sm text-foreground">
+              <input type="checkbox" className="h-4 w-4 rounded border-border" {...register("disability_exempt")} />
+              PWD certificate holder
+            </label>
           </Field>
         </CardContent>
       </Card>
