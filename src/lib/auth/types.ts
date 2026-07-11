@@ -12,6 +12,8 @@ export interface UserProfile {
   isHqUser?: boolean;
   isPlatformOwner?: boolean;
   isSuperUser?: boolean;
+  /** auth-api's computed graduated email-verification state (from /auth/me). */
+  email_verification?: import('@bengo-hub/shared-ui-lib/auth').EmailVerificationState;
   /**
    * Platform-granted per-tenant subscription exemption (JWT `sub_exempt` claim, source of
    * truth = auth-api Tenant.subscription_exempt). When true the tenant bypasses ALL

@@ -92,6 +92,7 @@ async function fetchMe(): Promise<UserProfile> {
     isHqUser: data.is_hq_user === true,
     isPlatformOwner: data.is_platform_owner === true || slug === "codevertex",
     isSuperUser: roles.includes("superuser") || data.is_superuser === true,
+    email_verification: data.email_verification,
     subExempt: jwtClaims.sub_exempt === true,
     billingMode: (jwtClaims.billing_mode as string) ?? "",
   };

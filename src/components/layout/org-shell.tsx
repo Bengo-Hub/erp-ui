@@ -7,6 +7,7 @@ import { AppSidebar } from "@/components/layout/app-sidebar";
 import { AppTopbar } from "@/components/layout/app-topbar";
 import { Breadcrumb } from "@/components/layout/breadcrumb";
 import { SubscriptionBanner } from "@/components/subscription/subscription-banner";
+import { VerifyEmailPrompt } from "@/components/auth/VerifyEmailPrompt";
 import { AuthProvider } from "@/providers/auth-provider";
 import { BrandingProvider } from "@/providers/branding-provider";
 import { QueryProvider } from "@/providers/query-provider";
@@ -77,6 +78,7 @@ export function OrgShell({ children }: { children: ReactNode }) {
             <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
               <AppTopbar onMenuClick={() => setSidebarOpen(true)} />
               <SubscriptionBanner />
+              <VerifyEmailPrompt />
               <main id="main-content" tabIndex={-1} className="flex-1 overflow-y-auto bg-accent/5">
                 <Breadcrumb />
                 <div className="min-h-full">{children}</div>
