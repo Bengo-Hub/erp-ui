@@ -23,6 +23,9 @@ type FormValues = {
   pension_contribution?: string;
   mortgage_interest?: string;
   disability_exempt?: boolean;
+  // Preferred net-pay disbursement channel (routed per-employee at payroll disburse).
+  preferred_payout_method?: string;
+  payout_phone?: string;
 };
 
 export function SalaryTab({ employeeId }: { employeeId: number | string }) {
@@ -45,9 +48,11 @@ export function SalaryTab({ employeeId }: { employeeId: number | string }) {
         pension_contribution: current.pension_contribution != null ? String(current.pension_contribution) : "",
         mortgage_interest: current.mortgage_interest != null ? String(current.mortgage_interest) : "",
         disability_exempt: Boolean(current.disability_exempt),
+        preferred_payout_method: (current.preferred_payout_method as string) ?? "bank_transfer",
+        payout_phone: (current.payout_phone as string) ?? "",
       });
     } else {
-      reset({ currency: "KES", pay_frequency: "monthly", income_tax: "primary" });
+      reset({ currency: "KES", pay_frequency: "monthly", income_tax: "primary", preferred_payout_method: "bank_transfer" });
     }
   }, [current, reset]);
 
@@ -108,6 +113,18 @@ export function SalaryTab({ employeeId }: { employeeId: number | string }) {
               <option value="secondary">Secondary employment</option>
               <option value="none">Tax exempt</option>
             </Select>
+          </Field>
+          <Field label="Payout Channel" help="How this employee's net pay is disbursed at payroll run.">
+            <Select {...register("preferred_payout_method")}>
+              <option value="bank_transfer">Bank transfer</option>
+              <option value="mpesa_b2c">M-Pesa</option>
+              <option value="airtel">Airtel Money</option>
+              <option value="paystack_mobile">Mobile money (Paystack)</option>
+              <option value="cash">Cash</option>
+            </Select>
+          </Field>
+          <Field label="Payout Phone" help="Mobile-money number (for M-Pesa / Airtel / mobile channels).">
+            <Input type="tel" placeholder="2547XXXXXXXX" {...register("payout_phone")} />
           </Field>
         </CardContent>
       </Card>
