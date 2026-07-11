@@ -120,6 +120,9 @@ export interface EmployeeSalaryDetail {
   pension_contribution?: string | number;
   mortgage_interest?: string | number;
   disability_exempt?: boolean;
+  /** Preferred net-pay disbursement channel + mobile-money number. */
+  preferred_payout_method?: string;
+  payout_phone?: string;
   [key: string]: unknown;
 }
 
@@ -264,6 +267,9 @@ export const employeesApi = {
       mortgage_interest:
         data.mortgage_interest != null ? String(data.mortgage_interest) : undefined,
       disability_exempt: data.disability_exempt ?? false,
+      // Preferred net-pay disbursement channel (routed per-employee at payroll disburse).
+      preferred_payout_method: data.preferred_payout_method,
+      payout_phone: data.payout_phone,
     }),
 
   /** Marks a bank account primary (the only mutation erp-api exposes for banks). */
