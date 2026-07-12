@@ -8,6 +8,7 @@ export interface SubscriptionInfo {
   status: string;
   planCode: string;
   planName: string;
+  tierOrder?: number;
   features: string[];
   limits: Record<string, number>;
   trialEndsAt?: string;
@@ -52,6 +53,7 @@ export async function fetchSubscriptionInfo(
       status: (sub.status ?? "none").toLowerCase(),
       planCode: sub.plan_code ?? sub.planCode ?? sub.plan ?? "",
       planName: sub.plan_name ?? sub.planName ?? "",
+      tierOrder: sub.tier_order ?? sub.tierOrder,
       features: sub.features ?? [],
       limits: sub.limits ?? {},
       trialEndsAt: sub.trial_ends_at ?? sub.trial_end ?? sub.trialEndsAt,
