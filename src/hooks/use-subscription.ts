@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 
 import { fetchSubscriptionInfo, type SubscriptionInfo } from "@/lib/auth/subscription";
 import { useAuthStore } from "@/store/auth";
@@ -31,6 +31,9 @@ export function useSubscription() {
   const isExempt =
     isPlatformOwner || isDemo || !!user?.subExempt || user?.billingMode === "service_charge";
 
+  // Bounded retry counter for a FAILED subscription lookup (see the fetch effect).
+  const lookupRetries = useRef(0);
+
   useEffect(() => {
     if (status !== "authenticated" || !session?.accessToken || !user) return;
     if (subscriptionInfo !== undefined) return;
@@ -47,15 +50,38 @@ export function useSubscription() {
       return;
     }
 
+    // A FAILED lookup (network/5xx/timeout) is NOT the same as "no subscription".
+    // fetchSubscriptionInfo returns null ONLY on failure — never collapse that to
+    // status:'none', which would trigger the full-page "Subscription Required" lockout for
+    // a genuinely-active tenant (e.g. while subscription-api is mid-redeploy). Instead FAIL
+    // OPEN: erp-ui has no offline subscription store, so set a non-blocking 'unknown' status
+    // (deliberately NOT 'none', so needsSubscription stays false), and retry a few times so
+    // it self-heals when the API returns.
+    const handleLookupFailure = () => {
+      setSubscriptionInfo({
+        status: "unknown",
+        planCode: "",
+        planName: "",
+        features: [],
+        limits: {},
+      });
+      if (lookupRetries.current < 4) {
+        lookupRetries.current += 1;
+        // Re-arm the effect (subscriptionInfo → undefined) after a short delay to re-fetch.
+        setTimeout(() => setSubscriptionInfo(undefined as unknown as null), 8000);
+      }
+    };
+
     fetchSubscriptionInfo(tenantId, tenantSlug ?? "", session.accessToken)
-      .then((info) =>
-        setSubscriptionInfo(
-          info ?? { status: "none", planCode: "", planName: "", features: [], limits: {} },
-        ),
-      )
-      .catch(() =>
-        setSubscriptionInfo({ status: "none", planCode: "", planName: "", features: [], limits: {} }),
-      );
+      .then((info) => {
+        if (info === null) {
+          handleLookupFailure();
+          return;
+        }
+        lookupRetries.current = 0;
+        setSubscriptionInfo(info);
+      })
+      .catch(() => handleLookupFailure());
   }, [status, session?.accessToken, user, subscriptionInfo, setSubscriptionInfo, tenantId, tenantSlug, isExempt]);
 
   const info = subscriptionInfo as SubscriptionInfo | null | undefined;
