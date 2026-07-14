@@ -169,6 +169,18 @@ export const useAuthStore = create<AuthState>()(
       },
 
       logout: async () => {
+        // Capture the working org BEFORE clearing any state/storage, so re-login
+        // targets the SAME organisation rather than a default one: URL path first
+        // (tenant pages are /{orgSlug}/...; reserved segments are not tenants),
+        // then the signed-in profile. Never a hardcoded tenant.
+        const RESERVED_SEGMENTS = new Set(["auth", "landing", "unauthorized", "healthz"]);
+        let slug = "";
+        if (typeof window !== "undefined") {
+          const first = window.location.pathname.split("/").filter(Boolean)[0] ?? "";
+          if (first && !RESERVED_SEGMENTS.has(first)) slug = first;
+        }
+        slug = slug || get().user?.tenantSlug || "";
+
         const token = get().session?.accessToken;
         // Revoke the backend session (Redis session_token keys + DB sessions)
         // BEFORE clearing local state, so we still have the access token.
@@ -189,10 +201,13 @@ export const useAuthStore = create<AuthState>()(
           try { localStorage.removeItem("erp-auth-storage"); } catch { /* no-op */ }
           try { localStorage.removeItem("erp-outlet-filter"); } catch { /* no-op */ }
           try { sessionStorage.clear(); } catch { /* no-op */ }
-          const returnTo = encodeURIComponent(window.location.origin);
-          window.location.href = buildLogoutUrl(
-            `https://accounts.codevertexitsolutions.com/login?return_to=${returnTo}`,
-          );
+          // Land on the tenant app root: arriving there unauthenticated re-triggers
+          // SSO with tenant=<slug>, so the login screen shows the RIGHT organisation.
+          window.location.href = slug
+            ? buildLogoutUrl(`${window.location.origin}/${slug}`)
+            : buildLogoutUrl(
+                `https://accounts.codevertexitsolutions.com/login?return_to=${encodeURIComponent(window.location.origin)}`,
+              );
         }
       },
     }),
