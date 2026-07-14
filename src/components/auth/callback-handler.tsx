@@ -1,5 +1,6 @@
 "use client";
 
+import { SSOCallbackError } from "@bengo-hub/shared-ui-lib/auth";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useEffect } from "react";
 
@@ -8,6 +9,22 @@ import { parseJwt } from "@/lib/utils";
 
 // Module-level guard: run the callback once (React Strict Mode double-mounts).
 let callbackInvoked = false;
+
+// The stored return URL was captured BEFORE the SSO hop. If the user switched
+// organisation mid-login, its slug is stale — re-point the first path segment
+// at the org the token was actually issued for. Cross-origin values are dropped.
+function sanitizedReturnTo(raw: string | null, orgSlug: string): string | null {
+  if (!raw) return null;
+  try {
+    const url = raw.startsWith("http") ? new URL(raw) : new URL(raw, window.location.origin);
+    if (url.origin !== window.location.origin) return null;
+    const segments = url.pathname.split("/");
+    if (segments[1] && segments[1] !== orgSlug) segments[1] = orgSlug;
+    return segments.join("/") + url.search + url.hash;
+  } catch {
+    return null;
+  }
+}
 
 /**
  * Handles the OIDC redirect for both the tenant-scoped (/{orgSlug}/auth/callback)
@@ -27,6 +44,8 @@ export function CallbackHandler() {
   const handleSSOCallback = useAuthStore((s) => s.handleSSOCallback);
   const status = useAuthStore((s) => s.status);
   const authError = useAuthStore((s) => s.error);
+  // Tenant persisted from the last successful login (erp-auth-storage).
+  const persistedSlug = useAuthStore((s) => s.user?.tenantSlug ?? null);
 
   useEffect(() => {
     if (!code || oauthError || callbackInvoked) return;
@@ -38,7 +57,7 @@ export function CallbackHandler() {
 
   useEffect(() => {
     if (status !== "authenticated") return;
-    const returnTo = sessionStorage.getItem("sso_return_to");
+    const rawReturnTo = sessionStorage.getItem("sso_return_to");
     sessionStorage.removeItem("sso_return_to");
     // Resolve the real tenant from the stored profile / token.
     const user = useAuthStore.getState().user;
@@ -48,25 +67,28 @@ export function CallbackHandler() {
       (session ? (parseJwt(session.accessToken).tenant_slug as string) : "") ||
       orgSlugParam ||
       "codevertex";
+    const returnTo = sanitizedReturnTo(rawReturnTo, slug);
     router.replace(returnTo || `/${slug}`);
   }, [status, orgSlugParam, router]);
 
   const errMessage = (errorDescription || oauthError || authError || "").replace(/\+/g, " ");
 
   if (errMessage) {
+    // Retry must target a real tenant: URL slug first, then the tenant persisted
+    // from the last successful login (erp-auth-storage), and only then the
+    // historical "codevertex" fallback — which used to loop for everyone else.
+    // "Sign in again" restarts the SSO flow; /authorize now routes wrong-org
+    // users through the accounts organisation picker, so it genuinely recovers.
+    const retrySlug = orgSlugParam || persistedSlug || "codevertex";
     return (
-      <div className="min-h-screen flex items-center justify-center bg-background p-4">
-        <div className="text-center p-8 border border-destructive/20 rounded-2xl bg-destructive/5 max-w-md">
-          <h1 className="text-xl font-bold text-destructive mb-2">Authentication failed</h1>
-          <p className="text-muted-foreground text-sm">{errMessage}</p>
-          <button
-            onClick={() => router.replace(`/${orgSlugParam || "codevertex"}/auth/login`)}
-            className="mt-6 px-4 py-2 bg-primary text-primary-foreground rounded-lg text-sm font-medium"
-          >
-            Try again
-          </button>
-        </div>
-      </div>
+      <SSOCallbackError
+        error={oauthError}
+        errorDescription={(errorDescription || authError || "").replace(/\+/g, " ") || null}
+        orgSlug={retrySlug}
+        lastKnownTenant={persistedSlug && persistedSlug !== retrySlug ? persistedSlug : null}
+        onRetry={() => router.replace(`/${retrySlug}/auth/login`)}
+        onSwitchTenant={(slug) => router.replace(`/${slug}/auth/login`)}
+      />
     );
   }
 
