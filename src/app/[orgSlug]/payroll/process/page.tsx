@@ -105,7 +105,7 @@ export default function ProcessPayrollPage() {
         </CardContent>
       </Card>
 
-      <SubscriptionGate>
+      <SubscriptionGate feature="payroll">
       {step === 0 && (
         <Card>
           <CardHeader>

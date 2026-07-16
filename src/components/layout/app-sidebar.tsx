@@ -1,9 +1,10 @@
 "use client";
 
+import { FeatureLock } from "@bengo-hub/shared-ui-lib/subscription";
 import { ChevronDown, ExternalLink, LogOut, X } from "lucide-react";
 import Link from "next/link";
 import { useParams, usePathname } from "next/navigation";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useMemo, useState, type ReactNode } from "react";
 
 import {
   APP_MENU,
@@ -204,6 +205,22 @@ export function AppSidebar({ open = false, onClose }: SidebarProps) {
   );
 }
 
+/*
+ * Show-don't-hide subscription gating: entries with a `feature` code are ALWAYS rendered.
+ * When the tenant's plan lacks the feature, the shared <FeatureLock mode="badge"> wraps the
+ * entry with a locked chip and intercepts clicks (capture phase, so the inner Link never
+ * navigates) to open an UpgradeDialog naming the unlocking tier. Permission filtering is
+ * unchanged — subscription state never hides nav items.
+ */
+function NavFeatureLock({ feature, children }: { feature?: string; children: ReactNode }) {
+  if (!feature) return <>{children}</>;
+  return (
+    <FeatureLock feature={feature} mode="badge">
+      {children}
+    </FeatureLock>
+  );
+}
+
 function NavLinkItem({
   item,
   href,
@@ -218,6 +235,7 @@ function NavLinkItem({
   const Icon = item.icon;
   return (
     <li>
+      <NavFeatureLock feature={item.feature}>
       <Link
         href={href(item.to)}
         onClick={onItemClick}
@@ -236,6 +254,7 @@ function NavLinkItem({
         )}
         <span className="truncate">{item.label}</span>
       </Link>
+      </NavFeatureLock>
     </li>
   );
 }
@@ -265,6 +284,7 @@ function NavGroupItem({
 
   return (
     <li>
+      <NavFeatureLock feature={group.feature}>
       <button
         type="button"
         onClick={() => setOverride(!expanded)}
@@ -280,9 +300,11 @@ function NavGroupItem({
         <span className="flex-1 text-left truncate">{group.label}</span>
         <ChevronDown aria-hidden className={cn("size-4 text-sidebar-foreground/30 transition-transform", expanded && "rotate-180")} />
       </button>
+      </NavFeatureLock>
       <ul className={cn("overflow-hidden transition-all", expanded ? "max-h-[40rem] opacity-100" : "max-h-0 opacity-0")}>
         {children.map((child) => (
           <li key={child.to}>
+            <NavFeatureLock feature={child.feature}>
             <Link
               href={href(child.to)}
               onClick={onItemClick}
@@ -296,6 +318,7 @@ function NavGroupItem({
             >
               <span className="truncate">{child.label}</span>
             </Link>
+            </NavFeatureLock>
           </li>
         ))}
       </ul>
