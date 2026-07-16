@@ -32,6 +32,12 @@ export interface MenuLink {
   icon?: LucideIcon;
   /** Any of these permissions grants visibility. Omit = always visible. */
   permissions?: string[];
+  /**
+   * Subscription feature code that unlocks this item (e.g. "payroll"). Show-don't-hide:
+   * the item stays visible; when the tenant's plan lacks the feature it renders inside
+   * <FeatureLock mode="badge"> — a locked chip whose click opens the UpgradeDialog.
+   */
+  feature?: string;
 }
 
 export interface MenuExternalLink {
@@ -53,6 +59,8 @@ export interface MenuGroup {
   label: string;
   icon: LucideIcon;
   children: MenuLink[];
+  /** Subscription feature code that unlocks this whole group (see MenuLink.feature). */
+  feature?: string;
 }
 
 export interface MenuSection {
@@ -89,6 +97,8 @@ export const APP_MENU: MenuSection[] = [
       {
         label: "Payroll",
         icon: Banknote,
+        // ERP tier 3 feature per the use-case PowerSuite matrix (tier 2 = hr/leave/attendance only).
+        feature: "payroll",
         children: [
           { label: "Process Payroll", to: "/payroll/process", permissions: ["hrm.payroll.process", "hrm.payroll.manage"] },
           { label: "Payslips", to: "/payroll/payslips", permissions: ["hrm.payroll.view"] },
@@ -116,6 +126,8 @@ export const APP_MENU: MenuSection[] = [
       {
         label: "Attendance",
         icon: ClipboardList,
+        // Granted from ERP tier 2 per the use-case PowerSuite matrix.
+        feature: "attendance",
         children: [
           { label: "Shift Planner", to: "/hrm/attendance/shift-planner", permissions: ["hrm.attendance.manage"] },
           { label: "Records", to: "/hrm/attendance/records", permissions: ["hrm.attendance.view"] },
@@ -132,6 +144,8 @@ export const APP_MENU: MenuSection[] = [
       {
         label: "Appraisals",
         icon: Star,
+        // ERP tier 3 feature per the use-case PowerSuite matrix.
+        feature: "appraisals",
         children: [
           { label: "Appraisals", to: "/hrm/appraisals", permissions: ["hrm.appraisal.view"] },
           { label: "Cycles", to: "/hrm/appraisals/cycles", permissions: ["hrm.appraisal.manage"] },
@@ -146,6 +160,8 @@ export const APP_MENU: MenuSection[] = [
       {
         label: "Training",
         icon: GraduationCap,
+        // ERP tier 3 feature per the use-case PowerSuite matrix.
+        feature: "training",
         children: [
           { label: "Courses", to: "/hrm/training/courses", permissions: ["hrm.training.view"] },
           { label: "Enrollments", to: "/hrm/training/enrollments", permissions: ["hrm.training.view"] },
@@ -155,6 +171,8 @@ export const APP_MENU: MenuSection[] = [
       {
         label: "Recruitment",
         icon: Briefcase,
+        // ERP tier 3 feature per the use-case PowerSuite matrix.
+        feature: "recruitment",
         children: [
           { label: "Jobs", to: "/hrm/recruitment/jobs", permissions: ["hrm.recruitment.view"] },
           { label: "Candidates", to: "/hrm/recruitment/candidates", permissions: ["hrm.recruitment.view"] },
