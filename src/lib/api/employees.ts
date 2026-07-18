@@ -49,6 +49,10 @@ export interface Employee {
   manager?: string | null;
   reports_to_id?: string | null;
   reports_to_name?: string;
+  // Governance flags — a person can be a director, a shareholder, or both
+  // (shareholder-only is valid). Sent verbatim on create/update.
+  is_director?: boolean;
+  is_shareholder?: boolean;
   [key: string]: unknown;
 }
 
@@ -139,6 +143,24 @@ function toEmployeePayload(data: Partial<Employee>): Record<string, unknown> {
   if (out.kra_pin != null && out.pin_no == null) out.pin_no = out.kra_pin;
   if (out.outlet != null && out.outlet_id == null) out.outlet_id = out.outlet;
   return out;
+}
+
+/** An uploaded employee document (contract, ID, certificate, generated PDF, …). */
+export interface EmployeeDocument {
+  id: string | number;
+  employee_id?: string;
+  title?: string;
+  document_type?: string;
+  file_name?: string;
+  content_type?: string;
+  created_at?: string;
+  uploaded_at?: string;
+  [key: string]: unknown;
+}
+
+/** Employment-contract terms body (saved HTML or an auto-generated default). */
+export interface ContractTermsResponse {
+  terms_html: string;
 }
 
 /** Per-row result from the bulk CSV import (erp-api POST /hrm/employees/import). */
@@ -278,4 +300,39 @@ export const employeesApi = {
       `${EMP}/employees/${employeeId}/bank-accounts/${accountId}/primary`,
       {},
     ),
+
+  // ---- Documents (upload / list / stream) ----
+  listDocuments: (employeeId: number | string) =>
+    apiClient.get<EmployeeDocument[] | Paginated<EmployeeDocument>>(
+      `${EMP}/employees/${employeeId}/documents`,
+    ),
+  uploadDocument: (
+    employeeId: number | string,
+    data: { file: File; title: string; document_type: string },
+  ) => {
+    const fd = new FormData();
+    fd.append("file", data.file);
+    fd.append("title", data.title);
+    fd.append("document_type", data.document_type);
+    return apiClient.post<EmployeeDocument>(`${EMP}/employees/${employeeId}/documents`, fd);
+  },
+  /** Streams the stored file bytes (PDF or original) for preview/download. */
+  getDocumentFile: (
+    employeeId: number | string,
+    docId: number | string,
+    fileName = `document_${docId}.pdf`,
+  ) => apiClient.getBlob(`${EMP}/employees/${employeeId}/documents/${docId}/file`, fileName),
+
+  // ---- Employment contract (editable terms + rendered PDF) ----
+  getContractTerms: (employeeId: number | string, type: string) =>
+    apiClient.get<ContractTermsResponse>(`${EMP}/employees/${employeeId}/contract/terms`, { type }),
+  saveContractTerms: (employeeId: number | string, termsHtml: string) =>
+    apiClient.put<ContractTermsResponse>(`${EMP}/employees/${employeeId}/contract/terms`, {
+      terms_html: termsHtml,
+    }),
+  getContractPdf: (employeeId: number | string, fileName = `contract_${employeeId}.pdf`) =>
+    apiClient.getBlob(`${EMP}/employees/${employeeId}/contract/pdf`, fileName),
+  /** Renders + stores the contract as an employee document. */
+  generateContract: (employeeId: number | string) =>
+    apiClient.post<EmployeeDocument>(`${EMP}/employees/${employeeId}/contract/generate`, {}),
 };

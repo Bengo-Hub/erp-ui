@@ -24,6 +24,7 @@ import { employeeName, PAGE_SIZE, relationLabel } from "@/lib/hrm";
 import { useOutletFilterStore } from "@/store/outlet-filter";
 
 import { EmployeeFormDialog } from "./_employee-form-dialog";
+import { GovernanceBadges } from "./_governance-badges";
 import { ImportEmployeesDialog } from "./_import-dialog";
 
 export default function EmployeesPage() {
@@ -90,9 +91,12 @@ export default function EmployeesPage() {
       cell: (e) => {
         const active = e.is_active ?? e.employment_status !== "terminated";
         return (
-          <Badge variant={active ? "success" : "secondary"}>
-            {e.employment_status || (active ? "Active" : "Inactive")}
-          </Badge>
+          <div className="flex flex-wrap items-center gap-1">
+            <Badge variant={active ? "success" : "secondary"}>
+              {e.employment_status || (active ? "Active" : "Inactive")}
+            </Badge>
+            <GovernanceBadges employee={e} />
+          </div>
         );
       },
     },

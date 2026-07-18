@@ -39,12 +39,14 @@ const employeeSchema = z.object({
   department: z.string().optional(),
   job_group: z.string().optional(),
   basic_salary: optionalPositiveMoney,
+  is_director: z.boolean().optional(),
+  is_shareholder: z.boolean().optional(),
 });
 
 type FormValues = z.infer<typeof employeeSchema>;
 
 function toFormValues(e?: Employee | null): FormValues {
-  if (!e) return { first_name: "", last_name: "" };
+  if (!e) return { first_name: "", last_name: "", is_director: false, is_shareholder: false };
   const idOf = (v: unknown) =>
     v && typeof v === "object" && "id" in v ? String((v as { id: number }).id) : v != null ? String(v) : "";
   return {
@@ -63,6 +65,8 @@ function toFormValues(e?: Employee | null): FormValues {
     department: idOf(e.department),
     job_group: idOf(e.job_group),
     basic_salary: e.basic_salary != null ? String(e.basic_salary) : "",
+    is_director: !!e.is_director,
+    is_shareholder: !!e.is_shareholder,
   };
 }
 
@@ -214,6 +218,24 @@ export function EmployeeFormDialog({
             <Field label="Basic Salary" help="Refine in the Salary tab later." error={errors.basic_salary?.message}>
               <Input type="number" step="0.01" {...register("basic_salary")} />
             </Field>
+          </div>
+          <div className="mt-4 flex flex-col gap-3 rounded-lg border border-border bg-muted/20 p-3 sm:flex-row sm:gap-8">
+            <label className="flex cursor-pointer items-center gap-2 text-sm text-foreground">
+              <input
+                type="checkbox"
+                className="size-4 rounded border-input accent-primary"
+                {...register("is_director")}
+              />
+              Director
+            </label>
+            <label className="flex cursor-pointer items-center gap-2 text-sm text-foreground">
+              <input
+                type="checkbox"
+                className="size-4 rounded border-input accent-primary"
+                {...register("is_shareholder")}
+              />
+              Shareholder
+            </label>
           </div>
         </div>
       </div>
