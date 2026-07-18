@@ -8,6 +8,7 @@ import {
   type Employee,
   type EmployeeBankAccount,
   type EmployeeDisciplinary,
+  type EmployeeDocument,
   type EmployeeEducation,
   type EmployeeNextOfKin,
   type EmployeeSalaryDetail,
@@ -260,3 +261,59 @@ export function useSaveSalary(employeeId: number | string) {
     onError: (e) => toast.error(extractApiError(e, "Failed to save salary details")),
   });
 }
+
+// ---- Documents ----
+export function useEmployeeDocuments(employeeId: number | string | undefined) {
+  return useQuery({
+    queryKey: [KEY, "documents", employeeId],
+    queryFn: () => employeesApi.listDocuments(employeeId!),
+    enabled: !!employeeId,
+  });
+}
+
+export function useUploadDocument(employeeId: number | string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (data: { file: File; title: string; document_type: string }) =>
+      employeesApi.uploadDocument(employeeId, data),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: [KEY, "documents", employeeId] });
+      toast.success("Document uploaded");
+    },
+    onError: (e) => toast.error(extractApiError(e, "Failed to upload document")),
+  });
+}
+
+// ---- Employment contract ----
+export function useContractTerms(
+  employeeId: number | string | undefined,
+  type: string | undefined,
+) {
+  return useQuery({
+    queryKey: [KEY, "contract-terms", employeeId, type],
+    queryFn: () => employeesApi.getContractTerms(employeeId!, type!),
+    enabled: !!employeeId && !!type,
+  });
+}
+
+export function useSaveContractTerms(employeeId: number | string) {
+  return useMutation({
+    mutationFn: (termsHtml: string) => employeesApi.saveContractTerms(employeeId, termsHtml),
+    onSuccess: () => toast.success("Contract terms saved"),
+    onError: (e) => toast.error(extractApiError(e, "Failed to save contract terms")),
+  });
+}
+
+export function useGenerateContract(employeeId: number | string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: () => employeesApi.generateContract(employeeId),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: [KEY, "documents", employeeId] });
+      toast.success("Contract generated and attached to documents");
+    },
+    onError: (e) => toast.error(extractApiError(e, "Failed to generate contract")),
+  });
+}
+
+export type { EmployeeDocument };

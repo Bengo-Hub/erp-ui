@@ -13,8 +13,11 @@ import { useEmployee } from "@/hooks/use-employees";
 import { employeeName } from "@/lib/hrm";
 
 import { EmployeeFormDialog } from "../_employee-form-dialog";
+import { GovernanceBadges } from "../_governance-badges";
 import { BankTab } from "./_bank-tab";
+import { ContractTab } from "./_contract-tab";
 import { DisciplinaryTab } from "./_disciplinary-tab";
+import { DocumentsTab } from "./_documents-tab";
 import { EducationTab } from "./_education-tab";
 import { EmploymentTab } from "./_employment-tab";
 import { KinTab } from "./_kin-tab";
@@ -29,6 +32,8 @@ const TABS = [
   { key: "education", label: "Education" },
   { key: "employment", label: "Employment" },
   { key: "disciplinary", label: "Disciplinary" },
+  { key: "documents", label: "Documents" },
+  { key: "contract", label: "Contract" },
 ];
 
 export default function EmployeeProfilePage() {
@@ -61,6 +66,7 @@ export default function EmployeeProfilePage() {
                 {employee.employee_number && (
                   <Badge variant="outline">{employee.employee_number}</Badge>
                 )}
+                <GovernanceBadges employee={employee} />
               </span>
             }
             subtitle={employee.email}
@@ -82,6 +88,10 @@ export default function EmployeeProfilePage() {
           {tab === "education" && <EducationTab employeeId={id} />}
           {tab === "employment" && <EmploymentTab employeeId={id} />}
           {tab === "disciplinary" && <DisciplinaryTab employeeId={id} />}
+          {tab === "documents" && <DocumentsTab employeeId={id} />}
+          {tab === "contract" && (
+            <ContractTab employeeId={id} employmentType={employee.employment_type} />
+          )}
 
           <EmployeeFormDialog open={editOpen} employee={employee} onClose={() => setEditOpen(false)} />
         </>
