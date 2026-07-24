@@ -1,6 +1,6 @@
 "use client";
 
-import { useParams, useRouter } from "next/navigation";
+import { useParams } from "next/navigation";
 import { ReactNode, useEffect } from "react";
 
 import { useAuthStore } from "@/store/auth";
@@ -13,14 +13,14 @@ import { useAuthStore } from "@/store/auth";
 export function AuthGuard({ children }: { children: ReactNode }) {
   const status = useAuthStore((s) => s.status);
   const params = useParams();
-  const router = useRouter();
   const orgSlug = params?.orgSlug as string;
 
   useEffect(() => {
     if (status === "idle" && orgSlug) {
-      router.replace(`/${orgSlug}/auth/login`);
+      // Match treasury: re-auth straight through SSO (no intermediate /auth/login page).
+      useAuthStore.getState().redirectToSSO(orgSlug, typeof window !== "undefined" ? window.location.href : undefined);
     }
-  }, [status, orgSlug, router]);
+  }, [status, orgSlug]);
 
   if (status === "idle" || status === "loading") {
     return (
