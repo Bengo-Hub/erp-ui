@@ -19,7 +19,15 @@ export const viewport: Viewport = {
 export const metadata: Metadata = {
   title: "Codevertex ERP",
   description: "HR and internal operations for the Codevertex / Codevertex platform",
-  icons: { icon: "/favicon.ico" },
+  manifest: "/manifest.json",
+  icons: {
+    icon: [
+      { url: "/icons/icon-192.png", sizes: "192x192", type: "image/png" },
+      { url: "/icons/icon-512.png", sizes: "512x512", type: "image/png" },
+      { url: "/favicon.ico" },
+    ],
+    apple: "/icons/apple-touch-icon.png", // iOS "Add to Home Screen"
+  },
   appleWebApp: { capable: true, statusBarStyle: "default", title: "Codevertex ERP" },
 };
 
