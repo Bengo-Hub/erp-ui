@@ -67,23 +67,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
   }, [queryClient, logout]);
 
-  // Unauthenticated → login page (no auto-SSO).
+  // Unauthenticated → redirect STRAIGHT to SSO (matches treasury-ui's AuthProvider — no
+  // intermediate /auth/login landing page). returnTo is the full current URL so SSO returns
+  // the user exactly where they were.
   useEffect(() => {
     if (status === "idle" && !isAuthPath && orgSlug) {
-      const returnTo = typeof window !== "undefined" ? window.location.pathname : "";
-      if (returnTo) sessionStorage.setItem("sso_return_to", returnTo);
-      router.replace(`/${orgSlug}/auth/login`);
+      useAuthStore.getState().redirectToSSO(orgSlug, typeof window !== "undefined" ? window.location.href : undefined);
     }
-  }, [status, isAuthPath, orgSlug, router]);
+  }, [status, isAuthPath, orgSlug]);
 
-  // /auth/me failed (and it's not a subscription 403) → session is bad, go to login.
+  // /auth/me failed (and it's not a subscription 403) → session is bad, re-auth via SSO.
   useEffect(() => {
     if (meError && orgSlug && !isAuthPath) {
       const data = (error as { response?: { data?: { code?: string; upgrade?: boolean } } })?.response?.data;
       if (data?.code === "subscription_inactive" || data?.upgrade === true) return;
-      router.replace(`/${orgSlug}/auth/login`);
+      useAuthStore.getState().redirectToSSO(orgSlug, typeof window !== "undefined" ? window.location.href : undefined);
     }
-  }, [meError, error, orgSlug, isAuthPath, router]);
+  }, [meError, error, orgSlug, isAuthPath]);
 
   // Platform routes require elevated access.
   useEffect(() => {
