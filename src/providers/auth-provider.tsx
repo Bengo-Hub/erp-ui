@@ -11,7 +11,7 @@ import { apiClient } from "@/lib/api/client";
 import { useAuthStore } from "@/store/auth";
 
 const SUBSCRIPTIONS_UI_URL =
-  process.env.NEXT_PUBLIC_SUBSCRIPTIONS_UI_URL || "https://pricing.codevertexitsolutions.com";
+  process.env.NEXT_PUBLIC_SUBSCRIPTIONS_UI_URL || "https://pricing.codevertexafrica.com";
 
 /**
  * Guards the tenant shell:

@@ -16,7 +16,7 @@ export interface SubscriptionInfo {
 }
 
 const SUBSCRIPTIONS_API_URL = (
-  process.env.NEXT_PUBLIC_SUBSCRIPTIONS_API_URL || "https://pricingapi.codevertexitsolutions.com"
+  process.env.NEXT_PUBLIC_SUBSCRIPTIONS_API_URL || "https://pricingapi.codevertexafrica.com"
 ).replace(/\/$/, "");
 
 export async function fetchSubscriptionInfo(

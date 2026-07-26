@@ -58,7 +58,7 @@
 
 **Cutover**
 - Deploy to staging subdomain; run full parity checklist from `component-inventory.md`.
-- DNS/ingress switch `erp.codevertexitsolutions.com` → Next.js app; keep Vue deployable for rollback; decommission after a stable window.
+- DNS/ingress switch `erp.codevertexafrica.com` → Next.js app; keep Vue deployable for rollback; decommission after a stable window.
 
 ## Acceptance criteria
 - Parity checklist 100% (every in-scope route ported and verified).

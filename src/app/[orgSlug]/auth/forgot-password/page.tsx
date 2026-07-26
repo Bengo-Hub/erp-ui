@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 
 const AUTH_UI_URL =
-  process.env.NEXT_PUBLIC_AUTH_UI_URL || "https://accounts.codevertexitsolutions.com";
+  process.env.NEXT_PUBLIC_AUTH_UI_URL || "https://accounts.codevertexafrica.com";
 
 /**
  * Password reset is owned by the central auth-ui (SSO). We deep-link to it rather

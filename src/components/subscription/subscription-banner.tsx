@@ -5,7 +5,7 @@ import { AlertCircle, Clock, Zap } from "lucide-react";
 import { useSubscription } from "@/hooks/use-subscription";
 
 const SUBSCRIPTIONS_UI_URL =
-  process.env.NEXT_PUBLIC_SUBSCRIPTIONS_UI_URL || "https://pricing.codevertexitsolutions.com";
+  process.env.NEXT_PUBLIC_SUBSCRIPTIONS_UI_URL || "https://pricing.codevertexafrica.com";
 
 /**
  * Thin top-of-content banner shown when the tenant subscription needs attention.

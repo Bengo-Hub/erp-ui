@@ -4,7 +4,7 @@ import { NextResponse } from "next/server";
 // runtime-derived erp-api host in api-client, this proxy always targets the pricing API.
 const PRICING_API =
   process.env.NEXT_PUBLIC_SUBSCRIPTIONS_API_URL ||
-  "https://pricingapi.codevertexitsolutions.com";
+  "https://pricingapi.codevertexafrica.com";
 
 const SERVICE_KEY = process.env.INTERNAL_SERVICE_KEY ?? "";
 
