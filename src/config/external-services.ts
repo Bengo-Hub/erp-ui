@@ -8,23 +8,23 @@
 
 export const EXTERNAL_SERVICES = {
   finance:
-    process.env.NEXT_PUBLIC_TREASURY_UI_URL || "https://books.codevertexitsolutions.com",
+    process.env.NEXT_PUBLIC_TREASURY_UI_URL || "https://books.codevertexafrica.com",
   crm:
-    process.env.NEXT_PUBLIC_MARKETFLOW_UI_URL || "https://marketflow.codevertexitsolutions.com",
+    process.env.NEXT_PUBLIC_MARKETFLOW_UI_URL || "https://marketflow.codevertexafrica.com",
   // inventory frontend also owns products, procurement, manufacturing and assets
   inventory:
-    process.env.NEXT_PUBLIC_INVENTORY_UI_URL || "https://inventory.codevertexitsolutions.com",
-  pos: process.env.NEXT_PUBLIC_POS_UI_URL || "https://pos.codevertexitsolutions.com",
+    process.env.NEXT_PUBLIC_INVENTORY_UI_URL || "https://inventory.codevertexafrica.com",
+  pos: process.env.NEXT_PUBLIC_POS_UI_URL || "https://pos.codevertexafrica.com",
   ordering:
-    process.env.NEXT_PUBLIC_ORDERING_UI_URL || "https://ordersapp.codevertexitsolutions.com",
+    process.env.NEXT_PUBLIC_ORDERING_UI_URL || "https://ordering.codevertexafrica.com",
   notifications:
     process.env.NEXT_PUBLIC_NOTIFICATIONS_UI_URL ||
-    "https://notifications.codevertexitsolutions.com",
+    "https://notifications.codevertexafrica.com",
   projects:
-    process.env.NEXT_PUBLIC_PROJECTS_UI_URL || "https://projects.codevertexitsolutions.com",
+    process.env.NEXT_PUBLIC_PROJECTS_UI_URL || "https://projects.codevertexafrica.com",
   billing:
-    process.env.NEXT_PUBLIC_SUBSCRIPTIONS_UI_URL || "https://pricing.codevertexitsolutions.com",
-  auth: process.env.NEXT_PUBLIC_AUTH_UI_URL || "https://accounts.codevertexitsolutions.com",
+    process.env.NEXT_PUBLIC_SUBSCRIPTIONS_UI_URL || "https://pricing.codevertexafrica.com",
+  auth: process.env.NEXT_PUBLIC_AUTH_UI_URL || "https://accounts.codevertexafrica.com",
 } as const;
 
 export type ExternalServiceKey = keyof typeof EXTERNAL_SERVICES;

@@ -160,15 +160,15 @@ the only references to other services in ERP-UI:
 
 | Key | Env var | Default prod URL |
 |---|---|---|
-| finance | `NEXT_PUBLIC_TREASURY_UI_URL` | books.codevertexitsolutions.com |
-| crm | `NEXT_PUBLIC_MARKETFLOW_UI_URL` | marketflow.codevertexitsolutions.com |
-| inventory (also procurement/manufacturing/assets) | `NEXT_PUBLIC_INVENTORY_UI_URL` | inventory.codevertexitsolutions.com |
-| pos | `NEXT_PUBLIC_POS_UI_URL` | pos.codevertexitsolutions.com |
-| ordering | `NEXT_PUBLIC_ORDERING_UI_URL` | ordersapp.codevertexitsolutions.com |
-| notifications | `NEXT_PUBLIC_NOTIFICATIONS_UI_URL` | notifications.codevertexitsolutions.com |
-| projects | `NEXT_PUBLIC_PROJECTS_UI_URL` | projects.codevertexitsolutions.com |
-| billing | `NEXT_PUBLIC_SUBSCRIPTIONS_UI_URL` | pricing.codevertexitsolutions.com |
-| auth (tenant mgmt / branding editor) | `NEXT_PUBLIC_AUTH_UI_URL` | accounts.codevertexitsolutions.com |
+| finance | `NEXT_PUBLIC_TREASURY_UI_URL` | books.codevertexafrica.com |
+| crm | `NEXT_PUBLIC_MARKETFLOW_UI_URL` | marketflow.codevertexafrica.com |
+| inventory (also procurement/manufacturing/assets) | `NEXT_PUBLIC_INVENTORY_UI_URL` | inventory.codevertexafrica.com |
+| pos | `NEXT_PUBLIC_POS_UI_URL` | pos.codevertexafrica.com |
+| ordering | `NEXT_PUBLIC_ORDERING_UI_URL` | ordering.codevertexafrica.com |
+| notifications | `NEXT_PUBLIC_NOTIFICATIONS_UI_URL` | notifications.codevertexafrica.com |
+| projects | `NEXT_PUBLIC_PROJECTS_UI_URL` | projects.codevertexafrica.com |
+| billing | `NEXT_PUBLIC_SUBSCRIPTIONS_UI_URL` | pricing.codevertexafrica.com |
+| auth (tenant mgmt / branding editor) | `NEXT_PUBLIC_AUTH_UI_URL` | accounts.codevertexafrica.com |
 
 ---
 
