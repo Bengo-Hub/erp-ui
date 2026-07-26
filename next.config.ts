@@ -38,8 +38,8 @@ const nextConfig: NextConfig = {
   images: {
     remotePatterns: [
       // Platform backend + any tenant subdomain under the platform domain.
-      { protocol: "https", hostname: "erpapi.codevertexitsolutions.com" },
-      { protocol: "https", hostname: "*.codevertexitsolutions.com" },
+      { protocol: "https", hostname: "erpapi.codevertexafrica.com" },
+      { protocol: "https", hostname: "*.codevertexafrica.com" },
       // Known tenant custom domains (wildcard covers erpapi.<tenant>).
       { protocol: "https", hostname: "*.masterspace.co.ke" },
     ],

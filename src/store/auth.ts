@@ -206,7 +206,7 @@ export const useAuthStore = create<AuthState>()(
           window.location.href = slug
             ? buildLogoutUrl(`${window.location.origin}/${slug}`)
             : buildLogoutUrl(
-                `https://accounts.codevertexitsolutions.com/login?return_to=${encodeURIComponent(window.location.origin)}`,
+                `https://accounts.codevertexafrica.com/login?return_to=${encodeURIComponent(window.location.origin)}`,
               );
         }
       },

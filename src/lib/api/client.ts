@@ -7,18 +7,18 @@ import axios, {
 
 // Platform backend — the default when a tenant has not configured its own domain.
 // NEVER hardcode an individual tenant host (e.g. masterspace) as the fallback.
-const PLATFORM_API_BASE = "https://erpapi.codevertexitsolutions.com";
+const PLATFORM_API_BASE = "https://erpapi.codevertexafrica.com";
 
 /**
  * Resolve the erp-api base URL.
  *
  * Order of precedence:
  *  1. Browser host derivation — map the UI host's leading `erp.` label to `erpapi.`
- *     (e.g. `erp.codevertexitsolutions.com` → `erpapi.codevertexitsolutions.com`, a
+ *     (e.g. `erp.codevertexafrica.com` → `erpapi.codevertexafrica.com`, a
  *     tenant on `erp.acme.com` → `erpapi.acme.com`). Wins over the baked env so a stale
  *     CI value can never point one tenant at another tenant's backend.
  *  2. `NEXT_PUBLIC_API_URL` — explicit localhost/dev/SSR override (e.g. http://localhost:8000).
- *  3. Platform default (`erpapi.codevertexitsolutions.com`).
+ *  3. Platform default (`erpapi.codevertexafrica.com`).
  */
 export function resolveApiBaseUrl(): string {
   // In the browser, ALWAYS derive from the current host when it follows the `erp.`
