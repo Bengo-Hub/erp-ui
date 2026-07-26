@@ -43,10 +43,10 @@ KUBE_CONFIG=${KUBE_CONFIG:-${KUBE_CONFIG_B64:-}}
 # API_URL default is EMPTY: the multi-tenant image derives the erp-api host at runtime
 # from the UI host (erp.<domain> → erpapi.<domain>) and falls back to the platform backend.
 NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL:-""}
-NEXT_PUBLIC_SSO_URL=${NEXT_PUBLIC_SSO_URL:-"https://sso.codevertexitsolutions.com"}
+NEXT_PUBLIC_SSO_URL=${NEXT_PUBLIC_SSO_URL:-"https://sso.codevertexafrica.com"}
 NEXT_PUBLIC_AUTH_API_URL=${NEXT_PUBLIC_AUTH_API_URL:-"${NEXT_PUBLIC_SSO_URL}"}
 NEXT_PUBLIC_SSO_CLIENT_ID=${NEXT_PUBLIC_SSO_CLIENT_ID:-"erp-ui"}
-NEXT_PUBLIC_SUBSCRIPTIONS_API_URL=${NEXT_PUBLIC_SUBSCRIPTIONS_API_URL:-"https://pricingapi.codevertexitsolutions.com"}
+NEXT_PUBLIC_SUBSCRIPTIONS_API_URL=${NEXT_PUBLIC_SUBSCRIPTIONS_API_URL:-"https://pricingapi.codevertexafrica.com"}
 
 info "Building ${APP_NAME}:${GIT_COMMIT_ID}"
 

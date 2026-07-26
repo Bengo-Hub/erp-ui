@@ -18,20 +18,20 @@ COPY . .
 # image derives the erp-api host at runtime from the UI host (erp.<domain> → erpapi.<domain>),
 # falling back to the platform backend. Baking a tenant-specific value here would defeat that.
 ARG NEXT_PUBLIC_API_URL=
-ARG NEXT_PUBLIC_SSO_URL=https://sso.codevertexitsolutions.com
-ARG NEXT_PUBLIC_AUTH_API_URL=https://sso.codevertexitsolutions.com
+ARG NEXT_PUBLIC_SSO_URL=https://sso.codevertexafrica.com
+ARG NEXT_PUBLIC_AUTH_API_URL=https://sso.codevertexafrica.com
 ARG NEXT_PUBLIC_SSO_CLIENT_ID=erp-ui
-ARG NEXT_PUBLIC_SUBSCRIPTIONS_API_URL=https://pricingapi.codevertexitsolutions.com
+ARG NEXT_PUBLIC_SUBSCRIPTIONS_API_URL=https://pricingapi.codevertexafrica.com
 ARG NEXT_PUBLIC_WEBSOCKET_URL=
-ARG NEXT_PUBLIC_TREASURY_UI_URL=https://books.codevertexitsolutions.com
-ARG NEXT_PUBLIC_MARKETFLOW_UI_URL=https://marketflow.codevertexitsolutions.com
-ARG NEXT_PUBLIC_INVENTORY_UI_URL=https://inventory.codevertexitsolutions.com
-ARG NEXT_PUBLIC_POS_UI_URL=https://pos.codevertexitsolutions.com
-ARG NEXT_PUBLIC_ORDERING_UI_URL=https://ordersapp.codevertexitsolutions.com
-ARG NEXT_PUBLIC_NOTIFICATIONS_UI_URL=https://notifications.codevertexitsolutions.com
-ARG NEXT_PUBLIC_PROJECTS_UI_URL=https://projects.codevertexitsolutions.com
-ARG NEXT_PUBLIC_SUBSCRIPTIONS_UI_URL=https://pricing.codevertexitsolutions.com
-ARG NEXT_PUBLIC_AUTH_UI_URL=https://accounts.codevertexitsolutions.com
+ARG NEXT_PUBLIC_TREASURY_UI_URL=https://books.codevertexafrica.com
+ARG NEXT_PUBLIC_MARKETFLOW_UI_URL=https://marketflow.codevertexafrica.com
+ARG NEXT_PUBLIC_INVENTORY_UI_URL=https://inventory.codevertexafrica.com
+ARG NEXT_PUBLIC_POS_UI_URL=https://pos.codevertexafrica.com
+ARG NEXT_PUBLIC_ORDERING_UI_URL=https://ordering.codevertexafrica.com
+ARG NEXT_PUBLIC_NOTIFICATIONS_UI_URL=https://notifications.codevertexafrica.com
+ARG NEXT_PUBLIC_PROJECTS_UI_URL=https://projects.codevertexafrica.com
+ARG NEXT_PUBLIC_SUBSCRIPTIONS_UI_URL=https://pricing.codevertexafrica.com
+ARG NEXT_PUBLIC_AUTH_UI_URL=https://accounts.codevertexafrica.com
 
 ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL \
     NEXT_PUBLIC_SSO_URL=$NEXT_PUBLIC_SSO_URL \
