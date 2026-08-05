@@ -8,6 +8,8 @@
  *  - /auth/refresh, /auth/logout
  */
 
+import { revokeServerSession as sharedRevokeServerSession } from '@bengo-hub/shared-ui-lib/auth';
+
 const SSO_BASE_URL = (
   process.env.NEXT_PUBLIC_SSO_URL ||
   process.env.NEXT_PUBLIC_AUTH_API_URL ||
@@ -78,22 +80,8 @@ export function buildLogoutUrl(postLogoutRedirectUri?: string): string {
   return url.toString();
 }
 
-/**
- * Best-effort POST to revoke the user's backend session server-side.
- *
- * The GET /auth/logout redirect (buildLogoutUrl) only clears the bb_session
- * cookie. POST /auth/logout with the access token revokes ALL of the user's
- * sessions, deletes their Redis session_token keys, and clears the cookie.
- */
 export async function revokeServerSession(accessToken?: string | null): Promise<void> {
-  try {
-    await fetch(new URL("/api/v1/auth/logout", SSO_BASE_URL).toString(), {
-      method: "POST",
-      headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : {},
-      credentials: "include",
-      keepalive: true,
-    });
-  } catch { /* best-effort */ }
+  return sharedRevokeServerSession(SSO_BASE_URL, accessToken);
 }
 
 export async function exchangeCodeForTokens(params: TokenExchangeParams): Promise<TokenResponse> {
