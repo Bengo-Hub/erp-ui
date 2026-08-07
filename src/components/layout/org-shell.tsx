@@ -6,6 +6,8 @@ import { useParams, usePathname } from "next/navigation";
 import { AppSidebar } from "@/components/layout/app-sidebar";
 import { AppTopbar } from "@/components/layout/app-topbar";
 import { Breadcrumb } from "@/components/layout/breadcrumb";
+import { Footer } from "@/components/footer";
+import { PWARegistration } from "@/components/pwa-registration";
 import { SubscriptionBanner } from "@/components/subscription/subscription-banner";
 import { VerifyEmailPrompt } from "@/components/auth/VerifyEmailPrompt";
 import { AuthProvider } from "@/providers/auth-provider";
@@ -67,6 +69,7 @@ export function OrgShell({ children }: { children: ReactNode }) {
         <AuthProvider>
           <SubscriptionEntitlementsProvider>
           <ManifestLink />
+          <PWARegistration />
           <a
             href="#main-content"
             className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-[100] focus:rounded-lg focus:bg-primary focus:px-4 focus:py-2 focus:text-sm focus:font-medium focus:text-primary-foreground"
@@ -79,9 +82,10 @@ export function OrgShell({ children }: { children: ReactNode }) {
               <AppTopbar onMenuClick={() => setSidebarOpen(true)} />
               <SubscriptionBanner />
               <VerifyEmailPrompt />
-              <main id="main-content" tabIndex={-1} className="flex-1 overflow-y-auto bg-accent/5">
+              <main id="main-content" tabIndex={-1} className="flex-1 overflow-y-auto bg-accent/5 flex flex-col">
                 <Breadcrumb />
-                <div className="min-h-full">{children}</div>
+                <div className="min-h-full flex-1">{children}</div>
+                <Footer />
               </main>
             </div>
           </div>
