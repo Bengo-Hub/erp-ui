@@ -1,6 +1,7 @@
 "use client";
 
 import { PdfPreview, useDocumentPreview } from "@bengo-hub/shared-ui-lib/documents";
+import { DataTable } from "@bengo-hub/shared-ui-lib/data-table";
 import { useParams, useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 import { BadgeCheck, Banknote, ChevronDown, ChevronRight, FileDown, ListChecks, Mail, Printer, RefreshCw } from "lucide-react";
@@ -20,6 +21,8 @@ import { useApprovePayroll, useDisbursePayroll, usePayslips } from "@/hooks/use-
 import { normalizeList } from "@/lib/api/drf";
 import { payrollApi, type Payslip } from "@/lib/api/payroll";
 import { formatMoney } from "@/lib/utils";
+
+import { buildPayslipLineColumns } from "./_payslip-line-columns";
 
 const STATUS_TABS = [
   { key: "all", label: "All" },
@@ -114,6 +117,10 @@ export default function PayslipsPage() {
     });
   }
   const [confirm, setConfirm] = useState<{ kind: "approve" | "disburse"; period: string; label: string } | null>(null);
+  const payslipColumns = useMemo(
+    () => buildPayslipLineColumns({ StatusBadge, onPrint: printPayslip }),
+    [],
+  );
 
   // Pull the full set so we can group by month client-side (the API returns individual payslips).
   const queryParams = useMemo(
@@ -304,41 +311,12 @@ export default function PayslipsPage() {
                   {/* Expanded employee payslips */}
                   {open && (
                     <div className="bg-muted/20 px-4 pb-3 pt-1">
-                      <table className="w-full text-sm">
-                        <thead>
-                          <tr className="text-xs uppercase tracking-wide text-muted-foreground">
-                            <th className="py-1.5 text-left font-medium">Employee</th>
-                            <th className="py-1.5 text-right font-medium">Gross</th>
-                            <th className="py-1.5 text-right font-medium">Net pay</th>
-                            <th className="py-1.5 text-center font-medium">Status</th>
-                            <th className="py-1.5 text-right font-medium" />
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {g.payslips.map((ps) => (
-                            <tr
-                              key={ps.id}
-                              className="cursor-pointer border-t border-border/60 hover:bg-background"
-                              onClick={() => router.push(`/${orgSlug}/payroll/payslips/${ps.id}`)}
-                            >
-                              <td className="py-2">
-                                <span className="font-medium text-foreground">{ps.employee_name || "Employee"}</span>
-                                {ps.employee_number ? (
-                                  <span className="ml-2 text-xs text-muted-foreground">{ps.employee_number}</span>
-                                ) : null}
-                              </td>
-                              <td className="py-2 text-right text-muted-foreground">{formatMoney(ps.gross_pay ?? ps.total_earnings)}</td>
-                              <td className="py-2 text-right font-medium">{formatMoney(ps.net_pay)}</td>
-                              <td className="py-2 text-center"><StatusBadge status={ps.status ?? (ps.payment_status as string)} /></td>
-                              <td className="py-2 text-right" onClick={(e) => e.stopPropagation()}>
-                                <IconButton label="Print payslip" onClick={() => printPayslip(ps)}>
-                                  <Printer className="size-4" />
-                                </IconButton>
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
+                      <DataTable<Payslip>
+                        columns={payslipColumns}
+                        rows={g.payslips}
+                        rowKey={(ps) => String(ps.id)}
+                        onRowClick={(ps) => router.push(`/${orgSlug}/payroll/payslips/${ps.id}`)}
+                      />
                     </div>
                   )}
                 </div>
