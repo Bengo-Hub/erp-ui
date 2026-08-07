@@ -1,11 +1,12 @@
 "use client";
 
 import { PdfPreview, useDocumentPreview } from "@bengo-hub/shared-ui-lib/documents";
-import { BadgeCheck, FileText, Mail, Plus, Trash2 } from "lucide-react";
+import { DataTable } from "@bengo-hub/shared-ui-lib/data-table";
+import { Mail, Plus } from "lucide-react";
 import { useMemo, useState } from "react";
 
 import { PermissionGate } from "@/components/auth/permission-gate";
-import { Badge, Button, Card } from "@/components/ui/base";
+import { Button, Card } from "@/components/ui/base";
 import { Combobox } from "@/components/ui/combobox";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Dialog } from "@/components/ui/dialog";
@@ -24,6 +25,8 @@ import {
 import { normalizeList } from "@/lib/api/drf";
 import { payrollApi, type ConsultantVoucher } from "@/lib/api/payroll";
 import { formatMoney } from "@/lib/utils";
+
+import { buildConsultantColumns } from "./_consultants-columns";
 
 const TABS = [
   { key: "", label: "All" },
@@ -90,16 +93,18 @@ export default function ConsultantsPage() {
       { onSuccess: () => { setDialogOpen(false); setForm({ ...emptyForm }); } },
     );
 
-  const statusBadge = (s?: string) => {
-    const v = (s || "draft").toLowerCase();
-    return (
-      <Badge variant={v === "paid" ? "success" : v === "approved" ? "success" : v === "pending" ? "default" : "secondary"}>
-        {s || "Draft"}
-      </Badge>
-    );
-  };
-
-  const sortedRows = useMemo(() => rows, [rows]);
+  const columns = useMemo(
+    () =>
+      buildConsultantColumns({
+        selected,
+        onToggleSelect: (id) => setSelected((s) => ({ ...s, [id]: !s[id] })),
+        onPreview: previewVoucher,
+        onApprove: (v) => approve.mutate(v.id),
+        approvePending: approve.isPending,
+        onDelete: (v) => setDeleteId(v.id),
+      }),
+    [selected, approve.isPending],
+  );
 
   return (
     <div className="space-y-4 p-4 sm:p-6">
@@ -134,69 +139,12 @@ export default function ConsultantsPage() {
         <div className="border-b border-border px-4 pt-3">
           <Tabs tabs={TABS} active={tab} onChange={setTab} />
         </div>
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="border-b border-border text-xs uppercase tracking-wide text-muted-foreground">
-              <th className="w-10 p-3" />
-              <th className="p-3 text-left font-medium">Doc No.</th>
-              <th className="p-3 text-left font-medium">Name</th>
-              <th className="p-3 text-left font-medium">Title</th>
-              <th className="p-3 text-right font-medium">WHT</th>
-              <th className="p-3 text-right font-medium">Net Amount</th>
-              <th className="p-3 text-center font-medium">Email</th>
-              <th className="p-3 text-center font-medium">Status</th>
-              <th className="p-3 text-right font-medium" />
-            </tr>
-          </thead>
-          <tbody>
-            {sortedRows.map((v) => {
-              const id = String(v.id);
-              return (
-                <tr key={id} className="border-b border-border/60 hover:bg-muted/30">
-                  <td className="p-3">
-                    <input
-                      type="checkbox"
-                      checked={!!selected[id]}
-                      onChange={() => setSelected((s) => ({ ...s, [id]: !s[id] }))}
-                      aria-label="Select voucher"
-                    />
-                  </td>
-                  <td className="p-3 text-muted-foreground">{v.doc_number || "—"}</td>
-                  <td className="p-3 font-medium">{v.name || v.employee_name || "—"}</td>
-                  <td className="p-3 text-muted-foreground">{v.title || "—"}</td>
-                  <td className="p-3 text-right text-muted-foreground">{formatMoney(v.wht_amount)}</td>
-                  <td className="p-3 text-right font-semibold">{formatMoney(v.net_amount)}</td>
-                  <td className="p-3 text-center text-xs text-muted-foreground">{v.email_status || "Draft"}</td>
-                  <td className="p-3 text-center">{statusBadge(v.status)}</td>
-                  <td className="p-3 text-right">
-                    <div className="flex items-center justify-end gap-1">
-                      <Button size="sm" variant="ghost" onClick={() => previewVoucher(v)} title="Voucher PDF">
-                        <FileText className="size-4" />
-                      </Button>
-                      {v.status !== "approved" && v.status !== "paid" && (
-                        <PermissionGate permission={["hrm.payroll.manage"]}>
-                          <Button size="sm" variant="ghost" disabled={approve.isPending} onClick={() => approve.mutate(v.id)} title="Approve + pay">
-                            <BadgeCheck className="size-4 text-green-600" />
-                          </Button>
-                        </PermissionGate>
-                      )}
-                      <Button size="sm" variant="ghost" onClick={() => setDeleteId(v.id)} title="Delete">
-                        <Trash2 className="size-4 text-destructive" />
-                      </Button>
-                    </div>
-                  </td>
-                </tr>
-              );
-            })}
-            {sortedRows.length === 0 && (
-              <tr>
-                <td colSpan={9} className="p-6 text-center text-sm text-muted-foreground">
-                  No consultant vouchers yet.
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
+        <DataTable<ConsultantVoucher>
+          columns={columns}
+          rows={rows}
+          rowKey={(v) => String(v.id)}
+          emptyText="No consultant vouchers yet."
+        />
       </Card>
 
       <Dialog
