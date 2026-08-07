@@ -1,12 +1,15 @@
 "use client";
 
 import { Download, FileUp } from "lucide-react";
-import { useRef, useState } from "react";
+import { DataTable } from "@bengo-hub/shared-ui-lib/data-table";
+import { useMemo, useRef, useState } from "react";
 
 import { Button } from "@/components/ui/base";
 import { Dialog } from "@/components/ui/dialog";
 import { useImportEmployees } from "@/hooks/use-employees";
 import { type EmployeeImportResult } from "@/lib/api/employees";
+
+import { buildImportResultColumns } from "./_import-result-columns";
 
 // Columns the erp-api importer maps (employee_number/first_name/last_name required).
 const TEMPLATE_HEADER =
@@ -28,6 +31,7 @@ export function ImportEmployeesDialog({ open, onClose }: { open: boolean; onClos
   const [file, setFile] = useState<File | null>(null);
   const [result, setResult] = useState<EmployeeImportResult | null>(null);
   const importMut = useImportEmployees();
+  const importResultColumns = useMemo(() => buildImportResultColumns(), []);
 
   const reset = () => {
     setFile(null);
@@ -75,27 +79,12 @@ export function ImportEmployeesDialog({ open, onClose }: { open: boolean; onClos
             </span>
           </div>
           {result.failed > 0 && (
-            <div className="max-h-64 overflow-auto rounded-md border border-border">
-              <table className="w-full text-xs">
-                <thead className="bg-muted/50 text-left">
-                  <tr>
-                    <th className="p-2">Row</th>
-                    <th className="p-2">Employee #</th>
-                    <th className="p-2">Error</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {result.results
-                    .filter((r) => r.status === "error")
-                    .map((r) => (
-                      <tr key={r.row} className="border-t border-border">
-                        <td className="p-2">{r.row}</td>
-                        <td className="p-2">{r.employee_number || r.email || "—"}</td>
-                        <td className="p-2 text-destructive">{r.error}</td>
-                      </tr>
-                    ))}
-                </tbody>
-              </table>
+            <div className="max-h-64 overflow-auto">
+              <DataTable
+                columns={importResultColumns}
+                rows={result.results.filter((r) => r.status === "error")}
+                rowKey={(r) => String(r.row)}
+              />
             </div>
           )}
         </div>
