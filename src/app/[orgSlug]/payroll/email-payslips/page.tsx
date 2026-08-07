@@ -1,6 +1,7 @@
 "use client";
 
 import { ArrowLeft, Mail } from "lucide-react";
+import { DataTable } from "@bengo-hub/shared-ui-lib/data-table";
 import { useParams, useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
@@ -16,7 +17,8 @@ import { useEmployees } from "@/hooks/use-employees";
 import { useEmailPayslips } from "@/hooks/use-payroll";
 import { normalizeList } from "@/lib/api/drf";
 import { type Employee } from "@/lib/api/employees";
-import { employeeName } from "@/lib/hrm";
+
+import { buildEmailPayslipColumns } from "./_email-payslips-columns";
 
 export default function EmailPayslipsPage() {
   const params = useParams();
@@ -43,6 +45,18 @@ export default function EmailPayslipsPage() {
   const allChecked = employees.length > 0 && employees.every((e) => selected[String(e.id)]);
   const toggleAll = () =>
     setSelected(allChecked ? {} : Object.fromEntries(employees.map((e) => [String(e.id), true])));
+
+  const columns = useMemo(
+    () =>
+      buildEmailPayslipColumns({
+        selected,
+        onToggle: (id) => setSelected((s) => ({ ...s, [id]: !s[id] })),
+        allChecked,
+        onToggleAll: toggleAll,
+      }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [selected, allChecked],
+  );
 
   const submit = () => {
     if (!month) {
@@ -121,45 +135,12 @@ export default function EmailPayslipsPage() {
           <SearchInput value={search} onChange={setSearch} placeholder="Search employee…" className="max-w-xs" />
         </CardHeader>
         <CardContent className="p-0">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-border text-xs uppercase tracking-wide text-muted-foreground">
-                <th className="w-10 p-3">
-                  <input type="checkbox" checked={allChecked} onChange={toggleAll} aria-label="Select all" />
-                </th>
-                <th className="p-3 text-left font-medium">Staff No.</th>
-                <th className="p-3 text-left font-medium">Name</th>
-                <th className="p-3 text-left font-medium">Email</th>
-              </tr>
-            </thead>
-            <tbody>
-              {employees.map((e) => {
-                const id = String(e.id);
-                return (
-                  <tr key={id} className="border-b border-border/60 hover:bg-muted/30">
-                    <td className="p-3">
-                      <input
-                        type="checkbox"
-                        checked={!!selected[id]}
-                        onChange={() => setSelected((s) => ({ ...s, [id]: !s[id] }))}
-                        aria-label={`Select ${employeeName(e)}`}
-                      />
-                    </td>
-                    <td className="p-3 text-muted-foreground">{e.employee_number || "—"}</td>
-                    <td className="p-3 font-medium">{employeeName(e)}</td>
-                    <td className="p-3 text-muted-foreground">{e.email}</td>
-                  </tr>
-                );
-              })}
-              {employees.length === 0 && (
-                <tr>
-                  <td colSpan={4} className="p-6 text-center text-sm text-muted-foreground">
-                    No employees with email addresses found.
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
+          <DataTable<Employee>
+            columns={columns}
+            rows={employees}
+            rowKey={(e) => String(e.id)}
+            emptyText="No employees with email addresses found."
+          />
         </CardContent>
       </Card>
     </div>
