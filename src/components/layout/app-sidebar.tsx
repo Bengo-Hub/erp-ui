@@ -143,6 +143,24 @@ export function AppSidebar({ open = false, onClose }: SidebarProps) {
           <ul className="space-y-0.5">
             {visibleExternalServices.map((svc) => {
               const Icon = svc.icon;
+              if (svc.comingSoon) {
+                return (
+                  <li key={svc.label}>
+                    <div
+                      className="flex items-center gap-3 px-3 py-2 rounded-xl text-sm font-medium text-sidebar-foreground/30 cursor-default"
+                      title={`${svc.label} — coming soon`}
+                    >
+                      {Icon && (
+                        <div className="flex size-8 shrink-0 items-center justify-center rounded-full text-sidebar-foreground/25">
+                          <Icon className="size-4.5" />
+                        </div>
+                      )}
+                      <span className="truncate flex-1">{svc.label}</span>
+                      <span className="text-[9px] font-bold uppercase tracking-wider bg-sidebar-foreground/10 px-1.5 py-0.5 rounded-full shrink-0">Soon</span>
+                    </div>
+                  </li>
+                );
+              }
               return (
                 <li key={svc.label}>
                   <a
