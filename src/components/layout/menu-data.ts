@@ -8,17 +8,21 @@ import {
   CreditCard,
   FileBarChart,
   GraduationCap,
+  HeartPulse,
   LayoutDashboard,
   Megaphone,
   Package,
+  PackageSearch,
   Receipt,
   Settings,
   ShieldCheck,
   ShoppingCart,
   Star,
+  Ticket,
   Truck,
   UserCog,
   Users,
+  Waypoints,
   Workflow,
   type LucideIcon,
 } from "lucide-react";
@@ -53,6 +57,8 @@ export interface MenuExternalLink {
    */
   resourcePrefixes?: string[];
   adminOnly?: boolean;
+  /** Renders disabled with a "Soon" badge and no link — no backend exists (or isn't launched) yet. */
+  comingSoon?: boolean;
 }
 
 export interface MenuGroup {
@@ -273,5 +279,9 @@ export const EXTERNAL_SERVICES_MENU: MenuExternalLink[] = [
   { label: "Orders & Shop", url: EXTERNAL_SERVICES.ordering, icon: Truck, external: true, resourcePrefixes: ["ordering"] },
   { label: "Notifications", url: EXTERNAL_SERVICES.notifications, icon: Megaphone, external: true, adminOnly: true },
   { label: "Projects", url: EXTERNAL_SERVICES.projects, icon: ClipboardList, external: true, adminOnly: true },
+  { label: "Afya", url: EXTERNAL_SERVICES.afya, icon: HeartPulse, external: true, adminOnly: true },
   { label: "Billing & Subscriptions", url: EXTERNAL_SERVICES.billing, icon: CreditCard, external: true, adminOnly: true },
+  { label: "Sourcing", url: "", icon: PackageSearch, external: true, adminOnly: true, comingSoon: true },
+  { label: "Traceability", url: "", icon: Waypoints, external: true, adminOnly: true, comingSoon: true },
+  { label: "Ticketing", url: "", icon: Ticket, external: true, adminOnly: true, comingSoon: true },
 ];

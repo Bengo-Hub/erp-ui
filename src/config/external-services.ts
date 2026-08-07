@@ -25,6 +25,7 @@ export const EXTERNAL_SERVICES = {
   billing:
     process.env.NEXT_PUBLIC_SUBSCRIPTIONS_UI_URL || "https://pricing.codevertexafrica.com",
   auth: process.env.NEXT_PUBLIC_AUTH_UI_URL || "https://accounts.codevertexafrica.com",
+  afya: process.env.NEXT_PUBLIC_HOSPITAL_UI_URL || "https://afya.codevertexafrica.com",
 } as const;
 
 export type ExternalServiceKey = keyof typeof EXTERNAL_SERVICES;
