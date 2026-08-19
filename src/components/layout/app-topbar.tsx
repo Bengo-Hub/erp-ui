@@ -1,6 +1,6 @@
 "use client";
 
-import { ChevronDown, LogOut, Menu, Settings, User } from "lucide-react";
+import { ChevronDown, Menu, Settings, User } from "lucide-react";
 import Link from "next/link";
 import { useParams, usePathname } from "next/navigation";
 import { useState } from "react";
@@ -10,6 +10,22 @@ import { TenantFilter } from "@/components/outlet/tenant-filter";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { useBranding } from "@/providers/branding-provider";
 import { useAuthStore } from "@/store/auth";
+import { useVisibleServices, AppSwitcherGrid, AppSwitcherTrigger, type ServiceKey } from "@bengo-hub/shared-ui-lib/app-switcher";
+import { AccountPanel } from "@bengo-hub/shared-ui-lib/account-panel";
+
+// erp-ui never wired the shared app-switcher before — this is its first adoption, not a
+// migration. 'erp' itself is omitted (never links to itself, mirrors every other *-ui).
+const SERVICE_URLS: Partial<Record<ServiceKey, string>> = {
+  pos: process.env.NEXT_PUBLIC_POS_UI_URL ?? "https://pos.codevertexafrica.com",
+  inventory: process.env.NEXT_PUBLIC_INVENTORY_UI_URL ?? "https://inventory.codevertexafrica.com",
+  treasury: process.env.NEXT_PUBLIC_TREASURY_UI_URL ?? "https://books.codevertexafrica.com",
+  marketflow: process.env.NEXT_PUBLIC_MARKETFLOW_UI_URL ?? "https://marketflow.codevertexafrica.com",
+  ordering: process.env.NEXT_PUBLIC_ORDERING_UI_URL ?? "https://ordering.codevertexafrica.com",
+  subscriptions: process.env.NEXT_PUBLIC_SUBSCRIPTIONS_UI_URL ?? "https://pricing.codevertexafrica.com",
+  auth: process.env.NEXT_PUBLIC_AUTH_UI_URL ?? "https://accounts.codevertexafrica.com",
+  projects: process.env.NEXT_PUBLIC_PROJECTS_UI_URL ?? "https://projects.codevertexafrica.com",
+  afya: process.env.NEXT_PUBLIC_HOSPITAL_UI_URL ?? "https://afya.codevertexafrica.com",
+};
 
 export function AppTopbar({ onMenuClick }: { onMenuClick?: () => void }) {
   const params = useParams();
@@ -25,6 +41,10 @@ export function AppTopbar({ onMenuClick }: { onMenuClick?: () => void }) {
 
   const name = user?.fullName || user?.email?.split("@")[0] || "Account";
   const role = user?.roles?.[0] || "Staff";
+
+  // The App Store shows every real service to every authenticated user in the tenant — each
+  // destination service already enforces its own RBAC + subscription gating on arrival.
+  const services = useVisibleServices({ orgSlug, urls: SERVICE_URLS, canManageLinks: true });
 
   return (
     <header className="sticky top-0 z-30 h-16 border-b border-border bg-background/80 backdrop-blur-md px-4 sm:px-6 flex items-center justify-between">
@@ -46,6 +66,9 @@ export function AppTopbar({ onMenuClick }: { onMenuClick?: () => void }) {
 
       <div className="flex items-center gap-1 sm:gap-2">
         <ThemeToggle />
+
+        {user && <AppSwitcherTrigger services={services} />}
+
         <div className="h-6 w-px bg-border mx-1 hidden sm:block" />
         {user && (
           <div className="relative">
@@ -66,34 +89,27 @@ export function AppTopbar({ onMenuClick }: { onMenuClick?: () => void }) {
               </div>
               <ChevronDown className={`h-3.5 w-3.5 text-muted-foreground transition-transform hidden sm:block ${profileOpen ? "rotate-180" : ""}`} />
             </button>
-            {profileOpen && (
-              <>
-                <div className="fixed inset-0 z-40" onClick={() => setProfileOpen(false)} aria-hidden />
-                <div className="absolute right-0 top-full mt-2 z-50 w-56 rounded-2xl p-2 shadow-xl border border-border bg-popover">
-                  <div className="mb-1 px-3 py-2">
-                    <p className="text-sm font-bold text-foreground">{name}</p>
-                    <p className="text-xs text-muted-foreground capitalize mt-0.5">{role}</p>
-                  </div>
-                  <div className="h-px bg-border my-1" />
-                  <Link
-                    href={`/${orgSlug}/settings`}
-                    onClick={() => setProfileOpen(false)}
-                    className="flex items-center gap-3 px-3 py-2 rounded-xl text-sm font-medium text-foreground hover:bg-muted"
-                  >
-                    <Settings className="h-4 w-4 text-muted-foreground" />
-                    Settings
-                  </Link>
-                  <button
-                    type="button"
-                    onClick={() => { setProfileOpen(false); logout(); }}
-                    className="flex w-full items-center gap-3 px-3 py-2 rounded-xl text-sm font-medium text-destructive hover:bg-destructive/10"
-                  >
-                    <LogOut className="h-4 w-4" />
-                    Sign out
-                  </button>
-                </div>
-              </>
-            )}
+
+            <AccountPanel
+              open={profileOpen}
+              onClose={() => setProfileOpen(false)}
+              user={{ name, email: user?.email ?? "" }}
+              onSignOut={() => { setProfileOpen(false); logout(); }}
+            >
+              <div className="flex flex-col gap-3">
+                <p className="text-center text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+                  {role}
+                </p>
+                <Link
+                  href={`/${orgSlug}/settings`}
+                  onClick={() => setProfileOpen(false)}
+                  className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold text-foreground hover:bg-secondary"
+                >
+                  <Settings className="h-4 w-4" /> Settings
+                </Link>
+                <AppSwitcherGrid services={services} onNavigate={() => setProfileOpen(false)} />
+              </div>
+            </AccountPanel>
           </div>
         )}
       </div>
