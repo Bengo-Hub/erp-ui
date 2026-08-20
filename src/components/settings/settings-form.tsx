@@ -5,11 +5,12 @@ import { useState, type ReactNode } from "react";
 import { Button, Card } from "@/components/ui/base";
 import { Field, Input, Select, Switch } from "@/components/ui/form";
 import { ErrorState, LoadingState } from "@/components/ui/states";
+import { CountrySelect, countryName } from "@bengo-hub/shared-ui-lib/contact";
 
 export interface SettingsFieldDef {
   name: string;
   label: string;
-  type?: "text" | "number" | "switch" | "select" | "time" | "date";
+  type?: "text" | "number" | "switch" | "select" | "time" | "date" | "country";
   options?: { value: string; label: string }[];
   help?: string;
   span2?: boolean;
@@ -92,6 +93,16 @@ export function SettingsForm<T extends Record<string, unknown>>({
                         checked={!!val}
                         disabled={readOnly}
                         onChange={(c) => set(f.name, c)}
+                      />
+                    ) : f.type === "country" ? (
+                      // Stored as a free-text name (e.g. "Kenya"), not ISO-2 — CountrySelect's
+                      // own valueLabel fallback displays that correctly for an unmatched value;
+                      // onChange converts its ISO output back via countryName() to keep the
+                      // stored shape unchanged for statutory/payslip document rendering.
+                      <CountrySelect
+                        value={String(val ?? "")}
+                        disabled={readOnly}
+                        onChange={(iso) => set(f.name, countryName(iso))}
                       />
                     ) : f.type === "select" ? (
                       <Select

@@ -27,7 +27,7 @@ const fields: SettingsFieldDef[] = [
   { name: "website", label: "Website" },
   { name: "address", label: "Address", span2: true },
   { name: "city", label: "City" },
-  { name: "country", label: "Country" },
+  { name: "country", label: "Country", type: "country" },
   // Regional & fiscal defaults (per-tenant CompanySettings; PUT /business/settings).
   { name: "timezone", label: "Time zone", type: "select", options: TIMEZONES },
   {
