@@ -35,6 +35,7 @@ export default function StaffPurchasesPage() {
         rows={rows}
         rowKey={(r) => r.employee_id}
         loading={isLoading}
+        loadingRows={8}
         error={isError}
         emptyState={
           <div className="flex flex-col items-center justify-center gap-2 text-muted-foreground">
