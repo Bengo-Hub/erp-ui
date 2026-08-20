@@ -4,6 +4,7 @@ import { Toaster } from "sonner";
 
 import { PwaUpdateBanner } from "@/components/pwa/update-banner";
 import { ThemeProvider } from "@/providers/theme-provider";
+import "@bengo-hub/shared-ui-lib/contact/style.css";
 import "./globals.css";
 
 const geistSans = Geist({ subsets: ["latin"], variable: "--font-geist-sans" });
