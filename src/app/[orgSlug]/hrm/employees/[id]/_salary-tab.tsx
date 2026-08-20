@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect } from "react";
-import { useForm } from "react-hook-form";
+import { Controller, useForm } from "react-hook-form";
+import { PhoneInputField } from "@bengo-hub/shared-ui-lib/contact";
 
 import { PermissionGate } from "@/components/auth/permission-gate";
 import { Button, Card, CardContent, CardHeader } from "@/components/ui/base";
@@ -33,7 +34,7 @@ export function SalaryTab({ employeeId }: { employeeId: number | string }) {
   const save = useSaveSalary(employeeId);
   const current = normalizeList<EmployeeSalaryDetail>(data).results[0];
 
-  const { register, handleSubmit, reset } = useForm<FormValues>();
+  const { register, control, handleSubmit, reset } = useForm<FormValues>();
 
   useEffect(() => {
     if (current) {
@@ -124,7 +125,16 @@ export function SalaryTab({ employeeId }: { employeeId: number | string }) {
             </Select>
           </Field>
           <Field label="Payout Phone" help="Mobile-money number (for M-Pesa / Airtel / mobile channels).">
-            <Input type="tel" placeholder="2547XXXXXXXX" {...register("payout_phone")} />
+            {/* treasury-api's M-Pesa B2C gateway now normalizes (strips a leading "+") before
+                calling Safaricom's Daraja API — see gateways/mpesa.go — so this is safe to
+                accept E.164 input. */}
+            <Controller
+              name="payout_phone"
+              control={control}
+              render={({ field }) => (
+                <PhoneInputField value={field.value ?? ""} onChange={field.onChange} />
+              )}
+            />
           </Field>
         </CardContent>
       </Card>
