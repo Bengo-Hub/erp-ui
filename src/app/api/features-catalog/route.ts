@@ -2,7 +2,10 @@ import { NextResponse } from "next/server";
 
 // The features catalog lives on the platform subscriptions-api (pricingapi) — unlike the
 // runtime-derived erp-api host in api-client, this proxy always targets the pricing API.
+// Server-to-server call — prefer the in-cluster Service DNS so this never
+// leaves the cluster and round-trips through the public ingress/Cloudflare.
 const PRICING_API =
+  process.env.SUBSCRIPTION_BASE_URL ||
   process.env.NEXT_PUBLIC_SUBSCRIPTIONS_API_URL ||
   "https://pricingapi.codevertexafrica.com";
 
