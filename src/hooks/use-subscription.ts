@@ -18,9 +18,11 @@ export function useSubscription() {
 
   const tenantId = user?.tenantId ?? null;
   const tenantSlug = user?.tenantSlug ?? null;
-  const roles = (user?.roles ?? []).map((r) => r.toLowerCase());
-  const isSuperuser = roles.includes("superuser") || roles.includes("super_admin");
-  const isPlatformOwner = !!user?.isPlatformOwner || isSuperuser || tenantSlug === "codevertex";
+  // Platform-owner-ness deliberately does NOT include the superuser/admin role — a tenant
+  // superuser is a tenant-level admin and must NOT bypass subscription gating (platform SEC-3
+  // policy: otherwise any tenant admin unlocks paid features for free). `roles` still drives
+  // real RBAC elsewhere, just not this.
+  const isPlatformOwner = !!user?.isPlatformOwner || tenantSlug === "codevertex";
   const isDemo = tenantSlug === "codevertex-demo";
   // Mirrors the backend IsGatingExempt funnel (shared-auth-client Claims.IsGatingExempt):
   // platform owner, demo tenant, platform-granted per-tenant exemption (sub_exempt JWT
