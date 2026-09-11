@@ -159,7 +159,10 @@ class ApiClient {
   }
 
   private handleError = async (error: {
-    response?: { status?: number; data?: { code?: string; upgrade?: boolean } };
+    response?: {
+      status?: number;
+      data?: { code?: string; upgrade?: boolean; error?: string; service_tag?: string };
+    };
     config?: InternalAxiosRequestConfig & { _retried?: boolean };
   }) => {
     const status = error.response?.status;

@@ -13,6 +13,10 @@ export interface SubscriptionInfo {
   limits: Record<string, number>;
   trialEndsAt?: string;
   currentPeriodEnd?: string;
+  /** Whole-module service tags the tenant's plan currently covers (subscriptions-api's
+   * active_service_tags — the union of the plan's own service_tag and every entitled
+   * feature's service_tag). Backs ServiceLock's whole-module gating. */
+  activeServiceTags?: string[];
 }
 
 const SUBSCRIPTIONS_API_URL = (
@@ -58,6 +62,7 @@ export async function fetchSubscriptionInfo(
       limits: sub.limits ?? {},
       trialEndsAt: sub.trial_ends_at ?? sub.trial_end ?? sub.trialEndsAt,
       currentPeriodEnd: sub.current_period_end ?? sub.expires_at ?? sub.currentPeriodEnd,
+      activeServiceTags: sub.active_service_tags ?? sub.activeServiceTags,
     };
   } catch {
     return null;

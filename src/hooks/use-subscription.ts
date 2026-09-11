@@ -105,5 +105,6 @@ export function useSubscription() {
     expiresAt: info?.currentPeriodEnd ?? info?.trialEndsAt ?? null,
     hasFeature: (code: string) => isExempt || (info?.features?.includes(code) ?? false),
     getLimit: (key: string) => (isExempt ? Infinity : (info?.limits?.[key] ?? Infinity)),
+    activeServiceTags: info?.activeServiceTags ?? [],
   };
 }
