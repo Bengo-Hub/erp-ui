@@ -44,11 +44,14 @@ interface RawServiceUnlockPlan {
 export function SubscriptionEntitlementsProvider({ children }: { children: ReactNode }) {
   const sub = useSubscription();
 
-  // The catalog is static-ish → fetch once, long cache.
+  // The catalog is static-ish → fetch once per plan, long cache. Keyed by plan code so
+  // serviceUnlockPlans's in-family upgrade suggestion (subscriptions-api's ?plan= param)
+  // is correct for whichever plan the tenant is actually on, not a stale cross-tenant cache.
   const { data: catalogData } = useQuery({
-    queryKey: ["features-catalog"],
+    queryKey: ["features-catalog", sub.plan],
     queryFn: async () => {
-      const res = await fetch("/api/features-catalog");
+      const qs = sub.plan ? `?plan=${encodeURIComponent(sub.plan)}` : "";
+      const res = await fetch(`/api/features-catalog${qs}`);
       if (!res.ok) return { features: [] as CatalogItem[], serviceUnlockPlans: {} as Record<string, RawServiceUnlockPlan> };
       return (await res.json()) as { features: CatalogItem[]; serviceUnlockPlans?: Record<string, RawServiceUnlockPlan> };
     },
