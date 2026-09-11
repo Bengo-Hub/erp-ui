@@ -5,6 +5,7 @@ import { useQuery } from "@tanstack/react-query";
 import {
   SubscriptionProvider,
   type FeatureCatalogEntry,
+  type ServiceUnlockPlan,
   type SubscriptionEntitlements,
 } from "@bengo-hub/shared-ui-lib/subscription";
 
@@ -20,6 +21,13 @@ interface CatalogItem {
   minPlanCode?: string;
   minTierLabel?: string;
   minTierOrder?: number;
+}
+
+interface RawServiceUnlockPlan {
+  planCode: string;
+  planName: string;
+  tierOrder: number;
+  price: number;
 }
 
 /**
@@ -41,8 +49,8 @@ export function SubscriptionEntitlementsProvider({ children }: { children: React
     queryKey: ["features-catalog"],
     queryFn: async () => {
       const res = await fetch("/api/features-catalog");
-      if (!res.ok) return { features: [] as CatalogItem[] };
-      return (await res.json()) as { features: CatalogItem[] };
+      if (!res.ok) return { features: [] as CatalogItem[], serviceUnlockPlans: {} as Record<string, RawServiceUnlockPlan> };
+      return (await res.json()) as { features: CatalogItem[]; serviceUnlockPlans?: Record<string, RawServiceUnlockPlan> };
     },
     staleTime: 60 * 60 * 1000,
     retry: false,
@@ -62,6 +70,14 @@ export function SubscriptionEntitlementsProvider({ children }: { children: React
     return map;
   }, [catalogData]);
 
+  // serviceUnlockPlans powers ServiceLock's named "Upgrade to <plan>" CTA for whole-module
+  // gates (RequireServiceAccess's service_not_subscribed 403), distinct from `catalog` above
+  // which is keyed by individual feature code.
+  const serviceUnlockPlans = useMemo<Record<string, ServiceUnlockPlan>>(
+    () => catalogData?.serviceUnlockPlans ?? {},
+    [catalogData],
+  );
+
   const value = useMemo<SubscriptionEntitlements>(
     () => ({
       features: sub.info?.features ?? [],
@@ -72,9 +88,22 @@ export function SubscriptionEntitlementsProvider({ children }: { children: React
       planCode: sub.plan,
       tierOrder: sub.tierOrder,
       catalog,
+      activeServiceTags: sub.activeServiceTags,
+      serviceUnlockPlans,
       upgradeBaseUrl: UPGRADE_BASE,
     }),
-    [sub.info?.features, sub.info?.limits, sub.isExempt, sub.status, sub.isLoading, sub.plan, sub.tierOrder, catalog],
+    [
+      sub.info?.features,
+      sub.info?.limits,
+      sub.isExempt,
+      sub.status,
+      sub.isLoading,
+      sub.plan,
+      sub.tierOrder,
+      catalog,
+      sub.activeServiceTags,
+      serviceUnlockPlans,
+    ],
   );
 
   return <SubscriptionProvider value={value}>{children}</SubscriptionProvider>;

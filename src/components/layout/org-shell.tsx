@@ -15,6 +15,7 @@ import { BrandingProvider } from "@/providers/branding-provider";
 import { QueryProvider } from "@/providers/query-provider";
 import { SubscriptionEntitlementsProvider } from "@/providers/subscription-entitlements-provider";
 import { useTenantFilterStore } from "@/store/tenant-filter";
+import { ServiceLock } from "@bengo-hub/shared-ui-lib/subscription";
 
 /** Injects the per-tenant manifest link so PWA installs are tenant-scoped. */
 function ManifestLink() {
@@ -84,7 +85,16 @@ export function OrgShell({ children }: { children: ReactNode }) {
               <VerifyEmailPrompt />
               <main id="main-content" tabIndex={-1} className="flex-1 overflow-y-auto bg-accent/5 flex flex-col">
                 <Breadcrumb />
-                <div className="min-h-full flex-1">{children}</div>
+                {/* Whole-module gate: a tenant whose plan doesn't cover "erp" (e.g. a Basic-tier
+                    PowerSuite tenant, per plan-feature-matrix.md's T1 "no ERP access") sees the
+                    named-plan upgrade card here instead of every page inside erp-ui silently
+                    403-ing with a generic toast. Sidebar/topbar/breadcrumb stay visible so the
+                    tenant can still navigate to billing/settings. */}
+                <div className="min-h-full flex-1">
+                  <ServiceLock serviceTag="erp" mode="block" title="ERP needs a plan upgrade">
+                    {children}
+                  </ServiceLock>
+                </div>
                 <Footer />
               </main>
             </div>

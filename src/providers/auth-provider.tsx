@@ -51,12 +51,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       logout();
     });
 
-    apiClient.setOnSubscription403(() => {
+    apiClient.setOnSubscription403((data) => {
+      // service_not_subscribed (RequireServiceAccess) carries which whole module was blocked;
+      // ServiceLock (org-shell.tsx) already renders the named-plan block card proactively for
+      // this — this toast is only the reactive fallback for an in-flight action that raced a
+      // stale entitlements cache, so it stays a lightweight, tag-aware nudge rather than trying
+      // to resolve+name the exact plan here (this provider sits above SubscriptionContext).
+      const payload = (data ?? {}) as { code?: string; service_tag?: string; error?: string };
+      const serviceTag = payload.code === "service_not_subscribed" ? payload.service_tag : undefined;
       toast.error("Subscription required", {
-        description: "Your plan does not cover this action.",
+        description: payload.error || "Your plan does not cover this action.",
         action: {
           label: "Upgrade",
-          onClick: () => window.open(`${SUBSCRIPTIONS_UI_URL}/plans?service=erp`, "_blank", "noopener"),
+          onClick: () =>
+            window.open(`${SUBSCRIPTIONS_UI_URL}/plans?service=${serviceTag || "erp"}`, "_blank", "noopener"),
         },
       });
     });
