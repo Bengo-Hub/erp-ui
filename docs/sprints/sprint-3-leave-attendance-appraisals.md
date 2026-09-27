@@ -2,7 +2,7 @@
 
 **Goal:** Time management (leave + attendance) and the performance/appraisal subsystem, including approval workflows.
 
-> **Status: ✅ COMPLETE** (built green on `revamp`). See "Implementation notes" at the bottom.
+> **Status: Done** (re-verified against code on `main` 2026-09-27). See "Implementation notes" at the bottom. The interactive shift-planner editor is still deferred (`docs/backlog.md`).
 
 ## Scope (component-inventory.md §5, §6, §7)
 **Leave** (normalize `/hrm/Leave/*` → lowercase)
