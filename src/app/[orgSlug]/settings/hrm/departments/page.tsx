@@ -6,6 +6,7 @@ import { type Column } from "@/components/ui/data-table";
 import { PageHeader } from "@/components/ui/page-header";
 import { Tabs } from "@/components/ui/tabs";
 import { useDeleteDepartment, useDepartments, useSaveDepartment } from "@/hooks/use-hrm-settings";
+import { useCostCenterOptions } from "@/hooks/use-option-hooks";
 import { normalizeList } from "@/lib/api/drf";
 import { type Department } from "@/lib/api/hrm-settings";
 import { useHrmSettingsTabs } from "../_tabs";
@@ -13,6 +14,13 @@ import { useHrmSettingsTabs } from "../_tabs";
 const fields: CrudFieldDef[] = [
   { name: "name", label: "Name", required: true },
   { name: "code", label: "Code" },
+  {
+    name: "cost_center_id",
+    label: "Cost center (payroll not on a project)",
+    type: "combobox",
+    optionsHook: useCostCenterOptions,
+    placeholder: "Select cost center",
+  },
   { name: "description", label: "Description", type: "textarea", span2: true },
 ];
 
@@ -22,10 +30,14 @@ export default function DepartmentsPage() {
   const save = useSaveDepartment();
   const del = useDeleteDepartment();
   const rows = normalizeList<Department>(data).results;
+  const { options: costCenters } = useCostCenterOptions();
+  const costCenterName = (id?: string | null) =>
+    id ? (costCenters.find((o) => o.value === id)?.label ?? id) : "—";
 
   const columns: Column<Department>[] = [
     { header: "Name", cell: (d) => <span className="font-medium">{d.name}</span> },
     { header: "Code", cell: (d) => d.code || "—" },
+    { header: "Cost center", cell: (d) => costCenterName(d.cost_center_id) },
     { header: "Description", cell: (d) => d.description || "—" },
     {
       header: "Status",
@@ -50,7 +62,12 @@ export default function DepartmentsPage() {
         onRetry={refetch}
         entityLabel="Department"
         perms={{ add: "add_employee", change: "change_employee", delete: "delete_employee" }}
-        toForm={(d) => ({ name: d?.name ?? "", code: d?.code ?? "", description: d?.description ?? "" })}
+        toForm={(d) => ({
+          name: d?.name ?? "",
+          code: d?.code ?? "",
+          cost_center_id: d?.cost_center_id ?? "",
+          description: d?.description ?? "",
+        })}
         onSave={({ id, data }, done) => save.mutate({ id, data }, { onSuccess: done })}
         onDelete={(id, done) => del.mutate(id, { onSuccess: done })}
         saving={save.isPending}
