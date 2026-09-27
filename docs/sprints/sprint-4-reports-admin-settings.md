@@ -1,6 +1,9 @@
 # Sprint 4 — Reports, Users/Security, Settings & Dashboards
 
-> **Status: ✅ COMPLETE** (on `revamp`, building green).
+> **Status: Partially done** (re-verified against code on `main` 2026-09-27; this doc said complete, which was not true).
+> - Done: report hub plus P9, P10A, withholding tax, NSSF, NHIF, NITA, housing levy, bank net pay, muster roll and variance; users, roles and permissions; backups; settings for currency and time, branding, approvals, document numbering, HR org structure and payroll components, formulas and statutory; executive, HRM and ESS pages.
+> - **Dashboards do not show real data.** `src/lib/api/analytics.ts` builds the HRM dashboard from the headcount and leave summary reports only, labels active employees as `new_hires` and terminated employees as `expiring_contracts`, and returns `{}` for payroll, leave and attendance analytics. erp-api has no `/hrm/analytics` endpoint. In progress (plan budgets-planning-projects-bi-2026-09-27, Phases 0 and 5).
+> - Not built: `/hrm/analytics` and ICT dashboard pages, approvers, CBS and custom reports, user profile and account pages, security dashboard and settings, 2FA, general HR, expense-claims and business settings pages, HRM projects, unions, holidays, ESS and appraisal settings, payroll defaults, banks, payslip customization and scheduled settings, KRA PDF snapshot tests. See `docs/backlog.md`.
 
 **Goal:** Statutory + payroll reports (DRY), user/role/permission/security administration, all settings, and the analytics dashboards.
 

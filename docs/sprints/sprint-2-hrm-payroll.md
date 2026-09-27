@@ -1,6 +1,6 @@
 # Sprint 2 — HRM & Payroll
 
-> **Status: ✅ COMPLETE** (on `revamp`, building green).
+> **Status: Partially done** (re-verified against code on `main` 2026-09-27). Contracts, org chart, training, recruitment and email payslips from the deferred list below have since shipped. Still open: the editable pay-components spreadsheet grid, realtime payroll progress over WebSocket, scheduled payslip emails, the overtime page and import column mapping. See `docs/backlog.md`.
 
 **Goal:** Port the core HR and payroll surfaces — the highest-value, highest-traffic part of the app.
 

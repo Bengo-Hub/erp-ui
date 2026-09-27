@@ -122,7 +122,7 @@ Verbs via `ApiClient`: `GET list` (`?page,page_size,search,…`), `GET {id}/`, `
 | Recruitment (jobs/candidates/applications) | `/hrm/recruitment/*` | `recruitment.ts` |
 | Appraisals (cycles/goals/templates/questions) | `/hrm/appraisals/*` | `appraisals.ts` |
 | Reports (statutory + payroll) | `/hrm/payroll/reports/<type>/`, `/hrm/payroll/reports/export/<type>/` | `reports.ts` |
-| Analytics / dashboards | `/hrm/analytics`, `/hrm/payroll/analytics`, `/hrm/{leave,attendance,…}/analytics` | `analytics.ts` |
+| Analytics / dashboards | Target: `/hrm/analytics`. **None of these endpoints exist yet (verified 2026-09-27).** `analytics.ts` reads `/reports/headcount-summary` and `/reports/leave-summary` and returns `{}` for payroll, leave and attendance. In progress (plan budgets-planning-projects-bi-2026-09-27). | `analytics.ts` |
 
 Report filter params: `year`, `month`, `department_id`, `region_id`, `employee_id`,
 `from_date`/`to_date`, `deduction_type`. (No `project_id` — project belongs to projects-service.)

@@ -1,8 +1,9 @@
 # Sprint 5 — Polish & Cutover
 
-> **Status: 🔄 IN PROGRESS** — application polish ✅ done (formatting, states, a11y/
-> responsive, performance, PWA, e2e smoke). Remaining: Docker/CI parity (Dockerfile +
-> `/healthz` already present), full parity sign-off vs the Vue app, and the DNS/ingress cutover.
+> **Status: In progress** (re-verified 2026-09-27). Application polish is done (formatting, states, a11y and
+> responsive, performance, PWA, e2e smoke) and the `revamp` branch is merged to `main`. Remaining: full
+> parity sign-off vs the Vue app, realtime payroll progress, statutory PDF snapshot tests, and
+> confirming the ingress cutover and Vue decommission. See `docs/backlog.md`.
 
 **Goal:** Production hardening, parity verification, and switching `erp-ui` traffic to the Next.js app while keeping the Vue app as rollback.
 

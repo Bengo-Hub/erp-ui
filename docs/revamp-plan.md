@@ -3,10 +3,12 @@
 > Plan for rebuilding `erp-ui` (HR + internal operations) from **Vue 3 / Vite / PrimeVue** to
 > **Next.js 16 / React 19**, on the same stack as the platform's other UIs.
 >
-> **STATUS: Sprints 1–4 done & on `revamp`.** Foundation, HRM+payroll, leave/attendance/
-> appraisals, and reports/admin/settings/dashboards are all implemented and building green.
-> A data-ownership **conformance cleanup** has scrubbed the last decomposed-domain remnants
-> (HR/Ops only). Sprint 5 (polish + cutover) is the remaining work, then `revamp` → `main`.
+> **STATUS (re-verified against code 2026-09-27):** Sprints 1 and 3 are done. Sprints 2 and 4 are
+> partially done, and Sprint 5 is in progress; `revamp` has been merged to `main`. The earlier claim
+> that dashboards were done was wrong: the HRM and executive dashboards read placeholder data
+> (`src/lib/api/analytics.ts` returns `{}` for payroll, leave and attendance and mislabels headcount
+> fields) because erp-api has no `/hrm/analytics` endpoint. Real dashboards are in progress under
+> `.claude/plans/budgets-planning-projects-bi-2026-09-27.md`. Open items: [`backlog.md`](./backlog.md).
 
 ---
 
@@ -40,7 +42,7 @@ highcharts, moment, express. A conformance scan of `src/` confirms none of these
 
 ## 5. Phasing (see `sprints/`)
 
-> **Status:** Sprints 1–4 ✅ done.
+> **Status (2026-09-27):** Sprints 1 and 3 done; Sprints 2 and 4 partially done (see each sprint doc).
 > - **S1 Foundation** — Next 16 scaffold, `[orgSlug]` routing, SSO/PKCE, `ApiClient` +
 >   TanStack Query, RBAC gate, shell + branding + per-tenant manifest, subscription gating.
 > - **S2 HRM & Payroll** — employee directory + profile/CRUD (overview/bank/kin/salary tabs) +
@@ -54,7 +56,8 @@ highcharts, moment, express. A conformance scan of `src/` confirms none of these
 > - **S4 Reports/Admin/Settings/Dashboards** — one config-driven `ReportRunner` for all KRA
 >   statutory + payroll reports (no per-report pages); users/roles/permissions; security
 >   dashboard + backups; company/currency/branding + HR/payroll settings; executive + HRM
->   dashboards (recharts) + ESS home.
+>   dashboards (recharts) + ESS home. Correction 2026-09-27: the dashboard pages exist but show
+>   placeholder data; the security dashboard page does not exist (only backups).
 > - **Conformance cleanup** ✅ — scrubbed decomposed-domain remnants (vestigial `project`
 >   report filter, orphaned `/payroll/formulas` stub); docs streamlined to the HR/Ops set.
 >
@@ -66,9 +69,9 @@ highcharts, moment, express. A conformance scan of `src/` confirms none of these
 | Sprint | Theme | Outcome |
 |---|---|---|
 | [1 — Foundation](./sprints/sprint-1-foundation.md) ✅ | Next 16 scaffold, `[orgSlug]` routing, SSO/PKCE auth, `ApiClient` + TanStack Query, RBAC gate, layout + branding + manifest, subscription gating | Authenticated empty shell with branding, nav, guards |
-| [2 — HRM & Payroll](./sprints/sprint-2-hrm-payroll.md) ✅ (core) | Employees, contracts, org chart, training, recruitment, full payroll (process wizard + payslips + advances/claims/losses + formulas + spreadsheet) | Core HR/payroll usable |
+| [2: HRM & Payroll](./sprints/sprint-2-hrm-payroll.md) Partially done (no spreadsheet grid, no realtime progress) | Employees, contracts, org chart, training, recruitment, full payroll (process wizard + payslips + advances/claims/losses + formulas + spreadsheet) | Core HR/payroll usable |
 | [3 — Leave, Attendance, Appraisals](./sprints/sprint-3-leave-attendance-appraisals.md) ✅ | Leave lifecycle, attendance/shifts/timesheets, appraisals/cycles/goals, approval workflows | Performance + time management |
-| [4 — Reports, Users/Security, Settings, Dashboards](./sprints/sprint-4-reports-admin-settings.md) ✅ | Config-driven `ReportRunner` for statutory reports, users/roles/permissions, security/backups, all settings, dashboards (recharts), ESS | Admin + reporting + analytics complete |
+| [4: Reports, Users/Security, Settings, Dashboards](./sprints/sprint-4-reports-admin-settings.md) Partially done (dashboards show placeholder data) | Config-driven `ReportRunner` for statutory reports, users/roles/permissions, security/backups, all settings, dashboards (recharts), ESS | Admin + reporting + analytics complete |
 | [5 — Polish & Cutover](./sprints/sprint-5-polish-cutover.md) 🔄 | Polish ✅ (centralized formatting, skeleton/empty/error states + boundaries, a11y/responsive, perf code-split + memoize, PWA update banner + offline shell, Playwright smoke). Remaining: Docker/CI parity, full parity sign-off, DNS/ingress cutover | Production cutover, Vue app retired |
 
 ## 6. Risks & mitigations
