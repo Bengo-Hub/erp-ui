@@ -2,7 +2,7 @@
 
 import { CalendarClock, FileWarning, TrendingUp, UserPlus, Users } from "lucide-react";
 
-import { BarChart, BreakdownChart, ChartCard, type ChartDatum } from "@/components/charts";
+import { BarChart, BreakdownChart, ChartCard, TrendChart, type ChartDatum } from "@/components/charts";
 import { CardsSkeleton, ErrorState } from "@/components/ui/states";
 import { PageHeader } from "@/components/ui/page-header";
 import { StatTile } from "@/components/ui/stat-tile";
@@ -24,17 +24,12 @@ export default function HrmDashboardPage() {
     label: g.personal_details__gender || "Unknown",
     value: g.count ?? 0,
   }));
-  const byDeptRaw: Record<string, unknown>[] =
-    data?.headcount_by_department ??
-    data?.salary_analysis?.salary_by_department?.map((d) => ({
-      label: d.department__name,
-      value: d.total,
-    })) ??
-    [];
-  const byDept: ChartDatum[] = byDeptRaw.map((d) => ({
-    label: String(d.label ?? d.name ?? "—"),
-    value: Number(d.value ?? d.count ?? 0),
-  }));
+  const toData = (rows?: Record<string, unknown>[]): ChartDatum[] =>
+    (rows ?? []).map((d) => ({ label: String(d.label ?? d.name ?? "—"), value: Number(d.value ?? d.count ?? 0) }));
+  const byDept = toData(data?.headcount_by_department);
+  const payrollByDept = toData(data?.payroll_by_department);
+  const employmentTypes = toData(data?.demographics?.employment_types);
+  const payrollTrend: ChartDatum[] = (data?.payroll_trend ?? []).map((p) => ({ label: p.month, value: p.gross }));
 
   return (
     <div className="space-y-4 p-4 sm:p-6">
@@ -51,7 +46,6 @@ export default function HrmDashboardPage() {
               label="Total Employees"
               value={head?.total_employees ?? "—"}
               icon={Users}
-              trend={pctChange(head?.total_employees, head?.previous_total)}
             />
             <StatTile
               label="Attendance Rate"
@@ -87,6 +81,15 @@ export default function HrmDashboardPage() {
             </ChartCard>
             <ChartCard title="Gender distribution" empty={!gender.length}>
               <BreakdownChart data={gender} />
+            </ChartCard>
+            <ChartCard title="Payroll cost, last 12 months (gross)" empty={!payrollTrend.length}>
+              <TrendChart data={payrollTrend} />
+            </ChartCard>
+            <ChartCard title="Payroll by department (latest month)" empty={!payrollByDept.length}>
+              <BarChart data={payrollByDept} />
+            </ChartCard>
+            <ChartCard title="Employment type" empty={!employmentTypes.length}>
+              <BreakdownChart data={employmentTypes} />
             </ChartCard>
           </div>
         </>

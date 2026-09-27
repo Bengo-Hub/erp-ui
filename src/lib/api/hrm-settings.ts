@@ -18,6 +18,8 @@ export interface NamedRecord {
 export interface Department extends NamedRecord {
   region?: number | null;
   head?: number | null;
+  /** Treasury cost center that absorbs this department's payroll cost not allocated to a project. */
+  cost_center_id?: string | null;
 }
 
 export interface JobGroup extends NamedRecord {

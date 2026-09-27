@@ -51,8 +51,8 @@ export default function DashboardPage() {
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <StatTile label="Employees" value={isLoading ? "…" : (head?.total_employees ?? "—")} icon={Users} hint="Headcount" />
         <StatTile label="Pending Leave" value={isLoading ? "…" : (leave?.pending_requests ?? "—")} icon={CalendarClock} hint="Awaiting approval" accent="text-yellow-600" />
-        <StatTile label="Payroll (Net)" value={isLoading ? "…" : money(pay?.total_net_pay)} icon={Banknote} hint="Current period" accent="text-green-600" />
-        <StatTile label="Total PAYE" value={isLoading ? "…" : money(pay?.total_paye)} icon={Receipt} hint="Current period" accent="text-primary" />
+        <StatTile label="Payroll (Net)" value={isLoading ? "…" : money(pay?.total_net_pay)} icon={Banknote} hint={pay?.month ? `Payroll ${pay.month}` : "Latest payroll"} accent="text-green-600" />
+        <StatTile label="Payroll (Gross)" value={isLoading ? "…" : money(pay?.total_gross_pay)} icon={Receipt} hint={pay?.month ? `Payroll ${pay.month}` : "Latest payroll"} accent="text-primary" />
       </div>
 
       <div className="grid gap-4 lg:grid-cols-2">
