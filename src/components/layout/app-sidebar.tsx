@@ -164,7 +164,7 @@ export function AppSidebar({ open = false, onClose }: SidebarProps) {
               return (
                 <li key={svc.label}>
                   <a
-                    href={svc.url}
+                    href={svc.url.replace("{org}", orgSlug)}
                     target="_blank"
                     rel="noopener noreferrer"
                     onClick={onClose}

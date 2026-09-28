@@ -52,6 +52,15 @@ export interface HrmDashboard {
   headcount_by_department?: MetricBucket[];
   payroll_by_department?: MetricBucket[];
   payroll_trend?: PayrollTrendPoint[];
+  /** Exits and turnover in the period, overtime hours, and this year's leave liability. */
+  workforce?: {
+    exits: number;
+    turnover_pct: number | null;
+    overtime_attendance_hours: number;
+    overtime_timesheet_hours: number;
+    leave_liability: number;
+    leave_days_remaining: number;
+  };
   [key: string]: unknown;
 }
 
@@ -66,6 +75,12 @@ interface HrmAnalyticsResponse {
   contracts_expiring: { within_30_days: number; within_60_days: number; within_90_days: number };
   payroll_trend: { month: string; gross: string | number; net: string | number; employees: number }[] | null;
   payroll_by_department: { key: string; label: string; amount: string | number }[] | null;
+  exits?: number;
+  turnover_pct?: number | null;
+  overtime_attendance_hours?: string | number;
+  overtime_timesheet_hours?: string | number;
+  leave_liability?: string | number;
+  leave_days_remaining?: string | number;
 }
 
 /** erp-api summary report envelope ({report,columns,rows,totals}). */
@@ -114,6 +129,14 @@ export const analyticsApi = {
       headcount_by_department: (a.by_department ?? []).map((d) => ({ label: d.label, value: d.count })),
       payroll_by_department: (a.payroll_by_department ?? []).map((d) => ({ label: d.label, value: numOf(d.amount) })),
       payroll_trend: trend,
+      workforce: {
+        exits: a.exits ?? 0,
+        turnover_pct: a.turnover_pct ?? null,
+        overtime_attendance_hours: numOf(a.overtime_attendance_hours),
+        overtime_timesheet_hours: numOf(a.overtime_timesheet_hours),
+        leave_liability: numOf(a.leave_liability),
+        leave_days_remaining: numOf(a.leave_days_remaining),
+      },
     };
   },
 };
