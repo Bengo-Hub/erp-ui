@@ -24,6 +24,7 @@ import {
   Users,
   Waypoints,
   Workflow,
+  PiggyBank,
   type LucideIcon,
 } from "lucide-react";
 
@@ -113,6 +114,7 @@ export const APP_MENU: MenuSection[] = [
           { label: "Consultants", to: "/payroll/consultants", permissions: ["hrm.payroll.view"] },
           { label: "Advances", to: "/payroll/advances", permissions: ["hrm.payroll.view"] },
           { label: "Claims", to: "/payroll/claims", permissions: ["hrm.payroll.view"] },
+          { label: "Labour Cost by Project", to: "/payroll/labour-cost", permissions: ["hrm.payroll.view"] },
           { label: "Losses & Damages", to: "/payroll/losses-damages", permissions: ["hrm.payroll.view"] },
           { label: "Staff Purchases", to: "/payroll/staff-purchases", permissions: ["hrm.payroll.view"] },
           { label: "Formulas", to: "/settings/payroll/formulas", permissions: ["hrm.payroll.manage"] },
@@ -271,6 +273,8 @@ export const PLATFORM_MENU: MenuLink[] = [
 
 export const EXTERNAL_SERVICES_MENU: MenuExternalLink[] = [
   { label: "Finance", url: EXTERNAL_SERVICES.finance, icon: CreditCard, external: true, resourcePrefixes: ["treasury"] },
+  // Budgets live in treasury; "{org}" is replaced with the current organisation.
+  { label: "Budgets", url: `${EXTERNAL_SERVICES.finance}/{org}/budgets`, icon: PiggyBank, external: true, resourcePrefixes: ["treasury"] },
   { label: "CRM", url: EXTERNAL_SERVICES.crm, icon: Megaphone, external: true, adminOnly: true },
   { label: "Inventory & Products", url: EXTERNAL_SERVICES.inventory, icon: Boxes, external: true, resourcePrefixes: ["inventory"] },
   { label: "Procurement", url: EXTERNAL_SERVICES.inventory, icon: Package, external: true, resourcePrefixes: ["inventory"] },

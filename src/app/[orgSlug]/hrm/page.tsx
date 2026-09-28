@@ -1,6 +1,6 @@
 "use client";
 
-import { CalendarClock, FileWarning, TrendingUp, UserPlus, Users } from "lucide-react";
+import { CalendarClock, FileWarning, Timer, TrendingDown, TrendingUp, UserMinus, UserPlus, Users, Wallet } from "lucide-react";
 
 import { BarChart, BreakdownChart, ChartCard, TrendChart, type ChartDatum } from "@/components/charts";
 import { CardsSkeleton, ErrorState } from "@/components/ui/states";
@@ -19,6 +19,7 @@ export default function HrmDashboardPage() {
   const head = data?.headcount_metrics;
   const att = data?.attendance_metrics;
   const leave = data?.leave_metrics;
+  const wf = data?.workforce;
 
   const gender: ChartDatum[] = (data?.demographics?.gender_distribution ?? []).map((g) => ({
     label: g.personal_details__gender || "Unknown",
@@ -74,6 +75,29 @@ export default function HrmDashboardPage() {
               accent="text-yellow-600"
             />
           </div>
+
+          {wf && (
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+              <StatTile label="Exits this period" value={wf.exits} icon={UserMinus} />
+              <StatTile
+                label="Turnover"
+                value={wf.turnover_pct != null ? `${wf.turnover_pct}%` : "—"}
+                icon={TrendingDown}
+                accent={wf.turnover_pct != null && wf.turnover_pct > 10 ? "text-red-600" : undefined}
+              />
+              <StatTile
+                label="Overtime hours"
+                value={(wf.overtime_attendance_hours + wf.overtime_timesheet_hours).toLocaleString()}
+                icon={Timer}
+              />
+              <StatTile
+                label="Leave liability"
+                value={`KES ${Math.round(wf.leave_liability).toLocaleString()}`}
+                icon={Wallet}
+                accent="text-yellow-600"
+              />
+            </div>
+          )}
 
           <div className="grid gap-4 lg:grid-cols-2">
             <ChartCard title="Headcount by department" empty={!byDept.length}>

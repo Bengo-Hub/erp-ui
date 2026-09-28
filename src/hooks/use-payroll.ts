@@ -149,16 +149,44 @@ export function useDeleteClaim() {
   });
 }
 
+type OverBudgetBody = {
+  code?: string;
+  budget?: { lines?: { budget_name?: string; line_name?: string; available?: string | number; action?: string }[] };
+};
+
 export function useApproveClaim() {
   const qc = useQueryClient();
-  return useMutation({
-    mutationFn: (id: number | string) => payrollApi.approveClaim(id),
+  const mutation = useMutation({
+    mutationFn: (vars: number | string | { id: number | string; override?: boolean }) =>
+      typeof vars === "object" ? payrollApi.approveClaim(vars.id, vars.override) : payrollApi.approveClaim(vars),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: [KEY, "claims"] });
-      toast.success("Claim approved — reimbursement posted to finance");
+      toast.success("Claim approved: reimbursement posted to finance");
     },
-    onError: (e) => toast.error(extractApiError(e, "Failed to approve claim")),
+    onError: (e, vars) => {
+      const res = (e as { response?: { status?: number; data?: OverBudgetBody } }).response;
+      if (res?.status === 409 && res.data?.code === "over_budget") {
+        const id = typeof vars === "object" ? vars.id : vars;
+        const retried = typeof vars === "object" && vars.override;
+        const lines = (res.data.budget?.lines ?? [])
+          .filter((l) => l.action === "stop")
+          .map((l) => `${l.budget_name}: ${l.line_name} (KES ${Math.round(Number(l.available ?? 0)).toLocaleString()} left)`)
+          .join("; ");
+        if (retried) {
+          toast.error("Over budget: only an approver can approve this claim over budget.", { description: lines });
+          return;
+        }
+        toast.error("This claim would exceed a budget set to stop.", {
+          description: lines,
+          duration: 12000,
+          action: { label: "Approve over budget", onClick: () => mutation.mutate({ id, override: true }) },
+        });
+        return;
+      }
+      toast.error(extractApiError(e, "Failed to approve claim"));
+    },
   });
+  return mutation;
 }
 
 /** Single claim header (for the detail / edit page). */

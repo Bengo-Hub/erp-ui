@@ -183,6 +183,10 @@ export const payrollApi = {
   disapproveLossDamage: (id: number | string) =>
     apiClient.post<PayComponentRecord>(`${PAY}/losses-damages/${id}/disapprove`, {}),
 
+  // Labour cost by project for a payroll month (the payroll event's allocation rules).
+  labourCost: (month: string) =>
+    apiClient.get<LabourCostReport>(`${HRM}/payroll/labour-cost`, { month }),
+
   // Claims
   listClaims: (params?: ListParams) =>
     apiClient.get<Paginated<Claim> | Claim[]>(`${HRM}/payroll/claims/`, params),
@@ -192,8 +196,10 @@ export const payrollApi = {
     apiClient.put<Claim>(`${HRM}/payroll/claims/${id}/`, data),
   deleteClaim: (id: number | string) => apiClient.delete<void>(`${HRM}/payroll/claims/${id}/`),
   // Approve a claim -> emits erp.expense_claim.approved so treasury posts the reimbursement to GL.
-  approveClaim: (id: number | string) =>
-    apiClient.post<Claim>(`${HRM}/payroll/claims/${id}/approve`, {}),
+  // A budget set to stop answers 409 over_budget; an approver (approvals.decide) re-sends with
+  // override to approve it over budget.
+  approveClaim: (id: number | string, override?: boolean) =>
+    apiClient.post<Claim>(`${HRM}/payroll/claims/${id}/approve${override ? "?override_budget=true" : ""}`, {}),
 
   // Claim line items (reimbursement / other) — date/description/expense_type/quantity/unit_cost/amount.
   listClaimItems: (claimId: number | string) =>
@@ -370,6 +376,13 @@ export interface PayComponentRecord {
   repay_option_id?: string | null;
   no_of_installments?: number;
   [key: string]: unknown;
+}
+
+/** A payroll month's gross pay split by project (money as decimal strings). */
+export interface LabourCostReport {
+  month: string;
+  total_gross: string;
+  projects: { project_id: string | null; project_name: string; amount: string; share_pct: number }[];
 }
 
 export interface Claim {
