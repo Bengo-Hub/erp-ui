@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { serviceAppName } from "@bengo-hub/shared-ui-lib/branding";
 
 import { OrgShell } from "@/components/layout/org-shell";
 import { fetchTenantBySlug } from "@/lib/api/tenant";
@@ -17,8 +18,8 @@ export async function generateMetadata({ params }: LayoutProps): Promise<Metadat
   const { orgSlug } = await params;
   const brand = await fetchTenantBySlug(orgSlug).catch(() => null);
   const name = brand?.orgName || brand?.name || "Codevertex";
-  const firstWord = name.split(" ")[0] || "Codevertex";
-  const title = `${firstWord} HR`;
+  // Shared rule (shared-ui-lib branding): "The Urban Loft Cafe" gives "The Urban HR".
+  const title = serviceAppName(name, "HR", "Codevertex");
 
   return {
     title,

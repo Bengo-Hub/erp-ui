@@ -5,6 +5,7 @@ import { useParams } from "next/navigation";
 import { createContext, ReactNode, useContext, useEffect, useMemo } from "react";
 
 import { fetchTenantBySlug, type TenantBrand } from "@/lib/api/tenant";
+import { serviceAppName } from "@bengo-hub/shared-ui-lib/branding";
 
 function hexToHslTriplet(hex: string): string {
   const t = hex.replace(/^#/, "").trim();
@@ -83,11 +84,9 @@ export function BrandingProvider({ children }: { children: ReactNode }) {
       slug,
       tenant: effectiveBrand,
       isLoading,
-      getServiceTitle: (appName: string) => {
-        const name = effectiveBrand.orgName || effectiveBrand.name || "Codevertex";
-        const firstWord = name.split(" ")[0] || "Codevertex";
-        return `${firstWord} ${appName}`;
-      },
+      // Shared rule (shared-ui-lib branding): "The Urban Loft Cafe" gives "The Urban HR".
+      getServiceTitle: (appName: string) =>
+        serviceAppName(effectiveBrand.orgName || effectiveBrand.name, appName, "Codevertex"),
     }),
     [slug, effectiveBrand, isLoading],
   );

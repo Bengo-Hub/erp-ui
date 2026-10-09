@@ -8,9 +8,8 @@ import { useBranding } from "@/providers/branding-provider";
  *  sees the no-provider fallback (tenant: null) and the prompt never shows the real tenant
  *  name/logo (the exact gotcha treasury-ui's equivalent component documents). */
 export function PWARegistration() {
-  const { tenant } = useBranding();
-  const tenantFirstWord = tenant?.orgName?.trim().split(/\s+/)[0];
-  const appName = tenantFirstWord ? `${tenantFirstWord} HR` : "Codevertex ERP";
+  const { tenant, getServiceTitle } = useBranding();
+  const appName = tenant?.orgName ? getServiceTitle("HR") : "Codevertex ERP";
 
   return (
     <PwaInstallPrompt
