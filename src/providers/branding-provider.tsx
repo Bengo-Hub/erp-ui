@@ -7,6 +7,9 @@ import { createContext, ReactNode, useContext, useEffect, useMemo } from "react"
 import { fetchTenantBySlug, type TenantBrand } from "@/lib/api/tenant";
 import { serviceAppName } from "@bengo-hub/shared-ui-lib/branding";
 
+/** This app's key in tenant metadata service_branding (same key as the app-switcher registry). */
+export const ERP_SERVICE_KEY = "erp";
+
 function hexToHslTriplet(hex: string): string {
   const t = hex.replace(/^#/, "").trim();
   if (!/^[0-9a-fA-F]{6}$/.test(t)) return "210 90% 45%";
@@ -84,9 +87,15 @@ export function BrandingProvider({ children }: { children: ReactNode }) {
       slug,
       tenant: effectiveBrand,
       isLoading,
-      // Shared rule (shared-ui-lib branding): "The Urban Loft Cafe" gives "The Urban HR".
+      // Shared rule (shared-ui-lib branding): the tenant's own name for this app (Accounts >
+      // Branding) wins, else "<brand word> <appName>" ("The Urban Loft Cafe" gives "The Urban HR").
       getServiceTitle: (appName: string) =>
-        serviceAppName(effectiveBrand.orgName || effectiveBrand.name, appName, "Codevertex"),
+        serviceAppName(
+          effectiveBrand.orgName || effectiveBrand.name,
+          appName,
+          "Codevertex",
+          effectiveBrand.serviceBranding?.[ERP_SERVICE_KEY],
+        ),
     }),
     [slug, effectiveBrand, isLoading],
   );

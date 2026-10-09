@@ -18,8 +18,9 @@ export async function generateMetadata({ params }: LayoutProps): Promise<Metadat
   const { orgSlug } = await params;
   const brand = await fetchTenantBySlug(orgSlug).catch(() => null);
   const name = brand?.orgName || brand?.name || "Codevertex";
-  // Shared rule (shared-ui-lib branding): "The Urban Loft Cafe" gives "The Urban HR".
-  const title = serviceAppName(name, "HR", "Codevertex");
+  // Shared rule (shared-ui-lib branding): the tenant's own name for this app wins, else
+  // "<brand word> HR" ("The Urban Loft Cafe" gives "The Urban HR"). Same key as the provider.
+  const title = serviceAppName(name, "HR", "Codevertex", brand?.serviceBranding?.erp);
 
   return {
     title,
