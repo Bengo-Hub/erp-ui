@@ -12,6 +12,8 @@ import {
   formulasApi,
   generalHrApi,
   loansApi,
+  perDiemPolicyApi,
+  type PerDiemPolicy,
   type Formula,
   type GeneralHrSettings,
   type Loan,
@@ -166,5 +168,21 @@ export function useSaveGeneralHrSettings() {
       toast.success("Statutory settings saved");
     },
     onError: (e) => toast.error(extractApiError(e, "Failed to save settings")),
+  });
+}
+
+export function usePerDiemPolicy() {
+  return useQuery({ queryKey: ["per-diem-policy"], queryFn: () => perDiemPolicyApi.get() });
+}
+
+export function useSavePerDiemPolicy() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (data: PerDiemPolicy) => perDiemPolicyApi.save(data),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["per-diem-policy"] });
+      toast.success("Per diem policy saved");
+    },
+    onError: (e) => toast.error(extractApiError(e, "Failed to save the per diem policy")),
   });
 }

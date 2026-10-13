@@ -403,6 +403,16 @@ export interface Claim {
   cost_center_id?: string;
   taxable?: boolean;
   approved?: boolean;
+  /** Set for claims raised by another service (e.g. "logistics" for a staff rider's trip). */
+  source?: string;
+  source_details?: {
+    days?: number;
+    daily_rate?: string;
+    distance_km?: number;
+    started_at?: string;
+    ended_at?: string;
+    reference?: Record<string, unknown>;
+  };
   [key: string]: unknown;
 }
 

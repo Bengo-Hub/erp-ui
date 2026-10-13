@@ -53,3 +53,7 @@ Sprint 1 (auth, ApiClient, layout, RBAC, WS-capable client). Pick org-chart + ri
 - Editable **pay-components spreadsheet grid** (`/payroll/spreadsheet/...`) — large bespoke surface, deferred.
 - **Realtime `use-payroll-progress`** over `/ws/payroll/`: process flow currently uses request/response (`process-with-formulas` + optional `task_status`); WS progress to be wired when the socket contract is confirmed.
 - Email-payslips / scheduled-emails UI (hook `useEmailPayslips` exists; screen deferred).
+
+**Per diem for staff trips (2026-10-13)**
+- Settings, Payroll, Per diem edits the erp-api policy (`GET|PUT /hrm/payroll/per-diem-policy`): on or off, default daily rate, rates by job group, minimum trip distance, most days per claim, auto-approve. Logistics raises the claims when a staff rider finishes a trip.
+- The claims list shows where an external claim came from ("From a logistics trip", days, distance) using the `source` and `source_details` erp-api now returns.

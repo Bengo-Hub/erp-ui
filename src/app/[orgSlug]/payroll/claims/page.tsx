@@ -22,6 +22,11 @@ const TYPE_LABEL: Record<string, string> = {
   other: "Other",
 };
 
+// Claims raised by another service (erp-api POST /hrm/claims/external) name their source.
+const SOURCE_LABEL: Record<string, string> = {
+  logistics: "a logistics trip",
+};
+
 export default function ClaimsPage() {
   const params = useParams();
   const router = useRouter();
@@ -37,7 +42,24 @@ export default function ClaimsPage() {
       header: "Employee",
       cell: (c) => <span className="font-medium">{c.employee_name || c.employee || "—"}</span>,
     },
-    { header: "Type", cell: (c) => TYPE_LABEL[c.claim_type ?? ""] ?? c.claim_type ?? "—" },
+    {
+      header: "Type",
+      cell: (c) => {
+        const trip = c.source_details;
+        return (
+          <div>
+            <span>{TYPE_LABEL[c.claim_type ?? ""] ?? c.claim_type ?? "Other"}</span>
+            {c.source && (
+              <span className="mt-0.5 block text-xs text-muted-foreground">
+                From {SOURCE_LABEL[c.source] ?? c.source}
+                {trip?.days ? ` · ${trip.days} day${trip.days === 1 ? "" : "s"}` : ""}
+                {trip?.distance_km ? ` · ${trip.distance_km} km` : ""}
+              </span>
+            )}
+          </div>
+        );
+      },
+    },
     {
       header: "Amount",
       className: "text-right",

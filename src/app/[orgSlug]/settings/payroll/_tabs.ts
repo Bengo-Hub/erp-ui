@@ -11,6 +11,7 @@ const PAYROLL_SETTINGS_TABS: { key: string; label: string }[] = [
   { key: "loans", label: "Loans" },
   { key: "formulas", label: "Formulas" },
   { key: "statutory", label: "Tax & Statutory" },
+  { key: "per-diem", label: "Per diem" },
 ];
 
 /** Tabbed navigation across payroll-settings pages. */

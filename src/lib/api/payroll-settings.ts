@@ -166,3 +166,20 @@ export const generalHrApi = {
   create: (data: Partial<GeneralHrSettings>) =>
     apiClient.post<GeneralHrSettings>(`${PS}/general-hr-settings/`, data),
 };
+
+/** Per diem policy (erp-api AppSetting hrm.per_diem_policy). Logistics raises per diem claims for
+ * staff riders' trips against it; amounts are days x the job group rate, else daily_rate. */
+export interface PerDiemPolicy {
+  enabled: boolean;
+  daily_rate: string;
+  /** job group id (uuid) -> daily rate */
+  job_group_rates?: Record<string, string>;
+  min_distance_km: number;
+  max_days?: number;
+  auto_approve?: boolean;
+}
+
+export const perDiemPolicyApi = {
+  get: () => apiClient.get<PerDiemPolicy>(`/hrm/payroll/per-diem-policy`),
+  save: (data: PerDiemPolicy) => apiClient.put<PerDiemPolicy>(`/hrm/payroll/per-diem-policy`, data),
+};
