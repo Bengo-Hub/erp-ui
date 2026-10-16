@@ -122,12 +122,46 @@ export const payrollApi = {
       payload,
     ),
 
-  // Run / process payroll
+  // Run / process payroll: starts a background run and answers at once with it (202), or 409
+  // run_in_progress naming the active run.
   process: (payload: PayrollProcessPayload) =>
-    apiClient.post<{ task_id?: string; status?: string; message?: string }>(
+    apiClient.post<{ task_id?: string; status?: string; message?: string; job?: PayrollRunJob }>(
       `${HRM}/payroll/process-with-formulas/`,
       payload,
     ),
+
+  // Background payroll runs (jobs).
+  listRunJobs: (limit = 20) => apiClient.get<{ data: PayrollRunJob[] }>(`${HRM}/payroll/runs`, { limit }),
+  getRunJob: (id: string) => apiClient.get<PayrollRunJob>(`${HRM}/payroll/runs/${id}`),
+  /** Streams a run's progress (Server-Sent Events); resolves when the server ends the stream. */
+  streamRunJob: (id: string, onEvent: (event: string, run: PayrollRunJob | null) => void, signal?: AbortSignal) =>
+    apiClient.stream(
+      `${HRM}/payroll/runs/${id}/events`,
+      (event, data) => {
+        let run: PayrollRunJob | null = null;
+        try {
+          const parsed = JSON.parse(data);
+          if (parsed && typeof parsed === "object" && "id" in parsed) run = parsed as PayrollRunJob;
+        } catch {
+          /* reconnect events carry no run */
+        }
+        onEvent(event, run);
+      },
+      signal,
+    ),
+
+  // Attendance deductions (lateness, unexcused absence), reviewed before a run applies them.
+  listAttendanceDeductions: (params: {
+    month: string;
+    status?: AttendanceDeductionStatus;
+    employee_id?: string;
+    page?: number;
+    limit?: number;
+  }) => apiClient.get<AttendanceDeductionPage>(`${HRM}/payroll/attendance-deductions`, params),
+  computeAttendanceDeductions: (month: string) =>
+    apiClient.post<AttendanceDeductionComputeSummary>(`${HRM}/payroll/attendance-deductions/compute`, { month }),
+  reviewAttendanceDeductions: (body: { ids: string[]; action: "approve" | "waive" | "reopen"; note?: string }) =>
+    apiClient.post<{ updated: number }>(`${HRM}/payroll/attendance-deductions/review`, body),
 
   // Generic command on the payroll collection (used for disburse/finalize actions)
   command: (payload: Record<string, unknown>) =>
@@ -379,6 +413,60 @@ export interface PayComponentRecord {
 }
 
 /** A payroll month's gross pay split by project (money as decimal strings). */
+/** A background payroll run (POST process-with-formulas starts one). */
+export interface PayrollRunJob {
+  id: string;
+  period: string; // YYYY-MM
+  status: "queued" | "running" | "completed" | "failed";
+  total: number;
+  done: number;
+  percent: number;
+  payslips: number;
+  error?: string;
+  params?: Record<string, unknown>;
+  created_by?: string;
+  started_at?: string;
+  finished_at?: string;
+  created_at: string;
+}
+
+export type AttendanceDeductionStatus = "pending" | "approved" | "waived" | "applied";
+
+/** One employee's lateness or unexcused-absence deduction for a month (money as decimal strings). */
+export interface AttendanceDeduction {
+  id: string;
+  employee_id: string;
+  employee_name: string;
+  period: string;
+  kind: "late" | "absence";
+  occurrences: number;
+  minutes: number;
+  amount: string;
+  basis: string;
+  status: AttendanceDeductionStatus;
+  reviewed_by?: string;
+  reviewed_at?: string;
+  note?: string;
+  payslip_id?: string;
+}
+
+export interface AttendanceDeductionPage {
+  data: AttendanceDeduction[];
+  total: number;
+  limit: number;
+  page: number;
+  hasMore: boolean;
+  amount_total: string;
+}
+
+export interface AttendanceDeductionComputeSummary {
+  period: string;
+  created: number;
+  updated: number;
+  removed: number;
+  reviewed_kept: number;
+}
+
 export interface LabourCostReport {
   month: string;
   total_gross: string;

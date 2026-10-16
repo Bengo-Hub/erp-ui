@@ -107,21 +107,85 @@ class ApiClient {
       delete config.headers["Content-Type"];
     }
 
-    if (this.platformOwner) {
-      // Platform owners scope cross-tenant via ?tenantId=, NOT tenant headers.
-      if (this.platformTenantId && UUID_REGEX.test(this.platformTenantId)) {
-        config.params = { ...(config.params || {}), tenantId: this.platformTenantId };
-      }
-    } else {
-      if (this.tenantSlug) config.headers["X-Tenant-Slug"] = this.tenantSlug;
-      if (this.tenantId && UUID_REGEX.test(this.tenantId)) {
-        config.headers["X-Tenant-ID"] = this.tenantId;
-      }
-    }
-
-    if (this.outletId) config.headers["X-Outlet-ID"] = this.outletId;
+    const scope = this.scopeFor();
+    for (const [k, v] of Object.entries(scope.headers)) config.headers[k] = v;
+    if (scope.params) config.params = { ...(config.params || {}), ...scope.params };
     return config;
   };
+
+  /**
+   * Tenant and outlet scoping for a request: tenant users send `X-Tenant-Slug` + `X-Tenant-ID`;
+   * platform owners scope cross-tenant via `?tenantId=`, never tenant headers.
+   */
+  private scopeFor(): { headers: Record<string, string>; params?: Record<string, string> } {
+    const headers: Record<string, string> = {};
+    let params: Record<string, string> | undefined;
+    if (this.platformOwner) {
+      if (this.platformTenantId && UUID_REGEX.test(this.platformTenantId)) {
+        params = { tenantId: this.platformTenantId };
+      }
+    } else {
+      if (this.tenantSlug) headers["X-Tenant-Slug"] = this.tenantSlug;
+      if (this.tenantId && UUID_REGEX.test(this.tenantId)) headers["X-Tenant-ID"] = this.tenantId;
+    }
+    if (this.outletId) headers["X-Outlet-ID"] = this.outletId;
+    return { headers, params };
+  }
+
+  /**
+   * Reads a Server-Sent Events stream with the same auth and tenant scoping as every other call
+   * (the browser EventSource cannot send an Authorization header). `onEvent` gets each event's
+   * name and data. Resolves when the server ends the stream; one 401 refreshes and retries.
+   */
+  public async stream(
+    url: string,
+    onEvent: (event: string, data: string) => void,
+    signal?: AbortSignal,
+  ): Promise<void> {
+    const open = async () => {
+      const scope = this.scopeFor();
+      const target = new URL(`${apiBaseUrl}${url}`);
+      for (const [k, v] of Object.entries(scope.params ?? {})) target.searchParams.set(k, v);
+      const headers: Record<string, string> = { Accept: "text/event-stream", ...scope.headers };
+      if (this.accessToken) headers.Authorization = `Bearer ${this.accessToken}`;
+      return fetch(target.toString(), { headers, signal, cache: "no-store" });
+    };
+    let res = await open();
+    if (res.status === 401 && this.accessToken) {
+      const { refreshAccessToken } = await import("@/lib/auth/token-refresh");
+      const newToken = await refreshAccessToken();
+      if (!newToken) {
+        this.on401Callback?.();
+        throw Object.assign(new Error("unauthorized"), { status: 401 });
+      }
+      this.accessToken = newToken;
+      res = await open();
+    }
+    if (!res.ok || !res.body) {
+      throw Object.assign(new Error(`stream failed (${res.status})`), { status: res.status });
+    }
+    const reader = res.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = "";
+    for (;;) {
+      const { value, done } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+      let sep = buffer.indexOf("\n\n");
+      while (sep >= 0) {
+        const block = buffer.slice(0, sep);
+        buffer = buffer.slice(sep + 2);
+        let event = "message";
+        const data: string[] = [];
+        for (const line of block.split("\n")) {
+          if (line.startsWith("event:")) event = line.slice(6).trim();
+          else if (line.startsWith("data:")) data.push(line.slice(5).trimStart());
+        }
+        if (data.length) onEvent(event, data.join("\n"));
+        sep = buffer.indexOf("\n\n");
+      }
+    }
+  }
 
   public setTenantContext(tenantId: string | null, tenantSlug: string | null) {
     this.tenantId = tenantId;

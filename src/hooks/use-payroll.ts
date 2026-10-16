@@ -1,6 +1,7 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
 
 import { type ListParams } from "@/lib/api/drf";
@@ -14,6 +15,8 @@ import {
   type MileageRoute,
   type PayComponentRecord,
   type PayrollProcessPayload,
+  type PayrollRunJob,
+  type AttendanceDeductionStatus,
   type ProjectAllocation,
 } from "@/lib/api/payroll";
 import { normalizeList } from "@/lib/api/drf";
@@ -66,7 +69,111 @@ export function useProcessPayroll() {
       qc.invalidateQueries({ queryKey: [KEY] });
       toast.success("Payroll run started");
     },
-    onError: (e) => toast.error(extractApiError(e, "Failed to run payroll")),
+    onError: (e) => {
+      if (activeRunFromError(e)) {
+        toast.info("A payroll run is already in progress; following it");
+        return;
+      }
+      toast.error(extractApiError(e, "Failed to run payroll"));
+    },
+  });
+}
+
+/** The run already in progress, when starting another answered 409 run_in_progress. */
+export function activeRunFromError(e: unknown): string | null {
+  const res = (e as { response?: { status?: number; data?: { code?: string; task_id?: string } } })?.response;
+  return res?.status === 409 && res.data?.code === "run_in_progress" ? res.data.task_id ?? null : null;
+}
+
+/**
+ * Follows a background payroll run live. The server streams progress over SSE in short
+ * connections, so this reconnects until the run is done; after repeated stream failures it
+ * falls back to reading the run every 2s. Pass null to stop.
+ */
+export function usePayrollRunProgress(runId: string | null) {
+  const qc = useQueryClient();
+  const [run, setRun] = useState<PayrollRunJob | null>(null);
+  const [streamError, setStreamError] = useState<string | null>(null);
+
+  useEffect(() => {
+    setRun(null);
+    setStreamError(null);
+    if (!runId) return;
+    const abort = new AbortController();
+    let finished = false;
+    const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+    const settle = (r: PayrollRunJob) => {
+      setRun(r);
+      if (r.status === "completed" || r.status === "failed") {
+        finished = true;
+        qc.invalidateQueries({ queryKey: [KEY] });
+      }
+    };
+    (async () => {
+      let failures = 0;
+      while (!finished && !abort.signal.aborted) {
+        try {
+          if (failures >= 3) {
+            settle(await payrollApi.getRunJob(runId));
+            await sleep(2000);
+            continue;
+          }
+          await payrollApi.streamRunJob(runId, (_event, r) => r && settle(r), abort.signal);
+          failures = 0;
+          setStreamError(null);
+        } catch (e) {
+          if (abort.signal.aborted) return;
+          failures += 1;
+          if (failures >= 3) setStreamError(extractApiError(e, "Live progress is unavailable; checking every few seconds"));
+          await sleep(1000);
+        }
+      }
+    })();
+    return () => abort.abort();
+  }, [runId, qc]);
+
+  return { run, streamError };
+}
+
+export function useAttendanceDeductions(params: {
+  month: string;
+  status?: AttendanceDeductionStatus;
+  page?: number;
+  limit?: number;
+}) {
+  return useQuery({
+    queryKey: [KEY, "attendance-deductions", params],
+    queryFn: () => payrollApi.listAttendanceDeductions(params),
+    enabled: !!params.month,
+  });
+}
+
+export function useComputeAttendanceDeductions() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (month: string) => payrollApi.computeAttendanceDeductions(month),
+    onSuccess: (s) => {
+      qc.invalidateQueries({ queryKey: [KEY, "attendance-deductions"] });
+      toast.success(
+        `Attendance worked out: ${s.created} new, ${s.updated} updated, ${s.removed} removed` +
+          (s.reviewed_kept ? `, ${s.reviewed_kept} already reviewed left as they were` : ""),
+      );
+    },
+    onError: (e) => toast.error(extractApiError(e, "Failed to work out attendance deductions")),
+  });
+}
+
+export function useReviewAttendanceDeductions() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: { ids: string[]; action: "approve" | "waive" | "reopen"; note?: string }) =>
+      payrollApi.reviewAttendanceDeductions(body),
+    onSuccess: (r, body) => {
+      qc.invalidateQueries({ queryKey: [KEY, "attendance-deductions"] });
+      const verb = { approve: "approved", waive: "waived", reopen: "reopened" }[body.action];
+      toast.success(`${r.updated} deduction${r.updated === 1 ? "" : "s"} ${verb}`);
+    },
+    onError: (e) => toast.error(extractApiError(e, "Failed to update the deductions")),
   });
 }
 

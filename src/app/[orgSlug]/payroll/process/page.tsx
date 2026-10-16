@@ -2,7 +2,7 @@
 
 import { Banknote, Calculator, Send } from "lucide-react";
 import { useParams } from "next/navigation";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 
 import { PermissionGate } from "@/components/auth/permission-gate";
@@ -15,14 +15,54 @@ import { Field, Input, Select } from "@/components/ui/form";
 import { PageHeader } from "@/components/ui/page-header";
 import { Stepper } from "@/components/ui/stepper";
 import { useDepartmentOptions, useProjectOptions } from "@/hooks/use-option-hooks";
-import { useDisbursePayroll, useProcessPayroll, usePayrollPreview } from "@/hooks/use-payroll";
-import { type PayrollPreviewRow, type PayrollProcessPayload } from "@/lib/api/payroll";
+import {
+  activeRunFromError,
+  useDisbursePayroll,
+  usePayrollPreview,
+  usePayrollRunProgress,
+  useProcessPayroll,
+} from "@/hooks/use-payroll";
+import { type PayrollPreviewRow, type PayrollProcessPayload, type PayrollRunJob } from "@/lib/api/payroll";
 import { EMPLOYMENT_TYPES } from "@/lib/hrm";
 import { useOutletFilterStore } from "@/store/outlet-filter";
 
 import { PreviewTable } from "./_preview-table";
 
 const STEPS = ["Period", "Preview", "Run", "Disburse"];
+
+/** A background run's live state: a progress bar while it works, the reason if it failed. */
+function RunProgress({ run }: { run: PayrollRunJob | null }) {
+  if (!run || run.status === "queued") {
+    return <p className="text-sm text-muted-foreground">Starting the payroll run…</p>;
+  }
+  if (run.status === "failed") {
+    return (
+      <div className="max-w-md">
+        <h3 className="text-base font-bold text-destructive">The payroll run did not finish</h3>
+        <p className="mt-1 text-sm text-muted-foreground">{run.error || "Unknown error"}</p>
+      </div>
+    );
+  }
+  return (
+    <div className="w-full max-w-md space-y-2">
+      <h3 className="text-base font-bold text-foreground">
+        {run.status === "completed" ? "Payroll run complete" : "Running payroll…"}
+      </h3>
+      <div
+        className="h-2 w-full overflow-hidden rounded-full bg-muted"
+        role="progressbar"
+        aria-valuemin={0}
+        aria-valuemax={100}
+        aria-valuenow={run.percent}
+      >
+        <div className="h-full rounded-full bg-primary transition-all" style={{ width: `${run.percent}%` }} />
+      </div>
+      <p className="text-sm text-muted-foreground">
+        {run.total ? `${run.done} of ${run.total} employees (${run.percent}%)` : "Selecting employees…"}
+      </p>
+    </div>
+  );
+}
 
 function unwrapPreview(res: unknown): PayrollPreviewRow[] {
   if (Array.isArray(res)) return res as PayrollPreviewRow[];
@@ -77,11 +117,27 @@ export default function ProcessPayrollPage() {
     });
   };
 
+  // The run happens in the background; its progress streams live and the wizard moves on to
+  // disbursement once it completes.
+  const [runId, setRunId] = useState<string | null>(null);
+  const { run, streamError } = usePayrollRunProgress(runId);
+  useEffect(() => {
+    if (run?.status === "completed") setStep(3);
+  }, [run?.status]);
+
   const runPayroll = () =>
     processMut.mutate(payload, {
-      onSuccess: () => {
+      onSuccess: (res) => {
         setConfirmRun(false);
-        setStep(3);
+        const id = res.job?.id ?? res.task_id;
+        // An older API answered synchronously with no job: the run is already done.
+        if (id && res.job) setRunId(id);
+        else setStep(3);
+      },
+      onError: (e) => {
+        setConfirmRun(false);
+        const active = activeRunFromError(e);
+        if (active) setRunId(active);
       },
     });
 
@@ -174,7 +230,28 @@ export default function ProcessPayrollPage() {
         </>
       )}
 
-      {step === 2 && (
+      {step === 2 && runId && (
+        <Card>
+          <CardContent className="flex flex-col items-center gap-4 py-10 text-center">
+            <RunProgress run={run} />
+            {streamError && <p className="text-xs text-muted-foreground">{streamError}</p>}
+            {run?.status === "failed" && (
+              <div className="flex gap-2">
+                <Button variant="outline" onClick={() => setRunId(null)}>
+                  Back
+                </Button>
+                <PermissionGate permission={["hrm.payroll.process"]}>
+                  <Button onClick={() => setConfirmRun(true)} disabled={processMut.isPending}>
+                    Run Again
+                  </Button>
+                </PermissionGate>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
+      {step === 2 && !runId && (
         <Card>
           <CardContent className="flex flex-col items-center gap-4 py-10 text-center">
             <div className="flex size-12 items-center justify-center rounded-full bg-primary/10 text-primary">
@@ -210,7 +287,8 @@ export default function ProcessPayrollPage() {
             <div>
               <h3 className="text-base font-bold text-foreground">Payroll processed</h3>
               <p className="mt-1 max-w-md text-sm text-muted-foreground">
-                Payslips have been generated. You can now disburse net pay to employees.
+                {run?.payslips ? `${run.payslips} payslip(s) have been generated. ` : "Payslips have been generated. "}
+                You can now disburse net pay to employees.
               </p>
             </div>
             <PermissionGate

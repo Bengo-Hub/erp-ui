@@ -113,6 +113,7 @@ export const APP_MENU: MenuSection[] = [
           { label: "Casual Employees", to: "/payroll/casual-labor", permissions: ["hrm.payroll.view"] },
           { label: "Consultants", to: "/payroll/consultants", permissions: ["hrm.payroll.view"] },
           { label: "Advances", to: "/payroll/advances", permissions: ["hrm.payroll.view"] },
+          { label: "Attendance Deductions", to: "/payroll/attendance-deductions", permissions: ["hrm.payroll.view"] },
           { label: "Claims", to: "/payroll/claims", permissions: ["hrm.payroll.view"] },
           { label: "Labour Cost by Project", to: "/payroll/labour-cost", permissions: ["hrm.payroll.view"] },
           { label: "Losses & Damages", to: "/payroll/losses-damages", permissions: ["hrm.payroll.view"] },
