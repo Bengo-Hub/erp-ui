@@ -4,8 +4,8 @@
 
 ## Done (budgets plan and 2026-10-15)
 
-- HRM and executive dashboards from erp-api `/reports/hrm-analytics` (headcount, hires and exits, turnover, expiring contracts, payroll trend, overtime, leave liability); the mislabelled `new_hires` and `expiring_contracts` fields are fixed. Commits `1a911a6`, `3b6288f`.
-- Department cost-centre picker (`1a911a6`); Labour Cost by Project page, claim over-budget toast with approver override, Treasury Budgets menu link (`3b6288f`).
+- HRM and executive dashboards from erp-api `/reports/hrm-analytics` (headcount, hires and exits, turnover, expiring contracts, payroll trend, overtime, leave liability); the mislabelled `new_hires` and `expiring_contracts` fields are fixed. Commits `7d46378`, `6ffac85`.
+- Department cost-centre picker (`7d46378`); Labour Cost by Project page, claim over-budget toast with approver override, Treasury Budgets menu link (`6ffac85`).
 - Live payroll run progress: the process wizard starts a background run and follows it over Server-Sent Events (`apiClient.stream`, fetch based so the Authorization header is sent; reconnects across short server windows, falls back to polling), then moves on to disbursement; failed or interrupted runs show why with Run Again; a run already in progress is followed. Replaces the planned WebSocket. Commit `33c9ef1`.
 - Payroll, Attendance Deductions page: work a month's lateness and absence out from attendance, review each row's basis and amount, approve, waive with a note, or reopen in bulk. Commit `33c9ef1`.
 
