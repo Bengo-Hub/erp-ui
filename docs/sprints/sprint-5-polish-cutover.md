@@ -2,7 +2,7 @@
 
 > **Status: In progress** (re-verified 2026-09-27). Application polish is done (formatting, states, a11y and
 > responsive, performance, PWA, e2e smoke) and the `revamp` branch is merged to `main`. Remaining: full
-> parity sign-off vs the Vue app, realtime payroll progress, statutory PDF snapshot tests, and
+> parity sign-off vs the Vue app, statutory PDF snapshot tests (live payroll progress shipped 2026-10-15), and
 > confirming the ingress cutover and Vue decommission. See `docs/backlog.md`.
 
 **Goal:** Production hardening, parity verification, and switching `erp-ui` traffic to the Next.js app while keeping the Vue app as rollback.
@@ -33,7 +33,7 @@
 - Docker image build + healthcheck wiring into standard CI/CD + Helm/ArgoCD parity.
 - Full parity sign-off against `component-inventory.md` on a staging subdomain.
 - DNS/ingress switch + Vue-app decommission after a stable window.
-- Realtime `use-payroll-progress` WS (pending erp-api socket).
+- Live payroll progress: done 2026-10-15 (`usePayrollRunProgress`, Server-Sent Events from the background run).
 - Snapshot tests of statutory PDF/Excel vs the Vue app (needs a seeded backend).
 
 ## Scope
