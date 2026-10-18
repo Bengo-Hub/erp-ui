@@ -228,7 +228,6 @@ export const APP_MENU: MenuSection[] = [
           { label: "Users", to: "/users", permissions: ["rbac.view"] },
           { label: "Roles", to: "/users/roles", permissions: ["rbac.view"] },
           { label: "Permissions", to: "/users/permissions", permissions: ["rbac.view"] },
-          { label: "Backups", to: "/security/backups", permissions: ["backups.view"] },
         ],
       },
       {

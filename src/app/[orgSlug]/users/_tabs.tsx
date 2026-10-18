@@ -8,10 +8,9 @@ const TABS = [
   { key: "users", label: "Users", path: "/users" },
   { key: "roles", label: "Roles", path: "/users/roles" },
   { key: "permissions", label: "Permissions", path: "/users/permissions" },
-  { key: "backups", label: "Backups", path: "/security/backups" },
 ];
 
-/** Cross-section admin nav (users / roles / permissions / security / backups). */
+/** Cross-section admin nav (users / roles / permissions / security). */
 export function UsersTabs({ active }: { active: string }) {
   const { orgSlug } = useParams<{ orgSlug: string }>();
   const router = useRouter();
