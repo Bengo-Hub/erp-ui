@@ -10,7 +10,7 @@ import { TenantFilter } from "@/components/outlet/tenant-filter";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { useBranding } from "@/providers/branding-provider";
 import { useAuthStore } from "@/store/auth";
-import { useVisibleServices, AppSwitcherGrid, AppSwitcherTrigger, type ServiceKey } from "@bengo-hub/shared-ui-lib/app-switcher";
+import { useVisibleServices, serviceTagsFromAccessToken, AppSwitcherGrid, AppSwitcherTrigger, type ServiceKey } from "@bengo-hub/shared-ui-lib/app-switcher";
 import { AccountPanel } from "@bengo-hub/shared-ui-lib/account-panel";
 
 // erp-ui never wired the shared app-switcher before — this is its first adoption, not a
@@ -44,7 +44,16 @@ export function AppTopbar({ onMenuClick }: { onMenuClick?: () => void }) {
 
   // The App Store shows every real service to every authenticated user in the tenant — each
   // destination service already enforces its own RBAC + subscription gating on arrival.
-  const services = useVisibleServices({ orgSlug, urls: SERVICE_URLS, canManageLinks: true });
+  // A service outside the plan stays visible as "Not in your plan" with a link to the plans page
+  // (shared-ui-lib default), so tenants discover the rest of the suite without hitting a 403.
+  const session = useAuthStore((s) => s.session);
+  const services = useVisibleServices({
+    orgSlug,
+    urls: SERVICE_URLS,
+    canManageLinks: true,
+    activeServiceTags: serviceTagsFromAccessToken(session?.accessToken),
+    upgradeUrl: SERVICE_URLS.subscriptions ? `${SERVICE_URLS.subscriptions}/${orgSlug}` : null,
+  });
 
   return (
     <header className="sticky top-0 z-30 h-16 border-b border-border bg-background/80 backdrop-blur-md px-4 sm:px-6 flex items-center justify-between">
