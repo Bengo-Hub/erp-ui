@@ -7,6 +7,7 @@ import { useEffect } from "react";
 import { Button } from "@/components/ui/base";
 import { useBranding } from "@/providers/branding-provider";
 import { useAuthStore } from "@/store/auth";
+import { MediaImage } from '@bengo-hub/shared-ui-lib/media';
 
 /**
  * Tenant login page. Does NOT auto-launch SSO — the user clicks Sign in, which
@@ -38,8 +39,7 @@ export default function LoginPage() {
     <div className="min-h-screen flex items-center justify-center bg-accent/10 p-4">
       <div className="w-full max-w-md rounded-2xl border border-border bg-card p-8 shadow-sm text-center">
         {tenant?.logoUrl ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={tenant.logoUrl} alt={tenant.name} className="h-12 mx-auto mb-6 object-contain" />
+          <MediaImage src={tenant.logoUrl} displayWidth={192} loading="eager" alt={tenant.name} className="h-12 mx-auto mb-6 object-contain" />
         ) : (
           <div className="size-14 mx-auto mb-6 rounded-2xl bg-primary flex items-center justify-center">
             <span className="text-lg font-bold text-primary-foreground">

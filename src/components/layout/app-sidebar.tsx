@@ -19,6 +19,7 @@ import { useAppPermissions } from "@/hooks/use-app-permissions";
 import { cn } from "@/lib/utils";
 import { useBranding } from "@/providers/branding-provider";
 import { useAuthStore } from "@/store/auth";
+import { MediaImage } from '@bengo-hub/shared-ui-lib/media';
 
 interface SidebarProps {
   open?: boolean;
@@ -77,8 +78,7 @@ export function AppSidebar({ open = false, onClose }: SidebarProps) {
       <div className="border-b border-sidebar-border shrink-0 overflow-hidden h-[72px]">
         {menuLogo ? (
           <div className="flex items-center h-full px-3 py-2">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={menuLogo} alt={tenant?.name ?? orgSlug} className="h-full w-auto max-w-full object-contain" />
+            <MediaImage src={menuLogo} displayWidth={220} loading="eager" alt={tenant?.name ?? orgSlug} className="h-full w-auto max-w-full object-contain" />
           </div>
         ) : (
           <div className="flex items-center gap-3 h-full px-4">

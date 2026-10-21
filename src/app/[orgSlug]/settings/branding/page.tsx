@@ -8,6 +8,7 @@ import { PageHeader } from "@/components/ui/page-header";
 import { EXTERNAL_SERVICES } from "@/config/external-services";
 import { useBrandingSettings } from "@/hooks/use-settings";
 import { useBranding } from "@/providers/branding-provider";
+import { MediaImage } from '@bengo-hub/shared-ui-lib/media';
 
 const EDITOR_URL = `${EXTERNAL_SERVICES.auth}/dashboard/settings?tab=branding`;
 
@@ -57,8 +58,7 @@ export default function BrandingPage() {
             <div>
               <p className="text-xs font-semibold text-foreground">Logo</p>
               {logo ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img src={logo} alt="Brand logo" className="mt-2 h-16 rounded border border-border bg-card object-contain p-2" />
+                <MediaImage src={logo} displayWidth={256} alt="Brand logo" className="mt-2 h-16 rounded border border-border bg-card object-contain p-2" />
               ) : (
                 <p className="mt-2 text-xs text-muted-foreground">No logo set</p>
               )}
