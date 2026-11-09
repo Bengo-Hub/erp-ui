@@ -12,7 +12,7 @@ import { Dialog } from "@/components/ui/dialog";
 import { Field, Select } from "@/components/ui/form";
 import { PageHeader } from "@/components/ui/page-header";
 import { SearchInput } from "@/components/ui/search-input";
-import { useDebounce } from "@/hooks/use-debounce";
+import { normalizeSearchTerm, useDebouncedValue } from "@bengo-hub/shared-ui-lib/search";
 import { useEmployeeOptions } from "@/hooks/use-employee-options";
 import {
   useAppraisalCycles,
@@ -36,7 +36,7 @@ export default function AppraisalsPage() {
   const [page, setPage] = useState(1);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [form, setForm] = useState({ employee: "", cycle: "", template: "" });
-  const debounced = useDebounce(search);
+  const debounced = useDebouncedValue(normalizeSearchTerm(search));
 
   const { options: employees } = useEmployeeOptions();
   const { data: cycleData } = useAppraisalCycles({ page_size: 200 });

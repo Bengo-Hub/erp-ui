@@ -88,7 +88,9 @@ const KEY = "appraisals";
 export function useAppraisals(params?: ListParams) {
   return useQuery({
     queryKey: [KEY, "list", params ?? {}],
-    queryFn: () => appraisalApi.appraisals.list(params),
+    queryFn: ({ signal }) => appraisalApi.appraisals.list(params, signal),
+    // Keep the current rows on screen while the next search term or page loads.
+    placeholderData: (prev) => prev,
   });
 }
 

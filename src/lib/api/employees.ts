@@ -179,8 +179,8 @@ export interface EmployeeImportResult {
 }
 
 export const employeesApi = {
-  list: (params?: ListParams) =>
-    apiClient.get<Paginated<Employee> | Employee[]>(`${EMP}/employees/`, params),
+  list: (params?: ListParams, signal?: AbortSignal) =>
+    apiClient.get<Paginated<Employee> | Employee[]>(`${EMP}/employees/`, params, { signal }),
   get: (id: number | string) => apiClient.get<Employee>(`${EMP}/employees/${id}/`),
   create: (data: Partial<Employee>) =>
     apiClient.post<Employee>(`${EMP}/employees/`, toEmployeePayload(data)),

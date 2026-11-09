@@ -7,7 +7,8 @@ import { type ListParams, type Paginated } from "@/lib/api/drf";
 import { extractApiError } from "@/lib/api/error";
 
 export interface CrudResourceApi<T> {
-  list: (params?: ListParams) => Promise<Paginated<T> | T[]>;
+  /** `signal` is react-query's AbortSignal, so a superseded search is cancelled. */
+  list: (params?: ListParams, signal?: AbortSignal) => Promise<Paginated<T> | T[]>;
   get?: (id: number | string) => Promise<T>;
   create: (data: Partial<T>) => Promise<T>;
   update: (id: number | string, data: Partial<T>) => Promise<T>;
@@ -24,7 +25,12 @@ export function makeResourceHooks<T extends { id: number | string }>(
   label: string,
 ) {
   function useList(params?: ListParams) {
-    return useQuery({ queryKey: [key, "list", params ?? {}], queryFn: () => api.list(params) });
+    return useQuery({
+      queryKey: [key, "list", params ?? {}],
+      queryFn: ({ signal }) => api.list(params, signal),
+      // Keep the current rows on screen while the next search term or page loads.
+      placeholderData: (prev) => prev,
+    });
   }
   function useDetail(id: number | string | undefined) {
     return useQuery({

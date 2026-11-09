@@ -13,7 +13,7 @@ import { PageHeader } from "@/components/ui/page-header";
 import { SearchInput } from "@/components/ui/search-input";
 import { IconButton } from "@/components/ui/tooltip";
 import { useContracts, useDeleteContract, useSaveContract } from "@/hooks/use-contracts";
-import { useDebounce } from "@/hooks/use-debounce";
+import { normalizeSearchTerm, useDebouncedValue } from "@bengo-hub/shared-ui-lib/search";
 import { useEmployeeOptions } from "@/hooks/use-employee-options";
 import { normalizeList } from "@/lib/api/drf";
 import { type Contract } from "@/lib/api/contracts";
@@ -70,7 +70,7 @@ export default function ContractsPage() {
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState("");
   const [page, setPage] = useState(1);
-  const debounced = useDebounce(search);
+  const debounced = useDebouncedValue(normalizeSearchTerm(search));
 
   const params = useMemo(
     () => ({ page, page_size: PAGE_SIZE, search: debounced || undefined, status: status || undefined }),

@@ -44,7 +44,12 @@ export function resolveApiBaseUrl(): string {
 // callers pass DRF paths like `/hrm/employees/`.
 const apiBaseUrl = `${resolveApiBaseUrl().replace(/\/$/, "")}/api/v1`;
 
-const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+/** Per-request options. `signal` aborts the request when a newer search replaces it. */
+export interface RequestOptions {
+  signal?: AbortSignal;
+}
+
+const UUID_REGEX =/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 /** Extracts the filename from a Content-Disposition header value, if present. */
 function parseContentDispositionFilename(header?: string): string {
@@ -259,8 +264,14 @@ class ApiClient {
     return Promise.reject(error);
   };
 
-  public get<T>(url: string, params?: unknown): Promise<T> {
-    return this.instance.get<T>(url, { params }).then((res: AxiosResponse<T>) => res.data);
+  /**
+   * GET a JSON payload. Pass `opts.signal` (react-query's queryFn signal, or a search
+   * callback's signal) so a superseded search is cancelled instead of running to the end.
+   */
+  public get<T>(url: string, params?: unknown, opts?: RequestOptions): Promise<T> {
+    return this.instance
+      .get<T>(url, { params, signal: opts?.signal })
+      .then((res: AxiosResponse<T>) => res.data);
   }
 
   /** Fetches a binary response (e.g. PDF/CSV export) through the shared client. */

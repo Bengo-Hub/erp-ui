@@ -102,8 +102,8 @@ export interface LeaveLog {
 
 export const leaveApi = {
   // Requests
-  listRequests: (params?: ListParams) =>
-    apiClient.get<Paginated<LeaveRequest> | LeaveRequest[]>(`${LEAVE}/requests/`, params),
+  listRequests: (params?: ListParams, signal?: AbortSignal) =>
+    apiClient.get<Paginated<LeaveRequest> | LeaveRequest[]>(`${LEAVE}/requests/`, params, { signal }),
   getRequest: (id: number | string) => apiClient.get<LeaveRequest>(`${LEAVE}/requests/${id}/`),
   createRequest: (data: Partial<LeaveRequest>) =>
     apiClient.post<LeaveRequest>(`${LEAVE}/requests/`, toRequestPayload(data)),
@@ -130,8 +130,8 @@ export const leaveApi = {
   deleteCategory: (id: number | string) => apiClient.delete<void>(`${LEAVE}/categories/${id}/`),
 
   // Balances
-  listBalances: (params?: ListParams) =>
-    apiClient.get<Paginated<LeaveBalance> | LeaveBalance[]>(`${LEAVE}/balances/`, params),
+  listBalances: (params?: ListParams, signal?: AbortSignal) =>
+    apiClient.get<Paginated<LeaveBalance> | LeaveBalance[]>(`${LEAVE}/balances/`, params, { signal }),
   createBalance: (data: Partial<LeaveBalance>) =>
     apiClient.post<LeaveBalance>(`${LEAVE}/balances/`, data),
   updateBalance: (id: number | string, data: Partial<LeaveBalance>) =>
@@ -154,6 +154,6 @@ export const leaveApi = {
   accrue: (data?: { year?: number }) => apiClient.post<void>(`${LEAVE}/accrue/`, data ?? {}),
 
   // Logs: no erp-api endpoint yet (gap) — returns empty until one lands.
-  listLogs: (params?: ListParams) =>
-    apiClient.get<Paginated<LeaveLog> | LeaveLog[]>(`${LEAVE}/logs/`, params),
+  listLogs: (params?: ListParams, signal?: AbortSignal) =>
+    apiClient.get<Paginated<LeaveLog> | LeaveLog[]>(`${LEAVE}/logs/`, params, { signal }),
 };

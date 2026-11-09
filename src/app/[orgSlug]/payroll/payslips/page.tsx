@@ -16,7 +16,7 @@ import { SearchInput } from "@/components/ui/search-input";
 import { EmptyState, ErrorState, LoadingState } from "@/components/ui/states";
 import { Tabs } from "@/components/ui/tabs";
 import { IconButton } from "@/components/ui/tooltip";
-import { useDebounce } from "@/hooks/use-debounce";
+import { normalizeSearchTerm, useDebouncedValue } from "@bengo-hub/shared-ui-lib/search";
 import { useApprovePayroll, useDisbursePayroll, usePayslips } from "@/hooks/use-payroll";
 import { normalizeList } from "@/lib/api/drf";
 import { payrollApi, type Payslip } from "@/lib/api/payroll";
@@ -103,7 +103,7 @@ export default function PayslipsPage() {
   const [period, setPeriod] = useState("");
   const [tab, setTab] = useState("all");
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
-  const debounced = useDebounce(search);
+  const debounced = useDebouncedValue(normalizeSearchTerm(search));
 
   const [menuOpen, setMenuOpen] = useState(false);
   const approve = useApprovePayroll();

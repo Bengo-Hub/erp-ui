@@ -12,7 +12,7 @@ import { Field, Input } from "@/components/ui/form";
 import { PageHeader } from "@/components/ui/page-header";
 import { RichTextEditor } from "@/components/ui/rich-text-editor";
 import { SearchInput } from "@/components/ui/search-input";
-import { useDebounce } from "@/hooks/use-debounce";
+import { normalizeSearchTerm, useDebouncedValue } from "@bengo-hub/shared-ui-lib/search";
 import { useEmployees } from "@/hooks/use-employees";
 import { useEmailPayslips } from "@/hooks/use-payroll";
 import { normalizeList } from "@/lib/api/drf";
@@ -32,7 +32,7 @@ export default function EmailPayslipsPage() {
   const [sendTime, setSendTime] = useState("");
   const [search, setSearch] = useState("");
   const [selected, setSelected] = useState<Record<string, boolean>>({});
-  const debounced = useDebounce(search);
+  const debounced = useDebouncedValue(normalizeSearchTerm(search));
 
   const { data } = useEmployees({ page: 1, page_size: 500, search: debounced || undefined });
   const employees = useMemo(

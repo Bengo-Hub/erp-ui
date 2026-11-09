@@ -69,8 +69,8 @@ function tenantPath(): string {
 }
 
 export const usersApi = {
-  list: (params?: ListParams) =>
-    authAdminClient.get<Paginated<ManagedUser> | ManagedUser[]>(tenantPath(), params),
+  list: (params?: ListParams, signal?: AbortSignal) =>
+    authAdminClient.get<Paginated<ManagedUser> | ManagedUser[]>(tenantPath(), params, { signal }),
   get: (userId: string) =>
     authAdminClient.get<ManagedUser>(`/admin/users/${userId}`),
   /** Add/invite a member by email (auth-api creates the account if new). */

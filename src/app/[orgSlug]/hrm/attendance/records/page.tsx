@@ -13,7 +13,7 @@ import { Field, Input, Select } from "@/components/ui/form";
 import { PageHeader } from "@/components/ui/page-header";
 import { SearchInput } from "@/components/ui/search-input";
 import { useCheckIn, useCheckOut, useAttendanceRecords } from "@/hooks/use-attendance";
-import { useDebounce } from "@/hooks/use-debounce";
+import { normalizeSearchTerm, useDebouncedValue } from "@bengo-hub/shared-ui-lib/search";
 import { useEmployeeOptions } from "@/hooks/use-employee-options";
 import { normalizeList } from "@/lib/api/drf";
 import { type AttendanceRecord } from "@/lib/api/attendance";
@@ -30,7 +30,7 @@ export default function AttendanceRecordsPage() {
   const [search, setSearch] = useState("");
   const [date, setDate] = useState("");
   const [page, setPage] = useState(1);
-  const debounced = useDebounce(search);
+  const debounced = useDebouncedValue(normalizeSearchTerm(search));
 
   const params = useMemo(
     () => ({ page, page_size: PAGE_SIZE, search: debounced || undefined, date: date || undefined }),

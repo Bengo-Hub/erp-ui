@@ -19,7 +19,9 @@ const KEY = "leave";
 export function useLeaveRequests(params?: ListParams) {
   return useQuery({
     queryKey: [KEY, "requests", params ?? {}],
-    queryFn: () => leaveApi.listRequests(params),
+    queryFn: ({ signal }) => leaveApi.listRequests(params, signal),
+    // Keep the current rows on screen while the next search term or page loads.
+    placeholderData: (prev) => prev,
   });
 }
 
@@ -118,7 +120,9 @@ export function useDeleteLeaveCategory() {
 export function useLeaveBalances(params?: ListParams) {
   return useQuery({
     queryKey: [KEY, "balances", params ?? {}],
-    queryFn: () => leaveApi.listBalances(params),
+    queryFn: ({ signal }) => leaveApi.listBalances(params, signal),
+    // Keep the current rows on screen while the next search term or page loads.
+    placeholderData: (prev) => prev,
   });
 }
 
@@ -197,6 +201,8 @@ export function useDeleteLeaveEntitlement() {
 export function useLeaveLogs(params?: ListParams) {
   return useQuery({
     queryKey: [KEY, "logs", params ?? {}],
-    queryFn: () => leaveApi.listLogs(params),
+    queryFn: ({ signal }) => leaveApi.listLogs(params, signal),
+    // Keep the current rows on screen while the next search term or page loads.
+    placeholderData: (prev) => prev,
   });
 }

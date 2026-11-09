@@ -15,7 +15,7 @@ import { Select } from "@/components/ui/form";
 import { PageHeader } from "@/components/ui/page-header";
 import { SearchInput } from "@/components/ui/search-input";
 import { IconButton } from "@/components/ui/tooltip";
-import { useDebounce } from "@/hooks/use-debounce";
+import { normalizeSearchTerm, useDebouncedValue } from "@bengo-hub/shared-ui-lib/search";
 import { useDeleteEmployee, useEmployees } from "@/hooks/use-employees";
 import { useDepartments } from "@/hooks/use-hrm-settings";
 import { normalizeList } from "@/lib/api/drf";
@@ -42,7 +42,7 @@ export default function EmployeesPage() {
   const [editEmployee, setEditEmployee] = useState<Employee | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<Employee | null>(null);
   const del = useDeleteEmployee();
-  const debouncedSearch = useDebounce(search);
+  const debouncedSearch = useDebouncedValue(normalizeSearchTerm(search));
 
   const queryParams = useMemo(
     () => ({

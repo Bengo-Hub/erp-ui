@@ -21,8 +21,8 @@ export interface Contract {
 const BASE = "/hrm/contracts";
 
 export const contractsApi = {
-  list: (params?: ListParams) =>
-    apiClient.get<Paginated<Contract> | Contract[]>(`${BASE}/`, params),
+  list: (params?: ListParams, signal?: AbortSignal) =>
+    apiClient.get<Paginated<Contract> | Contract[]>(`${BASE}/`, params, { signal }),
   get: (id: number | string) => apiClient.get<Contract>(`${BASE}/${id}/`),
   create: (data: Partial<Contract>) => apiClient.post<Contract>(`${BASE}/`, data),
   update: (id: number | string, data: Partial<Contract>) =>

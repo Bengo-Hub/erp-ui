@@ -180,7 +180,8 @@ export interface PlannerCellInput {
 function crud<T extends { id: number | string }>(segment: string) {
   const base = `${ATT}/${segment}`;
   return {
-    list: (params?: ListParams) => apiClient.get<Paginated<T> | T[]>(`${base}/`, params),
+    list: (params?: ListParams, signal?: AbortSignal) =>
+      apiClient.get<Paginated<T> | T[]>(`${base}/`, params, { signal }),
     get: (id: number | string) => apiClient.get<T>(`${base}/${id}/`),
     create: (data: Partial<T>) => apiClient.post<T>(`${base}/`, data),
     update: (id: number | string, data: Partial<T>) => apiClient.put<T>(`${base}/${id}/`, data),

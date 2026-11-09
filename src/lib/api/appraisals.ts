@@ -144,8 +144,8 @@ export const appraisalApi = {
   // Appraisals themselves live at the collection root (/hrm/appraisals/), not
   // a nested /appraisals segment.
   appraisals: {
-    list: (params?: ListParams) =>
-      apiClient.get<Paginated<Appraisal> | Appraisal[]>(`${APP}/`, params),
+    list: (params?: ListParams, signal?: AbortSignal) =>
+      apiClient.get<Paginated<Appraisal> | Appraisal[]>(`${APP}/`, params, { signal }),
     get: (id: number | string) => apiClient.get<Appraisal>(`${APP}/${id}/`),
     create: (data: Partial<Appraisal>) =>
       apiClient.post<Appraisal>(`${APP}/`, {

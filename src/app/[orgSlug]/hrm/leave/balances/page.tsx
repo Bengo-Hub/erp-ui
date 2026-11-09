@@ -8,7 +8,7 @@ import { Button, Card } from "@/components/ui/base";
 import { DataTable, Pagination, type Column } from "@/components/ui/data-table";
 import { PageHeader } from "@/components/ui/page-header";
 import { SearchInput } from "@/components/ui/search-input";
-import { useDebounce } from "@/hooks/use-debounce";
+import { normalizeSearchTerm, useDebouncedValue } from "@bengo-hub/shared-ui-lib/search";
 import { useAccrueLeave, useLeaveBalances } from "@/hooks/use-leave";
 import { normalizeList } from "@/lib/api/drf";
 import { type LeaveBalance } from "@/lib/api/leave";
@@ -17,7 +17,7 @@ import { PAGE_SIZE } from "@/lib/hrm";
 export default function LeaveBalancesPage() {
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
-  const debounced = useDebounce(search);
+  const debounced = useDebouncedValue(normalizeSearchTerm(search));
 
   const params = useMemo(
     () => ({ page, page_size: PAGE_SIZE, search: debounced || undefined }),

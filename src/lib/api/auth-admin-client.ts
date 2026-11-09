@@ -103,8 +103,11 @@ class AuthAdminClient {
     return Promise.reject(error);
   };
 
-  public get<T>(url: string, params?: unknown): Promise<T> {
-    return this.instance.get<T>(url, { params }).then((r: AxiosResponse<T>) => r.data);
+  /** GET a JSON payload. Pass `opts.signal` so a superseded search is cancelled. */
+  public get<T>(url: string, params?: unknown, opts?: { signal?: AbortSignal }): Promise<T> {
+    return this.instance
+      .get<T>(url, { params, signal: opts?.signal })
+      .then((r: AxiosResponse<T>) => r.data);
   }
 
   public post<T>(url: string, data?: unknown, config?: AxiosRequestConfig): Promise<T> {

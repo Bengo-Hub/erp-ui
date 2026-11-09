@@ -22,7 +22,9 @@ const KEY = "employees";
 export function useEmployees(params: ListParams) {
   return useQuery({
     queryKey: [KEY, "list", params],
-    queryFn: () => employeesApi.list(params),
+    queryFn: ({ signal }) => employeesApi.list(params, signal),
+    // Keep the current rows on screen while the next search term or page loads.
+    placeholderData: (prev) => prev,
   });
 }
 

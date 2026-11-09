@@ -10,7 +10,7 @@ import { DataTable, Pagination, type Column } from "@/components/ui/data-table";
 import { PageHeader } from "@/components/ui/page-header";
 import { IconButton } from "@/components/ui/tooltip";
 import { SearchInput } from "@/components/ui/search-input";
-import { useDebounce } from "@/hooks/use-debounce";
+import { normalizeSearchTerm, useDebouncedValue } from "@bengo-hub/shared-ui-lib/search";
 import { useDeleteUser, useUserActions, useUsers } from "@/hooks/use-users";
 import { normalizeList } from "@/lib/api/drf";
 import { PAGE_SIZE } from "@/lib/hrm";
@@ -35,7 +35,7 @@ export default function UsersPage() {
   const [editing, setEditing] = useState<ManagedUser | null>(null);
   const [rolesFor, setRolesFor] = useState<ManagedUser | null>(null);
   const [toDelete, setToDelete] = useState<ManagedUser | null>(null);
-  const debounced = useDebounce(search);
+  const debounced = useDebouncedValue(normalizeSearchTerm(search));
 
   const params = useMemo(
     () => ({ page, limit: PAGE_SIZE, search: debounced || undefined }),

@@ -12,7 +12,7 @@ import { Select } from "@/components/ui/form";
 import { PageHeader } from "@/components/ui/page-header";
 import { SearchInput } from "@/components/ui/search-input";
 import { Tabs } from "@/components/ui/tabs";
-import { useDebounce } from "@/hooks/use-debounce";
+import { normalizeSearchTerm, useDebouncedValue } from "@bengo-hub/shared-ui-lib/search";
 import {
   useApproveLeave,
   useLeaveRequests,
@@ -31,7 +31,7 @@ export default function LeaveRequestsPage() {
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState("");
   const [page, setPage] = useState(1);
-  const debounced = useDebounce(search);
+  const debounced = useDebouncedValue(normalizeSearchTerm(search));
 
   const params = useMemo(
     () => ({
