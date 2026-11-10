@@ -158,7 +158,7 @@ class ApiClient {
     let res = await open();
     if (res.status === 401 && this.accessToken) {
       const { refreshAccessToken } = await import("@/lib/auth/token-refresh");
-      const newToken = await refreshAccessToken();
+      const newToken = await refreshAccessToken(this.accessToken);
       if (!newToken) {
         this.on401Callback?.();
         throw Object.assign(new Error("unauthorized"), { status: 401 });
@@ -242,14 +242,19 @@ class ApiClient {
 
       const url = error.config?.url ?? "";
       if (!url.includes("/auth/me") && error.config && !error.config._retried) {
+        const sent = String(error.config.headers?.Authorization ?? "").replace(/^Bearer\s+/i, "");
         const { refreshAccessToken } = await import("@/lib/auth/token-refresh");
-        const newToken = await refreshAccessToken();
+        const newToken = await refreshAccessToken(sent || this.accessToken);
         if (newToken) {
           this.accessToken = newToken;
           error.config._retried = true;
           error.config.headers.Authorization = `Bearer ${newToken}`;
           return this.instance.request(error.config);
         }
+        this.on401Callback?.();
+      } else if (error.config?._retried) {
+        // Even a freshly renewed token was refused: the session is unusable, so send the person
+        // to sign in instead of leaving a page where every save fails.
         this.on401Callback?.();
       }
     }

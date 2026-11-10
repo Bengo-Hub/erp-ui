@@ -90,8 +90,9 @@ class AuthAdminClient {
       if (!this.accessToken) return Promise.reject(error);
       const url = error.config?.url ?? "";
       if (!url.includes("/auth/me") && error.config && !error.config._retried) {
+        const sent = String(error.config.headers?.Authorization ?? "").replace(/^Bearer\s+/i, "");
         const { refreshAccessToken } = await import("@/lib/auth/token-refresh");
-        const newToken = await refreshAccessToken();
+        const newToken = await refreshAccessToken(sent || this.accessToken);
         if (newToken) {
           this.accessToken = newToken;
           error.config._retried = true;

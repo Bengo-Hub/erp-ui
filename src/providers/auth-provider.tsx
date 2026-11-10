@@ -8,7 +8,9 @@ import { OfflineBar } from "@bengo-hub/shared-ui-lib/offline";
 
 import { useMe } from "@/hooks/useMe";
 import { apiClient } from "@/lib/api/client";
+import { AUTH_STORAGE_KEY, syncClientsToSession } from "@/lib/auth/token-refresh";
 import { useAuthStore } from "@/store/auth";
+import { watchSessionAcrossTabs } from "@bengo-hub/shared-ui-lib/auth";
 
 const SUBSCRIPTIONS_UI_URL =
   process.env.NEXT_PUBLIC_SUBSCRIPTIONS_UI_URL || "https://pricing.codevertexafrica.com";
@@ -39,6 +41,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     initialize();
   }, [initialize]);
+
+  // Another tab renewed or replaced the session: load it here and point both API clients at the
+  // new token, so this tab neither sends a rotated-away token nor writes its stale copy back.
+  useEffect(
+    () =>
+      watchSessionAcrossTabs(AUTH_STORAGE_KEY, () => {
+        void Promise.resolve(useAuthStore.persist.rehydrate()).then(syncClientsToSession);
+      }),
+    [],
+  );
 
   // Register response-side callbacks on the ApiClient.
   useEffect(() => {
