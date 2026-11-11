@@ -35,7 +35,7 @@ export function AppSidebar({ open = false, onClose }: SidebarProps) {
   const { tenant, getServiceTitle } = useBranding();
   const { hasAnyPermission, hasResourceAccess, isAdminTier, isPlatformOwner } = useAppPermissions();
 
-  const showPlatform = isPlatformOwner || user?.isPlatformOwner || orgSlug === "codevertex";
+  const showPlatform = isPlatformOwner || !!user?.isPlatformOwner;
 
   const href = useCallback((to: string) => `/${orgSlug}${to}`, [orgSlug]);
   const isActive = useCallback(

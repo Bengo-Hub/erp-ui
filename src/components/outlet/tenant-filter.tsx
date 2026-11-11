@@ -20,7 +20,7 @@ export function TenantFilter({ className }: { className?: string }) {
   const orgSlug = params?.orgSlug as string;
   const user = useAuthStore((s) => s.user);
   const session = useAuthStore((s) => s.session);
-  const isPlatformOwner = orgSlug === "codevertex" || !!user?.isPlatformOwner;
+  const isPlatformOwner = !!user?.isPlatformOwner;
 
   const { selected, select } = useTenantFilterStore();
   const [open, setOpen] = useState(false);

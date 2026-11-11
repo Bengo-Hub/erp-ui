@@ -15,7 +15,7 @@ export function useResolvedTenant() {
   const params = useParams();
   const orgSlug = params?.orgSlug as string;
   const user = useAuthStore((s) => s.user);
-  const isPlatformOwner = orgSlug === "codevertex" || !!user?.isPlatformOwner;
+  const isPlatformOwner = !!user?.isPlatformOwner;
   const selected = useTenantFilterStore((s) => s.selected);
 
   if (!isPlatformOwner) {

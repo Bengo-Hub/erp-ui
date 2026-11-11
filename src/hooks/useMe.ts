@@ -90,7 +90,7 @@ async function fetchMe(): Promise<UserProfile> {
     tenantSlug: slug,
     outletId: data.outlet_id ?? null,
     isHqUser: data.is_hq_user === true,
-    isPlatformOwner: data.is_platform_owner === true || slug === "codevertex",
+    isPlatformOwner: data.is_platform_owner === true,
     isSuperUser: roles.includes("superuser") || data.is_superuser === true,
     email_verification: data.email_verification,
     subExempt: jwtClaims.sub_exempt === true,

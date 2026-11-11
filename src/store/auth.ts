@@ -56,7 +56,7 @@ function profileFromClaims(claims: Record<string, unknown>): UserProfile {
     tenantSlug: slug,
     outletId: (claims.outlet_id as string) ?? null,
     isHqUser: claims.is_hq_user === true,
-    isPlatformOwner: claims.is_platform_owner === true || slug === "codevertex",
+    isPlatformOwner: claims.is_platform_owner === true,
     isSuperUser: Array.isArray(claims.roles) && (claims.roles as string[]).includes("superuser"),
     subExempt: claims.sub_exempt === true,
     billingMode: (claims.billing_mode as string) ?? "",
@@ -76,7 +76,7 @@ export const useAuthStore = create<AuthState>()(
       setSubscriptionInfo: (info) => set({ subscriptionInfo: info }),
 
       syncApiClient: (user) => {
-        const isPlatform = user.isPlatformOwner || user.tenantSlug === "codevertex";
+        const isPlatform = !!user.isPlatformOwner;
         apiClient.setPlatformOwner(isPlatform);
         apiClient.setTenantContext(user.tenantId || null, user.tenantSlug || null);
         apiClient.setOutletID(user.isHqUser ? null : user.outletId ?? null);
