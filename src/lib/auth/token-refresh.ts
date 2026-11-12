@@ -5,33 +5,33 @@
  * answer counts as signed out. See the shared module for the full story.
  */
 
-import { createSessionRefresher } from "@bengo-hub/shared-ui-lib/auth";
-import { useAuthStore } from "@/store/auth";
-import { refreshTokens } from "@/lib/auth/api";
-import { apiClient } from "@/lib/api/client";
-import { authAdminClient } from "@/lib/api/auth-admin-client";
+import { createSessionRefresher } from '@bengo-hub/shared-ui-lib/auth';
+import { useAuthStore } from '@/store/auth';
+import { refreshTokens } from '@/lib/auth/api';
+import { apiClient } from '@/lib/api/client';
+import { authAdminClient } from '@/lib/api/auth-admin-client';
 
 /** The persisted store key; also names the cross-tab refresh lock and the storage watcher. */
-export const AUTH_STORAGE_KEY = "erp-auth-storage";
+export const AUTH_STORAGE_KEY = 'erp-auth-storage';
 
 /** Points both API clients at the token the store now holds. */
 export function syncClientsToSession(): void {
-  const token = useAuthStore.getState().session?.accessToken;
-  if (!token) return;
-  apiClient.setAccessToken(token);
-  authAdminClient.setAccessToken(token);
+    const token = useAuthStore.getState().session?.accessToken;
+    if (!token) return;
+    apiClient.setAccessToken(token);
+    authAdminClient.setAccessToken(token);
 }
 
 const refreshSession = createSessionRefresher({
-  lockName: AUTH_STORAGE_KEY,
-  getSession: () => useAuthStore.getState().session,
-  reloadSession: () => useAuthStore.persist.rehydrate(),
-  saveSession: (session) => {
-    useAuthStore.setState({ session });
-    // Either client may have asked; keep the other one on the same token.
-    syncClientsToSession();
-  },
-  refresh: refreshTokens,
+    lockName: AUTH_STORAGE_KEY,
+    getSession: () => useAuthStore.getState().session,
+    reloadSession: () => useAuthStore.persist.rehydrate(),
+    saveSession: (session) => {
+        useAuthStore.setState({ session });
+        // Either client may have asked; keep the other one on the same token.
+        syncClientsToSession();
+    },
+    refresh: refreshTokens
 });
 
 /**
@@ -40,6 +40,6 @@ const refreshSession = createSessionRefresher({
  * rejected when it is known.
  */
 export async function refreshAccessToken(failedToken?: string | null): Promise<string | null> {
-  const outcome = await refreshSession(failedToken);
-  return "token" in outcome ? outcome.token : null;
+    const outcome = await refreshSession(failedToken);
+    return 'token' in outcome ? outcome.token : null;
 }
