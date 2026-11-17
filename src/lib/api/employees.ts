@@ -184,9 +184,8 @@ export const employeesApi = {
   get: (id: number | string) => apiClient.get<Employee>(`${EMP}/employees/${id}/`),
   create: (data: Partial<Employee>) =>
     apiClient.post<Employee>(`${EMP}/employees/`, toEmployeePayload(data)),
-  // NOTE: erp-api has no PUT/PATCH on /hrm/employees/{id}; edit is not yet
-  // supported server-side (gap). Kept pointing at the canonical path so it
-  // works once the route lands.
+  // PUT/PATCH /hrm/employees/{id} (erp-api EmployeesHandler.Update): partial fields, including
+  // work_shift_id ("" clears the standard shift).
   update: (id: number | string, data: Partial<Employee>) =>
     apiClient.put<Employee>(`${EMP}/employees/${id}/`, toEmployeePayload(data)),
   patch: (id: number | string, data: Partial<Employee>) =>
