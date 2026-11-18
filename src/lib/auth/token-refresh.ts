@@ -8,6 +8,7 @@
 import { createSessionRefresher } from '@bengo-hub/shared-ui-lib/auth';
 import { useAuthStore } from '@/store/auth';
 import { refreshTokens } from '@/lib/auth/api';
+import { cookieMode } from '@/lib/auth/session-mode';
 import { apiClient } from '@/lib/api/client';
 import { authAdminClient } from '@/lib/api/auth-admin-client';
 
@@ -40,6 +41,12 @@ const refreshSession = createSessionRefresher({
  * rejected when it is known.
  */
 export async function refreshAccessToken(failedToken?: string | null): Promise<string | null> {
+    // The cookie session refreshes through auth-api's HttpOnly cookie (lib/auth/cookie-session.ts).
+    if (cookieMode()) {
+        const { getCookieSession } = await import('@/lib/auth/cookie-session');
+        const renewed = await getCookieSession().refresh(failedToken);
+        return 'token' in renewed ? renewed.token : null;
+    }
     const outcome = await refreshSession(failedToken);
     return 'token' in outcome ? outcome.token : null;
 }

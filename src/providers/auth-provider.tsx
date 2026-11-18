@@ -2,7 +2,7 @@
 
 import { useQueryClient } from '@tanstack/react-query';
 import { useParams, usePathname, useRouter } from 'next/navigation';
-import { ReactNode, useEffect } from 'react';
+import { ReactNode, useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import { OfflineBar } from '@bengo-hub/shared-ui-lib/offline';
 
@@ -37,8 +37,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     const isAuthPath = pathname?.includes('/auth');
 
+    // `ready` = initialize() has restored any saved session. With the cookie session the first
+    // token arrives asynchronously, so the SSO redirect and the pages wait for it (as treasury-ui).
+    const [ready, setReady] = useState(false);
     useEffect(() => {
-        initialize();
+        let active = true;
+        void Promise.resolve(initialize()).finally(() => {
+            if (active) setReady(true);
+        });
+        return () => {
+            active = false;
+        };
     }, [initialize]);
 
     // Another tab renewed or replaced the session: load it here and point both API clients at the
@@ -89,10 +98,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // intermediate /auth/login landing page). returnTo is the full current URL so SSO returns
     // the user exactly where they were.
     useEffect(() => {
-        if (status === 'idle' && !isAuthPath && orgSlug) {
+        if (ready && status === 'idle' && !isAuthPath && orgSlug) {
             useAuthStore.getState().redirectToSSO(orgSlug, typeof window !== 'undefined' ? window.location.href : undefined);
         }
-    }, [status, isAuthPath, orgSlug]);
+    }, [ready, status, isAuthPath, orgSlug]);
 
     // /auth/me failed (and it's not a subscription 403) → session is bad, re-auth via SSO.
     useEffect(() => {
@@ -112,7 +121,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
     }, [status, me, pathname, orgSlug, router]);
 
-    const loading = status === 'loading' || (status === 'authenticated' && meLoading && !me);
+    const loading = !ready || status === 'loading' || (status === 'authenticated' && meLoading && !me);
     if (loading && !isAuthPath) {
         return (
             <div className="min-h-screen flex items-center justify-center bg-background">
