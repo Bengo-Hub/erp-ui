@@ -2,11 +2,18 @@
 // Uniform Codevertex offline-shell service worker (committed, runtime-caching, bundler-agnostic).
 // next-pwa is disabled (disable:true) so no build overwrites this file. Registered by the shared
 // OfflineBar (registerServiceWorker). network-first navigations (cached page offline), cache-first
-// static, network-only API.
-const VERSION = 'cv-offline-sw-v1';
+// static, network-only API. The /offline page is cached at install and served when a page that was
+// never visited is opened without a connection.
+const VERSION = 'cv-offline-sw-v2';
 const DOC_CACHE = `${VERSION}-documents`;
 const ASSET_CACHE = `${VERSION}-assets`;
-self.addEventListener('install', () => self.skipWaiting());
+const OFFLINE_URL = '/offline';
+self.addEventListener('install', (event) => {
+  event.waitUntil((async () => {
+    try { await (await caches.open(DOC_CACHE)).add(new Request(OFFLINE_URL, { cache: 'reload' })); } catch { /* cached on a later visit */ }
+    await self.skipWaiting();
+  })());
+});
 self.addEventListener('activate', (event) => {
   event.waitUntil((async () => {
     const keys = await caches.keys();
@@ -35,6 +42,8 @@ self.addEventListener('fetch', (event) => {
         const cache = await caches.open(DOC_CACHE);
         const exact = await cache.match(request, { ignoreSearch: true });
         if (exact) return exact;
+        const offline = await cache.match(OFFLINE_URL);
+        if (offline) return offline;
         const any = (await cache.keys())[0];
         if (any) return cache.match(any);
         return new Response('<!doctype html><meta charset="utf-8"><title>Offline</title><body style="font-family:system-ui;padding:2rem">Offline — reopen when your connection returns.</body>', { headers: { 'Content-Type': 'text/html' }, status: 200 });

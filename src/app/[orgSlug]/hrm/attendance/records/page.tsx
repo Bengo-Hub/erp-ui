@@ -1,8 +1,9 @@
 "use client";
 
-import { LogIn, LogOut } from "lucide-react";
+import { FilePen, LogIn, LogOut } from "lucide-react";
 import { useMemo, useState } from "react";
 
+import { RegularisationDialog, type CorrectionSeed } from "@/components/attendance/regularisation-dialog";
 import { PermissionGate } from "@/components/auth/permission-gate";
 import { StatusBadge } from "@/components/hrm/status-badge";
 import { OutletFilter } from "@/components/outlet/outlet-filter";
@@ -44,6 +45,7 @@ export default function AttendanceRecordsPage() {
   const checkOut = useCheckOut();
   const [checkInOpen, setCheckInOpen] = useState(false);
   const [employeeId, setEmployeeId] = useState("");
+  const [correcting, setCorrecting] = useState<CorrectionSeed | null>(null);
 
   const columns: Column<AttendanceRecord>[] = [
     {
@@ -59,14 +61,32 @@ export default function AttendanceRecordsPage() {
       header: "",
       headerClassName: "text-right",
       className: "text-right",
-      cell: (r) =>
-        r.check_in && !r.check_out ? (
-          <PermissionGate permission={MANAGE}>
-            <Button variant="ghost" size="sm" disabled={checkOut.isPending} onClick={() => checkOut.mutate(r.id)}>
-              <LogOut className="mr-1.5 size-4" /> Check Out
-            </Button>
-          </PermissionGate>
-        ) : null,
+      cell: (r) => (
+        <div className="flex justify-end gap-1">
+          {r.check_in && !r.check_out && (
+            <PermissionGate permission={MANAGE}>
+              <Button variant="ghost" size="sm" disabled={checkOut.isPending} onClick={() => checkOut.mutate(r.id)}>
+                <LogOut className="mr-1.5 size-4" /> Check Out
+              </Button>
+            </PermissionGate>
+          )}
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() =>
+              setCorrecting({
+                employee_id: r.employee != null ? String(r.employee) : (r.employee_id as string | undefined),
+                employee_name: r.employee_name,
+                date: r.date,
+                check_in: r.check_in,
+                check_out: r.check_out,
+              })
+            }
+          >
+            <FilePen className="mr-1.5 size-4" /> Request correction
+          </Button>
+        </div>
+      ),
     },
   ];
 
@@ -153,6 +173,7 @@ export default function AttendanceRecordsPage() {
           </Select>
         </Field>
       </Dialog>
+      {correcting && <RegularisationDialog seed={correcting} onClose={() => setCorrecting(null)} />}
     </div>
   );
 }

@@ -5,10 +5,13 @@ import { useQuery } from "@tanstack/react-query";
 
 import { useDepartments, useJobGroups, useJobTitles } from "@/hooks/use-hrm-settings";
 import { useLeaveCategories } from "@/hooks/use-leave";
+import { useOutlets } from "@/hooks/use-outlets";
+import { useWorkSites } from "@/hooks/use-work-sites";
 import { apiClient } from "@/lib/api/client";
 import { normalizeList } from "@/lib/api/drf";
 import { type Department, type JobGroup, type NamedRecord } from "@/lib/api/hrm-settings";
 import { type LeaveCategory } from "@/lib/api/leave";
+import { useAuthStore } from "@/store/auth";
 
 export interface Option {
   value: string;
@@ -98,4 +101,19 @@ export function useProjectOptions(): OptionsResult {
  * distinct cost_center IDs on erp records). */
 export function useCostCenterOptions(): OptionsResult {
   return useLookup("/hrm/payroll/lookups/cost-centers", "cost-centers");
+}
+
+/** The tenant's outlets (branches) from auth-api as `{value,label}` options. */
+export function useOutletOptions(): OptionsResult {
+  const slug = useAuthStore((s) => s.user?.tenantSlug) ?? "";
+  const { data, isLoading } = useOutlets(slug);
+  const options = useMemo(() => (data ?? []).map((o) => ({ value: o.id, label: o.name })), [data]);
+  return { options, isLoading };
+}
+
+/** Active work sites (geo-fences) as `{value,label}` options. */
+export function useWorkSiteOptions(): OptionsResult {
+  const { data, isLoading } = useWorkSites();
+  const options = useMemo(() => (data?.data ?? []).map((s) => ({ value: s.id, label: s.name })), [data]);
+  return { options, isLoading };
 }

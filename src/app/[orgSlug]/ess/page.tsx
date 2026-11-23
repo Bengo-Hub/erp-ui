@@ -4,8 +4,10 @@ import {
   CalendarClock,
   CalendarPlus,
   ClipboardList,
+  FilePen,
   FileText,
   Receipt,
+  Timer,
   Wallet,
   type LucideIcon,
 } from "lucide-react";
@@ -13,6 +15,7 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 
 import { PermissionGate } from "@/components/auth/permission-gate";
+import { ClockInCard } from "@/components/ess/clock-in-card";
 import { Card } from "@/components/ui/base";
 import { PageHeader } from "@/components/ui/page-header";
 import { StatTile } from "@/components/ui/stat-tile";
@@ -51,12 +54,16 @@ export default function EssDashboardPage() {
     { label: "My Payslips", description: "Download payslips", to: "/payroll/payslips", icon: Receipt, permission: "view_payslip" },
     { label: "P9 Tax Card", description: "Annual tax card", to: "/reports/p9", icon: FileText, permission: "view_payslip" },
     { label: "Timesheets", description: "Log & submit hours", to: "/hrm/attendance/timesheets", icon: ClipboardList },
-    { label: "Attendance", description: "My attendance records", to: "/hrm/attendance/records", icon: ClipboardList, permission: "view_attendancerecord" },
+    { label: "Attendance", description: "My attendance records", to: "/hrm/attendance/records", icon: ClipboardList, permission: "hrm.attendance.view" },
+    { label: "Request a correction", description: "Fix a missed or wrong punch", to: "/hrm/attendance/regularisations", icon: FilePen, permission: "hrm.attendance.view" },
+    { label: "Overtime", description: "Ask for overtime approval", to: "/hrm/attendance/overtime-requests", icon: Timer, permission: "hrm.attendance.view" },
   ];
 
   return (
     <div className="space-y-6 p-4 sm:p-6">
       <PageHeader title={`Hi, ${name}`} subtitle="Your self-service home" />
+
+      <ClockInCard />
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
         <StatTile label="Leave Balance (days)" value={totalLeaveDays || "—"} icon={CalendarClock} accent="text-green-600" />

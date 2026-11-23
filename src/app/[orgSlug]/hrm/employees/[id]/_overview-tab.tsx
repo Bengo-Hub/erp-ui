@@ -13,6 +13,8 @@ import { type Employee } from "@/lib/api/employees";
 import { formatDate, formatMoney } from "@/lib/utils";
 import { relationLabel } from "@/lib/hrm";
 
+import { DevicePinCard } from "./_device-pin-card";
+
 function Row({ label, value }: { label: string; value: React.ReactNode }) {
   return (
     <div className="flex flex-col gap-0.5">
@@ -109,6 +111,7 @@ export function OverviewTab({ employee }: { employee: Employee }) {
       </Card>
       {/* Keyed by the saved shift so the picker resets after a save without an effect. */}
       <WorkShiftCard key={typeof employee.work_shift_id === "string" ? employee.work_shift_id : "none"} employee={employee} />
+      <DevicePinCard key={`pin-${String(employee.id)}`} employee={employee} />
     </div>
   );
 }

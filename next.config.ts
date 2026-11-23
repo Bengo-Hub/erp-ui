@@ -1,6 +1,9 @@
 import withPWAInit from "@ducanh2912/next-pwa";
 import type { NextConfig } from "next";
 
+// The PWA runs from the committed public/sw.js (offline shell plus the /offline page), which the
+// shared-ui-lib OfflineBar registers in production builds only. next-pwa stays disabled: it does not
+// run under Turbopack, and under webpack it would overwrite that worker with a generated one.
 const withPWA = withPWAInit({
   dest: "public",
   disable: true,
