@@ -16,43 +16,20 @@ import {
   YAxis,
 } from "recharts";
 
-import { Card } from "@/components/ui/base";
-import { EmptyState } from "@/components/ui/states";
+import { type ChartDatum } from "./chart-card";
 
+// Categorical slots in a fixed order: identity follows the slot, never the rank.
 const PALETTE = [
-  "var(--tenant-primary, #2563eb)",
-  "#10b981",
-  "#f59e0b",
-  "#ef4444",
-  "#8b5cf6",
-  "#06b6d4",
-  "#ec4899",
+  "var(--series-1)",
+  "var(--series-2)",
+  "var(--series-3)",
+  "var(--series-4)",
+  "#e87ba4",
+  "#008300",
+  "#6250d6",
+  "#e34948",
 ];
 
-interface ChartCardProps {
-  title: string;
-  children: React.ReactNode;
-  empty?: boolean;
-}
-
-/** Card wrapper with a title and empty-state guard for charts. */
-export function ChartCard({ title, children, empty }: ChartCardProps) {
-  return (
-    <Card className="p-4">
-      <h3 className="mb-3 text-sm font-bold text-foreground">{title}</h3>
-      {empty ? (
-        <EmptyState title="No data yet" description="This chart will populate as data accrues." />
-      ) : (
-        <div className="h-64">{children}</div>
-      )}
-    </Card>
-  );
-}
-
-export interface ChartDatum {
-  label: string;
-  value: number;
-}
 
 /** Trend line chart. */
 export function TrendChart({ data, color = PALETTE[0] }: { data: ChartDatum[]; color?: string }) {
@@ -78,11 +55,8 @@ export function BarChart({ data }: { data: ChartDatum[] }) {
         <XAxis dataKey="label" tick={{ fontSize: 11 }} stroke="currentColor" className="text-muted-foreground" />
         <YAxis tick={{ fontSize: 11 }} stroke="currentColor" className="text-muted-foreground" />
         <Tooltip />
-        <Bar dataKey="value" radius={[4, 4, 0, 0]}>
-          {data.map((_d, i) => (
-            <Cell key={i} fill={PALETTE[i % PALETTE.length]} />
-          ))}
-        </Bar>
+        {/* One measure, one colour: the axis label carries each bar's identity. */}
+        <Bar dataKey="value" radius={[4, 4, 0, 0]} fill={PALETTE[0]} maxBarSize={40} />
       </RBarChart>
     </ResponsiveContainer>
   );
