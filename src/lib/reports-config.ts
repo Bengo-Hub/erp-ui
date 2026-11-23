@@ -4,7 +4,10 @@
  * per-report page components beyond a 4-line wrapper that picks the key.
  *
  * Adding a report = add an entry here (fixes the legacy 13-duplicate-pages debt).
+ * Attendance reports live in reports-attendance.ts and are merged into REPORTS below.
  */
+
+import { ATTENDANCE_REPORTS } from "@/lib/reports-attendance";
 
 export type ReportFilterKey =
   | "year"
@@ -24,7 +27,14 @@ export interface ReportColumn {
   percent?: boolean;
   /** Right-align numeric cells. */
   numeric?: boolean;
+  /** Render a date, a date with time, or a clock time (accepts ISO or HH:MM). */
+  date?: boolean;
+  datetime?: boolean;
+  time?: boolean;
 }
+
+/** The department a report is written for; the reports hub groups by it. */
+export type ReportAudience = "Statutory" | "Payroll" | "HR" | "Security" | "Quality control" | "IT" | "Management";
 
 export interface ReportConfig {
   /** Stable key (matches the route segment under /reports). */
@@ -46,12 +56,18 @@ export interface ReportConfig {
   summary?: { label: string; field: string; money?: boolean }[];
   /** Permission required to view (any). */
   permission?: string;
+  /** Hub grouping. Unset means Statutory or Payroll by key. */
+  audience?: ReportAudience;
+  /** Pre-fill the date range with the last N days. */
+  defaultRangeDays?: number;
+  /** Money columns use the tenant's currency instead of KES (statutory returns stay in KES). */
+  tenantCurrency?: boolean;
 }
 
 const EMP = { field: "employee_name", header: "Employee Name" };
 const PIN = { field: "employee_pin", header: "KRA PIN" };
 
-export const REPORTS: ReportConfig[] = [
+const PAYROLL_REPORTS: ReportConfig[] = [
   {
     key: "p9",
     title: "P9 Tax Deduction Card",
@@ -296,6 +312,15 @@ export const REPORTS: ReportConfig[] = [
     ],
   },
 ];
+
+export const REPORTS: ReportConfig[] = [...PAYROLL_REPORTS, ...ATTENDANCE_REPORTS];
+
+const PAYROLL_KEYS = new Set(["bank-net-pay", "muster-roll", "variance"]);
+
+/** The department a report belongs to, for grouping on the reports hub. */
+export function reportAudience(r: ReportConfig): ReportAudience {
+  return r.audience ?? (PAYROLL_KEYS.has(r.key) ? "Payroll" : "Statutory");
+}
 
 export function getReportConfig(key: string): ReportConfig | undefined {
   return REPORTS.find((r) => r.key === key);

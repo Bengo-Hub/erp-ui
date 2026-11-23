@@ -3,7 +3,7 @@
 import { PdfPreview, useDocumentPreview } from "@bengo-hub/shared-ui-lib/documents";
 import { Columns3, FileDown, FileSpreadsheet, Printer } from "lucide-react";
 import { useSearchParams } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { toast } from "sonner";
 
 import { Button, Card } from "@/components/ui/base";
@@ -12,15 +12,32 @@ import { PageHeader } from "@/components/ui/page-header";
 import { useReport, useReportExport } from "@/hooks/use-reports";
 import { reportsApi, type ReportParams, type ReportRow } from "@/lib/api/reports";
 import { type ReportColumn, type ReportConfig, type ReportFilterKey } from "@/lib/reports-config";
-import { formatCurrency, formatPercent } from "@/lib/format";
+import { useMoney } from "@/hooks/use-money";
+import { daysAgo, isoDay } from "@/lib/date-range";
+import { formatCurrency, formatDate, formatDateTime, formatPercent, formatTime } from "@/lib/format";
 import { DynamicReportTable } from "./dynamic-report-table";
 import { ReportFilters, type ReportFilterValues } from "./report-filters";
 
-function renderCell(col: ReportColumn, row: ReportRow) {
+function renderCell(col: ReportColumn, row: ReportRow, currency?: string) {
   const v = row[col.field];
-  if (col.money) return formatCurrency(v as string | number | null);
+  if (col.money) return formatCurrency(v as string | number | null, currency);
   if (col.percent) return formatPercent(v as string | number | null);
-  return v == null || v === "" ? "—" : String(v);
+  if (v == null || v === "") return "—";
+  if (col.date) return formatDate(v as string);
+  if (col.datetime) return formatDateTime(v as string);
+  if (col.time) return String(v).includes("T") ? formatTime(v as string) : String(v).slice(0, 5);
+  if (typeof v === "boolean") return v ? "Yes" : "No";
+  return String(v);
+}
+
+/** Filter values a config starts with: this year, plus the last N days for range reports. */
+function initialValues(config: ReportConfig): ReportFilterValues {
+  const v: ReportFilterValues = { year: String(new Date().getFullYear()) };
+  if (config.defaultRangeDays) {
+    v.from_date = daysAgo(config.defaultRangeDays - 1);
+    v.to_date = isoDay();
+  }
+  return v;
 }
 
 function sum(rows: ReportRow[], field: string): number {
@@ -36,8 +53,9 @@ function toParams(show: ReportFilterKey[], v: ReportFilterValues): ReportParams 
   if (show.includes("region") && v.region) p.region_id = v.region;
   if (show.includes("employee") && v.employee) p.employee_id = v.employee;
   if (show.includes("dateRange")) {
-    if (v.from_date) p.from_date = v.from_date;
-    if (v.to_date) p.to_date = v.to_date;
+    // Payroll reports read from_date/to_date; attendance reports read from/to.
+    if (v.from_date) p.from_date = p.from = v.from_date;
+    if (v.to_date) p.to_date = p.to = v.to_date;
   }
   return p;
 }
@@ -48,9 +66,9 @@ function toParams(show: ReportFilterKey[], v: ReportFilterValues): ReportParams 
  */
 export function ReportRunner({ config }: { config: ReportConfig }) {
   const searchParams = useSearchParams();
-  const [values, setValues] = useState<ReportFilterValues>({
-    year: String(new Date().getFullYear()),
-  });
+  const [values, setValues] = useState<ReportFilterValues>(() => initialValues(config));
+  const { currency: tenantCurrency } = useMoney();
+  const currency = config.tenantCurrency ? tenantCurrency : undefined;
   const [enabled, setEnabled] = useState(false);
   const [missing, setMissing] = useState<string | null>(null);
   const [hiddenCols, setHiddenCols] = useState<Set<string>>(new Set());
@@ -58,15 +76,17 @@ export function ReportRunner({ config }: { config: ReportConfig }) {
 
   // Auto-load from ?period=YYYY-MM (e.g. "View Muster Roll" for a payroll period) — hydrate the
   // year/month filters and run immediately so the report opens for that period without a manual step.
-  useEffect(() => {
-    const period = searchParams?.get("period");
+  // Applied during render when the period changes, not in an effect.
+  const period = searchParams?.get("period") ?? null;
+  const [seenPeriod, setSeenPeriod] = useState<string | null>(null);
+  if (period !== seenPeriod) {
+    setSeenPeriod(period);
     const m = period ? /^(\d{4})-(\d{2})/.exec(period) : null;
     if (m) {
       setValues((v) => ({ ...v, year: m[1], month: String(Number(m[2])) }));
       setEnabled(true);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [searchParams]);
+  }
 
   const params = useMemo(() => toParams(config.filters, values), [config.filters, values]);
   const { rows, summary, columnDefs, totals, isFetching, error, refetch } = useReport(config, params, enabled);
@@ -87,11 +107,12 @@ export function ReportRunner({ config }: { config: ReportConfig }) {
         month: values.month,
         department: values.department,
         employee: values.employee,
+        dateRange: values.from_date && values.to_date ? "set" : undefined,
       };
       return !map[k];
     });
     if (need) {
-      setMissing(`Please select ${need}.`);
+      setMissing(`Please select ${need === "dateRange" ? "a date range" : need}.`);
       return;
     }
     setMissing(null);
@@ -102,7 +123,7 @@ export function ReportRunner({ config }: { config: ReportConfig }) {
   const clear = () => {
     setEnabled(false);
     setMissing(null);
-    setValues({ year: String(new Date().getFullYear()) });
+    setValues(initialValues(config));
   };
 
   const columns: Column<ReportRow>[] = useMemo(
@@ -111,18 +132,18 @@ export function ReportRunner({ config }: { config: ReportConfig }) {
         header: c.header,
         headerClassName: c.money || c.numeric || c.percent ? "text-right" : undefined,
         className: c.money || c.numeric || c.percent ? "text-right tabular-nums" : undefined,
-        cell: (row: ReportRow) => renderCell(c, row),
+        cell: (row: ReportRow) => renderCell(c, row, currency),
       })),
-    [config.columns],
+    [config.columns, currency],
   );
 
   const tiles = useMemo(
     () =>
       (config.summary ?? []).map((s) => ({
         label: s.label,
-        value: s.money ? formatCurrency(sum(rows, s.field)) : String(sum(rows, s.field)),
+        value: s.money ? formatCurrency(sum(rows, s.field), currency) : String(Math.round(sum(rows, s.field) * 100) / 100),
       })),
-    [config.summary, rows],
+    [config.summary, rows, currency],
   );
 
   // Backend-driven dynamic columns (e.g. muster roll). When present they replace the static config
