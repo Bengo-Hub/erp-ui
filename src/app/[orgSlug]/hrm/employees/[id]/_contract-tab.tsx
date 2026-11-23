@@ -2,7 +2,7 @@
 
 import { PdfPreview, useDocumentPreview } from "@bengo-hub/shared-ui-lib/documents";
 import { Eye, FilePlus2, Save } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { toast } from "sonner";
 
 import { PermissionGate } from "@/components/auth/permission-gate";
@@ -65,9 +65,12 @@ export function ContractTab({
 
   // Load the fetched terms into the editor whenever new terms arrive for the
   // active type, unless the user has unsaved edits (guarded by the confirm flow).
-  useEffect(() => {
+  // Applied during render when the terms or the dirty flag change, not in an effect.
+  const [loaded, setLoaded] = useState<{ data: typeof data; dirty: boolean } | null>(null);
+  if (!loaded || loaded.data !== data || loaded.dirty !== dirty) {
+    setLoaded({ data, dirty });
     if (data && !dirty) setHtml(data.terms_html ?? "");
-  }, [data, dirty]);
+  }
 
   const requestTypeChange = (next: string) => {
     if (next === type) return;

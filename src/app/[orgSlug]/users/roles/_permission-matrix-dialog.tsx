@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 
 import { Badge, Button } from "@/components/ui/base";
 import { Dialog } from "@/components/ui/dialog";
@@ -20,9 +20,12 @@ export function PermissionMatrixDialog({ role, onClose }: { role: ErpRole | null
   const locked = role?.role_code === WILDCARD_ROLE;
 
   const [checked, setChecked] = useState<Set<string>>(new Set());
-  useEffect(() => {
+  // Re-seed the ticks whenever a fresh copy of the role loads (during render, not in an effect).
+  const [seededFrom, setSeededFrom] = useState(full);
+  if (seededFrom !== full) {
+    setSeededFrom(full);
     if (full?.permission_codes) setChecked(new Set(full.permission_codes));
-  }, [full]);
+  }
 
   if (!role) return null;
   const busy = setPerms.isPending;

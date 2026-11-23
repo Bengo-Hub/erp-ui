@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 
 import { PermissionGate } from "@/components/auth/permission-gate";
 import { Button, Card, CardContent, CardHeader } from "@/components/ui/base";
@@ -45,9 +45,12 @@ export default function PerDiemSettingsPage() {
   const groups = normalizeList<JobGroup>(useJobGroups().data).results;
   const [form, setForm] = useState<Form>(toForm());
 
-  useEffect(() => {
+  // Re-seed the form when a fresh policy loads (during render, not in an effect).
+  const [seededFrom, setSeededFrom] = useState(data);
+  if (seededFrom !== data) {
+    setSeededFrom(data);
     if (data) setForm(toForm(data));
-  }, [data]);
+  }
 
   const set = <K extends keyof Form>(k: K, v: Form[K]) => setForm((f) => ({ ...f, [k]: v }));
   const hasRate = Number(form.daily_rate) > 0 || Object.values(form.rates).some((v) => Number(v) > 0);

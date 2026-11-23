@@ -2,7 +2,7 @@
 
 import { ArrowLeft, CheckCircle2, Paperclip, Save, Upload } from "lucide-react";
 import { useParams, useRouter } from "next/navigation";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 
 import { Badge, Button, Card } from "@/components/ui/base";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
@@ -43,9 +43,10 @@ export default function ClaimDetailPage() {
   const [values, setValues] = useState<ClaimHeaderValues>(emptyHeader());
   const [perDiem, setPerDiem] = useState({ days: "", rate: "" });
 
-  // Hydrate the editable header once the claim loads.
-  useEffect(() => {
-    if (!claim) return;
+  // Hydrate the editable header whenever the claim loads or reloads (during render, not in an effect).
+  const [hydratedFrom, setHydratedFrom] = useState(claim);
+  if (claim && hydratedFrom !== claim) {
+    setHydratedFrom(claim);
     setValues({
       employee: String(claim.employee_id ?? claim.employee ?? ""),
       claim_type: claim.claim_type ?? "reimbursement",
@@ -57,7 +58,7 @@ export default function ClaimDetailPage() {
       description: claim.description ?? "",
       amount: String(claim.amount ?? ""),
     });
-  }, [claim]);
+  }
 
   // Live detail totals (for itemised / mileage types the header amount mirrors these).
   const isItemised = values.claim_type === "reimbursement" || values.claim_type === "other";

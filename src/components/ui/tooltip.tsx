@@ -23,10 +23,10 @@ const sidePos: Record<Side, string> = {
 };
 
 /**
- * Lightweight hover/focus tooltip — no portal, no extra deps.
+ * Lightweight hover and focus tooltip, with no portal and no extra dependencies.
  *
  * Wraps a single interactive child and shows `content` on hover or keyboard focus.
- * The child keeps its own behaviour; we only add `aria-describedby` + event handlers.
+ * The child keeps its own behaviour; it only gains `aria-describedby`.
  * Light-theme, tenant-branding-aware via semantic tokens.
  */
 export function Tooltip({
@@ -58,29 +58,12 @@ export function Tooltip({
     setOpen(false);
   };
 
-  const childProps = children.props as Record<string, unknown>;
-  const trigger = cloneElement(children, {
-    "aria-describedby": open ? id : undefined,
-    onMouseEnter: (e: React.MouseEvent) => {
-      (childProps.onMouseEnter as ((e: React.MouseEvent) => void) | undefined)?.(e);
-      show();
-    },
-    onMouseLeave: (e: React.MouseEvent) => {
-      (childProps.onMouseLeave as ((e: React.MouseEvent) => void) | undefined)?.(e);
-      hide();
-    },
-    onFocus: (e: React.FocusEvent) => {
-      (childProps.onFocus as ((e: React.FocusEvent) => void) | undefined)?.(e);
-      show();
-    },
-    onBlur: (e: React.FocusEvent) => {
-      (childProps.onBlur as ((e: React.FocusEvent) => void) | undefined)?.(e);
-      hide();
-    },
-  } as Record<string, unknown>);
+  // The child only gains aria-describedby. Hover and focus are handled on the wrapper (React focus
+  // events bubble), so the child's own handlers stay untouched and nothing reads a ref in render.
+  const trigger = cloneElement(children, { "aria-describedby": open ? id : undefined } as Record<string, unknown>);
 
   return (
-    <span className="relative inline-flex" onMouseLeave={hide}>
+    <span className="relative inline-flex" onMouseEnter={show} onMouseLeave={hide} onFocus={show} onBlur={hide}>
       {trigger}
       {open && (
         <span

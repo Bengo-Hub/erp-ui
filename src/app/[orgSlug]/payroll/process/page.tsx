@@ -2,7 +2,7 @@
 
 import { Banknote, Calculator, Send } from "lucide-react";
 import { useParams } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { toast } from "sonner";
 
 import { PermissionGate } from "@/components/auth/permission-gate";
@@ -121,9 +121,12 @@ export default function ProcessPayrollPage() {
   // disbursement once it completes.
   const [runId, setRunId] = useState<string | null>(null);
   const { run, streamError } = usePayrollRunProgress(runId);
-  useEffect(() => {
+  // Move on when the run's status turns completed (during render, not in an effect).
+  const [seenStatus, setSeenStatus] = useState<string | undefined>(undefined);
+  if (run?.status !== seenStatus) {
+    setSeenStatus(run?.status);
     if (run?.status === "completed") setStep(3);
-  }, [run?.status]);
+  }
 
   const runPayroll = () =>
     processMut.mutate(payload, {

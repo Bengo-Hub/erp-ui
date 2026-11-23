@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 
 import { Button } from "@/components/ui/base";
 import { Dialog } from "@/components/ui/dialog";
@@ -26,7 +26,10 @@ export function RoleFormDialog({
   const update = useUpdateRole();
   const [form, setForm] = useState({ role_code: "", name: "", description: "" });
 
-  useEffect(() => {
+  // Seed the form each time the dialog opens or the role changes (during render, not in an effect).
+  const [seed, setSeed] = useState<{ open: boolean; role: ErpRole | null }>({ open: false, role: null });
+  if (seed.open !== open || seed.role !== role) {
+    setSeed({ open, role });
     if (open) {
       setForm({
         role_code: role?.role_code ?? "",
@@ -34,7 +37,7 @@ export function RoleFormDialog({
         description: role?.description ?? "",
       });
     }
-  }, [open, role]);
+  }
 
   const busy = create.isPending || update.isPending;
 

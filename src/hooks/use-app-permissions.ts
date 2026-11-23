@@ -126,9 +126,9 @@ function normalizeLegacyPermission(perm: string): string {
   const match = /^(view|add|change|delete)_([a-z]+)$/.exec(perm);
   if (!match) return perm;
   const [, legacyAction, model] = match;
-  const module = LEGACY_MODEL_TO_MODULE[model];
-  if (!module) return perm;
-  return `${module}.${LEGACY_ACTION_TO_ACTION[legacyAction]}`;
+  const moduleName = LEGACY_MODEL_TO_MODULE[model];
+  if (!moduleName) return perm;
+  return `${moduleName}.${LEGACY_ACTION_TO_ACTION[legacyAction]}`;
 }
 
 /** True for any role name that denotes admin-tier authority: the exact "erp_admin"/

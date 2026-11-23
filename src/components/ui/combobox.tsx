@@ -80,14 +80,19 @@ export function Combobox({
     return () => document.removeEventListener("mousedown", onDoc);
   }, [open]);
 
-  // Focus the search box + reset active index when opening.
+  // Reset the active index when opening and the query when closing (during render, not in an effect).
+  const [wasOpen, setWasOpen] = useState(open);
+  if (wasOpen !== open) {
+    setWasOpen(open);
+    if (open) setActiveIndex(0);
+    else setQuery("");
+  }
+
+  // Focus the search box when opening.
   useEffect(() => {
-    if (open) {
-      setActiveIndex(0);
-      const t = setTimeout(() => inputRef.current?.focus(), 0);
-      return () => clearTimeout(t);
-    }
-    setQuery("");
+    if (!open) return;
+    const t = setTimeout(() => inputRef.current?.focus(), 0);
+    return () => clearTimeout(t);
   }, [open]);
 
   // Keep the active option scrolled into view.

@@ -1,7 +1,7 @@
 "use client";
 
 import { Plus } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 
 import { Button } from "@/components/ui/base";
 import { Combobox } from "@/components/ui/combobox";
@@ -140,13 +140,17 @@ export function JobFormDialog({ open, job, orgSlug, saving, onClose, onSave }: P
   }, [outlets]);
 
   // Reset whenever the dialog (re)opens, seeding HQ for brand-new postings.
-  useEffect(() => {
-    if (!open) return;
-    const seeded = toForm(job);
-    if (!job && !seeded.location && hqLocation) seeded.location = hqLocation;
-    setForm(seeded);
-    setStep(0);
-  }, [open, job, hqLocation]);
+  // Done during render when open, job or the HQ location changes, not in an effect.
+  const [seed, setSeed] = useState<{ open: boolean; job: typeof job; hq: string } | null>(null);
+  if (!seed || seed.open !== open || seed.job !== job || seed.hq !== hqLocation) {
+    setSeed({ open, job, hq: hqLocation });
+    if (open) {
+      const seeded = toForm(job);
+      if (!job && !seeded.location && hqLocation) seeded.location = hqLocation;
+      setForm(seeded);
+      setStep(0);
+    }
+  }
 
   const set = <K extends keyof JobForm>(key: K, value: JobForm[K]) =>
     setForm((f) => ({ ...f, [key]: value }));

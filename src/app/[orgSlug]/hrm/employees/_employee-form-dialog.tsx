@@ -99,11 +99,14 @@ export function EmployeeFormDialog({
   const { register, handleSubmit, reset, trigger, formState: { errors } } = useForm<FormValues>({
     resolver: zodResolver(employeeSchema),
   });
+  // The form library is reset in the effect; the wizard step resets during render.
+  const [stepSeed, setStepSeed] = useState<{ open: boolean; employee: typeof employee } | null>(null);
+  if (!stepSeed || stepSeed.open !== open || stepSeed.employee !== employee) {
+    setStepSeed({ open, employee });
+    if (open) setStep(0);
+  }
   useEffect(() => {
-    if (open) {
-      reset(toFormValues(employee));
-      setStep(0);
-    }
+    if (open) reset(toFormValues(employee));
   }, [open, employee, reset]);
 
   const next = async () => {

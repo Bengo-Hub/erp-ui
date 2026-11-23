@@ -94,10 +94,15 @@ export function usePayrollRunProgress(runId: string | null) {
   const qc = useQueryClient();
   const [run, setRun] = useState<PayrollRunJob | null>(null);
   const [streamError, setStreamError] = useState<string | null>(null);
-
-  useEffect(() => {
+  // A new run (or none) starts from a clean slate; reset during render, not in the effect.
+  const [trackedId, setTrackedId] = useState(runId);
+  if (trackedId !== runId) {
+    setTrackedId(runId);
     setRun(null);
     setStreamError(null);
+  }
+
+  useEffect(() => {
     if (!runId) return;
     const abort = new AbortController();
     let finished = false;

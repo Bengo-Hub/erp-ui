@@ -27,10 +27,15 @@ export function BankVerifyFields({ bankName, bankCode, accountNumber, accountNam
   const [verifying, setVerifying] = useState(false);
   const [verified, setVerified] = useState(false);
   const [note, setNote] = useState<string | null>(null);
+  // Show the loading state as soon as the country changes (set during render, not in the effect).
+  const [fetchingFor, setFetchingFor] = useState<string | null>(null);
+  if (fetchingFor !== country) {
+    setFetchingFor(country);
+    setLoadingBanks(true);
+  }
 
   useEffect(() => {
     let cancelled = false;
-    setLoadingBanks(true);
     banksApi
       .list(country)
       .then((res) => {
