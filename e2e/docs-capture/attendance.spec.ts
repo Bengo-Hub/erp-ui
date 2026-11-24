@@ -180,7 +180,7 @@ async function calloutsFor(page: Page, route = ''): Promise<Callout[]> {
     // Page-level actions only: row buttons such as "Request correction" are not the main action.
     const notInTable = ':not(tbody *):not(table *)';
     const action = await firstVisible(
-        main.locator(`button${notInTable}`).filter({ hasText: /^\s*(\+\s*)?(add|new|create|register|request|apply|process|run|record|compute|invite|check in)\b/i }),
+        main.locator(`button${notInTable}`).filter({ hasText: /^\s*(\+\s*)?(add|new|create|register|request|apply|process|run|record|compute|invite|check in|enroll|start|set|schedule)\b/i }),
         main.locator(`a${notInTable}`).filter({ hasText: /^\s*(\+\s*)?(add|new|create|apply)\b/i })
     );
     // A settings form's dropdowns are fields, not filters.
