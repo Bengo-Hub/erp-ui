@@ -180,13 +180,14 @@ async function calloutsFor(page: Page, route = ''): Promise<Callout[]> {
     // Page-level actions only: row buttons such as "Request correction" are not the main action.
     const notInTable = ':not(tbody *):not(table *)';
     const action = await firstVisible(
-        main.locator(`button${notInTable}`).filter({ hasText: /^\s*(\+\s*)?(add|new|create|register|request|apply|process|run|record|compute|invite|check in|enroll|start|set|schedule)\b/i }),
+        main.locator(`button${notInTable}`).filter({ hasText: /^\s*(\+\s*)?(add|new|create|register|request|apply|process|run|record|compute|invite|check in|enroll|start|set|schedule|submit|issue)\b/i }),
         main.locator(`a${notInTable}`).filter({ hasText: /^\s*(\+\s*)?(add|new|create|apply)\b/i })
     );
     // A settings form's dropdowns are fields, not filters.
     const isSettings = route.startsWith('settings') || route.endsWith('/settings');
     const search = await firstVisible(main.getByRole('searchbox'), main.getByPlaceholder(/search/i), ...(isSettings ? [] : [main.locator('select')]));
-    const row = await firstVisible(main.locator('tbody tr'));
+    // A real record has several cells; an empty-state row is one cell spanning the table.
+    const row = await firstVisible(main.locator('tbody tr:has(td:nth-child(2))'));
     const out: Callout[] = [];
     if (action) out.push({ locator: action, number: 1 });
     if (search) out.push({ locator: search, number: 2 });
@@ -218,7 +219,13 @@ test.describe('desktop', () => {
     ] as const) {
         test(name, async ({ page }) => {
             await open(page, orgUrl(`/${list}`));
-            const row = page.locator('main tbody tr').first();
+            let row = page.locator('main tbody tr').first();
+            if (list === 'payroll/payslips') {
+                // Payslips are grouped by month: expand the newest month, then open its first payslip.
+                await page.locator('main').getByText(/\b20\d\d\b/).first().click().catch(() => {});
+                await settle(page);
+                row = page.locator('main table').nth(1).locator('tbody tr').first();
+            }
             test.skip(!(await row.isVisible().catch(() => false)), `no records on ${list}`);
             const link = row.getByRole('link').first();
             if (await link.isVisible().catch(() => false)) await link.click();

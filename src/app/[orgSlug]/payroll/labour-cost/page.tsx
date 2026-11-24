@@ -5,7 +5,9 @@ import { useQuery } from "@tanstack/react-query";
 import { BarChart, ChartCard, type ChartDatum } from "@/components/charts";
 import { CardsSkeleton, ErrorState } from "@/components/ui/states";
 import { PageHeader } from "@/components/ui/page-header";
-import { payrollApi } from "@/lib/api/payroll";
+import { usePayrollRuns } from "@/hooks/use-payroll";
+import { normalizeList } from "@/lib/api/drf";
+import { payrollApi, type PayrollRun } from "@/lib/api/payroll";
 
 const thisMonth = new Date().toISOString().slice(0, 7);
 const kes = (v: string | number) => `KES ${Math.round(Number(v) || 0).toLocaleString()}`;
@@ -15,7 +17,13 @@ const kes = (v: string | number) => `KES ${Math.round(Number(v) || 0).toLocaleSt
  * payroll run posts to finance, so these figures match the project costs in Treasury.
  */
 export default function LabourCostPage() {
-  const [month, setMonth] = useState(thisMonth);
+  // Opens on the newest processed payroll month (the current month is usually not run yet),
+  // until the user picks a month.
+  const [picked, setMonth] = useState<string | null>(null);
+  const runs = usePayrollRuns({ page_size: 1 });
+  const latest = normalizeList<PayrollRun>(runs.data).results[0];
+  const latestMonth = String(latest?.payment_period ?? latest?.period ?? "").slice(0, 7);
+  const month = picked ?? (latestMonth || thisMonth);
   const { data, isLoading, error, refetch } = useQuery({
     queryKey: ["payroll", "labour-cost", month],
     queryFn: () => payrollApi.labourCost(month),
