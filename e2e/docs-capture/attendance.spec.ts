@@ -1,58 +1,118 @@
 import fs from "node:fs";
 import path from "node:path";
 
-import { expect, test, type Page } from "@playwright/test";
+import { expect, test, type Locator, type Page } from "@playwright/test";
 
+import { screenshotWithCallouts, type Callout } from "./lib/annotate";
 import { orgUrl } from "./lib/auth";
 import { assetPath } from "./lib/paths";
 
-// Screenshots for shared-docs docs/user-guide/erp/ and the ERP time and attendance pack.
-// Read-only navigation over the demo tenant's seeded data; nothing is submitted. Run with
-// the setup project first:
+// Screenshots for every screen of the shared-docs ERP guide (docs/user-guide/erp/assets). Read-only
+// navigation over the demo tenant's seeded data; nothing is submitted. File name = route with "/"
+// replaced by "-", unless an alias keeps an older name the guide already uses.
+// Callouts, where the element exists: 1 = the page's main action, 2 = search or filters,
+// 3 = the first record. Run:
 //   E2E_BASE_URL=https://erp.codevertexafrica.com npx playwright test \
 //     --project=docs-capture-setup --project=docs-capture e2e/docs-capture/attendance.spec.ts
 
-const SHOTS: { name: string; path: string; heading?: RegExp; fullPage?: boolean }[] = [
-  { name: "exec-dashboard", path: "/" },
-  { name: "hr-dashboard", path: "/hrm" },
-  { name: "devices", path: "/hrm/attendance/devices" },
-  { name: "punches", path: "/hrm/attendance/punches" },
-  { name: "access-log", path: "/hrm/attendance/access-log" },
-  { name: "work-sites", path: "/hrm/attendance/work-sites" },
-  { name: "attendance-settings", path: "/hrm/attendance/settings" },
-  { name: "corrections", path: "/hrm/attendance/regularisations" },
-  { name: "overtime", path: "/hrm/attendance/overtime-requests" },
-  { name: "shift-planner", path: "/hrm/attendance/shift-planner" },
-  { name: "attendance-records", path: "/hrm/attendance/records" },
-  { name: "piece-rates", path: "/settings/payroll/piece-rates" },
-  { name: "piece-output", path: "/payroll/piece-output" },
-  { name: "reports-hub", path: "/reports" },
-  { name: "report-absenteeism", path: "/reports/absenteeism" },
-  { name: "report-access-log", path: "/reports/access-log" },
-  { name: "report-attendance-summary", path: "/reports/attendance-summary" },
-  { name: "report-piece-output", path: "/reports/piece-output" },
+const ROUTES = [
+  "", "hrm", "ess",
+  "hrm/employees", "hrm/contracts", "hrm/org-chart",
+  "hrm/leave/requests", "hrm/leave/balances", "hrm/leave/entitlement", "hrm/leave/logs", "hrm/leave/types",
+  "hrm/attendance/records", "hrm/attendance/timesheets", "hrm/attendance/shift-planner", "hrm/attendance/work-shifts",
+  "hrm/attendance/rosters", "hrm/attendance/shift-rotations", "hrm/attendance/overrides", "hrm/attendance/off-days",
+  "hrm/attendance/rules", "hrm/attendance/settings", "hrm/attendance/regularisations", "hrm/attendance/overtime-requests",
+  "hrm/attendance/devices", "hrm/attendance/punches", "hrm/attendance/access-log", "hrm/attendance/work-sites",
+  "hrm/appraisals", "hrm/appraisals/cycles", "hrm/appraisals/goals", "hrm/appraisals/questions", "hrm/appraisals/templates",
+  "hrm/performance/metrics", "hrm/performance/reviews", "hrm/performance/targets",
+  "hrm/training/courses", "hrm/training/enrollments", "hrm/training/evaluations",
+  "hrm/recruitment/jobs", "hrm/recruitment/applications", "hrm/recruitment/candidates", "hrm/recruitment/onboarding",
+  "payroll/process", "payroll/payslips", "payroll/email-payslips", "payroll/advances", "payroll/attendance-deductions",
+  "payroll/casual-labor", "payroll/claims", "payroll/claims/new", "payroll/consultants", "payroll/labour-cost",
+  "payroll/losses-damages", "payroll/piece-output", "payroll/project-allocations", "payroll/staff-purchases",
+  "reports", "reports/p9", "reports/p9a", "reports/p10", "reports/p10a", "reports/withholding-tax", "reports/nssf",
+  "reports/nhif", "reports/nita", "reports/housing-levy", "reports/bank-net-pay", "reports/muster-roll", "reports/variance",
+  "reports/attendance-register", "reports/absenteeism", "reports/lateness", "reports/early-leave", "reports/overtime",
+  "reports/piece-output", "reports/access-log", "reports/device-health", "reports/attendance-summary",
+  "settings", "settings/approvals", "settings/branding", "settings/currency-time", "settings/document-numbering",
+  "settings/hrm/departments", "settings/hrm/job-groups", "settings/hrm/job-titles",
+  "settings/payroll/earnings", "settings/payroll/deductions", "settings/payroll/benefits", "settings/payroll/loans",
+  "settings/payroll/formulas", "settings/payroll/per-diem", "settings/payroll/piece-rates", "settings/payroll/statutory",
+  "users", "users/roles", "users/permissions",
 ];
+
+// Older names already used by the guide and the brochure.
+const ALIAS: Record<string, string> = {
+  "": "exec-dashboard", hrm: "hr-dashboard",
+  "hrm/attendance/devices": "devices", "hrm/attendance/punches": "punches", "hrm/attendance/access-log": "access-log",
+  "hrm/attendance/work-sites": "work-sites", "hrm/attendance/settings": "attendance-settings",
+  "hrm/attendance/regularisations": "corrections", "hrm/attendance/overtime-requests": "overtime",
+  "hrm/attendance/shift-planner": "shift-planner", "hrm/attendance/records": "attendance-records",
+  "settings/payroll/piece-rates": "piece-rates", "payroll/piece-output": "piece-output", reports: "reports-hub",
+  "reports/absenteeism": "report-absenteeism", "reports/access-log": "report-access-log",
+  "reports/attendance-summary": "report-attendance-summary", "reports/piece-output": "report-piece-output",
+};
+const nameFor = (r: string) => ALIAS[r] ?? r.replaceAll("/", "-");
 
 async function settle(page: Page) {
   await page.waitForLoadState("networkidle", { timeout: 15_000 }).catch(() => {});
-  // Skeletons and lazy charts finish after network idle.
-  await page.waitForTimeout(1500);
+  await page.waitForTimeout(1200); // skeletons and lazy charts finish after network idle
 }
 
-async function save(page: Page, name: string, fullPage = false) {
+async function firstVisible(...cands: Locator[]): Promise<Locator | null> {
+  for (const c of cands) {
+    const l = c.first();
+    if (await l.isVisible().catch(() => false)) return l;
+  }
+  return null;
+}
+
+async function calloutsFor(page: Page): Promise<Callout[]> {
+  const main = page.locator("main");
+  const action = await firstVisible(
+    main.getByRole("button", { name: /^(\+\s*)?(add|new|create|register|request|apply|process|run|record|compute|invite)\b/i }),
+    main.getByRole("link", { name: /^(\+\s*)?(add|new|create|apply)\b/i }),
+  );
+  const search = await firstVisible(main.getByRole("searchbox"), main.getByPlaceholder(/search/i), main.locator("select"));
+  const row = await firstVisible(main.locator("tbody tr"));
+  const out: Callout[] = [];
+  if (action) out.push({ locator: action, number: 1 });
+  if (search) out.push({ locator: search, number: 2 });
+  if (row) out.push({ locator: row, number: 3 });
+  return out;
+}
+
+async function capture(page: Page, name: string, callouts = true) {
   const png = assetPath(`${name}.png`);
   fs.mkdirSync(path.dirname(png), { recursive: true });
-  await page.screenshot({ path: png, fullPage });
+  await screenshotWithCallouts(page, png, callouts ? await calloutsFor(page) : []);
 }
 
 test.describe("desktop", () => {
   test.use({ viewport: { width: 1440, height: 900 }, deviceScaleFactor: 2 });
-  for (const s of SHOTS) {
-    test(s.name, async ({ page }) => {
-      await page.goto(orgUrl(s.path));
-      await expect(page.locator("main")).toBeVisible({ timeout: 20_000 });
+  for (const r of ROUTES) {
+    test(nameFor(r), async ({ page }) => {
+      await page.goto(orgUrl(r ? `/${r}` : "/"));
+      await expect(page.locator("main")).toBeVisible({ timeout: 30_000 });
       await settle(page);
-      await save(page, s.name, s.fullPage);
+      // Dashboards read better without numbered badges.
+      await capture(page, nameFor(r), !["", "hrm", "hrm/org-chart"].includes(r) && !r.startsWith("reports/"));
+    });
+  }
+
+  // Detail pages: open the first record from its list.
+  for (const [list, name] of [["hrm/employees", "employee-profile"], ["payroll/payslips", "payslip-detail"], ["payroll/claims", "claim-detail"]] as const) {
+    test(name, async ({ page }) => {
+      await page.goto(orgUrl(`/${list}`));
+      await settle(page);
+      const row = page.locator("main tbody tr").first();
+      test.skip(!(await row.isVisible().catch(() => false)), `no records on ${list}`);
+      const link = row.getByRole("link").first();
+      if (await link.isVisible().catch(() => false)) await link.click();
+      else await row.click();
+      await page.waitForURL((u) => !u.pathname.endsWith(`/${list}`), { timeout: 15_000 }).catch(() => {});
+      await settle(page);
+      await capture(page, name, false);
     });
   }
 });
@@ -68,8 +128,8 @@ test.describe("phone", () => {
   });
   test("ess-clock-in", async ({ page }) => {
     await page.goto(orgUrl("/ess"));
-    await expect(page.locator("main")).toBeVisible({ timeout: 20_000 });
+    await expect(page.locator("main")).toBeVisible({ timeout: 30_000 });
     await settle(page);
-    await save(page, "ess-clock-in");
+    await capture(page, "ess-clock-in", false);
   });
 });
