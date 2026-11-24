@@ -1,33 +1,33 @@
-"use client";
+'use client';
 
-import { PdfPreview, useDocumentPreview } from "@bengo-hub/shared-ui-lib/documents";
-import { Columns3, FileDown, FileSpreadsheet, Printer } from "lucide-react";
-import { useSearchParams } from "next/navigation";
-import { useMemo, useState } from "react";
-import { toast } from "sonner";
+import { PdfPreview, useDocumentPreview } from '@bengo-hub/shared-ui-lib/documents';
+import { Columns3, FileDown, FileSpreadsheet, Printer } from 'lucide-react';
+import { useSearchParams } from 'next/navigation';
+import { useMemo, useState } from 'react';
+import { toast } from 'sonner';
 
-import { Button, Card } from "@/components/ui/base";
-import { DataTable, type Column } from "@/components/ui/data-table";
-import { PageHeader } from "@/components/ui/page-header";
-import { useReport, useReportExport } from "@/hooks/use-reports";
-import { reportsApi, type ReportParams, type ReportRow } from "@/lib/api/reports";
-import { type ReportColumn, type ReportConfig, type ReportFilterKey } from "@/lib/reports-config";
-import { useMoney } from "@/hooks/use-money";
-import { daysAgo, isoDay } from "@/lib/date-range";
-import { formatCurrency, formatDate, formatDateTime, formatPercent, formatTime } from "@/lib/format";
-import { DynamicReportTable } from "./dynamic-report-table";
-import { ReportFilters, type ReportFilterValues } from "./report-filters";
+import { Button, Card } from '@/components/ui/base';
+import { DataTable, type Column } from '@/components/ui/data-table';
+import { PageHeader } from '@/components/ui/page-header';
+import { useReport, useReportExport } from '@/hooks/use-reports';
+import { reportsApi, type ReportParams, type ReportRow } from '@/lib/api/reports';
+import { type ReportColumn, type ReportConfig, type ReportFilterKey } from '@/lib/reports-config';
+import { useMoney } from '@/hooks/use-money';
+import { daysAgo, isoDay } from '@/lib/date-range';
+import { formatCurrency, formatDate, formatDateTime, formatPercent, formatTime } from '@/lib/format';
+import { DynamicReportTable } from './dynamic-report-table';
+import { ReportFilters, type ReportFilterValues } from './report-filters';
 
 function renderCell(col: ReportColumn, row: ReportRow, currency?: string) {
-  const v = row[col.field];
-  if (col.money) return formatCurrency(v as string | number | null, currency);
-  if (col.percent) return formatPercent(v as string | number | null);
-  if (v == null || v === "") return "—";
-  if (col.date) return formatDate(v as string);
-  if (col.datetime) return formatDateTime(v as string);
-  if (col.time) return String(v).includes("T") ? formatTime(v as string) : String(v).slice(0, 5);
-  if (typeof v === "boolean") return v ? "Yes" : "No";
-  return String(v);
+    const v = row[col.field];
+    if (col.money) return formatCurrency(v as string | number | null, currency);
+    if (col.percent) return formatPercent(v as string | number | null);
+    if (v == null || v === '') return '—';
+    if (col.date) return formatDate(v as string);
+    if (col.datetime) return formatDateTime(v as string);
+    if (col.time) return String(v).includes('T') ? formatTime(v as string) : String(v).slice(0, 5);
+    if (typeof v === 'boolean') return v ? 'Yes' : 'No';
+    return String(v);
 }
 
 /**
@@ -35,44 +35,55 @@ function renderCell(col: ReportColumn, row: ReportRow, currency?: string) {
  * month for monthly payroll reports (the latest payroll that is normally finished).
  */
 function initialValues(config: ReportConfig): ReportFilterValues {
-  const now = new Date();
-  const v: ReportFilterValues = { year: String(now.getFullYear()) };
-  if (config.defaultRangeDays) {
-    v.from_date = daysAgo(config.defaultRangeDays - 1);
-    v.to_date = isoDay();
-  }
-  if (config.filters.includes("month")) {
-    const last = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-    v.year = String(last.getFullYear());
-    v.month = String(last.getMonth() + 1);
-  }
-  return v;
+    const now = new Date();
+    const v: ReportFilterValues = { year: String(now.getFullYear()) };
+    if (config.defaultRangeDays) {
+        v.from_date = daysAgo(config.defaultRangeDays - 1);
+        v.to_date = isoDay();
+    }
+    if (config.filters.includes('month')) {
+        const last = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+        v.year = String(last.getFullYear());
+        v.month = String(last.getMonth() + 1);
+    }
+    return v;
 }
 
-/** A report opens with results when every required filter already has a value. */
+/**
+ * The first required filter that has no value, or undefined when the report can run. A date range
+ * is held as from_date/to_date, and optional selects such as department or employee are never
+ * required, so "All departments" and "All employees" (an empty value) count as complete.
+ */
+function missingRequired(config: ReportConfig, v: ReportFilterValues): ReportFilterKey | undefined {
+    return (config.required ?? []).find((k) => {
+        if (k === 'dateRange') return !(v.from_date && v.to_date);
+        return !v[k as keyof ReportFilterValues];
+    });
+}
+
+/** A report opens with results when its default filters already satisfy every required one. */
 function readyToRun(config: ReportConfig, v: ReportFilterValues): boolean {
-  if (!config.defaultRangeDays && !config.filters.includes("month")) return false;
-  return (config.required ?? []).every((k) => Boolean(v[k as keyof ReportFilterValues]));
+    return missingRequired(config, v) === undefined;
 }
 
 function sum(rows: ReportRow[], field: string): number {
-  return rows.reduce((acc, r) => acc + (parseFloat(String(r[field] ?? "")) || 0), 0);
+    return rows.reduce((acc, r) => acc + (parseFloat(String(r[field] ?? '')) || 0), 0);
 }
 
 /** Map filter values → API params (only for shown filters). */
 function toParams(show: ReportFilterKey[], v: ReportFilterValues): ReportParams {
-  const p: ReportParams = {};
-  if (show.includes("year") && v.year) p.year = v.year;
-  if (show.includes("month") && v.month) p.month = v.month;
-  if (show.includes("department") && v.department) p.department_id = v.department;
-  if (show.includes("region") && v.region) p.region_id = v.region;
-  if (show.includes("employee") && v.employee) p.employee_id = v.employee;
-  if (show.includes("dateRange")) {
-    // Payroll reports read from_date/to_date; attendance reports read from/to.
-    if (v.from_date) p.from_date = p.from = v.from_date;
-    if (v.to_date) p.to_date = p.to = v.to_date;
-  }
-  return p;
+    const p: ReportParams = {};
+    if (show.includes('year') && v.year) p.year = v.year;
+    if (show.includes('month') && v.month) p.month = v.month;
+    if (show.includes('department') && v.department) p.department_id = v.department;
+    if (show.includes('region') && v.region) p.region_id = v.region;
+    if (show.includes('employee') && v.employee) p.employee_id = v.employee;
+    if (show.includes('dateRange')) {
+        // Payroll reports read from_date/to_date; attendance reports read from/to.
+        if (v.from_date) p.from_date = p.from = v.from_date;
+        if (v.to_date) p.to_date = p.to = v.to_date;
+    }
+    return p;
 }
 
 /**
@@ -80,209 +91,168 @@ function toParams(show: ReportFilterKey[], v: ReportFilterValues): ReportParams 
  * renders through this — there are no per-report page bodies.
  */
 export function ReportRunner({ config }: { config: ReportConfig }) {
-  const searchParams = useSearchParams();
-  const [values, setValues] = useState<ReportFilterValues>(() => initialValues(config));
-  const { currency: tenantCurrency } = useMoney();
-  const currency = config.tenantCurrency ? tenantCurrency : undefined;
-  // Run straight away when the defaults already satisfy the report, so it never opens empty.
-  const [enabled, setEnabled] = useState(() => readyToRun(config, initialValues(config)));
-  const [missing, setMissing] = useState<string | null>(null);
-  const [hiddenCols, setHiddenCols] = useState<Set<string>>(new Set());
-  const [colMenuOpen, setColMenuOpen] = useState(false);
+    const searchParams = useSearchParams();
+    const [values, setValues] = useState<ReportFilterValues>(() => initialValues(config));
+    const { currency: tenantCurrency } = useMoney();
+    const currency = config.tenantCurrency ? tenantCurrency : undefined;
+    // Run straight away when the defaults already satisfy the report, so it never opens empty.
+    const [enabled, setEnabled] = useState(() => readyToRun(config, initialValues(config)));
+    const [missing, setMissing] = useState<string | null>(null);
+    const [hiddenCols, setHiddenCols] = useState<Set<string>>(new Set());
+    const [colMenuOpen, setColMenuOpen] = useState(false);
 
-  // Auto-load from ?period=YYYY-MM (e.g. "View Muster Roll" for a payroll period) — hydrate the
-  // year/month filters and run immediately so the report opens for that period without a manual step.
-  // Applied during render when the period changes, not in an effect.
-  const period = searchParams?.get("period") ?? null;
-  const [seenPeriod, setSeenPeriod] = useState<string | null>(null);
-  if (period !== seenPeriod) {
-    setSeenPeriod(period);
-    const m = period ? /^(\d{4})-(\d{2})/.exec(period) : null;
-    if (m) {
-      setValues((v) => ({ ...v, year: m[1], month: String(Number(m[2])) }));
-      setEnabled(true);
+    // Auto-load from ?period=YYYY-MM (e.g. "View Muster Roll" for a payroll period) — hydrate the
+    // year/month filters and run immediately so the report opens for that period without a manual step.
+    // Applied during render when the period changes, not in an effect.
+    const period = searchParams?.get('period') ?? null;
+    const [seenPeriod, setSeenPeriod] = useState<string | null>(null);
+    if (period !== seenPeriod) {
+        setSeenPeriod(period);
+        const m = period ? /^(\d{4})-(\d{2})/.exec(period) : null;
+        if (m) {
+            setValues((v) => ({ ...v, year: m[1], month: String(Number(m[2])) }));
+            setEnabled(true);
+        }
     }
-  }
 
-  const params = useMemo(() => toParams(config.filters, values), [config.filters, values]);
-  const { rows, summary, columnDefs, totals, isFetching, error, refetch } = useReport(config, params, enabled);
-  const exporter = useReportExport(config, params);
-  // Preview-first for PDF (Excel stays a direct download): open the server-rendered PDF in the
-  // shared modal with Download / Print / Open-in-tab.
-  const { openPreview, previewProps } = useDocumentPreview({ onError: (m) => toast.error(m) });
-  const previewPdf = () =>
-    openPreview(
-      () => reportsApi.export(config.exportType, "pdf", { ...config.staticParams, ...params }).then((r) => r.blob),
-      { fileName: `${config.exportType}_report.pdf`, title: config.title },
+    const params = useMemo(() => toParams(config.filters, values), [config.filters, values]);
+    const { rows, summary, columnDefs, totals, isFetching, error, refetch } = useReport(config, params, enabled);
+    const exporter = useReportExport(config, params);
+    // Preview-first for PDF (Excel stays a direct download): open the server-rendered PDF in the
+    // shared modal with Download / Print / Open-in-tab.
+    const { openPreview, previewProps } = useDocumentPreview({ onError: (m) => toast.error(m) });
+    const previewPdf = () => openPreview(() => reportsApi.export(config.exportType, 'pdf', { ...config.staticParams, ...params }).then((r) => r.blob), { fileName: `${config.exportType}_report.pdf`, title: config.title });
+
+    const generate = () => {
+        const need = missingRequired(config, values);
+        if (need) {
+            setMissing(`Please select ${need === 'dateRange' ? 'a date range' : need}.`);
+            return;
+        }
+        setMissing(null);
+        setEnabled(true);
+        if (enabled) refetch();
+    };
+
+    const clear = () => {
+        setEnabled(false);
+        setMissing(null);
+        setValues(initialValues(config));
+    };
+
+    const columns: Column<ReportRow>[] = useMemo(
+        () =>
+            config.columns.map((c) => ({
+                header: c.header,
+                headerClassName: c.money || c.numeric || c.percent ? 'text-right' : undefined,
+                className: c.money || c.numeric || c.percent ? 'text-right tabular-nums' : undefined,
+                cell: (row: ReportRow) => renderCell(c, row, currency)
+            })),
+        [config.columns, currency]
     );
 
-  const generate = () => {
-    const need = (config.required ?? []).find((k) => {
-      const map: Record<string, string | undefined> = {
-        year: values.year,
-        month: values.month,
-        department: values.department,
-        employee: values.employee,
-        dateRange: values.from_date && values.to_date ? "set" : undefined,
-      };
-      return !map[k];
-    });
-    if (need) {
-      setMissing(`Please select ${need === "dateRange" ? "a date range" : need}.`);
-      return;
-    }
-    setMissing(null);
-    setEnabled(true);
-    if (enabled) refetch();
-  };
+    const tiles = useMemo(
+        () =>
+            (config.summary ?? []).map((s) => ({
+                label: s.label,
+                value: s.money ? formatCurrency(sum(rows, s.field), currency) : String(Math.round(sum(rows, s.field) * 100) / 100)
+            })),
+        [config.summary, rows, currency]
+    );
 
-  const clear = () => {
-    setEnabled(false);
-    setMissing(null);
-    setValues(initialValues(config));
-  };
+    // Backend-driven dynamic columns (e.g. muster roll). When present they replace the static config
+    // columns and enable horizontal scroll + Edit-Columns + a Grand Totals footer row.
+    const dynamic = !!columnDefs && columnDefs.length > 0;
+    const visibleDefs = useMemo(() => (columnDefs ?? []).filter((c) => !hiddenCols.has(c.key)), [columnDefs, hiddenCols]);
+    const toggleCol = (key: string) =>
+        setHiddenCols((s) => {
+            const n = new Set(s);
+            if (n.has(key)) n.delete(key);
+            else n.add(key);
+            return n;
+        });
 
-  const columns: Column<ReportRow>[] = useMemo(
-    () =>
-      config.columns.map((c) => ({
-        header: c.header,
-        headerClassName: c.money || c.numeric || c.percent ? "text-right" : undefined,
-        className: c.money || c.numeric || c.percent ? "text-right tabular-nums" : undefined,
-        cell: (row: ReportRow) => renderCell(c, row, currency),
-      })),
-    [config.columns, currency],
-  );
+    const hasData = enabled && rows.length > 0;
 
-  const tiles = useMemo(
-    () =>
-      (config.summary ?? []).map((s) => ({
-        label: s.label,
-        value: s.money ? formatCurrency(sum(rows, s.field), currency) : String(Math.round(sum(rows, s.field) * 100) / 100),
-      })),
-    [config.summary, rows, currency],
-  );
-
-  // Backend-driven dynamic columns (e.g. muster roll). When present they replace the static config
-  // columns and enable horizontal scroll + Edit-Columns + a Grand Totals footer row.
-  const dynamic = !!columnDefs && columnDefs.length > 0;
-  const visibleDefs = useMemo(
-    () => (columnDefs ?? []).filter((c) => !hiddenCols.has(c.key)),
-    [columnDefs, hiddenCols],
-  );
-  const toggleCol = (key: string) =>
-    setHiddenCols((s) => {
-      const n = new Set(s);
-      if (n.has(key)) n.delete(key);
-      else n.add(key);
-      return n;
-    });
-
-  const hasData = enabled && rows.length > 0;
-
-  return (
-    <div className="space-y-4 p-4 sm:p-6">
-      <PageHeader
-        title={config.title}
-        subtitle={config.description}
-        actions={
-          hasData ? (
-            <div className="flex items-center gap-2 print:hidden">
-              {dynamic && (
-                <div className="relative">
-                  <Button size="sm" variant="outline" onClick={() => setColMenuOpen((o) => !o)}>
-                    <Columns3 className="mr-1.5 size-4" /> Edit Columns
-                  </Button>
-                  {colMenuOpen && (
-                    <>
-                      <div className="fixed inset-0 z-10" onClick={() => setColMenuOpen(false)} />
-                      <div className="absolute right-0 z-20 mt-1 max-h-80 w-56 overflow-y-auto rounded-md border border-border bg-popover py-1 shadow-md">
-                        {(columnDefs ?? []).map((c) => (
-                          <label key={c.key} className="flex cursor-pointer items-center gap-2 px-3 py-1.5 text-sm hover:bg-muted">
-                            <input
-                              type="checkbox"
-                              checked={!hiddenCols.has(c.key)}
-                              onChange={() => toggleCol(c.key)}
-                            />
-                            {c.header}
-                          </label>
-                        ))}
-                      </div>
-                    </>
-                  )}
-                </div>
-              )}
-              {/* Print + PDF both open the server-rendered document; the preview modal
+    return (
+        <div className="space-y-4 p-4 sm:p-6">
+            <PageHeader
+                title={config.title}
+                subtitle={config.description}
+                actions={
+                    hasData ? (
+                        <div className="flex items-center gap-2 print:hidden">
+                            {dynamic && (
+                                <div className="relative">
+                                    <Button size="sm" variant="outline" onClick={() => setColMenuOpen((o) => !o)}>
+                                        <Columns3 className="mr-1.5 size-4" /> Edit Columns
+                                    </Button>
+                                    {colMenuOpen && (
+                                        <>
+                                            <div className="fixed inset-0 z-10" onClick={() => setColMenuOpen(false)} />
+                                            <div className="absolute right-0 z-20 mt-1 max-h-80 w-56 overflow-y-auto rounded-md border border-border bg-popover py-1 shadow-md">
+                                                {(columnDefs ?? []).map((c) => (
+                                                    <label key={c.key} className="flex cursor-pointer items-center gap-2 px-3 py-1.5 text-sm hover:bg-muted">
+                                                        <input type="checkbox" checked={!hiddenCols.has(c.key)} onChange={() => toggleCol(c.key)} />
+                                                        {c.header}
+                                                    </label>
+                                                ))}
+                                            </div>
+                                        </>
+                                    )}
+                                </div>
+                            )}
+                            {/* Print + PDF both open the server-rendered document; the preview modal
                   offers Print / Download / Open-in-tab (never a browser HTML print). */}
-              <Button size="sm" variant="outline" onClick={previewPdf}>
-                <Printer className="mr-1.5 size-4" /> Print
-              </Button>
-              <Button size="sm" variant="outline" onClick={previewPdf}>
-                <FileDown className="mr-1.5 size-4" /> PDF
-              </Button>
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => exporter.mutate("excel")}
-                disabled={exporter.isPending}
-              >
-                <FileSpreadsheet className="mr-1.5 size-4" /> Excel
-              </Button>
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => exporter.mutate("csv")}
-                disabled={exporter.isPending}
-              >
-                <FileDown className="mr-1.5 size-4" /> CSV
-              </Button>
-            </div>
-          ) : undefined
-        }
-      />
+                            <Button size="sm" variant="outline" onClick={previewPdf}>
+                                <Printer className="mr-1.5 size-4" /> Print
+                            </Button>
+                            <Button size="sm" variant="outline" onClick={previewPdf}>
+                                <FileDown className="mr-1.5 size-4" /> PDF
+                            </Button>
+                            <Button size="sm" variant="outline" onClick={() => exporter.mutate('excel')} disabled={exporter.isPending}>
+                                <FileSpreadsheet className="mr-1.5 size-4" /> Excel
+                            </Button>
+                            <Button size="sm" variant="outline" onClick={() => exporter.mutate('csv')} disabled={exporter.isPending}>
+                                <FileDown className="mr-1.5 size-4" /> CSV
+                            </Button>
+                        </div>
+                    ) : undefined
+                }
+            />
 
-      <ReportFilters
-        show={config.filters}
-        values={values}
-        onChange={setValues}
-        onGenerate={generate}
-        onClear={clear}
-        loading={isFetching}
-      />
-      {missing && <p className="text-sm text-destructive">{missing}</p>}
+            <ReportFilters show={config.filters} values={values} onChange={setValues} onGenerate={generate} onClear={clear} loading={isFetching} />
+            {missing && <p className="text-sm text-destructive">{missing}</p>}
 
-      {tiles.length > 0 && hasData && (
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-          {tiles.map((t) => (
-            <Card key={t.label} className="p-4 text-center">
-              <p className="text-lg font-bold text-foreground">{t.value}</p>
-              <p className="mt-1 text-xs text-muted-foreground">{t.label}</p>
+            {tiles.length > 0 && hasData && (
+                <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+                    {tiles.map((t) => (
+                        <Card key={t.label} className="p-4 text-center">
+                            <p className="text-lg font-bold text-foreground">{t.value}</p>
+                            <p className="mt-1 text-xs text-muted-foreground">{t.label}</p>
+                        </Card>
+                    ))}
+                </div>
+            )}
+
+            <Card>
+                {dynamic && hasData ? (
+                    <DynamicReportTable columns={visibleDefs} rows={rows} totals={totals} />
+                ) : (
+                    <DataTable
+                        columns={columns}
+                        rows={enabled ? rows : []}
+                        rowKey={(_r) => rows.indexOf(_r)}
+                        isLoading={enabled && isFetching}
+                        error={enabled ? error : undefined}
+                        onRetry={refetch}
+                        emptyTitle={enabled ? 'No data for these filters' : 'Select filters and generate'}
+                        emptyDescription={enabled ? 'Try a different period or scope.' : 'Choose a period above, then press Generate to run this report.'}
+                    />
+                )}
             </Card>
-          ))}
+
+            <PdfPreview {...previewProps} />
         </div>
-      )}
-
-      <Card>
-        {dynamic && hasData ? (
-          <DynamicReportTable columns={visibleDefs} rows={rows} totals={totals} />
-        ) : (
-          <DataTable
-            columns={columns}
-            rows={enabled ? rows : []}
-            rowKey={(_r) => rows.indexOf(_r)}
-            isLoading={enabled && isFetching}
-            error={enabled ? error : undefined}
-            onRetry={refetch}
-            emptyTitle={enabled ? "No data for these filters" : "Select filters and generate"}
-            emptyDescription={
-              enabled
-                ? "Try a different period or scope."
-                : "Choose a period above, then press Generate to run this report."
-            }
-          />
-        )}
-      </Card>
-
-      <PdfPreview {...previewProps} />
-    </div>
-  );
+    );
 }
