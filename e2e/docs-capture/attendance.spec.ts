@@ -222,7 +222,12 @@ test.describe('desktop', () => {
             let row = page.locator('main tbody tr').first();
             if (list === 'payroll/payslips') {
                 // Payslips are grouped by month: expand the newest month, then open its first payslip.
-                await page.locator('main').getByText(/\b20\d\d\b/).first().click().catch(() => {});
+                await page
+                    .locator('main')
+                    .getByText(/\b20\d\d\b/)
+                    .first()
+                    .click()
+                    .catch(() => {});
                 await settle(page);
                 row = page.locator('main table').nth(1).locator('tbody tr').first();
             }
