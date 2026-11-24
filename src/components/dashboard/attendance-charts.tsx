@@ -8,11 +8,11 @@ import { formatDate } from "@/lib/format";
 const TREND_SERIES: SeriesDef[] = [
   { key: "present", label: "Present", color: "var(--series-1)" },
   { key: "late", label: "Late", color: "var(--series-2)" },
-  { key: "absent", label: "Absent", color: "var(--series-3)" },
+  { key: "absent", label: "Absent", color: "hsl(var(--destructive))" },
 ];
 const DEPT_SERIES: SeriesDef[] = [
   { key: "late", label: "Late", color: "var(--series-2)" },
-  { key: "absent", label: "Absent", color: "var(--series-3)" },
+  { key: "absent", label: "Absent", color: "hsl(var(--destructive))" },
 ];
 
 const shortDay = (iso: string) => {

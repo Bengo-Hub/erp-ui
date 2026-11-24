@@ -61,8 +61,9 @@ function toFormValues(e?: Employee | null): FormValues {
     date_of_birth: e.date_of_birth ?? "",
     employment_type: e.employment_type ?? "",
     date_joined: e.date_joined ?? "",
-    job_title: idOf(e.job_title),
-    department: idOf(e.department),
+    // The enriched employee view returns department_id / job_title_id; older shapes nest them.
+    job_title: idOf(e.job_title ?? e.job_title_id),
+    department: idOf(e.department ?? e.department_id),
     job_group: idOf(e.job_group),
     basic_salary: e.basic_salary != null ? String(e.basic_salary) : "",
     is_director: !!e.is_director,

@@ -22,12 +22,13 @@ interface Segment {
  */
 function segmentsFor(t: AttendanceAnalytics["today"]): Segment[] {
   const onTime = Math.max(0, t.present - t.late);
-  const accounted = t.present + t.absent + t.on_leave;
-  const notIn = Math.max(0, t.expected - accounted);
+  // The API splits people whose shift has not started yet from the absent; older API answers
+  // without not_in_yet fall back to whatever is left unaccounted for.
+  const notIn = t.not_in_yet ?? Math.max(0, t.expected - (t.present + t.absent + t.on_leave));
   return [
     { key: "on_time", label: "On time", value: onTime, color: "var(--series-1)" },
     { key: "late", label: "Late", value: t.late, color: "var(--series-2)" },
-    { key: "absent", label: "Absent", value: t.absent, color: "var(--series-3)" },
+    { key: "absent", label: "Absent", value: t.absent, color: "hsl(var(--destructive))" },
     { key: "on_leave", label: "On leave", value: t.on_leave, color: "var(--series-4)" },
     { key: "not_in", label: "Not in yet", value: notIn, color: "var(--series-neutral)" },
   ];

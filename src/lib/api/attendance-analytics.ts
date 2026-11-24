@@ -8,6 +8,8 @@ export interface AttendanceToday {
   present: number;
   late: number;
   absent: number;
+  /** Expected today but their shift start plus grace has not passed yet. */
+  not_in_yet?: number;
   on_leave: number;
   field: number;
   early_leave: number;
@@ -55,6 +57,7 @@ function normalize(raw: Partial<AttendanceAnalytics> | null): AttendanceAnalytic
       present: num(t.present),
       late: num(t.late),
       absent: num(t.absent),
+      not_in_yet: t.not_in_yet === undefined ? undefined : num(t.not_in_yet),
       on_leave: num(t.on_leave),
       field: num(t.field),
       early_leave: num(t.early_leave),
