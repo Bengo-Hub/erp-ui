@@ -222,14 +222,15 @@ test.describe('desktop', () => {
             let row = page.locator('main tbody tr').first();
             if (list === 'payroll/payslips') {
                 // Payslips are grouped by month: expand the newest month, then open its first payslip.
+                // The month rows are clickable divs; the expanded month is the page's only table.
                 await page
-                    .locator('main')
-                    .getByText(/\b20\d\d\b/)
+                    .locator('main div.cursor-pointer')
+                    .filter({ hasText: /\b20\d\d\b/ })
                     .first()
                     .click()
                     .catch(() => {});
                 await settle(page);
-                row = page.locator('main table').nth(1).locator('tbody tr').first();
+                row = page.locator('main table tbody tr:has(td:nth-child(2))').first();
             }
             test.skip(!(await row.isVisible().catch(() => false)), `no records on ${list}`);
             const link = row.getByRole('link').first();
