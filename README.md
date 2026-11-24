@@ -1,12 +1,9 @@
 # Codevertex ERP UI (Next.js 16)
 
-HR + internal-operations frontend for the Codevertex / Codevertex platform —
-rebuilt from Vue 3 / Vite / PrimeVue to **Next.js 16 (App Router) + React 19**,
-matching the platform's other UIs (treasury-ui, pos-ui, ordering-frontend).
-
-> The legacy Vue app is preserved under [`legacy-vue/`](./legacy-vue) for
-> reference during the migration. Architecture and migration docs live in
-> [`docs/`](./docs).
+HR, payroll, time and attendance frontend for the Codevertex platform, built on
+**Next.js 16 (App Router) + React 19** like the platform's other UIs (treasury-ui,
+pos-ui, ordering-frontend). The old Vue app has been retired and removed.
+Architecture docs live in [`docs/`](./docs).
 
 ## Stack
 
