@@ -36,6 +36,7 @@ export interface LeaveCategory {
     is_paid?: boolean;
     carry_forward?: boolean;
     requires_approval?: boolean;
+    count_mode?: LeaveCountMode;
     [key: string]: unknown;
 }
 
@@ -68,14 +69,36 @@ export interface LeaveEntitlement {
     [key: string]: unknown;
 }
 
-/** Maps the UI request form fields onto erp-api's CreateRequest body. */
+/** How a leave type's days are counted. */
+export type LeaveCountMode = 'working_days' | 'calendar_days';
+
+/** What filing these dates would count (GET /requests/preview). */
+export interface LeavePreview {
+    days: string;
+    count_mode: LeaveCountMode;
+    /** Dates that do not count as a full day. */
+    skipped: { date: string; reason: 'public_holiday' | 'day_off' | 'half_day'; name?: string; counted: string }[];
+    balance_year: number;
+    /** Null when the person has no balance for this type in that year. */
+    remaining_balance: string | null;
+}
+
+export interface LeavePreviewParams {
+    /** Empty for the signed-in person. */
+    employee_id?: string;
+    category_id: string;
+    start_date: string;
+    end_date: string;
+}
+
+/** Maps the UI request form fields onto erp-api's CreateRequest body. The server counts the days;
+ *  no employee means the signed-in person. */
 function toRequestPayload(data: Partial<LeaveRequest>): Record<string, unknown> {
     return {
         employee_id: data.employee,
         category_id: data.leave_category,
         start_date: data.start_date,
         end_date: data.end_date,
-        days_requested: data.days ?? data.number_of_days,
         reason: data.reason
     };
 }
@@ -124,6 +147,7 @@ export const leaveApi = {
 
     // Requests
     listRequests: (params?: ListParams, signal?: AbortSignal) => apiClient.get<Paginated<LeaveRequest> | LeaveRequest[]>(`${LEAVE}/requests/`, params, { signal }),
+    previewRequest: (params: LeavePreviewParams, signal?: AbortSignal) => apiClient.get<LeavePreview>(`${LEAVE}/requests/preview`, { ...params }, { signal }),
     getRequest: (id: number | string) => apiClient.get<LeaveRequest>(`${LEAVE}/requests/${id}/`),
     createRequest: (data: Partial<LeaveRequest>) => apiClient.post<LeaveRequest>(`${LEAVE}/requests/`, toRequestPayload(data)),
     // erp-api has no PUT/DELETE on a leave request; use cancel for withdrawal.
@@ -138,6 +162,8 @@ export const leaveApi = {
     listCategories: (params?: ListParams) => apiClient.get<Paginated<LeaveCategory> | LeaveCategory[]>(`${LEAVE}/categories/`, params),
     createCategory: (data: Partial<LeaveCategory>) => apiClient.post<LeaveCategory>(`${LEAVE}/categories/`, data),
     updateCategory: (id: number | string, data: Partial<LeaveCategory>) => apiClient.put<LeaveCategory>(`${LEAVE}/categories/${id}/`, data),
+    // Separate from the edit: it also works on a platform leave type the tenant inherits.
+    setCountMode: (id: number | string, count_mode: LeaveCountMode) => apiClient.put<LeaveCategory>(`${LEAVE}/categories/${id}/count-mode`, { count_mode }),
     deleteCategory: (id: number | string) => apiClient.delete<void>(`${LEAVE}/categories/${id}/`),
 
     // Balances

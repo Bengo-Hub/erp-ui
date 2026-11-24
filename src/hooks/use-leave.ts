@@ -3,7 +3,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 
-import { leaveApi, type LeaveBalance, type LeaveCategory, type LeaveEntitlement, type LeaveRequest, type PublicHoliday } from '@/lib/api/leave';
+import { leaveApi, type LeaveBalance, type LeaveCategory, type LeaveCountMode, type LeaveEntitlement, type LeavePreviewParams, type LeaveRequest, type PublicHoliday } from '@/lib/api/leave';
 import { type ListParams } from '@/lib/api/drf';
 import { extractApiError } from '@/lib/api/error';
 import { makeResourceHooks } from '@/hooks/use-crud-resource';
@@ -49,6 +49,40 @@ export function useDeleteLeaveRequest() {
             toast.success('Leave request deleted');
         },
         onError: (e) => toast.error(extractApiError(e, 'Failed to delete leave request'))
+    });
+}
+
+/** The day count for a request being filled in; null params (an incomplete form) ask nothing. */
+export function useLeavePreview(params: LeavePreviewParams | null) {
+    return useQuery({
+        queryKey: [KEY, 'preview', params],
+        queryFn: ({ signal }) => leaveApi.previewRequest(params!, signal),
+        enabled: !!params,
+        retry: false
+    });
+}
+
+export function useCancelLeave() {
+    const qc = useQueryClient();
+    return useMutation({
+        mutationFn: (id: number | string) => leaveApi.cancelRequest(id),
+        onSuccess: () => {
+            qc.invalidateQueries({ queryKey: [KEY] });
+            toast.success('Leave request cancelled');
+        },
+        onError: (e) => toast.error(extractApiError(e, 'Failed to cancel leave request'))
+    });
+}
+
+export function useSetLeaveCountMode() {
+    const qc = useQueryClient();
+    return useMutation({
+        mutationFn: ({ id, mode }: { id: number | string; mode: LeaveCountMode }) => leaveApi.setCountMode(id, mode),
+        onSuccess: () => {
+            qc.invalidateQueries({ queryKey: [KEY] });
+            toast.success('Day counting updated');
+        },
+        onError: (e) => toast.error(extractApiError(e, 'Failed to update day counting'))
     });
 }
 
