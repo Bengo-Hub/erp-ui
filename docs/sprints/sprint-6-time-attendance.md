@@ -61,7 +61,32 @@ Writing the full ERP guide and reviewing 101 screenshots as contact sheets found
 - **Treasury contract:** non-taxable reimbursements through payroll (`totals.reimbursements`),
   `treasury.claim.settled` events, casual postings by settlement mode, coded 409s.
 
+## Payroll settings: platform defaults, tenant choices (2026-11-24)
+The Formulas tab was empty for every organisation because the list read only the organisation's
+own rows, while payroll runs already fell back to the platform formulas. Payroll configuration now
+follows one inherit and customise model (erp-api `docs/payroll-settings.md`):
+- **Formulas:** the list shows the platform formulas every organisation inherits (badge "Platform
+  default") plus the organisation's own versions. **Customise** copies that one formula so it can be
+  edited; **Restore platform default** deletes the copy. Platform formulas open read-only for
+  tenants; the platform owner edits them in place and the change reaches every organisation that
+  has not customised.
+- **Reliefs:** one table of KRA reliefs with on/off switches. Personal and insurance relief are on
+  by default (they used to read Inactive because the status lookup matched the wrong field, and
+  insurance relief was never applied in runs because reliefs existed only on the platform).
+- **Earnings, Deductions, Benefits:** the platform catalogue of common Kenyan components appears for
+  every organisation. Statutory items are on, items produced by their own module (loans, overtime,
+  claims) are on, everything else is opt-in with a switch. Editing a platform item saves the
+  organisation's own values over it; restoring brings the platform values back. A benefit on a
+  switched-off component is not paid.
+- **Tax & Statutory:** each toggle shows whether it is the platform default or turned off.
+- **Treasury:** approved statutory rate changes in treasury are applied to the platform formulas on
+  deploy and on demand (platform owner), as a new version from treasury's effective date.
+
 ## Open items
+- Treasury publishes no event when a statutory rate is approved, so erp-api pulls the rates; the
+  proposed `treasury.statutory_rate.approved` event is described in erp-api `docs/payroll-settings.md`.
+- Opt-in earnings and deductions (house allowance, SACCO, HELB and so on) are configured per
+  organisation but are not yet assigned per employee in payroll runs; only benefits are.
 - Timesheet and shift-override approvals still use their own approve routes, not the approvals engine.
 - Casual workers paid per piece (casual_payment) are outside the payroll run.
 - ZKTeco push 3.x registration (`/iclock/registry`) is not handled; the default door-open command

@@ -6,7 +6,7 @@ import { useEffect } from "react";
 import { useForm } from "react-hook-form";
 
 import { PermissionGate } from "@/components/auth/permission-gate";
-import { Button, Card, CardContent, CardHeader } from "@/components/ui/base";
+import { Badge, Button, Card, CardContent, CardHeader } from "@/components/ui/base";
 import { Switch } from "@/components/ui/form";
 import { PageHeader } from "@/components/ui/page-header";
 import { LoadingState } from "@/components/ui/states";
@@ -81,9 +81,14 @@ export default function StatutorySettingsPage() {
                     key={t.key as string}
                     className="flex items-center justify-between gap-3 rounded-lg border border-border px-4 py-3"
                   >
-                    <div>
+                    <div className="space-y-1">
                       <span className="text-sm font-medium text-foreground">{t.label}</span>
                       <p className="text-xs text-muted-foreground">{t.hint}</p>
+                      {checked ? (
+                        <Badge variant="outline">Platform default: on</Badge>
+                      ) : (
+                        <Badge variant="warning">Turned off for your organisation</Badge>
+                      )}
                     </div>
                     <Switch
                       checked={!!checked}
@@ -100,7 +105,8 @@ export default function StatutorySettingsPage() {
             <CardContent>
               <p className="text-sm text-muted-foreground">
                 Rates, bands and reliefs (PAYE bands, NSSF tiers, SHIF/Housing rates, personal
-                relief) are managed in{" "}
+                relief) are platform defaults every organisation inherits, kept current with
+                approved statutory changes. Review them, or customise one for your organisation, in{" "}
                 <Link
                   href={`/${orgSlug}/settings/payroll/formulas`}
                   className="font-medium text-primary underline-offset-2 hover:underline"

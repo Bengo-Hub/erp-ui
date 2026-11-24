@@ -106,6 +106,13 @@ interface CrudManagerProps<T extends { id: number | string }> {
     /** Server-side pagination. When provided, a pager renders below the table so every row is
      *  reachable (backend list endpoints default to a 20-row page). */
     pagination?: { page: number; pageSize: number; total: number; onPageChange: (page: number) => void };
+    /** Per-row gates (default: every row can be edited and deleted). */
+    canEdit?: (row: T) => boolean;
+    canDelete?: (row: T) => boolean;
+    /** Extra per-row actions rendered before edit/delete. */
+    rowActions?: (row: T) => ReactNode;
+    /** Title of the edit dialog for a row (default "Edit {entityLabel}"). */
+    editTitle?: (row: T) => string;
 }
 
 /** Reusable list + dialog-form CRUD surface for simple named records. */
@@ -125,7 +132,11 @@ export function CrudManager<T extends { id: number | string }>({
     onDelete,
     saving,
     deleting,
-    pagination
+    pagination,
+    canEdit,
+    canDelete,
+    rowActions,
+    editTitle
 }: CrudManagerProps<T>) {
     const [dialogOpen, setDialogOpen] = useState(false);
     const [editing, setEditing] = useState<T | null>(null);
@@ -153,17 +164,22 @@ export function CrudManager<T extends { id: number | string }>({
         headerClassName: 'text-right',
         className: 'text-right',
         cell: (row) => (
-            <div className="flex justify-end gap-1">
-                <PermissionGate permission={perms?.change}>
-                    <IconButton label={`Edit ${entityLabel}`} onClick={() => open(row)}>
-                        <Pencil className="size-4" />
-                    </IconButton>
-                </PermissionGate>
-                <PermissionGate permission={perms?.delete}>
-                    <IconButton label={`Delete ${entityLabel}`} onClick={() => setToDelete(row)}>
-                        <Trash2 className="size-4 text-destructive" />
-                    </IconButton>
-                </PermissionGate>
+            <div className="flex items-center justify-end gap-1">
+                {rowActions?.(row)}
+                {(!canEdit || canEdit(row)) && (
+                    <PermissionGate permission={perms?.change}>
+                        <IconButton label={`Edit ${entityLabel}`} onClick={() => open(row)}>
+                            <Pencil className="size-4" />
+                        </IconButton>
+                    </PermissionGate>
+                )}
+                {(!canDelete || canDelete(row)) && (
+                    <PermissionGate permission={perms?.delete}>
+                        <IconButton label={`Delete ${entityLabel}`} onClick={() => setToDelete(row)}>
+                            <Trash2 className="size-4 text-destructive" />
+                        </IconButton>
+                    </PermissionGate>
+                )}
             </div>
         )
     };
@@ -190,7 +206,7 @@ export function CrudManager<T extends { id: number | string }>({
             <Dialog
                 open={dialogOpen}
                 onClose={() => setDialogOpen(false)}
-                title={`${editing ? 'Edit' : 'Add'} ${entityLabel}`}
+                title={editing && editTitle ? editTitle(editing) : `${editing ? 'Edit' : 'Add'} ${entityLabel}`}
                 footer={
                     <>
                         <Button variant="outline" size="sm" onClick={() => setDialogOpen(false)} disabled={saving}>
