@@ -27,8 +27,13 @@ const EMPTY: DocumentSequence = {
   reset_freq: "yearly",
 };
 
+/** Plain label for a document type key; a key without a listed label reads as words
+ *  ("muster_roll" shows as "Muster roll"), never as the raw key. */
 function docTypeLabel(t: string) {
-  return DOC_TYPES.find((d) => d.value === t)?.label ?? t;
+  const known = DOC_TYPES.find((d) => d.value === t)?.label;
+  if (known) return known;
+  const words = t.replace(/[_-]+/g, " ").trim();
+  return words ? words.charAt(0).toUpperCase() + words.slice(1) : t;
 }
 
 /** Render a sample document number from a sequence config (next value = current + 1). */

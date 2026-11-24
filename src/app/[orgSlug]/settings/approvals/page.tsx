@@ -5,7 +5,9 @@ import { useState } from "react";
 
 import { PermissionGate } from "@/components/auth/permission-gate";
 import { Badge, Button, Card } from "@/components/ui/base";
+import { Combobox } from "@/components/ui/combobox";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { useEmployeeOptions } from "@/hooks/use-employee-options";
 import { DataTable, type Column } from "@/components/ui/data-table";
 import { Dialog } from "@/components/ui/dialog";
 import { Field, Input, Select, Switch, Textarea } from "@/components/ui/form";
@@ -34,9 +36,16 @@ interface StepDraft {
   name: string;
   approver_type: string;
   approver_role: string;
+  /** The approver when approver_type is "user" (a specific employee). */
+  approver_employee_id: string;
 }
 
-const DEFAULT_STEP: StepDraft = { name: "Manager sign-off", approver_type: "manager", approver_role: "" };
+const DEFAULT_STEP: StepDraft = {
+  name: "Manager sign-off",
+  approver_type: "manager",
+  approver_role: "",
+  approver_employee_id: "",
+};
 
 /**
  * Approval Rules — manage per-module multi-step approval workflows (payroll, leave, contracts,
@@ -48,6 +57,7 @@ export default function ApprovalRulesPage() {
   const createWf = useCreateApprovalWorkflow();
   const setActive = useSetApprovalWorkflowActive();
   const deleteWf = useDeleteApprovalWorkflow();
+  const employees = useEmployeeOptions();
 
   const rows = normalizeList<ApprovalWorkflow>(data).results;
 
@@ -88,6 +98,7 @@ export default function ApprovalRulesPage() {
             name: st.name,
             approver_type: st.approver_type,
             approver_role: st.approver_role ?? "",
+            approver_employee_id: st.approver_employee_id ?? "",
           }))
         : [DEFAULT_STEP],
     );
@@ -101,7 +112,7 @@ export default function ApprovalRulesPage() {
   }
 
   function addStep() {
-    setSteps([...steps, { name: "", approver_type: "manager", approver_role: "" }]);
+    setSteps([...steps, { ...DEFAULT_STEP, name: "" }]);
   }
   function removeStep(idx: number) {
     setSteps(steps.filter((_, i) => i !== idx));
@@ -113,6 +124,13 @@ export default function ApprovalRulesPage() {
   }
 
   const saving = createWf.isPending || deleteWf.isPending;
+  // A "specific employee" step needs the employee, and a role step needs the role.
+  const stepsIncomplete = steps.some(
+    (s) =>
+      (s.approver_type === "user" && !s.approver_employee_id) ||
+      (s.approver_type === "role" && !s.approver_role.trim()),
+  );
+  const employeeName = (id?: string | null) => employees.options.find((o) => o.value === id)?.label;
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -124,8 +142,9 @@ export default function ApprovalRulesPage() {
         name: s.name.trim() || `Step ${i + 1}`,
         approver_type: s.approver_type,
         approver_role: s.approver_type === "role" ? s.approver_role.trim() : "",
+        approver_employee_id: s.approver_type === "user" ? s.approver_employee_id || null : null,
       }));
-    if (cleanSteps.length === 0) return;
+    if (cleanSteps.length === 0 || stepsIncomplete) return;
 
     const payload = {
       module,
@@ -153,7 +172,12 @@ export default function ApprovalRulesPage() {
         <div className="flex flex-wrap gap-1">
           {workflowSteps(wf).map((s) => (
             <Badge key={s.id ?? s.sequence} variant="outline">
-              {s.sequence}. {s.approver_type === "role" && s.approver_role ? s.approver_role : approverTypeLabel(s.approver_type)}
+              {s.sequence}.{" "}
+              {s.approver_type === "role" && s.approver_role
+                ? s.approver_role
+                : s.approver_type === "user"
+                  ? employeeName(s.approver_employee_id) ?? approverTypeLabel(s.approver_type)
+                  : approverTypeLabel(s.approver_type)}
             </Badge>
           ))}
         </div>
@@ -253,7 +277,7 @@ export default function ApprovalRulesPage() {
               </Button>
             </div>
             {steps.map((step, idx) => (
-              <div key={idx} className="flex items-center gap-2 rounded-lg border border-border p-3">
+              <div key={idx} className="flex flex-wrap items-center gap-2 rounded-lg border border-border p-3">
                 <span className="w-5 shrink-0 text-center font-mono text-xs text-muted-foreground">{idx + 1}</span>
                 <Input
                   value={step.name}
@@ -276,6 +300,19 @@ export default function ApprovalRulesPage() {
                     className="w-32"
                   />
                 )}
+                {step.approver_type === "user" && (
+                  <div className="w-48 shrink-0">
+                    <Combobox
+                      value={step.approver_employee_id}
+                      onChange={(v) => updateStep(idx, "approver_employee_id", v)}
+                      options={employees.options}
+                      loading={employees.isLoading}
+                      placeholder="Choose employee…"
+                      searchPlaceholder="Search employees…"
+                      emptyText="No employee matches"
+                    />
+                  </div>
+                )}
                 {steps.length > 1 && (
                   <Button type="button" variant="ghost" size="icon" className="shrink-0" onClick={() => removeStep(idx)}>
                     <Minus className="size-4 text-destructive" />
@@ -289,7 +326,7 @@ export default function ApprovalRulesPage() {
             <Button type="button" variant="secondary" onClick={closeDialog}>
               Cancel
             </Button>
-            <Button type="submit" disabled={saving}>
+            <Button type="submit" disabled={saving || stepsIncomplete}>
               {saving ? "Saving…" : editing ? "Save Changes" : "Create Workflow"}
             </Button>
           </div>

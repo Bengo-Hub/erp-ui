@@ -49,6 +49,33 @@ export function useSaveEmployee() {
   });
 }
 
+/** Marks an employee as exited (terminated) or reinstates them. */
+export function useSetEmployeeTerminated() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, terminated }: { id: number | string; terminated: boolean }) =>
+      employeesApi.setTerminated(id, terminated),
+    onSuccess: (_res, v) => {
+      qc.invalidateQueries({ queryKey: [KEY] });
+      toast.success(v.terminated ? "Employee marked as exited" : "Employee reinstated");
+    },
+    onError: (e) => toast.error(extractApiError(e, "Failed to change the employee's status")),
+  });
+}
+
+/** Re-issues staff numbers to all employees of the tenant. */
+export function useRenumberEmployees() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: () => employeesApi.renumber(),
+    onSuccess: (res) => {
+      qc.invalidateQueries({ queryKey: [KEY] });
+      toast.success(`Staff numbers re-issued to ${res?.renumbered ?? 0} employees`);
+    },
+    onError: (e) => toast.error(extractApiError(e, "Failed to renumber staff")),
+  });
+}
+
 export function useDeleteEmployee() {
   const qc = useQueryClient();
   return useMutation({

@@ -1,16 +1,18 @@
 "use client";
 
-import { ArrowLeft, Pencil } from "lucide-react";
+import { ArrowLeft, Pencil, UserCheck, UserX } from "lucide-react";
 import { useParams, useRouter } from "next/navigation";
 import { useState } from "react";
 
 import { PermissionGate } from "@/components/auth/permission-gate";
 import { Badge, Button } from "@/components/ui/base";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { PageHeader } from "@/components/ui/page-header";
 import { DetailSkeleton, ErrorState } from "@/components/ui/states";
 import { Tabs } from "@/components/ui/tabs";
-import { useEmployee } from "@/hooks/use-employees";
+import { useEmployee, useSetEmployeeTerminated } from "@/hooks/use-employees";
 import { employeeName } from "@/lib/hrm";
+import { formatDate } from "@/lib/utils";
 
 import { EmployeeFormDialog } from "../_employee-form-dialog";
 import { GovernanceBadges } from "../_governance-badges";
@@ -44,8 +46,10 @@ export default function EmployeeProfilePage() {
   const id = params?.id as string;
   const [tab, setTab] = useState("overview");
   const [editOpen, setEditOpen] = useState(false);
+  const [confirmExit, setConfirmExit] = useState(false);
 
   const { data: employee, isLoading, error, refetch } = useEmployee(id);
+  const setTerminated = useSetEmployeeTerminated();
 
   return (
     <div className="space-y-4 p-4 sm:p-6">
@@ -71,11 +75,47 @@ export default function EmployeeProfilePage() {
             }
             subtitle={employee.email}
             actions={
-              <PermissionGate permission="change_employee">
-                <Button size="sm" variant="outline" onClick={() => setEditOpen(true)}>
-                  <Pencil className="mr-1.5 size-4" /> Edit
-                </Button>
+              <PermissionGate permission="hrm.employee.manage">
+                <div className="flex gap-2">
+                  <Button size="sm" variant="outline" onClick={() => setEditOpen(true)}>
+                    <Pencil className="mr-1.5 size-4" /> Edit
+                  </Button>
+                  {employee.terminated ? (
+                    <Button size="sm" variant="outline" onClick={() => setConfirmExit(true)}>
+                      <UserCheck className="mr-1.5 size-4" /> Reinstate
+                    </Button>
+                  ) : (
+                    <Button size="sm" variant="destructive" onClick={() => setConfirmExit(true)}>
+                      <UserX className="mr-1.5 size-4" /> Mark as exited
+                    </Button>
+                  )}
+                </div>
               </PermissionGate>
+            }
+          />
+          {employee.terminated && (
+            <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive">
+              This employee has exited
+              {typeof employee.terminated_at === "string" ? ` on ${formatDate(employee.terminated_at)}` : ""}.
+            </div>
+          )}
+          <ConfirmDialog
+            open={confirmExit}
+            title={employee.terminated ? "Reinstate this employee?" : `Mark ${employeeName(employee)} as exited?`}
+            description={
+              employee.terminated
+                ? "They return to active staff and their exit date is cleared."
+                : "Today is recorded as their exit date and they leave active staff. Their records are kept and you can reinstate them later. Settle their final dues in payroll first."
+            }
+            confirmLabel={employee.terminated ? "Reinstate" : "Mark as exited"}
+            destructive={!employee.terminated}
+            loading={setTerminated.isPending}
+            onCancel={() => setConfirmExit(false)}
+            onConfirm={() =>
+              setTerminated.mutate(
+                { id: employee.id, terminated: !employee.terminated },
+                { onSettled: () => setConfirmExit(false) },
+              )
             }
           />
 

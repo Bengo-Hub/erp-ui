@@ -8,7 +8,7 @@ import { type Column } from "@/components/ui/data-table";
 import { Field, Select } from "@/components/ui/form";
 import { PageHeader } from "@/components/ui/page-header";
 import {
-  useAppraisalQuestions,
+  useAppraisalQuestionsFiltered,
   useAppraisalTemplates,
   useSaveAppraisalQuestion,
 } from "@/hooks/use-appraisals";
@@ -20,7 +20,7 @@ export default function AppraisalQuestionsPage() {
   const { data: tplData } = useAppraisalTemplates({ page_size: 200 });
   const templates = normalizeList<AppraisalTemplate>(tplData).results;
 
-  const { data, isLoading, error, refetch } = useAppraisalQuestions(template || undefined);
+  const { data, isLoading, error, refetch } = useAppraisalQuestionsFiltered(template || undefined);
   const save = useSaveAppraisalQuestion();
   const rows = normalizeList<AppraisalQuestion>(data).results;
 
@@ -33,6 +33,16 @@ export default function AppraisalQuestionsPage() {
       options: templates.map((t) => ({ value: String(t.id), label: t.name ?? `#${t.id}` })),
     },
     { name: "text", label: "Question", type: "textarea", required: true, span2: true },
+    {
+      name: "question_type",
+      label: "Answer type",
+      type: "select",
+      options: [
+        { value: "rating", label: "Rating (1 to 5)" },
+        { value: "text", label: "Written answer" },
+        { value: "yes_no", label: "Yes or no" },
+      ],
+    },
     { name: "category", label: "Category" },
     { name: "weight", label: "Weight", type: "number", step: "0.1" },
     { name: "max_score", label: "Max Score", type: "number" },
@@ -41,7 +51,10 @@ export default function AppraisalQuestionsPage() {
 
   const columns: Column<AppraisalQuestion>[] = [
     { header: "Question", cell: (q) => <span className="font-medium">{q.text || q.question_text || "—"}</span> },
-    { header: "Template", cell: (q) => q.template_name || templates.find((t) => t.id === q.template)?.name || "—" },
+    {
+      header: "Template",
+      cell: (q) => q.template_name || templates.find((t) => String(t.id) === String(q.template_id))?.name || "—",
+    },
     { header: "Category", cell: (q) => q.category || "—" },
     { header: "Weight", cell: (q) => q.weight ?? "—" },
     { header: "Max", cell: (q) => q.max_score ?? "—" },
@@ -77,8 +90,9 @@ export default function AppraisalQuestionsPage() {
         perms={{ add: "add_appraisalquestion", change: "change_appraisalquestion", delete: "delete_appraisalquestion" }}
         emptyDescription="No questions for this template yet."
         toForm={(q) => ({
-          template: q?.template ?? template ?? "",
+          template: q?.template_id ?? template ?? "",
           text: q?.text ?? q?.question_text ?? "",
+          question_type: q?.question_type ?? "rating",
           category: q?.category ?? "",
           weight: q?.weight ?? "",
           max_score: q?.max_score ?? "",

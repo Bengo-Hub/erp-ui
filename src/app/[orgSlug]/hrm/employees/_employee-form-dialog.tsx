@@ -2,13 +2,15 @@
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useEffect, useState } from "react";
-import { useForm } from "react-hook-form";
+import { Controller, useForm } from "react-hook-form";
 import { z } from "zod";
 
 import { Button } from "@/components/ui/base";
 import { Dialog } from "@/components/ui/dialog";
+import { Combobox } from "@/components/ui/combobox";
 import { Field, Input, Select } from "@/components/ui/form";
 import { Stepper } from "@/components/ui/stepper";
+import { useEmployeeOptions } from "@/hooks/use-employee-options";
 import { useSaveEmployee } from "@/hooks/use-employees";
 import { useDepartments, useJobGroups, useJobTitles } from "@/hooks/use-hrm-settings";
 import { normalizeList } from "@/lib/api/drf";
@@ -35,6 +37,9 @@ const employeeSchema = z.object({
   date_of_birth: optionalPastOrTodayDate,
   employment_type: z.string().optional(),
   date_joined: z.string().trim().optional(),
+  reports_to_id: z.string().optional(),
+  nssf_no: z.string().trim().optional(),
+  shif_or_nhif_number: z.string().trim().optional(),
   job_title: z.string().optional(),
   department: z.string().optional(),
   job_group: z.string().optional(),
@@ -60,7 +65,10 @@ function toFormValues(e?: Employee | null): FormValues {
     gender: e.gender ?? "",
     date_of_birth: e.date_of_birth ?? "",
     employment_type: e.employment_type ?? "",
-    date_joined: e.date_joined ?? "",
+    date_joined: (e.date_joined ?? "").slice(0, 10),
+    reports_to_id: e.reports_to_id ?? "",
+    nssf_no: e.nssf_no ?? "",
+    shif_or_nhif_number: e.shif_or_nhif_number ?? "",
     // The enriched employee view returns department_id / job_title_id; older shapes nest them.
     job_title: idOf(e.job_title ?? e.job_title_id),
     department: idOf(e.department ?? e.department_id),
@@ -96,8 +104,12 @@ export function EmployeeFormDialog({
   const jobTitles = normalizeList(titleData).results;
   const jobGroups = normalizeList(groupData).results;
 
+  // Anyone but this employee can be their manager.
+  const { options: allEmployees, isLoading: employeesLoading } = useEmployeeOptions();
+  const managerOptions = allEmployees.filter((o) => o.value !== String(employee?.id ?? ""));
+
   const [step, setStep] = useState(0);
-  const { register, handleSubmit, reset, trigger, formState: { errors } } = useForm<FormValues>({
+  const { register, control, handleSubmit, reset, trigger, formState: { errors } } = useForm<FormValues>({
     resolver: zodResolver(employeeSchema),
   });
   // The form library is reset in the effect; the wizard step resets during render.
@@ -122,6 +134,8 @@ export function EmployeeFormDialog({
     Object.keys(payload).forEach((k) => {
       if (payload[k] === "" || payload[k] === undefined) delete payload[k];
     });
+    // On edit an empty manager is sent as "" so removing the manager clears it.
+    if (isEdit && !v.reports_to_id) payload.reports_to_id = "";
     save.mutate(
       { id: employee?.id, data: payload as Partial<Employee> },
       {
@@ -188,6 +202,10 @@ export function EmployeeFormDialog({
             <Field label="Date of Birth" error={errors.date_of_birth?.message}><Input type="date" {...register("date_of_birth")} /></Field>
             <Field label="National ID" error={errors.national_id?.message}><Input {...register("national_id")} /></Field>
             <Field label="KRA PIN" error={errors.kra_pin?.message}><Input {...register("kra_pin")} /></Field>
+            <Field label="NSSF Number" error={errors.nssf_no?.message}><Input {...register("nssf_no")} /></Field>
+            <Field label="SHIF Number" help="Social Health Insurance Fund (formerly NHIF)" error={errors.shif_or_nhif_number?.message}>
+              <Input {...register("shif_or_nhif_number")} />
+            </Field>
           </div>
         </div>
 
@@ -219,6 +237,23 @@ export function EmployeeFormDialog({
               </Select>
             </Field>
             <Field label="Date Joined"><Input type="date" {...register("date_joined")} /></Field>
+            <Field label="Reports To" help="Their line manager, who approves their requests.">
+              <Controller
+                control={control}
+                name="reports_to_id"
+                render={({ field }) => (
+                  <Combobox
+                    value={field.value ?? ""}
+                    onChange={field.onChange}
+                    options={managerOptions}
+                    loading={employeesLoading}
+                    placeholder="No manager"
+                    searchPlaceholder="Search employees…"
+                    emptyText="No employee matches"
+                  />
+                )}
+              />
+            </Field>
             <Field label="Basic Salary" help="Refine in the Salary tab later." error={errors.basic_salary?.message}>
               <Input type="number" step="0.01" {...register("basic_salary")} />
             </Field>

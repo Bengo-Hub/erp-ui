@@ -191,6 +191,12 @@ export const employeesApi = {
   patch: (id: number | string, data: Partial<Employee>) =>
     apiClient.patch<Employee>(`${EMP}/employees/${id}/`, toEmployeePayload(data)),
   remove: (id: number | string) => apiClient.delete<void>(`${EMP}/employees/${id}/`),
+  // Exit / reinstate: erp-api records terminated_at on the change to terminated and clears it
+  // on reinstatement.
+  setTerminated: (id: number | string, terminated: boolean) =>
+    apiClient.patch<Employee>(`${EMP}/employees/${id}/`, { terminated }),
+  // Re-issues SLUG/YYYY/### staff numbers to every employee of the tenant (admin action).
+  renumber: () => apiClient.post<{ status: string; renumbered: number }>(`${EMP}/employees/renumber`, {}),
 
   // Bulk CSV import → POST /hrm/employees/import (erp-api parses CSV, creates each
   // row independently, returns a per-row summary).

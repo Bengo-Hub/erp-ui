@@ -1,6 +1,6 @@
 "use client";
 
-import { ClipboardCheck, Plus, Send } from "lucide-react";
+import { ClipboardCheck, Play, Plus, RotateCcw, Send } from "lucide-react";
 import { useMemo, useState } from "react";
 
 import { ReviewScoreDialog } from "./_score-dialog";
@@ -19,15 +19,18 @@ import {
   useApproveReview,
   usePerformanceReviews,
   useRejectReview,
+  useReopenReview,
   useSavePerformanceReview,
+  useStartReview,
   useSubmitReview,
 } from "@/hooks/use-performance";
 import { normalizeList } from "@/lib/api/drf";
-import { type PerformanceReview } from "@/lib/api/performance";
+import { REVIEW_STATUS_LABELS, type PerformanceReview } from "@/lib/api/performance";
 import { PAGE_SIZE } from "@/lib/hrm";
 import { formatDate } from "@/lib/utils";
 
-const empty = { employee: "", period: "", review_date: "", rating: "", comments: "" };
+const empty = { employee: "", period: "", review_date: "", reviewer: "", comments: "" };
+const MANAGE = "hrm.performance.manage";
 
 export default function PerformanceReviewsPage() {
   const { options: employees } = useEmployeeOptions();
@@ -38,27 +41,33 @@ export default function PerformanceReviewsPage() {
   const [form, setForm] = useState(empty);
 
   const params = useMemo(
-    () => ({ page, page_size: PAGE_SIZE, status: tab === "approvals" ? "submitted" : undefined }),
+    // The approvals queue is the reviews submitted for approval (erp-api state "completed").
+    () => ({ page, page_size: PAGE_SIZE, status: tab === "approvals" ? "completed" : undefined }),
     [page, tab],
   );
   const { data, isLoading, error, refetch } = usePerformanceReviews(params);
   const save = useSavePerformanceReview();
+  const start = useStartReview();
   const submit = useSubmitReview();
   const approve = useApproveReview();
   const reject = useRejectReview();
+  const reopen = useReopenReview();
   const { results, count } = normalizeList<PerformanceReview>(data);
 
-  const isDraft = (r: PerformanceReview) => ["draft", ""].includes((r.status || "").toLowerCase());
-  const isPending = (r: PerformanceReview) =>
-    ["submitted", "pending", "in_review"].includes((r.status || "").toLowerCase());
-
   const columns: Column<PerformanceReview>[] = [
-    { header: "Employee", cell: (r) => <span className="font-medium">{r.employee_name || r.employee || "—"}</span> },
+    { header: "Employee", cell: (r) => <span className="font-medium">{r.employee_name || "—"}</span> },
     { header: "Reviewer", cell: (r) => r.reviewer_name || "—" },
-    { header: "Period", cell: (r) => r.period || "—" },
+    { header: "Review", cell: (r) => r.title || "—" },
     { header: "Date", cell: (r) => formatDate(r.review_date) },
-    { header: "Rating", cell: (r) => r.rating ?? r.overall_rating ?? "—" },
-    { header: "Status", cell: (r) => <StatusBadge status={r.status} /> },
+    { header: "Rating", cell: (r) => (r.overall_rating != null ? `${Number(r.overall_rating)} / 5` : "—") },
+    {
+      header: "Status",
+      cell: (r) => (
+        <span title={r.status === "rejected" && r.comments ? `Reason: ${r.comments}` : undefined}>
+          <StatusBadge status={r.status} labels={REVIEW_STATUS_LABELS} />
+        </span>
+      ),
+    },
     {
       header: "",
       headerClassName: "text-right",
@@ -68,17 +77,27 @@ export default function PerformanceReviewsPage() {
           <IconButton label="Score review" onClick={() => setScoring(r)}>
             <ClipboardCheck className="size-4" />
           </IconButton>
-          {isDraft(r) && (
-            <PermissionGate permission="change_performancereview">
-              <IconButton label="Submit review" onClick={() => submit.mutate(r.id)}>
+          <PermissionGate permission={MANAGE}>
+            {r.status === "draft" && (
+              <IconButton label="Start review" onClick={() => start.mutate(r.id)} disabled={start.isPending}>
+                <Play className="size-4 text-primary" />
+              </IconButton>
+            )}
+            {r.status === "in_progress" && (
+              <IconButton label="Submit for approval" onClick={() => submit.mutate(r.id)} disabled={submit.isPending}>
                 <Send className="size-4 text-primary" />
               </IconButton>
-            </PermissionGate>
-          )}
+            )}
+            {r.status === "rejected" && (
+              <IconButton label="Reopen review" onClick={() => reopen.mutate(r.id)} disabled={reopen.isPending}>
+                <RotateCcw className="size-4 text-primary" />
+              </IconButton>
+            )}
+          </PermissionGate>
           <ApprovalActions
             size="sm"
-            pending={isPending(r)}
-            permission={["approve_performancereview", "change_performancereview"]}
+            pending={r.status === "completed"}
+            permission={MANAGE}
             onApprove={() => approve.mutate(r.id)}
             onReject={(reason) => reject.mutate({ id: r.id, reason })}
             approving={approve.isPending}
@@ -90,19 +109,17 @@ export default function PerformanceReviewsPage() {
   ];
 
   const submitForm = () => {
-    if (!form.employee) return;
+    if (!form.employee || !form.period.trim()) return;
     save.mutate(
       {
         data: {
-          // employee id is a UUID string — do not Number() it.
+          // ids are UUID strings, never Number() them. erp-api review create takes
+          // employee_id, title, description, review_date and reviewer_id.
           employee: form.employee,
-          // erp-api review create takes title/description; reuse period/comments.
-          title: form.period || undefined,
+          title: form.period.trim(),
           description: form.comments || undefined,
-          period: form.period || undefined,
           review_date: form.review_date || undefined,
-          rating: form.rating ? Number(form.rating) : undefined,
-          comments: form.comments || undefined,
+          reviewer: form.reviewer || undefined,
         },
       },
       {
@@ -172,7 +189,7 @@ export default function PerformanceReviewsPage() {
             <Button variant="outline" size="sm" onClick={() => setDialogOpen(false)} disabled={save.isPending}>
               Cancel
             </Button>
-            <Button size="sm" onClick={submitForm} disabled={save.isPending}>
+            <Button size="sm" onClick={submitForm} disabled={save.isPending || !form.employee || !form.period.trim()}>
               {save.isPending ? "Saving…" : "Create"}
             </Button>
           </>
@@ -189,14 +206,23 @@ export default function PerformanceReviewsPage() {
               ))}
             </Select>
           </Field>
-          <Field label="Period" htmlFor="pr-period">
-            <Input id="pr-period" value={form.period} onChange={(e) => setForm((f) => ({ ...f, period: e.target.value }))} placeholder="e.g. Q2 2026" />
+          <Field label="Review title" htmlFor="pr-period" required>
+            <Input id="pr-period" value={form.period} onChange={(e) => setForm((f) => ({ ...f, period: e.target.value }))} placeholder="e.g. Q2 2026 review" />
           </Field>
           <Field label="Review Date" htmlFor="pr-date">
             <Input id="pr-date" type="date" value={form.review_date} onChange={(e) => setForm((f) => ({ ...f, review_date: e.target.value }))} />
           </Field>
-          <Field label="Rating (1-5)" htmlFor="pr-rating">
-            <Input id="pr-rating" type="number" step="0.5" value={form.rating} onChange={(e) => setForm((f) => ({ ...f, rating: e.target.value }))} />
+          <Field label="Reviewer" htmlFor="pr-reviewer" className="sm:col-span-2">
+            <Select id="pr-reviewer" value={form.reviewer} onChange={(e) => setForm((f) => ({ ...f, reviewer: e.target.value }))}>
+              <option value="">No reviewer yet</option>
+              {employees
+                .filter((o) => o.value !== form.employee)
+                .map((o) => (
+                  <option key={o.value} value={o.value}>
+                    {o.label}
+                  </option>
+                ))}
+            </Select>
           </Field>
           <Field label="Comments" htmlFor="pr-comments" className="sm:col-span-2">
             <Textarea id="pr-comments" value={form.comments} onChange={(e) => setForm((f) => ({ ...f, comments: e.target.value }))} />

@@ -21,7 +21,7 @@ import {
   useSaveAppraisalCycle,
 } from "@/hooks/use-appraisals";
 import { normalizeList } from "@/lib/api/drf";
-import { type AppraisalCycle } from "@/lib/api/appraisals";
+import { APPRAISAL_CYCLE_STATUS_LABELS, type AppraisalCycle } from "@/lib/api/appraisals";
 import { PAGE_SIZE } from "@/lib/hrm";
 import { endNotBeforeStart } from "@/lib/validation";
 import { formatDate } from "@/lib/utils";
@@ -64,19 +64,20 @@ export default function AppraisalCyclesPage() {
     { header: "Name", cell: (c) => <span className="font-medium">{c.name || "—"}</span> },
     { header: "Start", cell: (c) => formatDate(c.start_date) },
     { header: "End", cell: (c) => formatDate(c.end_date) },
-    { header: "Status", cell: (c) => <StatusBadge status={c.status || (c.is_active ? "active" : "draft")} /> },
+    { header: "Status", cell: (c) => <StatusBadge status={c.status} labels={APPRAISAL_CYCLE_STATUS_LABELS} /> },
     {
       header: "",
       headerClassName: "text-right",
       className: "text-right",
       cell: (c) => {
-        const status = (c.status || "").toLowerCase();
-        const active = c.is_active || status === "active";
+        // erp-api cycle states: created -> activated -> closed -> reopened -> closed.
+        const status = c.status || "created";
+        const active = status === "activated" || status === "reopened";
         const closed = status === "closed";
         return (
           <div className="flex justify-end gap-1">
             <PermissionGate permission="change_appraisalcycle">
-              {!active && !closed && (
+              {status === "created" && (
                 <IconButton label="Activate cycle" onClick={() => activate.mutate(c.id)}>
                   <Play className="size-4 text-green-600" />
                 </IconButton>

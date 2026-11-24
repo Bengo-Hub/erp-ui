@@ -43,10 +43,9 @@ export default function TrainingEnrollmentsPage() {
     !["completed", "cancelled", "canceled"].includes((e.status || "").toLowerCase());
 
   const columns: Column<TrainingEnrollment>[] = [
-    { header: "Employee", cell: (e) => <span className="font-medium">{e.employee_name || e.employee || "—"}</span> },
-    { header: "Course", cell: (e) => e.course_name || e.course || "—" },
+    { header: "Employee", cell: (e) => <span className="font-medium">{e.employee_name || "—"}</span> },
+    { header: "Course", cell: (e) => e.course_name || "—" },
     { header: "Enrolled", cell: (e) => formatDate(e.enrolled_at) },
-    { header: "Score", cell: (e) => e.score ?? "—" },
     { header: "Status", cell: (e) => <StatusBadge status={e.status} /> },
     {
       header: "",
@@ -139,7 +138,7 @@ export default function TrainingEnrollmentsPage() {
               <option value="">Select course…</option>
               {courses.map((c) => (
                 <option key={c.id} value={c.id}>
-                  {c.name || c.title}
+                  {c.title}
                 </option>
               ))}
             </Select>

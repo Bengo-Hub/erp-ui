@@ -29,8 +29,8 @@ const fields: CrudFieldDef[] = [
       { value: "completed", label: "Completed" },
     ],
   },
-  { name: "start_date", label: "Start Date", type: "date" },
-  { name: "end_date", label: "End Date", type: "date" },
+  { name: "start_date", label: "Start Date", type: "date", required: true },
+  { name: "end_date", label: "End Date", type: "date", required: true },
   { name: "description", label: "Description", type: "textarea", span2: true },
 ];
 
@@ -41,10 +41,10 @@ export default function TrainingCoursesPage() {
   const rows = normalizeList<TrainingCourse>(data).results;
 
   const columns: Column<TrainingCourse>[] = [
-    { header: "Name", cell: (c) => <span className="font-medium">{c.name || c.title || "—"}</span> },
+    { header: "Name", cell: (c) => <span className="font-medium">{c.title || "—"}</span> },
     { header: "Provider", cell: (c) => c.provider || "—" },
-    { header: "Duration", cell: (c) => (c.duration != null ? `${c.duration} hrs` : "—") },
-    { header: "Cost", className: "text-right", headerClassName: "text-right", cell: (c) => formatMoney(c.cost) },
+    { header: "Duration", cell: (c) => (c.duration ? `${c.duration} hrs` : "—") },
+    { header: "Cost", className: "text-right", headerClassName: "text-right", cell: (c) => (c.cost ? formatMoney(c.cost) : "—") },
     { header: "Starts", cell: (c) => formatDate(c.start_date) },
     { header: "Status", cell: (c) => <StatusBadge status={c.status} /> },
   ];
@@ -63,13 +63,13 @@ export default function TrainingCoursesPage() {
         perms={{ add: "add_trainingcourse", change: "change_trainingcourse", delete: "delete_trainingcourse" }}
         emptyDescription="No training courses yet."
         toForm={(c) => ({
-          name: c?.name ?? c?.title ?? "",
+          name: c?.title ?? "",
           provider: c?.provider ?? "",
           duration: c?.duration ?? "",
           cost: c?.cost ?? "",
           status: c?.status ?? "draft",
-          start_date: c?.start_date ?? "",
-          end_date: c?.end_date ?? "",
+          start_date: c?.start_date?.slice(0, 10) ?? "",
+          end_date: c?.end_date?.slice(0, 10) ?? "",
           description: c?.description ?? "",
         })}
         onSave={({ id, data }, done) =>

@@ -11,20 +11,24 @@ import type { Paginated } from "@/lib/api/drf";
 // Modules the ERP approval engine governs (mirrors approvalModules in the ent schema).
 export const APPROVAL_MODULES = [
   { value: "payroll", label: "Payroll" },
-  { value: "leave_request", label: "Leave Request" },
+  { value: "leave_request", label: "Leave request" },
   { value: "contract", label: "Contract" },
   { value: "appraisal", label: "Appraisal" },
-  { value: "performance_review", label: "Performance Review" },
-  { value: "recruitment_offer", label: "Recruitment Offer" },
+  { value: "performance_review", label: "Performance review" },
+  { value: "recruitment_offer", label: "Job offer" },
+  { value: "attendance_regularisation", label: "Attendance correction" },
+  { value: "overtime_request", label: "Overtime request" },
   { value: "general", label: "General" },
 ] as const;
 
-// Approver resolution types (mirrors the backend resolveApprover switch).
+// Approver resolution types (mirrors approverTypes in the ent schema and the backend
+// resolveApprover switch).
 export const APPROVER_TYPES = [
-  { value: "manager", label: "Line Manager (reports-to)" },
-  { value: "department_head", label: "Department Head" },
-  { value: "role", label: "Role (RBAC)" },
-  { value: "user", label: "Specific Employee" },
+  { value: "manager", label: "Line manager (reports to)" },
+  { value: "department_head", label: "Department head" },
+  { value: "role", label: "Anyone with a role" },
+  { value: "user", label: "Specific employee" },
+  { value: "owner", label: "Business owner" },
 ] as const;
 
 export const moduleLabel = (m: string): string =>

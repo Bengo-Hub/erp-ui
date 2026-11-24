@@ -10,28 +10,20 @@ import {
   useSaveCandidate,
 } from "@/hooks/use-recruitment";
 import { normalizeList } from "@/lib/api/drf";
-import { type Candidate } from "@/lib/api/recruitment";
+import { CANDIDATE_STATUSES, type Candidate } from "@/lib/api/recruitment";
 
 const fields: CrudFieldDef[] = [
   { name: "name", label: "Full Name", required: true },
-  { name: "email", label: "Email" },
+  { name: "email", label: "Email", required: true },
   { name: "phone", label: "Phone" },
   { name: "source", label: "Source", placeholder: "e.g. Referral, LinkedIn" },
-  {
-    name: "status",
-    label: "Status",
-    type: "select",
-    options: [
-      { value: "new", label: "New" },
-      { value: "active", label: "Active" },
-      { value: "hired", label: "Hired" },
-      { value: "rejected", label: "Rejected" },
-    ],
-  },
+  { name: "status", label: "Status", type: "select", options: CANDIDATE_STATUSES },
 ];
 
+const STATUS_LABELS = Object.fromEntries(CANDIDATE_STATUSES.map((s) => [s.value, s.label]));
+
 function candidateName(c: Candidate) {
-  return c.name || c.full_name || [c.first_name, c.last_name].filter(Boolean).join(" ") || "—";
+  return c.full_name || c.name || "—";
 }
 
 export default function CandidatesPage() {
@@ -45,7 +37,7 @@ export default function CandidatesPage() {
     { header: "Email", cell: (c) => c.email || "—" },
     { header: "Phone", cell: (c) => c.phone || "—" },
     { header: "Source", cell: (c) => c.source || "—" },
-    { header: "Status", cell: (c) => <StatusBadge status={c.status} /> },
+    { header: "Status", cell: (c) => <StatusBadge status={c.status} labels={STATUS_LABELS} /> },
   ];
 
   return (

@@ -5,6 +5,8 @@ import { toast } from "sonner";
 
 import {
   recruitmentApi,
+  stageLabel,
+  type TransitionInput,
   type Candidate,
   type JobApplication,
   type JobPosting,
@@ -34,33 +36,30 @@ export const useApplications = applications.useList;
 export const useSaveApplication = applications.useSave;
 export const useDeleteApplication = applications.useRemove;
 
-/** Advance an application to the next pipeline stage (erp-api /transition). */
-export function useAdvanceApplication() {
+/**
+ * Moves an application to another pipeline stage (erp-api /transition). On hire with
+ * create_employee the API also creates the employee record and starts onboarding.
+ */
+export function useTransitionApplication() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (arg: number | string | { id: number | string; stage?: string }) => {
-      const id = typeof arg === "object" ? arg.id : arg;
-      const stage = typeof arg === "object" ? arg.stage : undefined;
-      return recruitmentApi.applications.advance(id, stage);
-    },
-    onSuccess: () => {
+    mutationFn: ({ id, input }: { id: string; input: TransitionInput }) =>
+      recruitmentApi.applications.transition(id, input),
+    onSuccess: (res, { input }) => {
       qc.invalidateQueries({ queryKey: ["recruitment-applications"] });
-      toast.success("Application advanced");
+      if (res?.employee_id) {
+        qc.invalidateQueries({ queryKey: ["recruitment-onboarding"] });
+        qc.invalidateQueries({ queryKey: ["employees"] });
+      }
+      toast.success(
+        input.status === "rejected"
+          ? "Application rejected"
+          : res?.employee_id
+            ? "Candidate hired: employee record created and onboarding started"
+            : `Moved to ${stageLabel(input.status)}`,
+      );
     },
-    onError: (e) => toast.error(extractApiError(e, "Failed to advance application")),
-  });
-}
-
-export function useRejectApplication() {
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: ({ id }: { id: number | string; reason?: string }) =>
-      recruitmentApi.applications.reject(id),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["recruitment-applications"] });
-      toast.success("Application rejected");
-    },
-    onError: (e) => toast.error(extractApiError(e, "Failed to reject application")),
+    onError: (e) => toast.error(extractApiError(e, "Failed to move the application")),
   });
 }
 

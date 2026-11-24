@@ -50,11 +50,11 @@ export default function GoalsPage() {
     setForm(
       g
         ? {
-            employee: g.employee ? String(g.employee) : "",
+            employee: g.employee_id ?? (g.employee ? String(g.employee) : ""),
             title: g.title ?? "",
             description: g.description ?? "",
             category: g.category ?? "",
-            target_date: g.target_date ?? g.due_date ?? "",
+            target_date: (g.end_date ?? g.target_date ?? "").slice(0, 10),
             weight: g.weight != null ? String(g.weight) : "",
           }
         : empty,
@@ -85,7 +85,7 @@ export default function GoalsPage() {
   const columns: Column<Goal>[] = [
     { header: "Goal", cell: (g) => <span className="font-medium">{g.title || "—"}</span> },
     ...(tab === "all"
-      ? [{ header: "Employee", cell: (g: Goal) => g.employee_name || g.employee || "—" }]
+      ? [{ header: "Employee", cell: (g: Goal) => g.employee_name || "—" }]
       : []),
     { header: "Category", cell: (g) => g.category || "—" },
     {
@@ -99,7 +99,7 @@ export default function GoalsPage() {
         </div>
       ),
     },
-    { header: "Target", cell: (g) => formatDate(g.target_date || g.due_date) },
+    { header: "Target", cell: (g) => formatDate(g.end_date || g.target_date) },
     { header: "Status", cell: (g) => <StatusBadge status={g.status} /> },
     {
       header: "",

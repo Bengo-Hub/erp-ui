@@ -22,6 +22,7 @@ import {
 } from "@/hooks/use-appraisals";
 import { normalizeList } from "@/lib/api/drf";
 import {
+  APPRAISAL_STATUS_LABELS,
   type Appraisal,
   type AppraisalCycle,
   type AppraisalTemplate,
@@ -35,7 +36,7 @@ export default function AppraisalsPage() {
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [form, setForm] = useState({ employee: "", cycle: "", template: "" });
+  const [form, setForm] = useState({ employee: "", cycle: "", template: "", evaluator: "" });
   const debounced = useDebouncedValue(normalizeSearchTerm(search));
 
   const { options: employees } = useEmployeeOptions();
@@ -53,29 +54,30 @@ export default function AppraisalsPage() {
   const { results, count } = normalizeList<Appraisal>(data);
 
   const columns: Column<Appraisal>[] = [
-    { header: "Employee", cell: (a) => <span className="font-medium">{a.employee_name || a.employee || "—"}</span> },
+    { header: "Employee", cell: (a) => <span className="font-medium">{a.employee_name || "—"}</span> },
     { header: "Cycle", cell: (a) => a.cycle_name || "—" },
     { header: "Template", cell: (a) => a.template_name || "—" },
-    { header: "Reviewer", cell: (a) => a.reviewer_name || "—" },
-    { header: "Score", cell: (a) => a.overall_score ?? "—" },
-    { header: "Status", cell: (a) => <StatusBadge status={a.status} /> },
+    { header: "Reviewer", cell: (a) => a.evaluator_name || "—" },
+    { header: "Score", cell: (a) => (a.overall_rating != null ? `${a.overall_rating} / 5` : "—") },
+    { header: "Status", cell: (a) => <StatusBadge status={a.status} labels={APPRAISAL_STATUS_LABELS} /> },
   ];
 
   const submitForm = () => {
-    if (!form.employee) return;
+    if (!form.employee || !form.cycle) return;
     save.mutate(
       {
         data: {
-          // ids are UUID strings — do not Number() them.
-          employee: form.employee,
-          cycle: form.cycle || undefined,
-          template: form.template || undefined,
+          // ids are UUID strings, never Number() them.
+          employee_id: form.employee,
+          cycle_id: form.cycle,
+          template_id: form.template || undefined,
+          evaluator_id: form.evaluator || undefined,
         },
       },
       {
         onSuccess: () => {
           setDialogOpen(false);
-          setForm({ employee: "", cycle: "", template: "" });
+          setForm({ employee: "", cycle: "", template: "", evaluator: "" });
         },
       },
     );
@@ -134,7 +136,7 @@ export default function AppraisalsPage() {
             <Button variant="outline" size="sm" onClick={() => setDialogOpen(false)} disabled={save.isPending}>
               Cancel
             </Button>
-            <Button size="sm" onClick={submitForm} disabled={save.isPending}>
+            <Button size="sm" onClick={submitForm} disabled={save.isPending || !form.employee || !form.cycle}>
               {save.isPending ? "Saving…" : "Create"}
             </Button>
           </>
@@ -151,7 +153,19 @@ export default function AppraisalsPage() {
               ))}
             </Select>
           </Field>
-          <Field label="Cycle" htmlFor="ap-cycle">
+          <Field label="Reviewer" htmlFor="ap-evaluator">
+            <Select id="ap-evaluator" value={form.evaluator} onChange={(e) => setForm((f) => ({ ...f, evaluator: e.target.value }))}>
+              <option value="">No reviewer yet</option>
+              {employees
+                .filter((o) => o.value !== form.employee)
+                .map((o) => (
+                  <option key={o.value} value={o.value}>
+                    {o.label}
+                  </option>
+                ))}
+            </Select>
+          </Field>
+          <Field label="Cycle" htmlFor="ap-cycle" required>
             <Select id="ap-cycle" value={form.cycle} onChange={(e) => setForm((f) => ({ ...f, cycle: e.target.value }))}>
               <option value="">Select cycle…</option>
               {cycles.map((c) => (

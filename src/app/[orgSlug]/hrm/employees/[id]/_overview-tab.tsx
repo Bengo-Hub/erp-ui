@@ -90,7 +90,9 @@ export function OverviewTab({ employee }: { employee: Employee }) {
           <Row label="Gender" value={employee.gender && <span className="capitalize">{employee.gender}</span>} />
           <Row label="Date of Birth" value={formatDate(employee.date_of_birth)} />
           <Row label="National ID" value={employee.national_id} />
-          <Row label="KRA PIN" value={employee.kra_pin} />
+          <Row label="KRA PIN" value={employee.kra_pin || employee.pin_no} />
+          <Row label="NSSF Number" value={employee.nssf_no} />
+          <Row label="SHIF Number" value={employee.shif_or_nhif_number} />
         </CardContent>
       </Card>
       <Card>
@@ -106,6 +108,7 @@ export function OverviewTab({ employee }: { employee: Employee }) {
             value={employee.employment_type && <span className="capitalize">{employee.employment_type}</span>}
           />
           <Row label="Date Joined" value={formatDate(employee.date_joined)} />
+          <Row label="Reports To" value={employee.reports_to_name} />
           <Row label="Basic Salary" value={formatMoney(employee.basic_salary)} />
         </CardContent>
       </Card>

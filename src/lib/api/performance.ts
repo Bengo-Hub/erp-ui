@@ -5,6 +5,15 @@ import { type ListParams, type Paginated } from "@/lib/api/drf";
 
 const PERF = "/hrm/performance";
 
+/** Plain-English labels for the erp-api review states. */
+export const REVIEW_STATUS_LABELS: Record<string, string> = {
+  draft: "Not started",
+  in_progress: "In progress",
+  completed: "Awaiting approval",
+  approved: "Approved",
+  rejected: "Rejected",
+};
+
 export interface PerformanceReview {
   id: number | string;
   employee?: number | string;
@@ -136,15 +145,22 @@ export const performanceApi = {
       status,
       overall_rating: overallRating,
     }),
-  submit: (id: number | string) =>
-    apiClient.put<PerformanceReview>(`${REVIEWS}/${id}/status`, { status: "submitted" }),
+  // erp-api review states: draft -> in_progress -> completed -> approved | rejected, and
+  // rejected -> in_progress (reopen).
+  start: (id: number | string) =>
+    apiClient.put<PerformanceReview>(`${REVIEWS}/${id}/status`, { status: "in_progress" }),
+  submit: (id: number | string, overallRating?: string) =>
+    apiClient.put<PerformanceReview>(`${REVIEWS}/${id}/status`, {
+      status: "completed",
+      overall_rating: overallRating || undefined,
+    }),
   approve: (id: number | string) =>
     apiClient.put<PerformanceReview>(`${REVIEWS}/${id}/status`, { status: "approved" }),
+  // The reason is saved on the review's comments.
   reject: (id: number | string, reason: string) =>
-    apiClient.put<PerformanceReview>(`${REVIEWS}/${id}/status`, {
-      status: "rejected",
-      overall_rating: reason,
-    }),
+    apiClient.put<PerformanceReview>(`${REVIEWS}/${id}/status`, { status: "rejected", comments: reason }),
+  reopen: (id: number | string) =>
+    apiClient.put<PerformanceReview>(`${REVIEWS}/${id}/status`, { status: "in_progress" }),
   // Review metrics (scoped under a review).
   listReviewMetrics: (id: number | string) => apiClient.get(`${REVIEWS}/${id}/metrics`),
   upsertReviewMetric: (id: number | string, data: Record<string, unknown>) =>

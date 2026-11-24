@@ -43,6 +43,15 @@ export function useAppraisalQuestions(templateId?: number | string) {
   });
 }
 
+/** Lists the questions of every template, or of one template when templateId is set. */
+export function useAppraisalQuestionsFiltered(templateId?: number | string) {
+  return useQuery({
+    queryKey: [QUESTIONS_KEY, templateId ?? "all"],
+    queryFn: () =>
+      templateId ? appraisalApi.questions.list(templateId) : appraisalApi.questions.listAll({ page_size: 500 }),
+  });
+}
+
 /** Adds a question to a template (erp-api has no question update/delete). */
 export function useSaveAppraisalQuestion() {
   const qc = useQueryClient();
@@ -127,7 +136,22 @@ export function useDeleteAppraisal() {
   });
 }
 
-export const useSubmitAppraisal = makeActionHook(KEY, (id) => appraisalApi.appraisals.submit(id), "Appraisal submitted", "Failed to submit appraisal");
+export const useStartAppraisal = makeActionHook(KEY, (id) => appraisalApi.appraisals.start(id), "Appraisal started", "Failed to start appraisal");
+
+/** Submits an in-progress appraisal for review (in_progress -> completed). */
+export function useSubmitAppraisal() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, overallRating }: { id: number | string; overallRating?: string }) =>
+      appraisalApi.appraisals.submit(id, overallRating),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: [KEY] });
+      toast.success("Appraisal submitted for review");
+    },
+    onError: (e) => toast.error(extractApiError(e, "Failed to submit appraisal")),
+  });
+}
+
 export const useApproveAppraisal = makeActionHook(KEY, (id) => appraisalApi.appraisals.approve(id), "Appraisal finalized", "Failed to finalize appraisal");
 export const useReopenAppraisal = makeActionHook(KEY, (id) => appraisalApi.appraisals.reopen(id), "Appraisal reopened", "Failed to reopen appraisal");
 
@@ -153,16 +177,46 @@ export function useAppraisalResponses(appraisalId: number | string | undefined) 
   });
 }
 
-export function useSaveResponses() {
+export interface AppraisalAnswer {
+  question_id: string;
+  response?: string;
+  /** 0-5 as a string; empty means no rating. */
+  rating?: string;
+}
+
+/**
+ * Saves an evaluation: one POST per answered question (the API replaces an earlier answer
+ * to the same question), then optionally submits the appraisal for review.
+ */
+export function useSaveAppraisalAnswers() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({ appraisalId, data }: { appraisalId: number | string; data: unknown }) =>
-      appraisalApi.createResponses(appraisalId, data),
-    onSuccess: () => {
+    mutationFn: async ({
+      appraisalId,
+      answers,
+      submit,
+      overallRating,
+    }: {
+      appraisalId: string;
+      answers: AppraisalAnswer[];
+      submit?: boolean;
+      overallRating?: string;
+    }) => {
+      for (const a of answers) {
+        await appraisalApi.saveResponse(appraisalId, a);
+      }
+      if (submit) await appraisalApi.appraisals.submit(appraisalId, overallRating);
+    },
+    onSuccess: (_r, v) => {
       qc.invalidateQueries({ queryKey: ["appraisal-responses"] });
       qc.invalidateQueries({ queryKey: [KEY] });
-      toast.success("Responses saved");
+      toast.success(v.submit ? "Evaluation submitted for review" : "Evaluation saved");
     },
-    onError: (e) => toast.error(extractApiError(e, "Failed to save responses")),
+    onError: (e) => {
+      // Answers saved before the failure stay saved, so refresh what is shown.
+      qc.invalidateQueries({ queryKey: ["appraisal-responses"] });
+      qc.invalidateQueries({ queryKey: [KEY] });
+      toast.error(extractApiError(e, "Failed to save the evaluation"));
+    },
   });
 }

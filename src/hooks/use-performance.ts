@@ -59,7 +59,9 @@ export function useDeletePerformanceReview() {
   });
 }
 
-export const useSubmitReview = makeActionHook(KEY, (id) => performanceApi.submit(id), "Review submitted", "Failed to submit review");
+export const useStartReview = makeActionHook(KEY, (id) => performanceApi.start(id), "Review started", "Failed to start review");
+export const useSubmitReview = makeActionHook(KEY, (id) => performanceApi.submit(id), "Review submitted for approval", "Failed to submit review");
+export const useReopenReview = makeActionHook(KEY, (id) => performanceApi.reopen(id), "Review reopened", "Failed to reopen review");
 export const useApproveReview = makeActionHook(KEY, (id) => performanceApi.approve(id), "Review approved", "Failed to approve review");
 
 export function useRejectReview() {

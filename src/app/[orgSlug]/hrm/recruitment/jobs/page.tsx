@@ -19,6 +19,7 @@ import {
 import { normalizeList } from "@/lib/api/drf";
 import { type JobPosting } from "@/lib/api/recruitment";
 import { formatDate } from "@/lib/utils";
+import { useDepartmentOptions } from "@/hooks/use-option-hooks";
 
 import { JobFormDialog } from "./_job-form-dialog";
 
@@ -36,6 +37,11 @@ export default function JobsPage() {
   const router = useRouter();
   const orgSlug = (useParams()?.orgSlug as string) ?? "";
   const { data, isLoading, error, refetch } = useJobPostings();
+  // A posting keeps its department as text: a department id from the picker, or a name
+  // typed or imported earlier. Show the name either way.
+  const departments = useDepartmentOptions();
+  const departmentLabel = (v: unknown) =>
+    v ? departments.options.find((o) => o.value === String(v))?.label ?? String(v) : "";
   const save = useSaveJobPosting();
   const del = useDeleteJobPosting();
   const rows = normalizeList<JobPosting>(data).results;
@@ -61,7 +67,7 @@ export default function JobsPage() {
 
   const columns: Column<JobPosting>[] = [
     { header: "Title", cell: (j) => <span className="font-medium">{j.title || "—"}</span> },
-    { header: "Department", cell: (j) => j.department_name || "—" },
+    { header: "Department", cell: (j) => j.department_name || departmentLabel(j.department) || "—" },
     { header: "Location", cell: (j) => j.location || "—" },
     { header: "Type", cell: (j) => <span className="capitalize">{j.employment_type || "—"}</span> },
     { header: "Salary", cell: (j) => <span className="whitespace-nowrap text-xs">{salaryLabel(j)}</span> },

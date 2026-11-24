@@ -1,6 +1,6 @@
 "use client";
 
-import { Eye, Pencil, Plus, Trash2, Upload, Users } from "lucide-react";
+import { Eye, ListOrdered, Pencil, Plus, Trash2, Upload, Users } from "lucide-react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
@@ -16,7 +16,8 @@ import { PageHeader } from "@/components/ui/page-header";
 import { SearchInput } from "@/components/ui/search-input";
 import { IconButton } from "@/components/ui/tooltip";
 import { normalizeSearchTerm, useDebouncedValue } from "@bengo-hub/shared-ui-lib/search";
-import { useDeleteEmployee, useEmployees } from "@/hooks/use-employees";
+import { useAppPermissions } from "@/hooks/use-app-permissions";
+import { useDeleteEmployee, useEmployees, useRenumberEmployees } from "@/hooks/use-employees";
 import { useDepartments } from "@/hooks/use-hrm-settings";
 import { normalizeList } from "@/lib/api/drf";
 import { type Employee } from "@/lib/api/employees";
@@ -38,6 +39,10 @@ export default function EmployeesPage() {
   const [status, setStatus] = useState("");
   const [page, setPage] = useState(1);
   const [importOpen, setImportOpen] = useState(false);
+  const [confirmRenumber, setConfirmRenumber] = useState(false);
+  const renumber = useRenumberEmployees();
+  // Renumbering rewrites every staff number, so only admins see it.
+  const { isAdminTier } = useAppPermissions();
   const [formOpen, setFormOpen] = useState(false);
   const [editEmployee, setEditEmployee] = useState<Employee | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<Employee | null>(null);
@@ -137,6 +142,11 @@ export default function EmployeesPage() {
         subtitle="Directory of all staff across your outlets"
         actions={
           <>
+            {isAdminTier && (
+              <Button variant="outline" size="sm" onClick={() => setConfirmRenumber(true)}>
+                <ListOrdered className="mr-1.5 size-4" /> Renumber staff
+              </Button>
+            )}
             <PermissionGate permission="add_employee">
               <Button variant="outline" size="sm" onClick={() => setImportOpen(true)}>
                 <Upload className="mr-1.5 size-4" /> Import
@@ -211,6 +221,16 @@ export default function EmployeesPage() {
       </Card>
 
       <ImportEmployeesDialog open={importOpen} onClose={() => setImportOpen(false)} />
+      <ConfirmDialog
+        open={confirmRenumber}
+        title="Renumber every employee?"
+        description="Every employee gets a new staff number in your organisation's numbering format, issued in order. Anything printed or shared with the old numbers will no longer match, so tell staff afterwards. This cannot be undone."
+        confirmLabel="Renumber staff"
+        destructive
+        loading={renumber.isPending}
+        onCancel={() => setConfirmRenumber(false)}
+        onConfirm={() => renumber.mutate(undefined, { onSettled: () => setConfirmRenumber(false) })}
+      />
       <EmployeeFormDialog
         open={formOpen}
         onClose={() => setFormOpen(false)}

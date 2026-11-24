@@ -70,8 +70,9 @@ export default function LeaveEntitlementPage() {
               id,
               data: {
                 ...data,
-                employee: data.employee ? Number(data.employee) : undefined,
-                leave_category: data.leave_category ? Number(data.leave_category) : undefined,
+                // ids are UUID strings; Number() would turn them into NaN.
+                employee: data.employee ? String(data.employee) : undefined,
+                leave_category: data.leave_category ? String(data.leave_category) : undefined,
               } as Partial<LeaveEntitlement>,
             },
             { onSuccess: done },
