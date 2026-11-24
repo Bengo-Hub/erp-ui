@@ -83,6 +83,10 @@ export const trainingApi = {
     // erp-api takes the course and employee of an enrolment; rating is a whole number 0-5.
     create: (data: { course_id: string; employee_id: string; rating?: number; feedback?: string }) =>
       apiClient.post<TrainingEvaluation>(`${TR}/evaluations/`, data),
+    // Only the rating and feedback change; the course and employee stay the enrolment's.
+    update: (id: number | string, data: { rating: number; feedback?: string }) =>
+      apiClient.put<TrainingEvaluation>(`${TR}/evaluations/${id}/`, data),
+    remove: (id: number | string) => apiClient.delete<void>(`${TR}/evaluations/${id}/`),
   },
   enrollments: {
     list: (params?: ListParams) =>
@@ -93,6 +97,11 @@ export const trainingApi = {
         course_id: data.course_id ?? data.course,
         employee_id: data.employee_id ?? data.employee,
       }),
+    // Moves an enrolment to another course or employee; refused once it has an evaluation.
+    update: (id: number | string, data: { course_id: string; employee_id: string }) =>
+      apiClient.put<TrainingEnrollment>(`${TR}/enrollments/${id}/`, data),
+    // Refused (409) when the enrolment has an evaluation.
+    remove: (id: number | string) => apiClient.delete<void>(`${TR}/enrollments/${id}/`),
     // Lifecycle is a single status setter (PUT /enrollments/{id}/status).
     setStatus: (id: number | string, status: string) =>
       apiClient.put<TrainingEnrollment>(`${TR}/enrollments/${id}/status`, { status }),

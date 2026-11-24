@@ -1,6 +1,6 @@
 "use client";
 
-import { Ban, CheckCircle2, Plus } from "lucide-react";
+import { Ban, CheckCircle2, Pencil, Plus, Trash2 } from "lucide-react";
 import { useState } from "react";
 
 import { StatusBadge } from "@/components/hrm/status-badge";
@@ -16,6 +16,7 @@ import { useEmployeeOptions } from "@/hooks/use-employee-options";
 import {
   useCancelEnrollment,
   useCompleteEnrollment,
+  useDeleteTrainingEnrollment,
   useSaveTrainingEnrollment,
   useTrainingCourses,
   useTrainingEnrollments,
@@ -24,6 +25,9 @@ import { normalizeList } from "@/lib/api/drf";
 import { type TrainingCourse, type TrainingEnrollment } from "@/lib/api/training";
 import { formatDate } from "@/lib/utils";
 
+const MANAGE = "hrm.training.manage";
+const emptyForm = { employee: "", course: "" };
+
 export default function TrainingEnrollmentsPage() {
   const { options: employees } = useEmployeeOptions();
   const { data: courseData } = useTrainingCourses({ page_size: 200 });
@@ -31,16 +35,31 @@ export default function TrainingEnrollmentsPage() {
 
   const { data, isLoading, error, refetch } = useTrainingEnrollments();
   const save = useSaveTrainingEnrollment();
+  const del = useDeleteTrainingEnrollment();
   const complete = useCompleteEnrollment();
   const cancel = useCancelEnrollment();
   const rows = normalizeList<TrainingEnrollment>(data).results;
 
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [form, setForm] = useState({ employee: "", course: "" });
+  const [editing, setEditing] = useState<TrainingEnrollment | null>(null);
+  const [form, setForm] = useState(emptyForm);
   const [toCancel, setToCancel] = useState<TrainingEnrollment | null>(null);
+  const [toDelete, setToDelete] = useState<TrainingEnrollment | null>(null);
 
   const active = (e: TrainingEnrollment) =>
     !["completed", "cancelled", "canceled"].includes((e.status || "").toLowerCase());
+
+  const open = (e?: TrainingEnrollment) => {
+    setEditing(e ?? null);
+    setForm(e ? { employee: e.employee_id ?? "", course: e.course_id ?? "" } : emptyForm);
+    setDialogOpen(true);
+  };
+
+  const close = () => {
+    setDialogOpen(false);
+    setEditing(null);
+    setForm(emptyForm);
+  };
 
   const columns: Column<TrainingEnrollment>[] = [
     { header: "Employee", cell: (e) => <span className="font-medium">{e.employee_name || "—"}</span> },
@@ -51,32 +70,36 @@ export default function TrainingEnrollmentsPage() {
       header: "",
       headerClassName: "text-right",
       className: "text-right",
-      cell: (e) =>
-        active(e) ? (
-          <PermissionGate permission="change_trainingenrollment">
-            <div className="flex justify-end gap-1">
-              <IconButton label="Complete enrollment" onClick={() => complete.mutate(e.id)}>
-                <CheckCircle2 className="size-4 text-green-600" />
-              </IconButton>
-              <IconButton label="Cancel enrollment" onClick={() => setToCancel(e)}>
-                <Ban className="size-4 text-destructive" />
-              </IconButton>
-            </div>
-          </PermissionGate>
-        ) : null,
+      cell: (e) => (
+        <PermissionGate permission={MANAGE}>
+          <div className="flex justify-end gap-1">
+            {active(e) && (
+              <>
+                <IconButton label="Complete enrollment" onClick={() => complete.mutate(e.id)}>
+                  <CheckCircle2 className="size-4 text-green-600" />
+                </IconButton>
+                <IconButton label="Cancel enrollment" onClick={() => setToCancel(e)}>
+                  <Ban className="size-4 text-yellow-600" />
+                </IconButton>
+              </>
+            )}
+            <IconButton label="Edit enrollment" onClick={() => open(e)}>
+              <Pencil className="size-4" />
+            </IconButton>
+            <IconButton label="Delete enrollment" onClick={() => setToDelete(e)}>
+              <Trash2 className="size-4 text-destructive" />
+            </IconButton>
+          </div>
+        </PermissionGate>
+      ),
     },
   ];
 
   const submitForm = () => {
     if (!form.employee || !form.course) return;
     save.mutate(
-      { data: { employee: form.employee, course: form.course } },
-      {
-        onSuccess: () => {
-          setDialogOpen(false);
-          setForm({ employee: "", course: "" });
-        },
-      },
+      { id: editing?.id, data: { employee_id: form.employee, course_id: form.course } },
+      { onSuccess: close },
     );
   };
 
@@ -86,8 +109,8 @@ export default function TrainingEnrollmentsPage() {
         title="Training Enrollments"
         subtitle="Enrolled employees and completion status"
         actions={
-          <PermissionGate permission="add_trainingenrollment">
-            <Button size="sm" onClick={() => setDialogOpen(true)}>
+          <PermissionGate permission={MANAGE}>
+            <Button size="sm" onClick={() => open()}>
               <Plus className="mr-1.5 size-4" /> Enroll Employee
             </Button>
           </PermissionGate>
@@ -109,20 +132,25 @@ export default function TrainingEnrollmentsPage() {
 
       <Dialog
         open={dialogOpen}
-        onClose={() => setDialogOpen(false)}
-        title="Enroll Employee"
+        onClose={close}
+        title={editing ? "Edit Enrollment" : "Enroll Employee"}
         footer={
           <>
-            <Button variant="outline" size="sm" onClick={() => setDialogOpen(false)} disabled={save.isPending}>
+            <Button variant="outline" size="sm" onClick={close} disabled={save.isPending}>
               Cancel
             </Button>
-            <Button size="sm" onClick={submitForm} disabled={save.isPending}>
-              {save.isPending ? "Saving…" : "Enroll"}
+            <Button size="sm" onClick={submitForm} disabled={save.isPending || !form.employee || !form.course}>
+              {save.isPending ? "Saving…" : editing ? "Save" : "Enroll"}
             </Button>
           </>
         }
       >
         <div className="grid gap-4">
+          {editing && (
+            <p className="text-sm text-muted-foreground">
+              An enrollment that already has an evaluation cannot be moved; delete the evaluation first.
+            </p>
+          )}
           <Field label="Employee" htmlFor="en-emp" required>
             <Select id="en-emp" value={form.employee} onChange={(e) => setForm((f) => ({ ...f, employee: e.target.value }))}>
               <option value="">Select employee…</option>
@@ -155,6 +183,16 @@ export default function TrainingEnrollmentsPage() {
         loading={cancel.isPending}
         onCancel={() => setToCancel(null)}
         onConfirm={() => toCancel && cancel.mutate(toCancel.id, { onSuccess: () => setToCancel(null) })}
+      />
+
+      <ConfirmDialog
+        open={!!toDelete}
+        title="Delete enrollment?"
+        description="The enrollment record is removed. An enrollment with an evaluation cannot be deleted. This cannot be undone."
+        destructive
+        loading={del.isPending}
+        onCancel={() => setToDelete(null)}
+        onConfirm={() => toDelete && del.mutate(toDelete.id, { onSuccess: () => setToDelete(null) })}
       />
     </div>
   );

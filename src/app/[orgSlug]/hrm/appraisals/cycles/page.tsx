@@ -47,7 +47,13 @@ export default function AppraisalCyclesPage() {
     setEditing(c ?? null);
     setForm(
       c
-        ? { name: c.name ?? "", description: c.description ?? "", start_date: c.start_date ?? "", end_date: c.end_date ?? "" }
+        ? {
+            name: c.name ?? "",
+            description: c.description ?? "",
+            // The API returns timestamps; the date inputs take YYYY-MM-DD.
+            start_date: (c.start_date ?? "").slice(0, 10),
+            end_date: (c.end_date ?? "").slice(0, 10),
+          }
         : empty,
     );
     setDialogOpen(true);
@@ -173,7 +179,7 @@ export default function AppraisalCyclesPage() {
       <ConfirmDialog
         open={!!toDelete}
         title="Delete cycle?"
-        description="This action cannot be undone."
+        description="A cycle that already holds appraisals cannot be deleted; close it instead. This action cannot be undone."
         destructive
         loading={del.isPending}
         onCancel={() => setToDelete(null)}

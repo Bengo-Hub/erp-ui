@@ -189,7 +189,7 @@ export default function ApplicationsPipelinePage() {
             </Field>
           )}
           {move?.to === "offered" && (
-            <Field label="Offer terms" htmlFor="app-offer" help="Optional. Salary, start date and other terms offered.">
+            <Field label="Offer terms" htmlFor="app-offer" help="Optional. Salary, start date and other terms offered. Write the start date as Start date: YYYY-MM-DD and it becomes the new employee's date joined on hire.">
               <Textarea id="app-offer" value={offerDetails} onChange={(e) => setOfferDetails(e.target.value)} />
             </Field>
           )}

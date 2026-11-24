@@ -8,7 +8,6 @@ import { extractApiError } from "@/lib/api/error";
 import {
   trainingApi,
   type TrainingCourse,
-  type TrainingEnrollment,
 } from "@/lib/api/training";
 import { makeActionHook, makeResourceHooks } from "@/hooks/use-crud-resource";
 
@@ -27,17 +26,31 @@ export function useTrainingEnrollments(params?: ListParams) {
   });
 }
 
-/** Enrols an employee on a course (erp-api has no enrolment edit; cancel instead). */
+/** Enrols an employee on a course, or with an id moves the enrolment to the course and
+ *  employee given. */
 export function useSaveTrainingEnrollment() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({ data }: { data: Partial<TrainingEnrollment> & Record<string, unknown> }) =>
-      trainingApi.enrollments.create(data),
+    mutationFn: ({ id, data }: { id?: string; data: { course_id: string; employee_id: string } }) =>
+      id ? trainingApi.enrollments.update(id, data) : trainingApi.enrollments.create(data),
+    onSuccess: (_r, v) => {
+      qc.invalidateQueries({ queryKey: [ENROLLMENTS] });
+      toast.success(v.id ? "Enrollment updated" : "Employee enrolled");
+    },
+    onError: (e, v) =>
+      toast.error(extractApiError(e, v.id ? "Failed to update the enrollment" : "Failed to enrol the employee")),
+  });
+}
+
+export function useDeleteTrainingEnrollment() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => trainingApi.enrollments.remove(id),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: [ENROLLMENTS] });
-      toast.success("Employee enrolled");
+      toast.success("Enrollment deleted");
     },
-    onError: (e) => toast.error(extractApiError(e, "Failed to enrol the employee")),
+    onError: (e) => toast.error(extractApiError(e, "Failed to delete the enrollment")),
   });
 }
 
@@ -75,5 +88,31 @@ export function useCreateTrainingEvaluation() {
       toast.success("Evaluation recorded");
     },
     onError: (e) => toast.error(extractApiError(e, "Failed to record the evaluation")),
+  });
+}
+
+/** Changes an evaluation's rating and feedback. */
+export function useUpdateTrainingEvaluation() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, data }: { id: string; data: { rating: number; feedback?: string } }) =>
+      trainingApi.evaluations.update(id, data),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: [EVALUATIONS] });
+      toast.success("Evaluation updated");
+    },
+    onError: (e) => toast.error(extractApiError(e, "Failed to update the evaluation")),
+  });
+}
+
+export function useDeleteTrainingEvaluation() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => trainingApi.evaluations.remove(id),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: [EVALUATIONS] });
+      toast.success("Evaluation deleted");
+    },
+    onError: (e) => toast.error(extractApiError(e, "Failed to delete the evaluation")),
   });
 }

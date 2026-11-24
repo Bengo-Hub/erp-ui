@@ -6,6 +6,7 @@ import { useMemo, useState } from "react";
 import { StatusBadge } from "@/components/hrm/status-badge";
 import { PermissionGate } from "@/components/auth/permission-gate";
 import { Button, Card } from "@/components/ui/base";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { DataTable, type Column } from "@/components/ui/data-table";
 import { Dialog } from "@/components/ui/dialog";
 import { Field, Input, Select, Textarea } from "@/components/ui/form";
@@ -44,6 +45,7 @@ export default function GoalsPage() {
   const [form, setForm] = useState(empty);
   const [progressGoal, setProgressGoal] = useState<Goal | null>(null);
   const [progressVal, setProgressVal] = useState("");
+  const [toDelete, setToDelete] = useState<Goal | null>(null);
 
   const open = (g?: Goal) => {
     setEditing(g ?? null);
@@ -122,7 +124,7 @@ export default function GoalsPage() {
             </Button>
           </PermissionGate>
           <PermissionGate permission="delete_goal">
-            <Button variant="ghost" size="sm" className="text-destructive" onClick={() => del.mutate(g.id)}>
+            <Button variant="ghost" size="sm" className="text-destructive" onClick={() => setToDelete(g)}>
               Delete
             </Button>
           </PermissionGate>
@@ -254,6 +256,16 @@ export default function GoalsPage() {
           />
         </Field>
       </Dialog>
+
+      <ConfirmDialog
+        open={!!toDelete}
+        title="Delete goal?"
+        description="The goal and its progress updates are removed. This cannot be undone."
+        destructive
+        loading={del.isPending}
+        onCancel={() => setToDelete(null)}
+        onConfirm={() => toDelete && del.mutate(toDelete.id, { onSuccess: () => setToDelete(null) })}
+      />
     </div>
   );
 }

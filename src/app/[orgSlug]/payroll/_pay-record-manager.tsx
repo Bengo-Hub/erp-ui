@@ -156,7 +156,10 @@ export function PayRecordManager({
     },
     {
       header: "Installments",
-      cell: (r) => (r.no_of_installments && r.no_of_installments > 1 ? `${r.no_of_installments}×` : "Lump sum"),
+      cell: (r) =>
+        r.no_of_installments && r.no_of_installments > 1
+          ? `${r.no_of_installments} × ${formatMoney(r.installment_amount)}`
+          : "Lump sum",
     },
     { header: "Reason", cell: (r) => r.reason || (r.description ? "—" : "—") },
     { header: "Date", cell: (r) => formatDate(r.date) },

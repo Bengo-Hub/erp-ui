@@ -105,7 +105,7 @@ export default function AppraisalsPage() {
               setSearch(v);
               setPage(1);
             }}
-            placeholder="Search employee…"
+            placeholder="Search employee name or staff number…"
             className="max-w-sm"
           />
         </div>

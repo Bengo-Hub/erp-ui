@@ -97,6 +97,22 @@ function toNumber(v: unknown): number | undefined {
   return Number.isFinite(n) ? n : undefined;
 }
 
+/** erp-api goal create/update body: {employee_id,title,description,start_date,end_date,
+ *  is_template,category,weight}. The UI form uses employee/target_date/is_library. */
+function goalBody(data: Partial<Goal>) {
+  return {
+    employee_id: data.employee_id ?? data.employee,
+    title: data.title,
+    description: data.description,
+    start_date: (data as Record<string, unknown>).start_date,
+    end_date: data.end_date ?? data.target_date,
+    is_template: data.is_library ?? false,
+    // category and weight are kept in the goal metadata by erp-api.
+    category: data.category || undefined,
+    weight: toNumber(data.weight),
+  };
+}
+
 function crud<T extends { id: number | string }>(segment: string) {
   const base = `${APP}/${segment}`;
   return {
@@ -147,20 +163,9 @@ export const appraisalApi = {
   },
   goals: {
     ...crud<Goal>("goals"),
-    // erp-api goal create body: {employee_id,title,description,start_date,
-    // end_date,is_template}. UI form uses employee/target_date/is_library.
-    create: (data: Partial<Goal>) =>
-      apiClient.post<Goal>(`${APP}/goals/`, {
-        employee_id: data.employee,
-        title: data.title,
-        description: data.description,
-        start_date: (data as Record<string, unknown>).start_date,
-        end_date: data.end_date ?? data.target_date,
-        is_template: data.is_library ?? false,
-        // category and weight are kept in the goal metadata by erp-api.
-        category: data.category || undefined,
-        weight: toNumber(data.weight),
-      }),
+    create: (data: Partial<Goal>) => apiClient.post<Goal>(`${APP}/goals/`, goalBody(data)),
+    // Progress and status change through updateProgress, not here.
+    update: (id: number | string, data: Partial<Goal>) => apiClient.put<Goal>(`${APP}/goals/${id}/`, goalBody(data)),
     // erp-api: POST /goals/{id}/progress.
     updateProgress: (id: number | string, data: { progress: number | string; note?: string }) =>
       apiClient.post<Goal>(`${APP}/goals/${id}/progress`, data),
