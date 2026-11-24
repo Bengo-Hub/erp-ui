@@ -39,6 +39,28 @@ response targets are written into the agreement.
   tenant) and accept `kra_pin` for `pin_no`; the edit form pre-fills from `department_id` and
   `job_title_id`.
 
+## Full-guide audit fixes (2026-11-24)
+Writing the full ERP guide and reviewing 101 screenshots as contact sheets found and fixed:
+- **Payroll money safety:** disbursement required no approval; now submit, approve, then disburse
+  (HR review step when no workflow), retry-safe payouts (paid only when Treasury dispatches, same
+  idempotency key on retries), Reverse only while nothing is paid, Employee Loans screen, separate
+  resident and non-resident WHT rates, withholding tax report on consultant vouchers, taxable
+  claims paid through payroll.
+- **HR workflows the UI could not complete:** appraisal, cycle and review states, recruitment
+  "offered", approval modules for attendance corrections and overtime, the appraisal review page,
+  UUID ids passed through Number(), reports-to, NSSF/SHIF numbers, exit and reinstate, renumber.
+- **Lists showing dashes:** attendance records, leave requests, logs, entitlements, appraisals,
+  goals, enrolments, evaluations, applications, job postings, advances now return names and the
+  fields their columns read; leave logs page in SQL.
+- **Settings:** the Company tab duplicated the SSO tenant profile and posted field names the API
+  ignored; it now shows that profile read-only and keeps only payroll employer details. Settings
+  saves change only the fields they send. Portal links open My organisation > Branding.
+- **Reports** open with results on their default period. Leave type names are unique ignoring case.
+- **Missing CRUD:** edit and delete for appraisal cycles, goals, enrolments, evaluations and
+  candidates, appraisal search, installments on advances, employee details carried over on hire.
+- **Treasury contract:** non-taxable reimbursements through payroll (`totals.reimbursements`),
+  `treasury.claim.settled` events, casual postings by settlement mode, coded 409s.
+
 ## Open items
 - Timesheet and shift-override approvals still use their own approve routes, not the approvals engine.
 - Casual workers paid per piece (casual_payment) are outside the payroll run.
@@ -47,4 +69,7 @@ response targets are written into the agreement.
 - A failed approval apply is reported but has no retry route yet (hooks are idempotent).
 - Records written before S2 report 0 late minutes in the new reports.
 - Live test on a SenseFace 4A: the unit ships in access-control push mode; confirm the firmware mode (TA push for attendance, AC push for door events) before go-live.
-- GitHub reports 6 Dependabot alerts on the shared maps repo (2 critical), present before this sprint.
+- GitHub reports 6 Dependabot alerts on the shared maps repo (2 critical), 40 on erp-ui and 1 on
+  erp-api, present before this sprint.
+- Three demo leave types created while seeding the demo tenant duplicate the tenant's own (case
+  differs); harmless, left in place.

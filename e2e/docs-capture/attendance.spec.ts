@@ -27,7 +27,7 @@ const ROUTES = [
   "hrm/performance/metrics", "hrm/performance/reviews", "hrm/performance/targets",
   "hrm/training/courses", "hrm/training/enrollments", "hrm/training/evaluations",
   "hrm/recruitment/jobs", "hrm/recruitment/applications", "hrm/recruitment/candidates", "hrm/recruitment/onboarding",
-  "payroll/process", "payroll/payslips", "payroll/email-payslips", "payroll/advances", "payroll/attendance-deductions",
+  "payroll/process", "payroll/payslips", "payroll/email-payslips", "payroll/advances", "payroll/loans", "payroll/attendance-deductions",
   "payroll/casual-labor", "payroll/claims", "payroll/claims/new", "payroll/consultants", "payroll/labour-cost",
   "payroll/losses-damages", "payroll/piece-output", "payroll/project-allocations", "payroll/staff-purchases",
   "reports", "reports/p9", "reports/p9a", "reports/p10", "reports/p10a", "reports/withholding-tax", "reports/nssf",
