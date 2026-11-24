@@ -97,11 +97,16 @@ follows one inherit and customise model (erp-api `docs/payroll-settings.md`):
 - Breadcrumbs show "Details" for record ids; labour cost opens on the newest processed month.
 - erp-api CI runs every test, including the database ones, on each push (test.yml).
 
+## Per-employee earnings and deductions, SHIF minimum (2026-11-25)
+- Employee page, **Earnings and deductions** tab: assign any switched-on component with an amount or
+  percentage, months and, where needed, a scheme number. Payroll runs, the preview and payslips
+  apply them; a component switched off for the organisation stops applying.
+- The SHIF KES 300 monthly minimum is set on the platform SHIF formula and inherited; the formula
+  editor shows it. Treasury still does not publish it, so a synced version keeps the current one.
+
 ## Open items
 - Public holidays have no screen; erp-api has only GET/POST `/hrm/leave/holidays`.
 - Shift overrides cannot be edited or deleted (API and page).
-- The SHIF KES 300 monthly minimum cannot be expressed as a formula band, so it is not applied or
-  synced from Treasury.
 - PAYE band 4 ends at KES 799,999 on the platform formula; the Finance Act and Treasury say 800,000.
   The engine golden master depends on the current value, so the change needs a deliberate update.
 - The brochure keeps a four-week go-live plan that the user guide does not state (owner to confirm).
@@ -109,8 +114,8 @@ follows one inherit and customise model (erp-api `docs/payroll-settings.md`):
 - zod 3 to 4 and maplibre-gl 5 to 6 upgrades are scheduled as their own sprint.
 - Treasury publishes no event when a statutory rate is approved, so erp-api pulls the rates; the
   proposed `treasury.statutory_rate.approved` event is described in erp-api `docs/payroll-settings.md`.
-- Opt-in earnings and deductions (house allowance, SACCO, HELB and so on) are configured per
-  organisation but are not yet assigned per employee in payroll runs; only benefits are.
+- Non-taxable component earnings are part of payslip gross, so statutory reports that print gross
+  pay next to a contribution include them although the contribution is not charged on them.
 - Timesheet and shift-override approvals still use their own approve routes, not the approvals engine.
 - Casual workers paid per piece (casual_payment) are outside the payroll run.
 - ZKTeco push 3.x registration (`/iclock/registry`) is not handled; the default door-open command

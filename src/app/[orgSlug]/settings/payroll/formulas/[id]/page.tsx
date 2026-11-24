@@ -43,6 +43,7 @@ type FormValues = {
     regulatory_source?: string;
     employee_percentage?: string;
     employer_percentage?: string;
+    minimum_contribution?: string;
     items: BandRow[];
 };
 
@@ -81,6 +82,7 @@ export default function FormulaEditorPage() {
                 regulatory_source: f.regulatory_source ?? '',
                 employee_percentage: f.employee_percentage ?? '',
                 employer_percentage: f.employer_percentage ?? '',
+                minimum_contribution: f.minimum_contribution ?? '',
                 items: (f.items as FormulaItem[] | undefined)?.map((it) => ({
                     amount_from: it.amount_from ?? '',
                     amount_to: it.amount_to ?? '',
@@ -93,6 +95,7 @@ export default function FormulaEditorPage() {
 
     const kind = watch('kind');
     const isIncome = kind.startsWith('income:');
+    const isShif = kind === 'deduction:shif';
 
     const onSubmit = (v: FormValues) => {
         const [type, category] = v.kind.split(':');
@@ -116,7 +119,9 @@ export default function FormulaEditorPage() {
                 })),
             // Split is only meaningful for matched contributions (NSSF/Housing); harmless otherwise.
             employee_percentage: v.employee_percentage || undefined,
-            employer_percentage: v.employer_percentage || undefined
+            employer_percentage: v.employer_percentage || undefined,
+            // Least monthly employee contribution (SHIF: 300). Left blank, the recorded one is kept.
+            minimum_contribution: isShif ? v.minimum_contribution || undefined : undefined
         };
         save.mutate({ id: isNew ? undefined : id, data: payload }, { onSuccess: () => router.push(`/${params.orgSlug}/settings/payroll/formulas`) });
     };
@@ -164,6 +169,11 @@ export default function FormulaEditorPage() {
                         {isIncome && (
                             <Field label="Monthly Personal Relief">
                                 <Input type="number" step="0.01" {...register('personal_relief')} placeholder="2400.00" />
+                            </Field>
+                        )}
+                        {isShif && (
+                            <Field label="Minimum Monthly Contribution" help="Charged when the percentage comes to less. 0 means no minimum; blank keeps the platform one.">
+                                <Input type="number" step="0.01" min="0" {...register('minimum_contribution')} placeholder="300.00" />
                             </Field>
                         )}
                         <Field label="Regulatory Source">

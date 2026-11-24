@@ -10,6 +10,8 @@ import {
     componentsApi,
     deductionsApi,
     earningsApi,
+    employeeComponentsApi,
+    type EmployeeComponentInput,
     formulasApi,
     generalHrApi,
     loansApi,
@@ -123,7 +125,7 @@ export function useSaveFormulaDetail() {
 
 // ---- Platform defaults: switch on/off, customise, revert ----
 
-const COMPONENT_KEYS = ['pay-earnings', 'pay-deductions', 'pay-benefits'];
+const COMPONENT_KEYS = ['pay-components', 'pay-earnings', 'pay-deductions', 'pay-benefits', 'employee-components'];
 
 /** Switch a payroll component on or off for the organisation. */
 export function useSetComponentActive() {
@@ -273,5 +275,47 @@ export function useSavePerDiemPolicy() {
             toast.success('Per diem policy saved');
         },
         onError: (e) => toast.error(extractApiError(e, 'Failed to save the per diem policy'))
+    });
+}
+
+/** Earnings, deductions and benefits given to one employee. */
+export function useEmployeeComponents(employeeId: number | string | undefined) {
+    return useQuery({
+        queryKey: ['employee-components', employeeId],
+        queryFn: () => employeeComponentsApi.list(employeeId!),
+        enabled: !!employeeId
+    });
+}
+
+export function useSaveEmployeeComponent(employeeId: number | string) {
+    const qc = useQueryClient();
+    return useMutation({
+        mutationFn: ({ id, data }: { id?: string; data: EmployeeComponentInput }) => (id ? employeeComponentsApi.update(employeeId, id, data) : employeeComponentsApi.create(employeeId, data)),
+        onSuccess: (_r, v) => {
+            qc.invalidateQueries({ queryKey: ['employee-components', employeeId] });
+            toast.success(v.id ? 'Assignment updated' : 'Assigned to the employee');
+        },
+        onError: (e) => toast.error(extractApiError(e, 'Failed to save the assignment'))
+    });
+}
+
+export function useDeleteEmployeeComponent(employeeId: number | string) {
+    const qc = useQueryClient();
+    return useMutation({
+        mutationFn: (id: string) => employeeComponentsApi.remove(employeeId, id),
+        onSuccess: () => {
+            qc.invalidateQueries({ queryKey: ['employee-components', employeeId] });
+            toast.success('Assignment removed');
+        },
+        onError: (e) => toast.error(extractApiError(e, 'Failed to remove the assignment'))
+    });
+}
+
+/** The organisation's switched-on components that can be given to employees one by one. */
+export function useAssignableComponents() {
+    return useQuery({
+        queryKey: ['pay-components', 'assignable'],
+        queryFn: () => componentsApi.listAll({ active: 'true', limit: 200 }),
+        select: (data) => normalizeList<PayrollComponent>(data).results.filter((c) => c.assignable)
     });
 }

@@ -27,6 +27,10 @@ export interface PayrollComponent {
     managed_by?: string;
     /** Off until the organisation switches it on. */
     opt_in?: boolean;
+    /** Switched on and given to employees one by one (Employee, Earnings and deductions). */
+    assignable?: boolean;
+    /** The scheme or registration number an employee assignment must carry (HELB, SACCO...). */
+    reference_label?: string;
     default_active?: boolean;
     statutory?: boolean;
     category?: ComponentCategory | string;
@@ -126,6 +130,8 @@ export interface Formula {
     items?: FormulaItem[];
     employee_percentage?: string;
     employer_percentage?: string;
+    /** Least monthly employee contribution (SHIF: "300.00"); "0.00" when the formula has none. */
+    minimum_contribution?: string;
     [key: string]: unknown;
 }
 
@@ -179,6 +185,55 @@ export const componentsApi = {
     setActive: (id: number | string, is_active: boolean) => apiClient.post<PayrollComponent>(`${COMPONENTS}/${id}/activation`, { is_active }),
     /** Drop the organisation's changes to a platform component. */
     revert: (id: number | string) => apiClient.post<PayrollComponent>(`${COMPONENTS}/${id}/revert`, {})
+};
+
+/**
+ * An earning, deduction or benefit given to one employee from the components the organisation
+ * switched on. calculation says whether `amount` or `percentage` (of percent_of) applies.
+ */
+export interface EmployeeComponent {
+    id: string;
+    employee_id: string;
+    component_id?: string;
+    code?: string;
+    title: string;
+    category?: ComponentCategory | string;
+    is_taxable?: boolean;
+    non_cash?: boolean;
+    deduction_phase?: string;
+    calculation: 'amount' | 'percentage';
+    amount: string;
+    percentage: string;
+    percent_of: 'basic' | 'gross' | string;
+    reference?: string;
+    /** Names the scheme or registration number a deduction must carry, when one is needed. */
+    reference_label?: string;
+    /** "YYYY-MM"; open-ended when absent. */
+    start_month?: string;
+    end_month?: string;
+    is_active: boolean;
+    /** False when the organisation has switched the component off since: payroll skips it. */
+    component_active: boolean;
+}
+
+export interface EmployeeComponentInput {
+    component_id?: string;
+    amount?: string;
+    percentage?: string;
+    percent_of?: string;
+    reference?: string;
+    start_month?: string;
+    end_month?: string;
+    is_active?: boolean;
+}
+
+const employeeComponentsPath = (employeeId: number | string) => `${PS}/employees/${employeeId}/components`;
+
+export const employeeComponentsApi = {
+    list: (employeeId: number | string) => apiClient.get<{ results: EmployeeComponent[]; count: number }>(employeeComponentsPath(employeeId)),
+    create: (employeeId: number | string, data: EmployeeComponentInput) => apiClient.post<EmployeeComponent>(employeeComponentsPath(employeeId), data),
+    update: (employeeId: number | string, id: string, data: EmployeeComponentInput) => apiClient.put<EmployeeComponent>(`${employeeComponentsPath(employeeId)}/${id}`, data),
+    remove: (employeeId: number | string, id: string) => apiClient.delete<void>(`${employeeComponentsPath(employeeId)}/${id}`)
 };
 
 export const loansApi = {

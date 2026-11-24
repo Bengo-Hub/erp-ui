@@ -1,108 +1,101 @@
-"use client";
+'use client';
 
-import { Card } from "@/components/ui/base";
-import { DataTable, type Column } from "@/components/ui/data-table";
-import { useStatutoryToggles } from "@/hooks/use-payroll-settings";
-import { type PayrollPreviewRow } from "@/lib/api/payroll";
-import { formatMoney } from "@/lib/utils";
+import { Card } from '@/components/ui/base';
+import { DataTable, type Column } from '@/components/ui/data-table';
+import { useStatutoryToggles } from '@/hooks/use-payroll-settings';
+import { type PayrollPreviewRow } from '@/lib/api/payroll';
+import { formatMoney } from '@/lib/utils';
 
 function num(v: unknown): number {
-  const n = typeof v === "string" ? parseFloat(v) : (v as number);
-  return Number.isFinite(n) ? n : 0;
+    const n = typeof v === 'string' ? parseFloat(v) : (v as number);
+    return Number.isFinite(n) ? n : 0;
 }
 
 /** Read-only preview of computed payroll lines before committing the run. */
-export function PreviewTable({
-  rows,
-  isLoading,
-  error,
-}: {
-  rows: PayrollPreviewRow[];
-  isLoading?: boolean;
-  error?: unknown;
-}) {
-  const totals = rows.reduce<{ gross: number; deductions: number; net: number }>(
-    (acc, r) => ({
-      gross: acc.gross + num(r.gross_pay),
-      deductions: acc.deductions + num(r.total_deductions),
-      net: acc.net + num(r.net_pay),
-    }),
-    { gross: 0, deductions: 0, net: 0 },
-  );
+export function PreviewTable({ rows, isLoading, error }: { rows: PayrollPreviewRow[]; isLoading?: boolean; error?: unknown }) {
+    const totals = rows.reduce<{ gross: number; deductions: number; net: number }>(
+        (acc, r) => ({
+            gross: acc.gross + num(r.gross_pay),
+            deductions: acc.deductions + num(r.total_deductions),
+            net: acc.net + num(r.net_pay)
+        }),
+        { gross: 0, deductions: 0, net: 0 }
+    );
 
-  // Statutory columns follow the tenant's toggles (Settings → Payroll → Statutory):
-  // disabled deductions are not processed by the engine, so their columns are hidden.
-  const toggles = useStatutoryToggles();
+    // Statutory columns follow the tenant's toggles (Settings → Payroll → Statutory):
+    // disabled deductions are not processed by the engine, so their columns are hidden.
+    const toggles = useStatutoryToggles();
 
-  const columns: Column<PayrollPreviewRow>[] = [
-    { header: "Employee", cell: (r) => <span className="font-medium">{r.employee_name || r.employee || "—"}</span> },
-    { header: "Gross", className: "text-right", headerClassName: "text-right", cell: (r) => formatMoney(r.gross_pay) },
-    ...(toggles.paye
-      ? [{ header: "PAYE", className: "text-right", headerClassName: "text-right", cell: (r: PayrollPreviewRow) => formatMoney(r.paye) }]
-      : []),
-    ...(toggles.nssf
-      ? [{ header: "NSSF", className: "text-right", headerClassName: "text-right", cell: (r: PayrollPreviewRow) => formatMoney(r.nssf) }]
-      : []),
-    ...(toggles.shif
-      ? [{ header: "SHIF", className: "text-right", headerClassName: "text-right", cell: (r: PayrollPreviewRow) => formatMoney(r.shif) }]
-      : []),
-    ...(toggles.housingLevy
-      ? [
-          {
-            header: "Housing",
-            className: "text-right",
-            headerClassName: "text-right",
-            cell: (r: PayrollPreviewRow) => formatMoney(r.housing_levy),
-          },
-        ]
-      : []),
-    {
-      header: "Net Pay",
-      className: "text-right font-semibold",
-      headerClassName: "text-right",
-      cell: (r) => formatMoney(r.net_pay),
-    },
-  ];
+    const columns: Column<PayrollPreviewRow>[] = [
+        { header: 'Employee', cell: (r) => <span className="font-medium">{r.employee_name || r.employee || '—'}</span> },
+        { header: 'Gross', className: 'text-right', headerClassName: 'text-right', cell: (r) => formatMoney(r.gross_pay) },
+        ...(toggles.paye ? [{ header: 'PAYE', className: 'text-right', headerClassName: 'text-right', cell: (r: PayrollPreviewRow) => formatMoney(r.paye) }] : []),
+        ...(toggles.nssf ? [{ header: 'NSSF', className: 'text-right', headerClassName: 'text-right', cell: (r: PayrollPreviewRow) => formatMoney(r.nssf) }] : []),
+        ...(toggles.shif ? [{ header: 'SHIF', className: 'text-right', headerClassName: 'text-right', cell: (r: PayrollPreviewRow) => formatMoney(r.shif) }] : []),
+        ...(toggles.housingLevy
+            ? [
+                  {
+                      header: 'Housing',
+                      className: 'text-right',
+                      headerClassName: 'text-right',
+                      cell: (r: PayrollPreviewRow) => formatMoney(r.housing_levy)
+                  }
+              ]
+            : []),
+        // Earnings and deductions assigned per employee (SACCO, HELB...). Shown when any apply; a
+        // deduction larger than the net pay left is capped and the shortfall named.
+        ...(rows.some((r) => num(r.other_deductions) > 0 || num(r.deduction_shortfall) > 0)
+            ? [
+                  {
+                      header: 'Other Deductions',
+                      className: 'text-right',
+                      headerClassName: 'text-right',
+                      cell: (r: PayrollPreviewRow) => (
+                          <span>
+                              {formatMoney(r.other_deductions)}
+                              {num(r.deduction_shortfall) > 0 && <span className="block text-xs text-destructive">{formatMoney(r.deduction_shortfall)} not deducted</span>}
+                          </span>
+                      )
+                  }
+              ]
+            : []),
+        {
+            header: 'Net Pay',
+            className: 'text-right font-semibold',
+            headerClassName: 'text-right',
+            cell: (r) => formatMoney(r.net_pay)
+        }
+    ];
 
-  return (
-    <div className="space-y-3">
-      <div className="grid gap-3 sm:grid-cols-3">
-        <SummaryCard label="Total Gross" value={formatMoney(totals.gross)} />
-        <SummaryCard label="Total Deductions" value={formatMoney(totals.deductions)} />
-        <SummaryCard label="Total Net Pay" value={formatMoney(totals.net)} emphasize />
-      </div>
-      <Card>
-        <DataTable
-          columns={columns}
-          rows={rows}
-          rowKey={(r) => String(r.employee ?? r.employee_name ?? Math.random())}
-          isLoading={isLoading}
-          error={error}
-          emptyTitle="No employees to preview"
-          emptyDescription="No eligible employees for the selected period and type."
-        />
-      </Card>
-    </div>
-  );
+    return (
+        <div className="space-y-3">
+            <div className="grid gap-3 sm:grid-cols-3">
+                <SummaryCard label="Total Gross" value={formatMoney(totals.gross)} />
+                <SummaryCard label="Total Deductions" value={formatMoney(totals.deductions)} />
+                <SummaryCard label="Total Net Pay" value={formatMoney(totals.net)} emphasize />
+            </div>
+            <Card>
+                <DataTable
+                    columns={columns}
+                    rows={rows}
+                    rowKey={(r) => String(r.employee ?? r.employee_name ?? Math.random())}
+                    isLoading={isLoading}
+                    error={error}
+                    emptyTitle="No employees to preview"
+                    emptyDescription="No eligible employees for the selected period and type."
+                />
+            </Card>
+        </div>
+    );
 }
 
-function SummaryCard({
-  label,
-  value,
-  emphasize,
-}: {
-  label: string;
-  value: string;
-  emphasize?: boolean;
-}) {
-  return (
-    <Card>
-      <div className="p-4">
-        <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{label}</p>
-        <p className={emphasize ? "mt-1 text-xl font-bold text-primary" : "mt-1 text-xl font-bold text-foreground"}>
-          {value}
-        </p>
-      </div>
-    </Card>
-  );
+function SummaryCard({ label, value, emphasize }: { label: string; value: string; emphasize?: boolean }) {
+    return (
+        <Card>
+            <div className="p-4">
+                <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{label}</p>
+                <p className={emphasize ? 'mt-1 text-xl font-bold text-primary' : 'mt-1 text-xl font-bold text-foreground'}>{value}</p>
+            </div>
+        </Card>
+    );
 }

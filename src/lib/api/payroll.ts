@@ -65,6 +65,9 @@ export interface PayrollPreviewRow {
     housing_levy?: string | number;
     total_deductions?: string | number;
     net_pay?: string | number;
+    /** Earnings and deductions assigned per employee: deductions taken, and what net pay could not cover. */
+    other_deductions?: string | number;
+    deduction_shortfall?: string | number;
     [key: string]: unknown;
 }
 
