@@ -324,6 +324,9 @@ export const attendanceApi = {
     // Roster overrides (erp-api: /hrm/attendance/overrides).
     listOverrides: (params?: ListParams) => apiClient.get<Paginated<AttendanceOverride> | AttendanceOverride[]>(`${ATT}/overrides/`, params),
     createOverride: (data: Partial<AttendanceOverride>) => apiClient.post<AttendanceOverride>(`${ATT}/overrides/`, data),
+    updateOverride: (id: string, data: Partial<AttendanceOverride>) => apiClient.put<AttendanceOverride>(`${ATT}/overrides/${id}/`, data),
+    // Planner cells are override rows, so deleting a planner row clears its cell.
+    deleteOverride: (id: string) => apiClient.delete<void>(`${ATT}/overrides/${id}/`),
     // Resolved per-cell planner grid (erp-api GET /hrm/attendance/shift-planner).
     resolvePlanner: (params: { from: string; to: string; employee_ids?: string }) => apiClient.get<{ results?: PlannerCell[]; data?: PlannerCell[] } | PlannerCell[]>(`${ATT}/shift-planner`, params),
     // Upsert one drawable cell (PUT) — assigns a shift onto (employee, date).
