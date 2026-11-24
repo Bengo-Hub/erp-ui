@@ -1,7 +1,9 @@
 "use client";
 
 import { Ban, Eraser } from "lucide-react";
-import { useEffect, useRef } from "react";
+import { useRef } from "react";
+
+import { AnchoredPopover } from "@bengo-hub/shared-ui-lib/data-table";
 
 import { type WorkShift } from "@/lib/api/attendance";
 import { cn } from "@/lib/utils";
@@ -29,29 +31,22 @@ export function CellPopover({
   onPick: (pick: ShiftPick) => void;
   onClose: () => void;
 }) {
-  const ref = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    const onDoc = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) onClose();
-    };
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
-    };
-    document.addEventListener("mousedown", onDoc);
-    document.addEventListener("keydown", onKey);
-    return () => {
-      document.removeEventListener("mousedown", onDoc);
-      document.removeEventListener("keydown", onKey);
-    };
-  }, [onClose]);
+  // Anchor on the table cell that renders this menu. The panel is drawn with fixed
+  // positioning by the shared AnchoredPopover, so the planner's overflow-x-auto
+  // wrapper can no longer clip it.
+  const anchorRef = useRef<HTMLElement | null>(null);
 
   return (
-    <div
-      ref={ref}
-      role="menu"
-      className="absolute left-1/2 top-full z-[120] mt-1 w-56 -translate-x-1/2 overflow-hidden rounded-xl border border-border bg-popover p-1 text-popover-foreground shadow-xl"
-    >
+    <>
+      <span
+        aria-hidden
+        className="hidden"
+        ref={(el) => {
+          anchorRef.current = el?.parentElement ?? null;
+        }}
+      />
+      <AnchoredPopover open onClose={onClose} anchorRef={anchorRef} width={224}>
+        <div role="menu" className="-m-1 text-popover-foreground">
       <p className="px-2.5 py-1.5 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
         Assign shift
       </p>
@@ -105,6 +100,8 @@ export function CellPopover({
           </button>
         )}
       </div>
-    </div>
+        </div>
+      </AnchoredPopover>
+    </>
   );
 }
