@@ -30,14 +30,29 @@ function renderCell(col: ReportColumn, row: ReportRow, currency?: string) {
   return String(v);
 }
 
-/** Filter values a config starts with: this year, plus the last N days for range reports. */
+/**
+ * Filter values a config starts with: this year, the last N days for range reports, and last
+ * month for monthly payroll reports (the latest payroll that is normally finished).
+ */
 function initialValues(config: ReportConfig): ReportFilterValues {
-  const v: ReportFilterValues = { year: String(new Date().getFullYear()) };
+  const now = new Date();
+  const v: ReportFilterValues = { year: String(now.getFullYear()) };
   if (config.defaultRangeDays) {
     v.from_date = daysAgo(config.defaultRangeDays - 1);
     v.to_date = isoDay();
   }
+  if (config.filters.includes("month")) {
+    const last = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+    v.year = String(last.getFullYear());
+    v.month = String(last.getMonth() + 1);
+  }
   return v;
+}
+
+/** A report opens with results when every required filter already has a value. */
+function readyToRun(config: ReportConfig, v: ReportFilterValues): boolean {
+  if (!config.defaultRangeDays && !config.filters.includes("month")) return false;
+  return (config.required ?? []).every((k) => Boolean(v[k as keyof ReportFilterValues]));
 }
 
 function sum(rows: ReportRow[], field: string): number {
@@ -69,7 +84,8 @@ export function ReportRunner({ config }: { config: ReportConfig }) {
   const [values, setValues] = useState<ReportFilterValues>(() => initialValues(config));
   const { currency: tenantCurrency } = useMoney();
   const currency = config.tenantCurrency ? tenantCurrency : undefined;
-  const [enabled, setEnabled] = useState(false);
+  // Run straight away when the defaults already satisfy the report, so it never opens empty.
+  const [enabled, setEnabled] = useState(() => readyToRun(config, initialValues(config)));
   const [missing, setMissing] = useState<string | null>(null);
   const [hiddenCols, setHiddenCols] = useState<Set<string>>(new Set());
   const [colMenuOpen, setColMenuOpen] = useState(false);
