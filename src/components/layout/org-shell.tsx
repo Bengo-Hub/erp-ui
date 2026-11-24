@@ -1,107 +1,109 @@
-"use client";
+'use client';
 
-import { useEffect, useState, type ReactNode } from "react";
-import { useParams, usePathname } from "next/navigation";
+import { useEffect, useState, type ReactNode } from 'react';
+import { useParams, usePathname } from 'next/navigation';
 
-import { AppSidebar } from "@/components/layout/app-sidebar";
-import { AppTopbar } from "@/components/layout/app-topbar";
-import { Breadcrumb } from "@/components/layout/breadcrumb";
-import { Footer } from "@/components/footer";
-import { PWARegistration } from "@/components/pwa-registration";
-import { SubscriptionBanner } from "@/components/subscription/subscription-banner";
-import { VerifyEmailPrompt } from "@/components/auth/VerifyEmailPrompt";
-import { AuthProvider } from "@/providers/auth-provider";
-import { BrandingProvider } from "@/providers/branding-provider";
-import { QueryProvider } from "@/providers/query-provider";
-import { SubscriptionEntitlementsProvider } from "@/providers/subscription-entitlements-provider";
-import { useTenantFilterStore } from "@/store/tenant-filter";
-import { ServiceLock } from "@bengo-hub/shared-ui-lib/subscription";
+import { AppSidebar } from '@/components/layout/app-sidebar';
+import { AppTopbar } from '@/components/layout/app-topbar';
+import { Breadcrumb } from '@/components/layout/breadcrumb';
+import { Footer } from '@/components/footer';
+import { PWARegistration } from '@/components/pwa-registration';
+import { SubscriptionBanner } from '@/components/subscription/subscription-banner';
+import { VerifyEmailPrompt } from '@/components/auth/VerifyEmailPrompt';
+import { AuthProvider } from '@/providers/auth-provider';
+import { BrandingProvider } from '@/providers/branding-provider';
+import { QueryProvider } from '@/providers/query-provider';
+import { SubscriptionEntitlementsProvider } from '@/providers/subscription-entitlements-provider';
+import { useTenantFilterStore } from '@/store/tenant-filter';
+import { ServiceLock } from '@bengo-hub/shared-ui-lib/subscription';
 
 /** Injects the per-tenant manifest link so PWA installs are tenant-scoped. */
 function ManifestLink() {
-  const params = useParams();
-  const orgSlug = params?.orgSlug as string | undefined;
-  useEffect(() => {
-    if (!orgSlug) return;
-    const href = `/${orgSlug}/manifest.webmanifest`;
-    let link = document.querySelector<HTMLLinkElement>('link[rel="manifest"]');
-    if (!link) {
-      link = document.createElement("link");
-      link.rel = "manifest";
-      document.head.appendChild(link);
-    }
-    if (link.href !== new URL(href, window.location.href).href) link.href = href;
-  }, [orgSlug]);
-  return null;
+    const params = useParams();
+    const orgSlug = params?.orgSlug as string | undefined;
+    useEffect(() => {
+        if (!orgSlug) return;
+        const href = `/${orgSlug}/manifest.webmanifest`;
+        let link = document.querySelector<HTMLLinkElement>('link[rel="manifest"]');
+        if (!link) {
+            link = document.createElement('link');
+            link.rel = 'manifest';
+            document.head.appendChild(link);
+        }
+        if (link.href !== new URL(href, window.location.href).href) link.href = href;
+    }, [orgSlug]);
+    return null;
 }
 
 /** Tenant shell: providers + sidebar + topbar + content. */
 export function OrgShell({ children }: { children: ReactNode }) {
-  const [sidebarOpen, setSidebarOpen] = useState(false);
-  const pathname = usePathname() || "";
-  // Auth pages render full-screen, without the sidebar/topbar chrome.
-  const isAuthPage = /\/auth(\/|$)/.test(pathname);
-  // Dedicated Platform section: the cross-tenant drill-in (?tenantId=) is confined
-  // to /platform. Anywhere else, the platform owner manages their OWN business, so
-  // clear any active drill-in to keep business pages scoped to the owner's tenant.
-  const isPlatformRoute = /\/platform(\/|$)/.test(pathname);
-  useEffect(() => {
-    if (isPlatformRoute) return;
-    const { selected, select } = useTenantFilterStore.getState();
-    if (selected) select(null);
-  }, [isPlatformRoute]);
+    const [sidebarOpen, setSidebarOpen] = useState(false);
+    const pathname = usePathname() || '';
+    // Auth pages render full-screen, without the sidebar/topbar chrome.
+    const isAuthPage = /\/auth(\/|$)/.test(pathname);
+    // Dedicated Platform section: the cross-tenant drill-in (?tenantId=) is confined
+    // to /platform. Anywhere else, the platform owner manages their OWN business, so
+    // clear any active drill-in to keep business pages scoped to the owner's tenant.
+    const isPlatformRoute = /\/platform(\/|$)/.test(pathname);
+    useEffect(() => {
+        if (isPlatformRoute) return;
+        const { selected, select } = useTenantFilterStore.getState();
+        if (selected) select(null);
+    }, [isPlatformRoute]);
 
-  if (isAuthPage) {
+    if (isAuthPage) {
+        return (
+            <QueryProvider>
+                <BrandingProvider>
+                    <AuthProvider>
+                        <ManifestLink />
+                        {children}
+                    </AuthProvider>
+                </BrandingProvider>
+            </QueryProvider>
+        );
+    }
+
     return (
-      <QueryProvider>
-        <BrandingProvider>
-          <AuthProvider>
-            <ManifestLink />
-            {children}
-          </AuthProvider>
-        </BrandingProvider>
-      </QueryProvider>
-    );
-  }
-
-  return (
-    <QueryProvider>
-      <BrandingProvider>
-        <AuthProvider>
-          <SubscriptionEntitlementsProvider>
-          <ManifestLink />
-          <PWARegistration />
-          <a
-            href="#main-content"
-            className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-[100] focus:rounded-lg focus:bg-primary focus:px-4 focus:py-2 focus:text-sm focus:font-medium focus:text-primary-foreground"
-          >
-            Skip to content
-          </a>
-          <div className="flex h-screen overflow-hidden bg-background">
-            <AppSidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} />
-            <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
-              <AppTopbar onMenuClick={() => setSidebarOpen(true)} />
-              <SubscriptionBanner />
-              <VerifyEmailPrompt />
-              <main id="main-content" tabIndex={-1} className="flex-1 overflow-y-auto bg-accent/5 flex flex-col">
-                <Breadcrumb />
-                {/* Whole-module gate: a tenant whose plan doesn't cover "erp" (e.g. a Basic-tier
+        <QueryProvider>
+            <BrandingProvider>
+                <AuthProvider>
+                    <SubscriptionEntitlementsProvider>
+                        <ManifestLink />
+                        <PWARegistration />
+                        <a
+                            href="#main-content"
+                            className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-[100] focus:rounded-lg focus:bg-primary focus:px-4 focus:py-2 focus:text-sm focus:font-medium focus:text-primary-foreground"
+                        >
+                            Skip to content
+                        </a>
+                        <div className="flex h-screen overflow-hidden bg-background">
+                            <AppSidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+                            <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
+                                <AppTopbar onMenuClick={() => setSidebarOpen(true)} />
+                                <SubscriptionBanner />
+                                <VerifyEmailPrompt />
+                                <main id="main-content" tabIndex={-1} className="flex-1 overflow-y-auto bg-accent/5 flex flex-col">
+                                    <Breadcrumb />
+                                    {/* Whole-module gate: a tenant whose plan doesn't cover "erp" (e.g. a Basic-tier
                     PowerSuite tenant, per plan-feature-matrix.md's T1 "no ERP access") sees the
                     named-plan upgrade card here instead of every page inside erp-ui silently
                     403-ing with a generic toast. Sidebar/topbar/breadcrumb stay visible so the
                     tenant can still navigate to billing/settings. */}
-                <div className="min-h-full flex-1">
-                  <ServiceLock serviceTag="erp" mode="block" title="ERP needs a plan upgrade">
-                    {children}
-                  </ServiceLock>
-                </div>
-                <Footer />
-              </main>
-            </div>
-          </div>
-          </SubscriptionEntitlementsProvider>
-        </AuthProvider>
-      </BrandingProvider>
-    </QueryProvider>
-  );
+                                    {/* Grow with the content (never shrink): min-h-full + flex-1 capped the wrapper at
+                    the viewport, so tall pages spilled under the footer and it drew over them. */}
+                                    <div className="flex-[1_0_auto]">
+                                        <ServiceLock serviceTag="erp" mode="block" title="ERP needs a plan upgrade">
+                                            {children}
+                                        </ServiceLock>
+                                    </div>
+                                    <Footer />
+                                </main>
+                            </div>
+                        </div>
+                    </SubscriptionEntitlementsProvider>
+                </AuthProvider>
+            </BrandingProvider>
+        </QueryProvider>
+    );
 }

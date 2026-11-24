@@ -14,6 +14,9 @@ import { scrubStoredSession } from '@bengo-hub/shared-ui-lib/auth';
 
 const AUTH_STORAGE_KEY = 'erp-auth-storage';
 
+/** True from the first logout call until the browser leaves for the SSO logout page. */
+let loggingOut = false;
+
 // Cookie session (fleet plan G11): tokens an earlier build stored are dropped before the store
 // loads; from here on only the profile is persisted.
 if (cookieMode()) scrubStoredSession(AUTH_STORAGE_KEY);
@@ -184,6 +187,9 @@ export const useAuthStore = create<AuthState>()(
             },
 
             logout: async () => {
+                // One logout at a time: 401s from in-flight queries call logout again.
+                if (loggingOut) return;
+                loggingOut = true;
                 // Capture the working org BEFORE clearing any state/storage, so re-login
                 // targets the SAME organisation rather than a default one: URL path first
                 // (tenant pages are /{orgSlug}/...; reserved segments are not tenants),
@@ -207,8 +213,11 @@ export const useAuthStore = create<AuthState>()(
                     await revokeServerSession(token);
                 }
 
+                // Stay in 'loading', never 'idle': an idle status makes the AuthProvider send the
+                // browser to SSO authorize, which cancelled the logout navigation below while the
+                // SSO login session was still alive, so the user was signed straight back in.
                 set({
-                    status: 'idle',
+                    status: 'loading',
                     user: null,
                     session: null,
                     subscriptionInfo: undefined,
