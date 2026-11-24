@@ -9,7 +9,7 @@ import { BadgeCheck, Banknote, ChevronDown, ChevronRight, FileDown, ListChecks, 
 import { PermissionGate } from "@/components/auth/permission-gate";
 import { OutletFilter } from "@/components/outlet/outlet-filter";
 import { Badge, Button, Card } from "@/components/ui/base";
-import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { Dialog } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/form";
 import { PageHeader } from "@/components/ui/page-header";
 import { SearchInput } from "@/components/ui/search-input";
@@ -17,11 +17,12 @@ import { EmptyState, ErrorState, LoadingState } from "@/components/ui/states";
 import { Tabs } from "@/components/ui/tabs";
 import { IconButton } from "@/components/ui/tooltip";
 import { normalizeSearchTerm, useDebouncedValue } from "@bengo-hub/shared-ui-lib/search";
-import { useApprovePayroll, useDisbursePayroll, usePayslips } from "@/hooks/use-payroll";
+import { usePayslips } from "@/hooks/use-payroll";
 import { normalizeList } from "@/lib/api/drf";
 import { payrollApi, type Payslip } from "@/lib/api/payroll";
 import { formatMoney } from "@/lib/utils";
 
+import { PayrollRunActions } from "../_run-actions";
 import { buildPayslipLineColumns } from "./_payslip-line-columns";
 
 const STATUS_TABS = [
@@ -106,8 +107,6 @@ export default function PayslipsPage() {
   const debounced = useDebouncedValue(normalizeSearchTerm(search));
 
   const [menuOpen, setMenuOpen] = useState(false);
-  const approve = useApprovePayroll();
-  const disburse = useDisbursePayroll();
   // Server-rendered payslip PDF preview (Print / Download / Open-in-tab) — never browser print.
   const { openPreview, previewProps } = useDocumentPreview();
   function printPayslip(ps: Payslip) {
@@ -116,7 +115,8 @@ export default function PayslipsPage() {
       title: ps.employee_name ? `Payslip — ${ps.employee_name}` : "Payslip",
     });
   }
-  const [confirm, setConfirm] = useState<{ kind: "approve" | "disburse"; period: string; label: string } | null>(null);
+  // The run whose approve, disburse and reverse actions are open.
+  const [managed, setManaged] = useState<{ period: string; label: string } | null>(null);
   const payslipColumns = useMemo(
     () => buildPayslipLineColumns({ StatusBadge, onPrint: printPayslip }),
     [],
@@ -291,17 +291,17 @@ export default function PayslipsPage() {
                       <IconButton label="View muster roll" onClick={() => router.push(`/${orgSlug}/reports/muster-roll?period=${g.period}`)}>
                         <ListChecks className="size-4" />
                       </IconButton>
-                      {k !== "approved" && k !== "disbursed" && (
-                        <PermissionGate permission={["hrm.payroll.manage"]}>
-                          <IconButton label="Approve period" onClick={() => setConfirm({ kind: "approve", period: g.period, label: g.label })}>
-                            <BadgeCheck className="size-4 text-green-600" />
-                          </IconButton>
-                        </PermissionGate>
-                      )}
-                      {k === "approved" && (
-                        <PermissionGate permission={["hrm.payroll.disburse"]}>
-                          <IconButton label="Disburse period" onClick={() => setConfirm({ kind: "disburse", period: g.period, label: g.label })}>
-                            <Banknote className="size-4 text-primary" />
+                      {k !== "disbursed" && (
+                        <PermissionGate permission={["hrm.payroll.process", "approvals.decide", "hrm.payroll.disburse"]}>
+                          <IconButton
+                            label="Approve, disburse or reverse"
+                            onClick={() => setManaged({ period: g.period.slice(0, 7), label: g.label })}
+                          >
+                            {k === "approved" ? (
+                              <Banknote className="size-4 text-primary" />
+                            ) : (
+                              <BadgeCheck className="size-4 text-green-600" />
+                            )}
                           </IconButton>
                         </PermissionGate>
                       )}
@@ -326,24 +326,9 @@ export default function PayslipsPage() {
         )}
       </Card>
 
-      <ConfirmDialog
-        open={!!confirm}
-        title={confirm?.kind === "disburse" ? "Disburse this period?" : "Approve this period?"}
-        description={
-          confirm?.kind === "disburse"
-            ? `Disburse net pay for ${confirm?.label}. This posts to the GL and triggers payout — a significant action.`
-            : `Approve all payslips for ${confirm?.label} so they can be disbursed.`
-        }
-        confirmLabel={confirm?.kind === "disburse" ? "Disburse" : "Approve"}
-        loading={approve.isPending || disburse.isPending}
-        onCancel={() => setConfirm(null)}
-        onConfirm={() => {
-          if (!confirm) return;
-          const opts = { onSuccess: () => setConfirm(null) };
-          if (confirm.kind === "disburse") disburse.mutate({ payment_period: confirm.period }, opts);
-          else approve.mutate({ approve: true, payment_period: confirm.period }, opts);
-        }}
-      />
+      <Dialog open={!!managed} onClose={() => setManaged(null)} title={`Payroll ${managed?.label ?? ""}`}>
+        {managed && <PayrollRunActions target={{ payment_period: managed.period }} />}
+      </Dialog>
 
       <PdfPreview {...previewProps} />
     </div>

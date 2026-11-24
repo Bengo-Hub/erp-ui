@@ -168,14 +168,17 @@ const PAYROLL_REPORTS: ReportConfig[] = [
   {
     key: "withholding-tax",
     title: "Withholding Tax",
-    description: "Withholding tax on qualifying payments to payees.",
+    description: "Withholding tax deducted on approved and paid consultant vouchers, per payee and rate.",
     path: "withholding-tax",
     exportType: "withholding-tax",
-    filters: ["year", "month", "dateRange"],
+    filters: ["year", "month"],
     required: ["year"],
     columns: [
       { field: "payee_name", header: "Payee Name" },
+      { field: "payee_pin", header: "KRA PIN" },
       { field: "payment_type", header: "Payment Type" },
+      { field: "residency", header: "Residency" },
+      { field: "vouchers", header: "Vouchers", numeric: true },
       { field: "gross_amount", header: "Gross Amount", money: true },
       { field: "withholding_rate", header: "Rate", percent: true },
       { field: "withholding_tax", header: "Withholding Tax", money: true },
@@ -184,6 +187,7 @@ const PAYROLL_REPORTS: ReportConfig[] = [
     summary: [
       { label: "Total Gross", field: "gross_amount", money: true },
       { label: "Total WHT", field: "withholding_tax", money: true },
+      { label: "Total Net", field: "net_payment", money: true },
     ],
   },
   {

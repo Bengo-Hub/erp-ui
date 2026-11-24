@@ -17,7 +17,6 @@ import { Stepper } from "@/components/ui/stepper";
 import { useDepartmentOptions, useProjectOptions } from "@/hooks/use-option-hooks";
 import {
   activeRunFromError,
-  useDisbursePayroll,
   usePayrollPreview,
   usePayrollRunProgress,
   useProcessPayroll,
@@ -26,9 +25,10 @@ import { type PayrollPreviewRow, type PayrollProcessPayload, type PayrollRunJob 
 import { EMPLOYMENT_TYPES } from "@/lib/hrm";
 import { useOutletFilterStore } from "@/store/outlet-filter";
 
+import { PayrollRunActions } from "../_run-actions";
 import { PreviewTable } from "./_preview-table";
 
-const STEPS = ["Period", "Preview", "Run", "Disburse"];
+const STEPS = ["Period", "Preview", "Run", "Approve & Disburse"];
 
 /** A background run's live state: a progress bar while it works, the reason if it failed. */
 function RunProgress({ run }: { run: PayrollRunJob | null }) {
@@ -85,11 +85,9 @@ export default function ProcessPayrollPage() {
   const projects = useProjectOptions();
   const [preview, setPreview] = useState<PayrollPreviewRow[]>([]);
   const [confirmRun, setConfirmRun] = useState(false);
-  const [confirmDisburse, setConfirmDisburse] = useState(false);
 
   const previewMut = usePayrollPreview();
   const processMut = useProcessPayroll();
-  const disburseMut = useDisbursePayroll();
 
   const payload: PayrollProcessPayload = useMemo(
     () => ({
@@ -144,11 +142,8 @@ export default function ProcessPayrollPage() {
       },
     });
 
-  const disburse = () =>
-    disburseMut.mutate(
-      { payment_period: payload.payment_period, from_date: fromDate, to_date: toDate },
-      { onSuccess: () => setConfirmDisburse(false) },
-    );
+  // The run is one pay month (and the selected outlet, if any).
+  const runTarget = fromDate ? { payment_period: fromDate.slice(0, 7), outlet_id: selectedOutlet?.id || undefined } : null;
 
   return (
     <div className="space-y-4 p-4 sm:p-6">
@@ -204,7 +199,13 @@ export default function ProcessPayrollPage() {
             <Field label="To Date" required>
               <Input type="date" value={toDate} onChange={(e) => setToDate(e.target.value)} />
             </Field>
-            <div className="flex justify-end sm:col-span-3">
+            <div className="flex flex-wrap justify-end gap-2 sm:col-span-3">
+              <Button
+                variant="outline"
+                onClick={() => (fromDate ? setStep(3) : toast.error("Select a pay period first"))}
+              >
+                Approve or Disburse a Run
+              </Button>
               <PermissionGate
                 permission={["hrm.payroll.process"]}
                 fallback={<p className="text-sm text-muted-foreground">You can&apos;t run payroll.</p>}
@@ -288,20 +289,16 @@ export default function ProcessPayrollPage() {
               <Send className="size-6" />
             </div>
             <div>
-              <h3 className="text-base font-bold text-foreground">Payroll processed</h3>
+              <h3 className="text-base font-bold text-foreground">Payroll {runTarget?.payment_period}</h3>
               <p className="mt-1 max-w-md text-sm text-muted-foreground">
-                {run?.payslips ? `${run.payslips} payslip(s) have been generated. ` : "Payslips have been generated. "}
-                You can now disburse net pay to employees.
+                {run?.payslips ? `${run.payslips} payslip(s) have been generated. ` : ""}
+                Submit the run for approval. Once it is approved, disburse net pay to employees.
               </p>
             </div>
-            <PermissionGate
-              permission={["hrm.payroll.disburse"]}
-              fallback={<p className="text-sm text-muted-foreground">You can&apos;t disburse payroll.</p>}
-            >
-              <Button onClick={() => setConfirmDisburse(true)} disabled={disburseMut.isPending}>
-                <Send className="mr-1.5 size-4" /> Disburse Payroll
-              </Button>
-            </PermissionGate>
+            {runTarget && <PayrollRunActions target={runTarget} />}
+            <Button variant="outline" onClick={() => setStep(0)}>
+              Back to Period
+            </Button>
           </CardContent>
         </Card>
       )}
@@ -315,16 +312,6 @@ export default function ProcessPayrollPage() {
         loading={processMut.isPending}
         onCancel={() => setConfirmRun(false)}
         onConfirm={runPayroll}
-      />
-      <ConfirmDialog
-        open={confirmDisburse}
-        title="Disburse net pay?"
-        description="This will mark the payroll as disbursed and trigger payments. This cannot be undone."
-        confirmLabel="Disburse"
-        destructive
-        loading={disburseMut.isPending}
-        onCancel={() => setConfirmDisburse(false)}
-        onConfirm={disburse}
       />
     </div>
   );

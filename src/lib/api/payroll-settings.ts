@@ -36,14 +36,44 @@ export interface PayrollComponent {
   [key: string]: unknown;
 }
 
-export interface Loan {
-  id: number;
-  name: string;
-  interest_rate?: string | number;
-  max_amount?: string | number;
-  repayment_period?: number;
+/** A loan product (Settings, Payroll, Loans): the type an employee loan is issued under. */
+export interface LoanType {
+  id: string;
+  title: string;
+  account_code?: string;
   is_active?: boolean;
-  [key: string]: unknown;
+}
+
+/** A loan issued to one employee, recovered from payroll in monthly installments. */
+export interface Loan {
+  id: string;
+  employee?: string;
+  employee_id?: string;
+  loan_type_id?: string;
+  principal_amount?: string;
+  amount_repaid?: string;
+  balance?: string;
+  monthly_installment?: string;
+  installments?: number;
+  installments_paid?: number;
+  /** Set when issuing: the principal is spread evenly over this many months. */
+  no_of_installments?: number;
+  interest_rate?: string;
+  start_date?: string;
+  end_date?: string;
+  is_active?: boolean;
+  created_at?: string;
+}
+
+/** One payroll recovery against a loan. applied = written back to the loan balance. */
+export interface LoanRecovery {
+  id: string;
+  payslip_id: string;
+  payment_period: string;
+  amount: string;
+  applied: boolean;
+  batch_ref?: string;
+  created_at: string;
 }
 
 /** One band/bracket of a formula (percentages are stored as e.g. "30.00" = 30%). */
@@ -120,6 +150,15 @@ export const loansApi = {
   update: (id: number | string, data: Partial<Loan>) =>
     apiClient.put<Loan>(`${PS}/loans/${id}/`, data),
   remove: (id: number | string) => apiClient.delete<void>(`${PS}/loans/${id}/`),
+  recoveries: (id: string) =>
+    apiClient.get<{ results: LoanRecovery[]; count: number }>(`${PS}/loans/${id}/recoveries`),
+};
+
+export const loanTypesApi = {
+  list: (params?: ListParams) => apiClient.get<Paginated<LoanType> | LoanType[]>(`${PS}/loan-types`, params),
+  create: (data: Partial<LoanType>) => apiClient.post<LoanType>(`${PS}/loan-types`, data),
+  update: (id: number | string, data: Partial<LoanType>) => apiClient.put<LoanType>(`${PS}/loan-types/${id}`, data),
+  remove: (id: number | string) => apiClient.delete<void>(`${PS}/loan-types/${id}`),
 };
 
 export const formulasApi = {

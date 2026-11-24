@@ -8,7 +8,10 @@ import { type ListParams } from "@/lib/api/drf";
 import { extractApiError } from "@/lib/api/error";
 import {
   type ConsultantVoucher,
+  type DisburseResult,
   payrollApi,
+  type RunTarget,
+  type WhtRates,
   type CasualLabor,
   type Claim,
   type ClaimItem,
@@ -20,6 +23,7 @@ import {
   type ProjectAllocation,
 } from "@/lib/api/payroll";
 import { normalizeList } from "@/lib/api/drf";
+import { approvalDecisionApi } from "@/lib/api/attendance-requests";
 
 const KEY = "payroll";
 
@@ -182,41 +186,82 @@ export function useReviewAttendanceDeductions() {
   });
 }
 
+/** Where a period's run stands (approval, posting, payment) and which actions are open. */
+export function usePayrollRunStatus(target: RunTarget | null) {
+  return useQuery({
+    queryKey: [KEY, "run-status", target ?? {}],
+    queryFn: () => payrollApi.runStatus(target as RunTarget),
+    enabled: !!target?.payment_period,
+  });
+}
+
 export function useDisbursePayroll() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (payload: { payment_period?: string; from_date?: string; to_date?: string; run_id?: number }) =>
-      payrollApi.disburse(payload),
-    onSuccess: (data: any) => {
+    mutationFn: (payload: RunTarget) => payrollApi.disburse(payload),
+    onSuccess: (data: DisburseResult) => {
       qc.invalidateQueries({ queryKey: [KEY] });
-      // Treasury gates payroll net-pay behind a finance approval (+OTP). When it does, the GL is
-      // posted but money is NOT released until an approver signs off — reflect that honestly.
-      if (data?.pending_approval || data?.result?.pending_approval) {
+      // Treasury holds payroll net pay for a finance approval (+OTP). Nothing is paid until it is
+      // signed off; disbursing again afterwards sends the same batch and pays it.
+      if (data?.pending_approval) {
         toast.warning(
-          "Payroll submitted for finance approval. An approver must approve it (with OTP) in Treasury before net pay is released, then disburse again.",
+          "Net pay is waiting for finance approval in Treasury. Once it is approved (with OTP), disburse again to release it.",
           { duration: 8000 },
         );
-      } else if (data?.disburse_error || data?.result?.disburse_error) {
-        toast.warning(`Payroll GL posted, but disbursement reported an issue: ${data.disburse_error ?? data.result?.disburse_error}`);
-      } else {
+      } else if (data?.disburse_error) {
+        toast.warning(`Payroll posted, ${data.paid ?? 0} of ${data.count ?? 0} paid: ${data.disburse_error}. Disburse again to retry the rest.`, {
+          duration: 8000,
+        });
+      } else if (data?.already_done) {
+        toast.success("This payroll is already fully paid");
+      } else if (data?.disbursed) {
         toast.success("Payroll disbursed");
+      } else {
+        toast.info("Nothing to disburse for this period");
       }
     },
     onError: (e) => toast.error(extractApiError(e, "Failed to disburse payroll")),
   });
 }
 
-/** Approve or reject a processed period (review step before disburse). */
-export function useApprovePayroll() {
+/** Put a processed period up for approval, or send an unposted run back (reject). */
+export function useSubmitPayrollApproval() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({ approve, ...payload }: { approve: boolean; payment_period?: string; outlet_id?: string }) =>
-      approve ? payrollApi.approve(payload) : payrollApi.reject(payload),
+    mutationFn: ({ reject, ...payload }: RunTarget & { reject?: boolean }) =>
+      reject ? payrollApi.reject(payload) : payrollApi.submitApproval(payload),
+    onSuccess: (_r, v) => {
+      qc.invalidateQueries({ queryKey: [KEY] });
+      toast.success(v.reject ? "Payroll sent back for correction" : "Payroll submitted for approval");
+    },
+    onError: (e) => toast.error(extractApiError(e, "Failed to update approval")),
+  });
+}
+
+/** Approve or reject the run's request in the approvals engine. */
+export function useDecidePayrollRun() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ requestId, approve, comment }: { requestId: string; approve: boolean; comment?: string }) =>
+      approve ? approvalDecisionApi.approve(requestId, comment) : approvalDecisionApi.reject(requestId, comment ?? ""),
     onSuccess: (_r, v) => {
       qc.invalidateQueries({ queryKey: [KEY] });
       toast.success(v.approve ? "Payroll approved" : "Payroll rejected");
     },
-    onError: (e) => toast.error(extractApiError(e, "Failed to update approval")),
+    onError: (e) => toast.error(extractApiError(e, "Could not record the decision")),
+  });
+}
+
+/** Reverse a posted batch whose net pay has not been sent. */
+export function useReversePayroll() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (payload: RunTarget) => payrollApi.reverse(payload),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: [KEY] });
+      toast.success("Payroll reversed. Correct the payslips and submit them for approval again.");
+    },
+    onError: (e) => toast.error(extractApiError(e, "Failed to reverse payroll")),
   });
 }
 
@@ -441,6 +486,22 @@ export function useDeleteCasualLabor() {
 }
 
 // ---- Consultant WHT payment vouchers ----
+export function useWhtRates() {
+  return useQuery({ queryKey: [KEY, "wht-rates"], queryFn: () => payrollApi.whtRates() });
+}
+
+export function useSaveWhtRates() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (data: WhtRates) => payrollApi.saveWhtRates(data),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: [KEY, "wht-rates"] });
+      toast.success("Withholding tax rates saved");
+    },
+    onError: (e) => toast.error(extractApiError(e, "Failed to save the rates")),
+  });
+}
+
 export function useConsultantVouchers(params?: ListParams) {
   return useQuery({
     queryKey: [KEY, "consultant-vouchers", params ?? {}],

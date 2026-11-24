@@ -167,18 +167,27 @@ export const payrollApi = {
   command: (payload: Record<string, unknown>) =>
     apiClient.post<{ status?: string; message?: string }>(`${PAY}/payroll/`, payload),
 
-  // Disburse a processed period
-  disburse: (payload: { payment_period?: string; from_date?: string; to_date?: string; run_id?: number }) =>
-    apiClient.post<{ status?: string; message?: string }>(`${PAY}/payroll/`, {
+  // Disburse an approved period. Safe to repeat: only unpaid payslips are paid.
+  disburse: (payload: RunTarget) =>
+    apiClient.post<DisburseResult>(`${PAY}/payroll/`, {
       command: "disburse",
       ...payload,
     }),
 
-  // Approve / reject a processed period (the review step between process and disburse).
-  approve: (payload: { payment_period?: string; outlet_id?: string }) =>
-    apiClient.post<{ status?: string; count?: number }>(`${PAY}/payroll/`, { command: "approve", ...payload }),
-  reject: (payload: { payment_period?: string; outlet_id?: string }) =>
+  // Put a processed period up for approval (decided in the approvals engine), or send an
+  // unposted run back for correction.
+  submitApproval: (payload: RunTarget) =>
+    apiClient.post<{ approval_status?: string; approval_request_id?: string; count?: number }>(`${PAY}/payroll/`, {
+      command: "submit_approval",
+      ...payload,
+    }),
+  reject: (payload: RunTarget) =>
     apiClient.post<{ status?: string; count?: number }>(`${PAY}/payroll/`, { command: "reject", ...payload }),
+  // Reverse a posted batch whose net pay has not gone out yet.
+  reverse: (payload: RunTarget) =>
+    apiClient.post<DisburseResult>(`${PAY}/payroll/`, { command: "reverse", ...payload }),
+  // Where a period's run stands and which actions are open.
+  runStatus: (payload: RunTarget) => apiClient.get<PayrollRunStatus>(`${HRM}/payroll/run-status`, payload),
 
   taskStatus: (taskId: string) =>
     apiClient.get<{ state?: string; progress?: number; status?: string; result?: unknown }>(
@@ -283,6 +292,9 @@ export const payrollApi = {
       `${PAY}/consultant-vouchers`,
       params,
     ),
+  // The tenant's WHT rates on consultancy fees, in percent (resident and non-resident apart).
+  whtRates: () => apiClient.get<WhtRates>(`${PAY}/wht-rates`),
+  saveWhtRates: (data: WhtRates) => apiClient.put<WhtRates>(`${PAY}/wht-rates`, data),
   createConsultantVoucher: (data: Partial<ConsultantVoucher>) =>
     apiClient.post<ConsultantVoucher>(`${PAY}/consultant-vouchers`, data),
   approveConsultantVoucher: (id: number | string) =>
@@ -414,6 +426,46 @@ export interface PayComponentRecord {
 
 /** A payroll month's gross pay split by project (money as decimal strings). */
 /** A background payroll run (POST process-with-formulas starts one). */
+export interface WhtRates {
+  resident_rate: string;
+  non_resident_rate: string;
+}
+
+/** A payroll run: one month (YYYY-MM), optionally one outlet. */
+export interface RunTarget {
+  payment_period: string;
+  outlet_id?: string;
+}
+
+/** Where a period's run stands: approval, posting and payment counts, and the open actions. */
+export interface PayrollRunStatus {
+  payment_period: string;
+  payslips: number;
+  draft: number;
+  pending: number;
+  approved: number;
+  rejected: number;
+  posted: number;
+  paid: number;
+  approval_request_id?: string;
+  approval_request_status?: string;
+  can_submit: boolean;
+  can_disburse: boolean;
+  can_reverse: boolean;
+}
+
+export interface DisburseResult {
+  batch_ref?: string;
+  published?: boolean;
+  disbursed?: boolean;
+  count?: number;
+  paid?: number;
+  net_total?: string;
+  disburse_error?: string;
+  already_done?: boolean;
+  pending_approval?: boolean;
+}
+
 export interface PayrollRunJob {
   id: string;
   period: string; // YYYY-MM

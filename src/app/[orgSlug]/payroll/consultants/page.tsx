@@ -2,7 +2,7 @@
 
 import { PdfPreview, useDocumentPreview } from "@bengo-hub/shared-ui-lib/documents";
 import { DataTable } from "@bengo-hub/shared-ui-lib/data-table";
-import { Mail, Plus } from "lucide-react";
+import { Mail, Percent, Plus } from "lucide-react";
 import { useMemo, useState } from "react";
 
 import { PermissionGate } from "@/components/auth/permission-gate";
@@ -21,6 +21,8 @@ import {
   useCreateConsultantVoucher,
   useDeleteConsultantVoucher,
   useEmailConsultantVouchers,
+  useSaveWhtRates,
+  useWhtRates,
 } from "@/hooks/use-payroll";
 import { normalizeList } from "@/lib/api/drf";
 import { payrollApi, type ConsultantVoucher } from "@/lib/api/payroll";
@@ -66,8 +68,19 @@ export default function ConsultantsPage() {
   const pageTotal = (data as { page_total?: string })?.page_total;
   const selectedIds = Object.keys(selected).filter((k) => selected[k]);
 
+  const { data: rates } = useWhtRates();
+  const saveRates = useSaveWhtRates();
+  const [ratesOpen, setRatesOpen] = useState(false);
+  const [ratesForm, setRatesForm] = useState({ resident_rate: "", non_resident_rate: "" });
+  const residentPct = Number(rates?.resident_rate ?? 5);
+  const nonResidentPct = Number(rates?.non_resident_rate ?? 20);
+  const openRates = () => {
+    setRatesForm({ resident_rate: String(residentPct), non_resident_rate: String(nonResidentPct) });
+    setRatesOpen(true);
+  };
+
   const grossNum = parseFloat(form.gross_amount) || 0;
-  const whtRate = form.is_resident ? 0.05 : 0.2;
+  const whtRate = (form.is_resident ? residentPct : nonResidentPct) / 100;
   const whtPreview = grossNum * whtRate;
   const netPreview = grossNum - whtPreview - (parseFloat(form.deductions_amount) || 0);
 
@@ -127,6 +140,9 @@ export default function ConsultantsPage() {
               >
                 <Mail className="mr-1.5 size-4" /> Email Vouchers ({selectedIds.length})
               </Button>
+              <Button size="sm" variant="outline" onClick={openRates}>
+                <Percent className="mr-1.5 size-4" /> WHT Rates ({residentPct}% / {nonResidentPct}%)
+              </Button>
               <Button size="sm" onClick={() => setDialogOpen(true)}>
                 <Plus className="mr-1.5 size-4" /> Create Payment Voucher
               </Button>
@@ -180,13 +196,61 @@ export default function ConsultantsPage() {
           <Field label="Other Deductions">
             <Input type="number" step="0.01" value={form.deductions_amount} onChange={(e) => set("deductions_amount", e.target.value)} />
           </Field>
-          <Field label="Resident (5% WHT)" className="sm:col-span-2" help="Off = non-resident (20% WHT).">
+          <Field
+            label={`Resident (${residentPct}% WHT)`}
+            className="sm:col-span-2"
+            help={`Off = non-resident (${nonResidentPct}% WHT).`}
+          >
             <div className="flex items-center gap-2">
               <Switch checked={form.is_resident} onChange={(c) => set("is_resident", c)} />
               <span className="text-sm text-muted-foreground">
-                WHT {formatMoney(whtPreview)} ({(whtRate * 100).toFixed(0)}%) · Net {formatMoney(netPreview)}
+                WHT {formatMoney(whtPreview)} ({Number((whtRate * 100).toFixed(2))}%) · Net {formatMoney(netPreview)}
               </span>
             </div>
+          </Field>
+        </div>
+      </Dialog>
+
+      <Dialog
+        open={ratesOpen}
+        onClose={() => setRatesOpen(false)}
+        title="Withholding Tax Rates"
+        description="Rates on consultancy fees. New vouchers use them; existing vouchers keep the rate they were created with."
+        footer={
+          <>
+            <Button variant="outline" size="sm" onClick={() => setRatesOpen(false)} disabled={saveRates.isPending}>
+              Cancel
+            </Button>
+            <Button
+              size="sm"
+              disabled={saveRates.isPending || ratesForm.resident_rate === "" || ratesForm.non_resident_rate === ""}
+              onClick={() => saveRates.mutate(ratesForm, { onSuccess: () => setRatesOpen(false) })}
+            >
+              {saveRates.isPending ? "Saving…" : "Save Rates"}
+            </Button>
+          </>
+        }
+      >
+        <div className="grid gap-4 sm:grid-cols-2">
+          <Field label="Resident rate (%)" required>
+            <Input
+              type="number"
+              step="0.01"
+              min="0"
+              max="100"
+              value={ratesForm.resident_rate}
+              onChange={(e) => setRatesForm((r) => ({ ...r, resident_rate: e.target.value }))}
+            />
+          </Field>
+          <Field label="Non-resident rate (%)" required>
+            <Input
+              type="number"
+              step="0.01"
+              min="0"
+              max="100"
+              value={ratesForm.non_resident_rate}
+              onChange={(e) => setRatesForm((r) => ({ ...r, non_resident_rate: e.target.value }))}
+            />
           </Field>
         </div>
       </Dialog>

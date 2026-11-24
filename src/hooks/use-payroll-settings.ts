@@ -12,7 +12,9 @@ import {
   formulasApi,
   generalHrApi,
   loansApi,
+  loanTypesApi,
   perDiemPolicyApi,
+  type LoanType,
   type PerDiemPolicy,
   type Formula,
   type GeneralHrSettings,
@@ -76,6 +78,20 @@ const loans = makeCrudHooks<Loan>("pay-loans", loansApi, "Loan");
 export const useLoans = loans.useList;
 export const useSaveLoan = loans.useSave;
 export const useDeleteLoan = loans.useRemove;
+
+/** Payroll recoveries of one employee loan. */
+export function useLoanRecoveries(id: string | null) {
+  return useQuery({
+    queryKey: ["pay-loans", "recoveries", id],
+    queryFn: () => loansApi.recoveries(id as string),
+    enabled: !!id,
+  });
+}
+
+const loanTypes = makeCrudHooks<LoanType>("pay-loan-types", loanTypesApi, "Loan type");
+export const useLoanTypes = loanTypes.useList;
+export const useSaveLoanType = loanTypes.useSave;
+export const useDeleteLoanType = loanTypes.useRemove;
 
 const formulas = makeCrudHooks<Formula>("pay-formulas", formulasApi, "Formula");
 export const useFormulas = formulas.useList;

@@ -116,6 +116,7 @@ export const APP_MENU: MenuSection[] = [
           { label: "Consultants", to: "/payroll/consultants", permissions: ["hrm.payroll.view"] },
           { label: "Piece Output", to: "/payroll/piece-output", permissions: ["hrm.payroll.view", "hrm.payroll.manage"] },
           { label: "Advances", to: "/payroll/advances", permissions: ["hrm.payroll.view"] },
+          { label: "Employee Loans", to: "/payroll/loans", permissions: ["hrm.payroll.view"] },
           { label: "Attendance Deductions", to: "/payroll/attendance-deductions", permissions: ["hrm.payroll.view"] },
           { label: "Claims", to: "/payroll/claims", permissions: ["hrm.payroll.view"] },
           { label: "Labour Cost by Project", to: "/payroll/labour-cost", permissions: ["hrm.payroll.view"] },
