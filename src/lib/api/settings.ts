@@ -5,6 +5,7 @@
  * row, or a bare object). Callers resolve via `pickSettings`.
  */
 
+import { authAdminClient } from "@/lib/api/auth-admin-client";
 import { apiClient } from "@/lib/api/client";
 import { type Paginated } from "@/lib/api/drf";
 
@@ -22,19 +23,35 @@ export interface RegionalSettings {
   [key: string]: unknown;
 }
 
+/**
+ * ERP-owned company settings (erp-api /business/settings). Company identity (name, KRA PIN,
+ * contacts, country, logo) belongs to the accounts service and is read with useTenantProfile.
+ */
 export interface BusinessSettings {
   id?: number;
-  name?: string;
   legal_name?: string;
-  kra_pin?: string;
-  registration_number?: string;
-  email?: string;
-  phone?: string;
-  address?: string;
-  city?: string;
-  country?: string;
-  website?: string;
+  nssf_employer_no?: string;
+  shif_employer_no?: string;
+  postal_address?: string;
+  physical_address?: string;
+  financial_year_start_month?: number;
+  default_currency?: string;
+  timezone?: string;
+  date_format?: string;
+  time_format?: string;
   [key: string]: unknown;
+}
+
+/** The company identity kept in the accounts service, read-only in the ERP. */
+export interface TenantProfile {
+  name: string;
+  tax_pin?: string;
+  contact_email?: string;
+  contact_phone?: string;
+  website?: string;
+  country?: string;
+  timezone?: string;
+  logo_url?: string;
 }
 
 export interface BrandingSettings {
@@ -72,14 +89,30 @@ export function pickSettings<T>(data: T | Paginated<T> | T[] | null | undefined)
  */
 export const businessSettingsApi = {
   get: () => apiClient.get<BusinessSettings>(`/business/settings`),
+  // The API applies only the keys sent, so each tab saves just its own fields.
   save: (_id: number | undefined, data: Partial<BusinessSettings>) =>
-    apiClient.put<BusinessSettings>(`/business/settings`, {
-      ...data,
-      // Map UI field names onto erp-api's settings body.
-      contact_email: (data as Record<string, unknown>).contact_email ?? data.email,
-      contact_phone: (data as Record<string, unknown>).contact_phone ?? data.phone,
-      physical_address: (data as Record<string, unknown>).physical_address ?? data.address,
-    }),
+    apiClient.put<BusinessSettings>(`/business/settings`, data),
+};
+
+/** Company identity from the accounts service (tenant members may read their own tenant). */
+export const tenantProfileApi = {
+  get: async (): Promise<TenantProfile | null> => {
+    const id = authAdminClient.activeTenantId;
+    if (!id) return null;
+    const t = await authAdminClient.get<Record<string, unknown>>(`/admin/tenants/${id}`);
+    const s = (k: string) => (typeof t[k] === "string" && t[k] ? (t[k] as string) : undefined);
+    const meta = (t.metadata ?? {}) as Record<string, unknown>;
+    return {
+      name: s("name") ?? "",
+      tax_pin: s("tax_pin") ?? (typeof meta.kra_pin === "string" ? meta.kra_pin : undefined),
+      contact_email: s("contact_email"),
+      contact_phone: s("contact_phone"),
+      website: s("website"),
+      country: s("country"),
+      timezone: s("timezone"),
+      logo_url: s("logo_url"),
+    };
+  },
 };
 
 // NOTE: erp-api has no /core/regional-settings or /core/branding-settings
@@ -113,6 +146,9 @@ export const DOC_TYPES = [
   { value: "payroll_report", label: "Payroll Report" },
   { value: "p9", label: "P9 Tax Card" },
   { value: "p10a", label: "P10A Return" },
+  { value: "muster_roll", label: "Muster roll" },
+  { value: "payment_voucher", label: "Payment voucher" },
+  { value: "employee_number", label: "Staff number" },
 ] as const;
 
 export const RESET_FREQUENCIES = [

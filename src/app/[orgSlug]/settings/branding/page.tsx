@@ -10,7 +10,9 @@ import { useBrandingSettings } from "@/hooks/use-settings";
 import { useBranding } from "@/providers/branding-provider";
 import { MediaImage } from '@bengo-hub/shared-ui-lib/media';
 
-const EDITOR_URL = `${EXTERNAL_SERVICES.auth}/dashboard/settings?tab=branding`;
+// Tenant branding is edited on My organisation > Branding; /dashboard/settings is platform-only
+// and sent tenant admins to their profile instead.
+const EDITOR_URL = `${EXTERNAL_SERVICES.auth}/dashboard/my-tenant?tab=branding`;
 
 function Swatch({ label, color }: { label: string; color?: string }) {
   return (

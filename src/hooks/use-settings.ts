@@ -8,6 +8,7 @@ import {
   brandingSettingsApi,
   businessSequencesApi,
   businessSettingsApi,
+  tenantProfileApi,
   pickSettings,
   regionalSettingsApi,
   type BusinessSettings,
@@ -38,6 +39,11 @@ export function useSaveRegionalSettings() {
 export function useBusinessSettings() {
   const q = useQuery({ queryKey: ["settings", "business"], queryFn: businessSettingsApi.get });
   return { ...q, settings: pickSettings<BusinessSettings>(q.data) };
+}
+
+/** The company identity from the accounts service (read-only in the ERP). */
+export function useTenantProfile() {
+  return useQuery({ queryKey: ["settings", "tenant-profile"], queryFn: tenantProfileApi.get, staleTime: 5 * 60_000 });
 }
 
 export function useSaveBusinessSettings() {
