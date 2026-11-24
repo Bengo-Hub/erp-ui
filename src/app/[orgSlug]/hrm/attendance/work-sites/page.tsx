@@ -1,6 +1,6 @@
 "use client";
 
-import { Pencil, Plus, Trash2 } from "lucide-react";
+import { MapPin, Pencil, Plus, Trash2 } from "lucide-react";
 import { useMemo, useState } from "react";
 
 import { PermissionGate } from "@/components/auth/permission-gate";
@@ -28,19 +28,38 @@ export default function WorkSitesPage() {
 
   const columns: Column<WorkSite>[] = [
     { header: "Name", cell: (s) => <span className="font-medium">{s.name}</span> },
-    { header: "Branch", cell: (s) => (s.outlet_id ? (outletName.get(s.outlet_id) ?? "—") : "—") },
+    {
+      header: "Branch",
+      cell: (s) =>
+        s.outlet_id
+          ? (outletName.get(s.outlet_id) ?? (outlets.isLoading ? "…" : "Unknown branch"))
+          : <span className="text-muted-foreground">All branches</span>,
+    },
     {
       header: "Fence",
       cell: (s) =>
         s.ring && s.ring.length >= 3 ? `Outline, ${s.ring.length} corners` : `Circle, ${formatDistance(s.radius_m)} radius`,
     },
     {
-      header: "Centre",
-      cell: (s) => (
-        <span className="font-mono text-xs text-muted-foreground">
-          {s.center.lat.toFixed(5)}, {s.center.lng.toFixed(5)}
-        </span>
-      ),
+      header: "Location",
+      cell: (s) => {
+        const { lat, lng } = s.center;
+        return (
+          <div>
+            <a
+              href={`https://www.openstreetmap.org/?mlat=${lat}&mlon=${lng}#map=17/${lat}/${lng}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1 text-primary hover:underline"
+            >
+              <MapPin className="size-3.5" /> Open map
+            </a>
+            <span className="block font-mono text-[11px] text-muted-foreground">
+              {lat.toFixed(5)}, {lng.toFixed(5)}
+            </span>
+          </div>
+        );
+      },
     },
     { header: "Status", cell: (s) => (s.active ? <Badge variant="success">Active</Badge> : <Badge variant="secondary">Off</Badge>) },
     {

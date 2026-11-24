@@ -42,41 +42,90 @@ export interface WorkShiftSchedule {
   [key: string]: unknown;
 }
 
+/** erp-api ShiftRotation: each shift runs `run_duration run_unit`, then a break of
+ *  `break_duration break_unit` before the next shift in `shift_ids` takes over. */
 export interface ShiftRotation {
   id: number | string;
   title?: string;
-  name?: string;
-  description?: string;
-  shifts?: number[];
-  rotation_period?: string | number;
+  shift_ids?: string[];
+  /** Shift names in rotation order (list view only). */
+  shift_names?: string[];
+  run_duration?: number;
+  run_unit?: string;
+  break_duration?: number;
+  break_unit?: string;
+  next_change_date?: string | null;
   is_active?: boolean;
   [key: string]: unknown;
 }
 
+/** Units the rotation scheduler understands (singular or plural, any case). */
+export const ROTATION_UNITS = [
+  { value: "Day", label: "Day(s)" },
+  { value: "Week", label: "Week(s)" },
+  { value: "Month", label: "Month(s)" },
+  { value: "Year", label: "Year(s)" },
+] as const;
+
+/** A day off granted to one employee (erp-api OffDay). Public holidays are a separate model. */
 export interface OffDay {
   id: number | string;
-  name?: string;
+  employee_id?: string;
+  employee_name?: string;
+  employee_number?: string;
   date?: string;
-  description?: string;
-  is_recurring?: boolean;
+  reason?: string | null;
   [key: string]: unknown;
 }
 
+export type AttendanceRuleType =
+  | "late_policy"
+  | "overtime_policy"
+  | "absenteeism_policy"
+  | "work_hours_policy"
+  | "break_policy"
+  | "holiday_policy";
+
+export const RULE_TYPES: { value: AttendanceRuleType; label: string }[] = [
+  { value: "late_policy", label: "Lateness" },
+  { value: "overtime_policy", label: "Overtime" },
+  { value: "absenteeism_policy", label: "Absenteeism" },
+  { value: "work_hours_policy", label: "Work hours" },
+  { value: "break_policy", label: "Breaks" },
+  { value: "holiday_policy", label: "Holiday pay" },
+];
+
+/** erp-api AttendanceRule; decimals arrive as strings. */
 export interface AttendanceRule {
   id: number | string;
   name?: string;
-  description?: string;
-  late_grace_minutes?: string | number;
-  overtime_after_minutes?: string | number;
-  half_day_threshold?: string | number;
+  rule_type?: AttendanceRuleType;
+  description?: string | null;
   is_active?: boolean;
+  priority?: number;
+  late_threshold_minutes?: number;
+  late_penalty_type?: string;
+  late_penalty_value?: string;
+  overtime_threshold_hours?: string;
+  overtime_rate_multiplier?: string;
+  max_overtime_hours?: string;
+  standard_work_hours?: string;
+  min_work_hours?: string;
+  max_work_hours?: string;
+  consecutive_absent_threshold?: number;
+  monthly_absent_threshold?: number;
+  absenteeism_action?: string;
+  break_duration_minutes?: number;
+  holiday_pay_multiplier?: string;
   [key: string]: unknown;
 }
 
 export interface Timesheet {
   id: number | string;
   employee?: number | string;
+  employee_id?: string;
   employee_name?: string;
+  employee_number?: string;
   period_start?: string;
   period_end?: string;
   start_date?: string;
@@ -127,20 +176,29 @@ export interface AttendanceOverride {
   employee_id?: string;
   employee_name?: string;
   date?: string;
-  override_type?: string;
-  start_time?: string;
-  end_time?: string;
-  reason?: string;
+  override_type?: OverrideType;
+  work_shift_id?: string | null;
+  start_time?: string | null;
+  end_time?: string | null;
+  /** Work shift name and default hours, for rows the weekly shift planner wrote. */
+  shift_name?: string;
+  shift_start_time?: string;
+  shift_end_time?: string;
+  /** True for rows the weekly shift planner wrote. */
+  from_planner?: boolean;
+  reason?: string | null;
   status?: string;
   [key: string]: unknown;
 }
 
-export const OVERRIDE_TYPES = [
-  { value: "extra_shift", label: "Extra Shift" },
-  { value: "day_off", label: "Day Off" },
-  { value: "swap", label: "Shift Swap" },
-  { value: "custom", label: "Custom Hours" },
-] as const;
+/** erp-api staff_shift_override.override_type values. */
+export type OverrideType = "off_duty" | "manual_shift" | "half_day";
+
+export const OVERRIDE_TYPES: { value: OverrideType; label: string }[] = [
+  { value: "off_duty", label: "Day off" },
+  { value: "manual_shift", label: "Changed shift" },
+  { value: "half_day", label: "Half day" },
+];
 
 export interface ShiftAssignment {
   id: number | string;

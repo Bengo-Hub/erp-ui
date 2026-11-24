@@ -49,16 +49,43 @@ export default function DevicesPage() {
         </div>
       ),
     },
-    { header: "Branch", cell: (d) => (d.outlet_id ? (outletName.get(d.outlet_id) ?? "—") : "—") },
+    {
+      // The device's own branch, else its work site's branch, else the site's name.
+      header: "Branch",
+      cell: (d) => {
+        const branchId = d.outlet_id || d.site_outlet_id;
+        const branch = branchId ? (outletName.get(branchId) ?? (outlets.isLoading ? "…" : "Unknown branch")) : null;
+        if (branch) {
+          return (
+            <div>
+              <span>{branch}</span>
+              {d.work_site_name ? <span className="block text-xs text-muted-foreground">{d.work_site_name}</span> : null}
+            </div>
+          );
+        }
+        if (d.work_site_name) return d.work_site_name;
+        return <span className="text-muted-foreground">All branches</span>;
+      },
+    },
     { header: "Mode", cell: (d) => (d.mode === "ac" ? "Door access" : "Attendance") },
     { header: "Status", cell: (d) => <OnlineBadge device={d} /> },
     { header: "Last seen", cell: (d) => timeAgo(d.last_seen_at) },
     { header: "Users", className: "text-right tabular-nums", headerClassName: "text-right", cell: (d) => formatNumber(d.user_count ?? 0, 0) },
     {
-      header: "Punches today",
+      // Door-access devices send door events, not punches.
+      header: "Today",
       className: "text-right tabular-nums",
       headerClassName: "text-right",
-      cell: (d) => formatNumber(d.punch_count_today ?? 0, 0),
+      cell: (d) =>
+        d.mode === "ac" ? (
+          <span>
+            {formatNumber(d.event_count_today ?? 0, 0)} <span className="text-xs text-muted-foreground">door events</span>
+          </span>
+        ) : (
+          <span>
+            {formatNumber(d.punch_count_today ?? 0, 0)} <span className="text-xs text-muted-foreground">punches</span>
+          </span>
+        ),
     },
     { header: "Firmware", cell: (d) => <span className="text-xs text-muted-foreground">{d.firmware || "—"}</span> },
     {

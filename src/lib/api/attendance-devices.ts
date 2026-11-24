@@ -24,6 +24,11 @@ export interface AttendanceDevice {
   firmware?: string | null;
   user_count?: number;
   punch_count_today?: number;
+  /** Door events today; an access-control (mode "ac") device reports these instead of punches. */
+  event_count_today?: number;
+  /** The device's work site name and that site's branch, for devices without a branch of their own. */
+  work_site_name?: string;
+  site_outlet_id?: string | null;
   online?: boolean;
   /** Addresses allowed to push as this device; empty means any address. */
   allowed_cidrs?: string[];

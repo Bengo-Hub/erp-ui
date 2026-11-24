@@ -48,13 +48,26 @@ export default function TimesheetsPage() {
   const reject = useRejectTimesheet();
   const { results, count } = normalizeList<Timesheet>(data);
 
+  const empName = useMemo(() => {
+    const m = new Map(employees.map((o) => [o.value, o.label]));
+    return (t: Timesheet) => {
+      const id = String(t.employee_id ?? t.employee ?? "");
+      return t.employee_name || (id ? m.get(id) : undefined) || "—";
+    };
+  }, [employees]);
+
   const isPending = (t: Timesheet) => ["submitted", "pending"].includes((t.status || "").toLowerCase());
   const isDraft = (t: Timesheet) => ["draft", ""].includes((t.status || "").toLowerCase());
 
   const columns: Column<Timesheet>[] = [
     {
       header: "Employee",
-      cell: (t) => <span className="font-medium">{t.employee_name || t.employee || "—"}</span>,
+      cell: (t) => (
+        <div>
+          <span className="font-medium">{empName(t)}</span>
+          {t.employee_number ? <span className="block text-xs text-muted-foreground">{t.employee_number}</span> : null}
+        </div>
+      ),
     },
     { header: "Period", cell: (t) => `${formatDate(t.period_start ?? t.start_date)} – ${formatDate(t.period_end ?? t.end_date)}` },
     { header: "Total Hours", cell: (t) => t.total_hours ?? "—" },

@@ -33,6 +33,8 @@ export interface CrudFieldDef {
   step?: string;
   /** Full-width in the grid. */
   span2?: boolean;
+  /** Show (and require) the field only when this returns true for the current form values. */
+  showIf?: (values: Record<string, unknown>) => boolean;
   /**
    * Escape hatch: render a fully custom control. Receives the field def, current value
    * and a setter. When provided, it overrides `type`.
@@ -183,8 +185,10 @@ export function CrudManager<T extends { id: number | string }>({
   const setField = (name: string, value: unknown) =>
     setValues((v) => ({ ...v, [name]: value }));
 
+  const visibleFields = fields.filter((f) => !f.showIf || f.showIf(values));
+
   const submit = () => {
-    const missing = fields.find((f) => f.required && !String(values[f.name] ?? "").trim());
+    const missing = visibleFields.find((f) => f.required && !String(values[f.name] ?? "").trim());
     if (missing) return;
     onSave({ id: editing?.id, data: values }, () => setDialogOpen(false));
   };
@@ -258,7 +262,7 @@ export function CrudManager<T extends { id: number | string }>({
         }
       >
         <div className="grid gap-4 sm:grid-cols-2">
-          {fields.map((f) => (
+          {visibleFields.map((f) => (
             <Field
               key={f.name}
               label={f.label}
