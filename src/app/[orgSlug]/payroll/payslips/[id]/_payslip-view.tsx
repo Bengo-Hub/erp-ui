@@ -78,7 +78,8 @@ export function PayslipView({ payslip }: { payslip: Payslip }) {
             {hasEarningLines ? (
               <>
                 <LineRows lines={payslip.earnings} />
-                <LineRows lines={payslip.benefits} />
+                {/* Benefits only when there are some: an empty list printed a stray "None" under the earnings. */}
+                {!!payslip.benefits?.length && <LineRows lines={payslip.benefits} />}
               </>
             ) : (
               <StatRow label="Basic Salary" value={formatMoney(payslip.basic_salary)} />

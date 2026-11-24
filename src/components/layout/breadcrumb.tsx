@@ -16,9 +16,11 @@ export function Breadcrumb() {
 
   const crumbs = segments.map((seg, i) => {
     const to = `/${orgSlug}/${segments.slice(0, i + 1).join("/")}`;
-    const label = seg
-      .replace(/-/g, " ")
-      .replace(/\b\w/g, (c) => c.toUpperCase());
+    // A record id (uuid or number) is not a place name: show "Details" instead of the raw id.
+    const isId = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(seg) || /^\d+$/.test(seg);
+    const label = isId
+      ? "Details"
+      : seg.replace(/-/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
     return { to, label, last: i === segments.length - 1 };
   });
 

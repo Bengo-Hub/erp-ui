@@ -224,18 +224,21 @@ test.describe('desktop', () => {
                 // Payslips are grouped by month: expand the newest month, then open its first payslip.
                 // The month rows are clickable divs; the expanded month is the page's only table.
                 await page
-                    .locator('main div.cursor-pointer')
-                    .filter({ hasText: /\b20\d\d\b/ })
+                    .locator('main')
+                    .getByText(/^(January|February|March|April|May|June|July|August|September|October|November|December) 20\d\d$/)
+                    .locator('visible=true')
                     .first()
-                    .click()
+                    .click({ timeout: 15_000 })
                     .catch(() => {});
                 await settle(page);
                 row = page.locator('main table tbody tr:has(td:nth-child(2))').first();
             }
             test.skip(!(await row.isVisible().catch(() => false)), `no records on ${list}`);
             const link = row.getByRole('link').first();
-            if (await link.isVisible().catch(() => false)) await link.click();
-            else await row.click();
+            // Bounded clicks: an unbounded click waits for the whole test timeout when something
+            // covers the row; the row's own click handler still gets a dispatched event.
+            if (await link.isVisible().catch(() => false)) await link.click({ timeout: 15_000 });
+            else await row.click({ timeout: 15_000 }).catch(() => row.dispatchEvent('click'));
             await page.waitForURL((u) => !u.pathname.endsWith(`/${list}`), { timeout: 15_000 }).catch(() => {});
             await settle(page);
             await capture(page, name, false);
