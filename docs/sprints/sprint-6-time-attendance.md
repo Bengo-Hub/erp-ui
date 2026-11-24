@@ -82,7 +82,31 @@ follows one inherit and customise model (erp-api `docs/payroll-settings.md`):
 - **Treasury:** approved statutory rate changes in treasury are applied to the platform formulas on
   deploy and on demand (platform owner), as a new version from treasury's effective date.
 
+## Screenshot review fixes (2026-11-24, second pass)
+- Attendance pages realigned with erp-api: off days are per employee (employee, date, reason; the
+  old form always failed), rules have a type and show the setting for it, rotations list their
+  shifts and run length, overrides show Day off / Changed shift / Half day with hours and "Set in
+  shift planner", timesheets show the employee, work sites and devices show their branch and an
+  Open map link. Rules, rotations and off days gained update routes (edit used to return 405).
+- Error toasts show the API message or a plain sentence, never "Request failed with status code".
+- Employee profile shows basic salary and job group; date of birth and SHIF number are saved.
+- Several employees in one organisation may now have a blank national ID (partial unique index).
+- Reports with complete default filters run on open; NSSF, NHIF/SHA, bank net pay and variance read
+  the API's field names; NITA comes from configuration; payroll returns honour department and
+  region; variance compares with the previous calendar month.
+- Breadcrumbs show "Details" for record ids; labour cost opens on the newest processed month.
+- erp-api CI runs every test, including the database ones, on each push (test.yml).
+
 ## Open items
+- Public holidays have no screen; erp-api has only GET/POST `/hrm/leave/holidays`.
+- Shift overrides cannot be edited or deleted (API and page).
+- The SHIF KES 300 monthly minimum cannot be expressed as a formula band, so it is not applied or
+  synced from Treasury.
+- PAYE band 4 ends at KES 799,999 on the platform formula; the Finance Act and Treasury say 800,000.
+  The engine golden master depends on the current value, so the change needs a deliberate update.
+- The brochure keeps a four-week go-live plan that the user guide does not state (owner to confirm).
+- Shared SearchableCombobox has no Up/Down arrow navigation (Tab and Escape only).
+- zod 3 to 4 and maplibre-gl 5 to 6 upgrades are scheduled as their own sprint.
 - Treasury publishes no event when a statutory rate is approved, so erp-api pulls the rates; the
   proposed `treasury.statutory_rate.approved` event is described in erp-api `docs/payroll-settings.md`.
 - Opt-in earnings and deductions (house allowance, SACCO, HELB and so on) are configured per
