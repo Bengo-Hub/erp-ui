@@ -15,6 +15,19 @@ export default defineConfig({
     {
       name: "chromium",
       use: { ...devices["Desktop Chrome"] },
+      testIgnore: /docs-capture\/.*/,
+    },
+    // docs-capture signs in once (e2e/docs-capture/auth.setup.ts) and every capture spec reuses
+    // the saved session. Run against the live app with E2E_BASE_URL set.
+    {
+      name: "docs-capture-setup",
+      testMatch: /docs-capture\/auth\.setup\.ts/,
+    },
+    {
+      name: "docs-capture",
+      use: { ...devices["Desktop Chrome"], storageState: "e2e/docs-capture/.auth/demo-tenant.json" },
+      testMatch: /docs-capture\/.*\.spec\.ts/,
+      dependencies: ["docs-capture-setup"],
     },
   ],
   // Auto-start the production standalone server for headless smoke runs unless an
