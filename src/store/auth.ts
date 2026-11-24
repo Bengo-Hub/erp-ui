@@ -17,6 +17,11 @@ const AUTH_STORAGE_KEY = 'erp-auth-storage';
 /** True from the first logout call until the browser leaves for the SSO logout page. */
 let loggingOut = false;
 
+/** Whether a logout is under way; SSO redirects must not start while it is. */
+export function isLoggingOut(): boolean {
+    return loggingOut;
+}
+
 // Cookie session (fleet plan G11): tokens an earlier build stored are dropped before the store
 // loads; from here on only the profile is persisted.
 if (cookieMode()) scrubStoredSession(AUTH_STORAGE_KEY);
@@ -107,6 +112,9 @@ export const useAuthStore = create<AuthState>()(
             },
 
             redirectToSSO: async (orgSlug, returnTo) => {
+                // A logout is navigating to the SSO logout page; starting a sign-in now would
+                // cancel it and sign the user straight back in.
+                if (loggingOut) return;
                 set({ status: 'loading', error: null });
                 try {
                     const verifier = generateCodeVerifier();

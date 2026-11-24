@@ -10,7 +10,7 @@
 import { createCookieSession, type CookieSession, type CookieSessionState } from '@bengo-hub/shared-ui-lib/auth';
 import { apiClient } from '@/lib/api/client';
 import { authAdminClient } from '@/lib/api/auth-admin-client';
-import { useAuthStore } from '@/store/auth';
+import { isLoggingOut, useAuthStore } from '@/store/auth';
 import { useOutletFilterStore } from '@/store/outlet-filter';
 
 const SSO_BASE_URL = (process.env.NEXT_PUBLIC_SSO_URL || process.env.NEXT_PUBLIC_AUTH_API_URL || 'https://sso.codevertexafrica.com').replace(/\/$/, '');
@@ -37,6 +37,9 @@ function onChange(s: CookieSessionState | null) {
     const store = useAuthStore.getState();
     if (!s) {
         setClientsToken(null);
+        // This tab is logging out: leave the store alone so the AuthProvider does not start an
+        // SSO sign-in that would cancel the logout navigation.
+        if (isLoggingOut()) return;
         if (store.session || store.status === 'authenticated') useAuthStore.setState({ session: null, status: 'idle' });
         return;
     }
