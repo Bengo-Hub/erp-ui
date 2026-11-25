@@ -10,6 +10,9 @@ again, that one organisation can never reach another, and that standard settings
 | Leave | Applying works again: the server counts the days per leave type (working or calendar days), staff file and cancel their own, nobody approves their own. Over-balance requests are refused or warned per type. A decision on the Approvals page reaches the leave. Checked through the real form. | erp-api 932751c, 4a86076; erp-ui f67c5fb, aa0c50c |
 | Leave and attendance | Public holidays page; overrides can be edited and deleted | erp-api 5cb44e4; erp-ui 9b91112 |
 | Payroll | Opt-in earnings and deductions per employee; SHIF monthly minimum of KES 300 | erp-api 4ce6da0; erp-ui 8edf256 |
+| Payroll | PAYE band 4 ends at KES 800,000 from the December 2026 payroll (earlier months keep 799,999). P9, P9A, P10 and P10A declare taxable gross | erp-api 43f4a16 |
+| Forms | Salary tab loads and keeps reliefs, payment method and phone; job group, middle name and basic salary from the employee form are stored; project allocations, appraisal template and question edit and delete, job posting status and delete, and claim description save. A course edit keeps its capacity and an edited disapproved advance stays inactive | erp-api 6745198 |
+| Payroll | Pay summary on the employee page: statutory, automatic and assigned items with the preview's amounts. The contract form starts from the payroll salary and says when the two differ | erp-api eada5dd |
 | Employees | A join date can be cleared | erp-api 3d60d09 |
 | Security | Role and assignment routes are limited to the caller's organisation; built-in roles are read-only to tenants. Proven by a failing test first | erp-api 0549548 |
 | Roles | The built-in staff role no longer manages everyone's leave | erp-api 4a86076 |
@@ -17,9 +20,6 @@ again, that one organisation can never reach another, and that standard settings
 | Theme | Dark styles follow the ERP theme instead of the computer's dark mode | erp-ui f11e0c6 |
 
 ## In progress
-- Payroll batch, committed and not yet pushed: PAYE band 4 to KES 800,000 from December 2026, taxable
-  gross on the PAYE returns, salary and job group saving, the pay summary per employee (statutory items
-  included) and one salary shared with contracts.
 - Grant rules: nobody grants more than they hold or changes their own roles; built-in role codes are
   reserved; the last administrator cannot be removed.
 - Tenant checks on ids sent in request bodies (recruitment first, then the rest).
@@ -36,6 +36,11 @@ again, that one organisation can never reach another, and that standard settings
 ## Open
 - A loan can still take net pay below zero (an assigned deduction cannot).
 - SACCO, HELB and similar remittance schedules do not exist.
+- NSSF, SHIF, NITA and Housing Levy schedules and P10 Sheet M print the payslip gross, which includes
+  non-taxable pay. KRA and SHA define those bases by regular pay, so the base needs an owner decision.
+- A salary change cannot be scheduled for a later date (salary details have no effective date).
+- Job group grade and salary range, job title code, department description, contract notes and the
+  date on a claim line have no storage, so the forms no longer ask for them.
 - Leave requests have no half days; a request cannot be edited, only cancelled.
 - The top bar title shortens to "Co..." at 820 px.
 - Maskani, ISP Billing and Mail are not in the drawer until their links are confirmed.
