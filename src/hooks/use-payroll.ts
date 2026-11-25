@@ -584,6 +584,16 @@ export function useProjectAllocations(params?: ListParams) {
     });
 }
 
+/** What a month's payroll applies to one employee. Always recomputed: pay, loans and switches change it. */
+export function useEmployeePaySummary(employeeId: string, month?: string) {
+    return useQuery({
+        queryKey: [KEY, 'pay-summary', employeeId, month ?? 'current'],
+        queryFn: () => payrollApi.employeePaySummary(employeeId, month),
+        staleTime: 0,
+        refetchOnMount: 'always'
+    });
+}
+
 export function useSaveProjectAllocation() {
     const qc = useQueryClient();
     return useMutation({

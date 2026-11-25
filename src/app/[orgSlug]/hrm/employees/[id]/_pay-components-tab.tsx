@@ -280,7 +280,7 @@ export function PayComponentsTab({ employeeId }: { employeeId: string }) {
                             <Input type="number" step="0.01" min="0" value={form.amount} onChange={(e) => set('amount', e.target.value)} />
                         </Field>
                     )}
-                    <Field label={referenceLabel || 'Reference'} required={referenceRequired} help={referenceRequired ? 'Shown on the remittance schedule for this deduction.' : 'Optional.'}>
+                    <Field label={referenceLabel || 'Reference'} required={referenceRequired} help={referenceRequired ? 'Kept with the assignment so the deduction can be matched to the right account.' : 'Optional.'}>
                         <Input value={form.reference} onChange={(e) => set('reference', e.target.value)} />
                     </Field>
                     <Field label="From month" help="Leave blank to apply from the next payroll run.">

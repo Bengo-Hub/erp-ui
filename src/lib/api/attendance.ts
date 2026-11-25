@@ -309,7 +309,6 @@ export const attendanceApi = {
             }),
         // No timesheet-level update in erp-api; route through entry upsert.
         update: (id: number | string, data: Partial<Timesheet>) => apiClient.put<Timesheet>(`${ATT}/timesheets/${id}/entries`, data),
-        remove: (id: number | string) => apiClient.delete<void>(`${ATT}/timesheets/${id}/`),
         upsertEntry: (id: number | string, data: Partial<TimesheetEntry>) => apiClient.put<TimesheetEntry>(`${ATT}/timesheets/${id}/entries`, data),
         submit: (id: number | string) => apiClient.post<Timesheet>(`${ATT}/timesheets/${id}/submit/`, {}),
         approve: (id: number | string) => apiClient.post<Timesheet>(`${ATT}/timesheets/${id}/approve/`, {}),

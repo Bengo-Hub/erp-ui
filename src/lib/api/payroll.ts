@@ -195,6 +195,9 @@ export const payrollApi = {
     // Labour cost by project for a payroll month (the payroll event's allocation rules).
     labourCost: (month: string) => apiClient.get<LabourCostReport>(`${HRM}/payroll/labour-cost`, { month }),
 
+    // What a month's payroll applies to one employee (preview engine, nothing stored).
+    employeePaySummary: (employeeId: string, month?: string) => apiClient.get<PaySummary>(`${HRM}/payroll/employees/${employeeId}/pay-summary`, { month }),
+
     // Claims
     listClaims: (params?: ListParams) => apiClient.get<Paginated<Claim> | Claim[]>(`${HRM}/payroll/claims/`, params),
     getClaim: (id: number | string) => apiClient.get<Claim>(`${HRM}/payroll/claims/${id}/`),
@@ -243,10 +246,43 @@ export const payrollApi = {
 
     // Employee/consultant ↔ project allocations.
     listAllocations: (params?: ListParams) => apiClient.get<{ results: ProjectAllocation[]; count: number } | ProjectAllocation[]>(`${HRM}/project-allocations`, params),
-    createAllocation: (data: Partial<ProjectAllocation>) => apiClient.post<ProjectAllocation>(`${HRM}/project-allocations`, data),
-    updateAllocation: (id: number | string, data: Partial<ProjectAllocation>) => apiClient.put<ProjectAllocation>(`${HRM}/project-allocations/${id}`, data),
+    createAllocation: (data: Partial<ProjectAllocation>) => apiClient.post<ProjectAllocation>(`${HRM}/project-allocations`, allocationBody(data)),
+    updateAllocation: (id: number | string, data: Partial<ProjectAllocation>) => apiClient.put<ProjectAllocation>(`${HRM}/project-allocations/${id}`, allocationBody(data)),
     deleteAllocation: (id: number | string) => apiClient.delete<void>(`${HRM}/project-allocations/${id}`)
 };
+
+/** One thing payroll applies to an employee for a month. */
+export interface PaySummaryLine {
+    code: string;
+    label: string;
+    kind: string;
+    origin: 'statutory' | 'automatic' | 'assigned';
+    employee_amount?: string;
+    employer_amount?: string;
+    /** A statutory item the organisation switched off. */
+    off?: boolean;
+}
+
+export interface PaySummary {
+    period: string;
+    state: 'ok' | 'no_salary' | 'not_on_run' | 'not_computed';
+    reason?: string;
+    lines: PaySummaryLine[];
+    gross_pay?: string;
+    net_pay?: string;
+    notes?: string[];
+}
+
+/** erp-api takes allocation_percent as a string and fixed_amount as a number (form inputs give
+ *  strings, and a blank fixed amount must be left out or the body is refused). */
+function allocationBody(data: Partial<ProjectAllocation>) {
+    const fixed = data.fixed_amount as unknown;
+    return {
+        ...data,
+        allocation_percent: data.allocation_percent == null ? undefined : String(data.allocation_percent),
+        fixed_amount: fixed === '' || fixed == null ? undefined : Number(fixed)
+    };
+}
 
 export interface ProjectAllocation {
     id: number | string;

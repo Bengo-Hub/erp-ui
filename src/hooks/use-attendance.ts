@@ -125,18 +125,6 @@ export function useSaveTimesheet() {
     });
 }
 
-export function useDeleteTimesheet() {
-    const qc = useQueryClient();
-    return useMutation({
-        mutationFn: (id: number | string) => attendanceApi.timesheets.remove(id),
-        onSuccess: () => {
-            qc.invalidateQueries({ queryKey: [KEY] });
-            toast.success('Timesheet deleted');
-        },
-        onError: (e) => toast.error(extractApiError(e, 'Failed to delete timesheet'))
-    });
-}
-
 export const useSubmitTimesheet = makeActionHook(KEY, (id) => attendanceApi.timesheets.submit(id), 'Timesheet submitted', 'Failed to submit timesheet');
 export const useApproveTimesheet = makeActionHook(KEY, (id) => attendanceApi.timesheets.approve(id), 'Timesheet approved', 'Failed to approve timesheet');
 

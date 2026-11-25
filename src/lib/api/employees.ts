@@ -1,133 +1,131 @@
 /** erp-api HRM employee endpoints (/hrm/employees, salary, bank, kin, contact). */
 
-import { apiClient } from "@/lib/api/client";
-import { type ListParams, type Paginated } from "@/lib/api/drf";
+import { apiClient } from '@/lib/api/client';
+import { type ListParams, type Paginated } from '@/lib/api/drf';
 
-const EMP = "/hrm";
-const HRM = "/hrm";
+const EMP = '/hrm';
+const HRM = '/hrm';
 
 export interface Employee {
-  /** erp-api employee id is a UUID string. */
-  id: number | string;
-  tenant_id?: string;
-  user_id?: string | null;
-  pin_no?: string;
-  shif_or_nhif_number?: string;
-  nssf_no?: string;
-  residential_status?: string;
-  terminated?: boolean;
-  deleted?: boolean;
-  created_at?: string;
-  updated_at?: string;
-  employee_number?: string;
-  first_name?: string;
-  last_name?: string;
-  middle_name?: string;
-  email?: string;
-  phone_number?: string;
-  national_id?: string;
-  kra_pin?: string;
-  gender?: string;
-  date_of_birth?: string;
-  job_title?: number | { id: number; name: string } | null;
-  job_title_name?: string;
-  department?: number | { id: number; name: string } | null;
-  department_name?: string;
-  job_group?: number | { id: number; name: string } | null;
-  outlet?: string | null;
-  outlet_id?: string | null;
-  employment_type?: string;
-  employment_status?: string;
-  status?: string;
-  is_active?: boolean;
-  date_joined?: string;
-  basic_salary?: string | number;
-  // Reporting line (surfaced from hr_details by the enriched employee view). `manager` mirrors
-  // reports_to_id so the org-chart can build the tree from a single, stable field.
-  department_id?: string | null;
-  job_title_id?: string | null;
-  manager?: string | null;
-  reports_to_id?: string | null;
-  reports_to_name?: string;
-  // Governance flags — a person can be a director, a shareholder, or both
-  // (shareholder-only is valid). Sent verbatim on create/update.
-  is_director?: boolean;
-  is_shareholder?: boolean;
-  [key: string]: unknown;
+    /** erp-api employee id is a UUID string. */
+    id: number | string;
+    tenant_id?: string;
+    user_id?: string | null;
+    pin_no?: string;
+    shif_or_nhif_number?: string;
+    nssf_no?: string;
+    residential_status?: string;
+    terminated?: boolean;
+    deleted?: boolean;
+    created_at?: string;
+    updated_at?: string;
+    employee_number?: string;
+    first_name?: string;
+    last_name?: string;
+    middle_name?: string;
+    email?: string;
+    phone_number?: string;
+    national_id?: string;
+    kra_pin?: string;
+    gender?: string;
+    date_of_birth?: string;
+    job_title?: number | { id: number; name: string } | null;
+    job_title_name?: string;
+    department?: number | { id: number; name: string } | null;
+    department_name?: string;
+    job_group?: number | { id: number; name: string } | null;
+    outlet?: string | null;
+    outlet_id?: string | null;
+    employment_type?: string;
+    employment_status?: string;
+    status?: string;
+    is_active?: boolean;
+    date_joined?: string;
+    basic_salary?: string | number;
+    // Reporting line (surfaced from hr_details by the enriched employee view). `manager` mirrors
+    // reports_to_id so the org-chart can build the tree from a single, stable field.
+    department_id?: string | null;
+    job_title_id?: string | null;
+    manager?: string | null;
+    reports_to_id?: string | null;
+    reports_to_name?: string;
+    // Governance flags — a person can be a director, a shareholder, or both
+    // (shareholder-only is valid). Sent verbatim on create/update.
+    is_director?: boolean;
+    is_shareholder?: boolean;
+    [key: string]: unknown;
 }
 
 export interface EmployeeBankAccount {
-  id: number;
-  employee?: number;
-  bank_name?: string;
-  branch_name?: string;
-  account_number?: string;
-  account_name?: string;
-  is_primary?: boolean;
+    id: number;
+    employee?: number;
+    bank_name?: string;
+    branch_name?: string;
+    account_number?: string;
+    account_name?: string;
+    is_primary?: boolean;
 }
 
 export interface EmployeeNextOfKin {
-  id: number;
-  employee?: number;
-  name?: string;
-  relationship?: string;
-  phone_number?: string;
-  email?: string;
-  address?: string;
+    id: number;
+    employee?: number;
+    name?: string;
+    relationship?: string;
+    phone_number?: string;
+    email?: string;
+    address?: string;
 }
 
 export interface EmployeeEducation {
-  id: string | number;
-  employee_id?: string;
-  institution?: string;
-  qualification?: string;
-  field_of_study?: string;
-  grade?: string;
-  certificate_url?: string;
-  start_date?: string;
-  end_date?: string;
+    id: string | number;
+    employee_id?: string;
+    institution?: string;
+    qualification?: string;
+    field_of_study?: string;
+    grade?: string;
+    certificate_url?: string;
+    start_date?: string;
+    end_date?: string;
 }
 
 export interface EmploymentHistory {
-  id: string | number;
-  employee_id?: string;
-  employer?: string;
-  designation?: string;
-  reason_for_leaving?: string;
-  start_date?: string;
-  end_date?: string;
+    id: string | number;
+    employee_id?: string;
+    employer?: string;
+    designation?: string;
+    reason_for_leaving?: string;
+    start_date?: string;
+    end_date?: string;
 }
 
 export interface EmployeeDisciplinary {
-  id: string | number;
-  employee_id?: string;
-  category?: string;
-  description?: string;
-  action_taken?: string;
-  status?: string;
-  document_url?: string;
-  incident_date?: string;
+    id: string | number;
+    employee_id?: string;
+    category?: string;
+    description?: string;
+    action_taken?: string;
+    status?: string;
+    document_url?: string;
+    incident_date?: string;
 }
 
 export interface EmployeeSalaryDetail {
-  id?: number;
-  employee?: number;
-  basic_salary?: string | number;
-  currency?: string;
-  pay_frequency?: string;
-  payment_method?: string;
-  effective_date?: string;
-  /** PAYE category: primary | secondary | none. Drives which PAYE table the engine applies. */
-  income_tax?: string;
-  /** KRA relief inputs (monthly actual amounts; the engine applies the statutory caps). */
-  insurance_premium?: string | number;
-  pension_contribution?: string | number;
-  mortgage_interest?: string | number;
-  disability_exempt?: boolean;
-  /** Preferred net-pay disbursement channel + mobile-money number. */
-  preferred_payout_method?: string;
-  payout_phone?: string;
-  [key: string]: unknown;
+    id?: number;
+    employee?: number;
+    basic_salary?: string | number;
+    currency?: string;
+    pay_frequency?: string;
+    /** PAYE category: primary | secondary | none. Drives which PAYE table the engine applies. */
+    income_tax?: string;
+    /** KRA relief inputs (monthly actual amounts; the engine applies the statutory caps). */
+    insurance_premium?: string | number;
+    pension_contribution?: string | number;
+    mortgage_interest?: string | number;
+    disability_exempt?: boolean;
+    /** Preferred net-pay disbursement channel + mobile-money number. */
+    preferred_payout_method?: string;
+    payout_phone?: string;
+    [key: string]: unknown;
 }
 
 /**
@@ -138,206 +136,162 @@ export interface EmployeeSalaryDetail {
  * rest are ignored server-side but harmless to send.
  */
 function toEmployeePayload(data: Partial<Employee>): Record<string, unknown> {
-  const out: Record<string, unknown> = { ...data };
-  // UI form uses kra_pin; erp-api field is pin_no.
-  if (out.kra_pin != null && out.pin_no == null) out.pin_no = out.kra_pin;
-  if (out.outlet != null && out.outlet_id == null) out.outlet_id = out.outlet;
-  return out;
+    const out: Record<string, unknown> = { ...data };
+    // UI form uses kra_pin; erp-api field is pin_no.
+    if (out.kra_pin != null && out.pin_no == null) out.pin_no = out.kra_pin;
+    if (out.outlet != null && out.outlet_id == null) out.outlet_id = out.outlet;
+    return out;
 }
 
 /** An uploaded employee document (contract, ID, certificate, generated PDF, …). */
 export interface EmployeeDocument {
-  id: string | number;
-  employee_id?: string;
-  title?: string;
-  document_type?: string;
-  file_name?: string;
-  content_type?: string;
-  created_at?: string;
-  uploaded_at?: string;
-  [key: string]: unknown;
+    id: string | number;
+    employee_id?: string;
+    title?: string;
+    document_type?: string;
+    file_name?: string;
+    content_type?: string;
+    created_at?: string;
+    uploaded_at?: string;
+    [key: string]: unknown;
 }
 
 /** Employment-contract terms body (saved HTML or an auto-generated default). */
 export interface ContractTermsResponse {
-  terms_html: string;
+    terms_html: string;
 }
 
 /** Per-row result from the bulk CSV import (erp-api POST /hrm/employees/import). */
 export interface EmployeeImportRow {
-  row: number;
-  employee_number?: string;
-  email?: string;
-  status: "created" | "error";
-  error?: string;
+    row: number;
+    employee_number?: string;
+    email?: string;
+    status: 'created' | 'error';
+    error?: string;
 }
 export interface EmployeeImportResult {
-  total: number;
-  created: number;
-  failed: number;
-  results: EmployeeImportRow[];
+    total: number;
+    created: number;
+    failed: number;
+    results: EmployeeImportRow[];
 }
 
 export const employeesApi = {
-  list: (params?: ListParams, signal?: AbortSignal) =>
-    apiClient.get<Paginated<Employee> | Employee[]>(`${EMP}/employees/`, params, { signal }),
-  get: (id: number | string) => apiClient.get<Employee>(`${EMP}/employees/${id}/`),
-  create: (data: Partial<Employee>) =>
-    apiClient.post<Employee>(`${EMP}/employees/`, toEmployeePayload(data)),
-  // PUT/PATCH /hrm/employees/{id} (erp-api EmployeesHandler.Update): partial fields, including
-  // work_shift_id ("" clears the standard shift).
-  update: (id: number | string, data: Partial<Employee>) =>
-    apiClient.put<Employee>(`${EMP}/employees/${id}/`, toEmployeePayload(data)),
-  patch: (id: number | string, data: Partial<Employee>) =>
-    apiClient.patch<Employee>(`${EMP}/employees/${id}/`, toEmployeePayload(data)),
-  remove: (id: number | string) => apiClient.delete<void>(`${EMP}/employees/${id}/`),
-  // Exit / reinstate: erp-api records terminated_at on the change to terminated and clears it
-  // on reinstatement.
-  setTerminated: (id: number | string, terminated: boolean) =>
-    apiClient.patch<Employee>(`${EMP}/employees/${id}/`, { terminated }),
-  // Re-issues SLUG/YYYY/### staff numbers to every employee of the tenant (admin action).
-  renumber: () => apiClient.post<{ status: string; renumbered: number }>(`${EMP}/employees/renumber`, {}),
+    list: (params?: ListParams, signal?: AbortSignal) => apiClient.get<Paginated<Employee> | Employee[]>(`${EMP}/employees/`, params, { signal }),
+    get: (id: number | string) => apiClient.get<Employee>(`${EMP}/employees/${id}/`),
+    create: (data: Partial<Employee>) => apiClient.post<Employee>(`${EMP}/employees/`, toEmployeePayload(data)),
+    // PUT/PATCH /hrm/employees/{id} (erp-api EmployeesHandler.Update): partial fields, including
+    // work_shift_id ("" clears the standard shift).
+    update: (id: number | string, data: Partial<Employee>) => apiClient.put<Employee>(`${EMP}/employees/${id}/`, toEmployeePayload(data)),
+    patch: (id: number | string, data: Partial<Employee>) => apiClient.patch<Employee>(`${EMP}/employees/${id}/`, toEmployeePayload(data)),
+    remove: (id: number | string) => apiClient.delete<void>(`${EMP}/employees/${id}/`),
+    // Exit / reinstate: erp-api records terminated_at on the change to terminated and clears it
+    // on reinstatement.
+    setTerminated: (id: number | string, terminated: boolean) => apiClient.patch<Employee>(`${EMP}/employees/${id}/`, { terminated }),
+    // Re-issues SLUG/YYYY/### staff numbers to every employee of the tenant (admin action).
+    renumber: () => apiClient.post<{ status: string; renumbered: number }>(`${EMP}/employees/renumber`, {}),
 
-  // Bulk CSV import → POST /hrm/employees/import (erp-api parses CSV, creates each
-  // row independently, returns a per-row summary).
-  importEmployees: (file: File) => {
-    const fd = new FormData();
-    fd.append("file", file);
-    return apiClient.post<EmployeeImportResult>(`${EMP}/employees/import`, fd);
-  },
+    // Bulk CSV import → POST /hrm/employees/import (erp-api parses CSV, creates each
+    // row independently, returns a per-row summary).
+    importEmployees: (file: File) => {
+        const fd = new FormData();
+        fd.append('file', file);
+        return apiClient.post<EmployeeImportResult>(`${EMP}/employees/import`, fd);
+    },
 
-  // Bank accounts
-  listBankAccounts: (employeeId: number | string) =>
-    apiClient.get<EmployeeBankAccount[] | Paginated<EmployeeBankAccount>>(`${HRM}/bank-accounts/`, {
-      emp_id: employeeId,
-    }),
-  addBankAccount: (employeeId: number | string, data: Partial<EmployeeBankAccount>) =>
-    apiClient.post<EmployeeBankAccount>(`${HRM}/bank-accounts/`, { ...data, employee: employeeId }),
-  updateBankAccount: (id: number, data: Partial<EmployeeBankAccount>) =>
-    apiClient.put<EmployeeBankAccount>(`${HRM}/bank-accounts/${id}/`, data),
-  removeBankAccount: (id: number) => apiClient.delete<void>(`${HRM}/bank-accounts/${id}/`),
+    // Bank accounts
+    listBankAccounts: (employeeId: number | string) =>
+        apiClient.get<EmployeeBankAccount[] | Paginated<EmployeeBankAccount>>(`${HRM}/bank-accounts/`, {
+            emp_id: employeeId
+        }),
+    addBankAccount: (employeeId: number | string, data: Partial<EmployeeBankAccount>) => apiClient.post<EmployeeBankAccount>(`${HRM}/bank-accounts/`, { ...data, employee: employeeId }),
+    updateBankAccount: (id: number, data: Partial<EmployeeBankAccount>) => apiClient.put<EmployeeBankAccount>(`${HRM}/bank-accounts/${id}/`, data),
+    removeBankAccount: (id: number) => apiClient.delete<void>(`${HRM}/bank-accounts/${id}/`),
 
-  // Next of kin
-  listNextOfKin: (employeeId: number | string) =>
-    apiClient.get<EmployeeNextOfKin[] | Paginated<EmployeeNextOfKin>>(`${EMP}/next-of-kin/`, {
-      emp_id: employeeId,
-    }),
-  addNextOfKin: (employeeId: number | string, data: Partial<EmployeeNextOfKin>) =>
-    apiClient.post<EmployeeNextOfKin>(`${EMP}/next-of-kin/`, { ...data, employee: employeeId }),
-  updateNextOfKin: (id: number, data: Partial<EmployeeNextOfKin>) =>
-    apiClient.put<EmployeeNextOfKin>(`${EMP}/next-of-kin/${id}/`, data),
-  removeNextOfKin: (id: number) => apiClient.delete<void>(`${EMP}/next-of-kin/${id}/`),
+    // Next of kin
+    listNextOfKin: (employeeId: number | string) =>
+        apiClient.get<EmployeeNextOfKin[] | Paginated<EmployeeNextOfKin>>(`${EMP}/next-of-kin/`, {
+            emp_id: employeeId
+        }),
+    addNextOfKin: (employeeId: number | string, data: Partial<EmployeeNextOfKin>) => apiClient.post<EmployeeNextOfKin>(`${EMP}/next-of-kin/`, { ...data, employee: employeeId }),
+    updateNextOfKin: (id: number, data: Partial<EmployeeNextOfKin>) => apiClient.put<EmployeeNextOfKin>(`${EMP}/next-of-kin/${id}/`, data),
+    removeNextOfKin: (id: number) => apiClient.delete<void>(`${EMP}/next-of-kin/${id}/`),
 
-  // Education
-  listEducation: (employeeId: number | string) =>
-    apiClient.get<EmployeeEducation[] | Paginated<EmployeeEducation>>(`${EMP}/employee-education/`, {
-      emp_id: employeeId,
-    }),
-  addEducation: (employeeId: number | string, data: Partial<EmployeeEducation>) =>
-    apiClient.post<EmployeeEducation>(`${EMP}/employee-education/`, { ...data, employee: employeeId }),
-  updateEducation: (id: string | number, data: Partial<EmployeeEducation>) =>
-    apiClient.put<EmployeeEducation>(`${EMP}/employee-education/${id}/`, data),
-  removeEducation: (id: string | number) => apiClient.delete<void>(`${EMP}/employee-education/${id}/`),
+    // Education
+    listEducation: (employeeId: number | string) =>
+        apiClient.get<EmployeeEducation[] | Paginated<EmployeeEducation>>(`${EMP}/employee-education/`, {
+            emp_id: employeeId
+        }),
+    addEducation: (employeeId: number | string, data: Partial<EmployeeEducation>) => apiClient.post<EmployeeEducation>(`${EMP}/employee-education/`, { ...data, employee: employeeId }),
+    updateEducation: (id: string | number, data: Partial<EmployeeEducation>) => apiClient.put<EmployeeEducation>(`${EMP}/employee-education/${id}/`, data),
+    removeEducation: (id: string | number) => apiClient.delete<void>(`${EMP}/employee-education/${id}/`),
 
-  // Employment history
-  listEmployment: (employeeId: number | string) =>
-    apiClient.get<EmploymentHistory[] | Paginated<EmploymentHistory>>(`${EMP}/employment-history/`, {
-      emp_id: employeeId,
-    }),
-  addEmployment: (employeeId: number | string, data: Partial<EmploymentHistory>) =>
-    apiClient.post<EmploymentHistory>(`${EMP}/employment-history/`, { ...data, employee: employeeId }),
-  updateEmployment: (id: string | number, data: Partial<EmploymentHistory>) =>
-    apiClient.put<EmploymentHistory>(`${EMP}/employment-history/${id}/`, data),
-  removeEmployment: (id: string | number) => apiClient.delete<void>(`${EMP}/employment-history/${id}/`),
+    // Employment history
+    listEmployment: (employeeId: number | string) =>
+        apiClient.get<EmploymentHistory[] | Paginated<EmploymentHistory>>(`${EMP}/employment-history/`, {
+            emp_id: employeeId
+        }),
+    addEmployment: (employeeId: number | string, data: Partial<EmploymentHistory>) => apiClient.post<EmploymentHistory>(`${EMP}/employment-history/`, { ...data, employee: employeeId }),
+    updateEmployment: (id: string | number, data: Partial<EmploymentHistory>) => apiClient.put<EmploymentHistory>(`${EMP}/employment-history/${id}/`, data),
+    removeEmployment: (id: string | number) => apiClient.delete<void>(`${EMP}/employment-history/${id}/`),
 
-  // Disciplinary
-  listDisciplinary: (employeeId: number | string) =>
-    apiClient.get<EmployeeDisciplinary[] | Paginated<EmployeeDisciplinary>>(
-      `${EMP}/employee-disciplinary/`,
-      { emp_id: employeeId },
-    ),
-  addDisciplinary: (employeeId: number | string, data: Partial<EmployeeDisciplinary>) =>
-    apiClient.post<EmployeeDisciplinary>(`${EMP}/employee-disciplinary/`, { ...data, employee: employeeId }),
-  updateDisciplinary: (id: string | number, data: Partial<EmployeeDisciplinary>) =>
-    apiClient.put<EmployeeDisciplinary>(`${EMP}/employee-disciplinary/${id}/`, data),
-  removeDisciplinary: (id: string | number) => apiClient.delete<void>(`${EMP}/employee-disciplinary/${id}/`),
+    // Disciplinary
+    listDisciplinary: (employeeId: number | string) => apiClient.get<EmployeeDisciplinary[] | Paginated<EmployeeDisciplinary>>(`${EMP}/employee-disciplinary/`, { emp_id: employeeId }),
+    addDisciplinary: (employeeId: number | string, data: Partial<EmployeeDisciplinary>) => apiClient.post<EmployeeDisciplinary>(`${EMP}/employee-disciplinary/`, { ...data, employee: employeeId }),
+    updateDisciplinary: (id: string | number, data: Partial<EmployeeDisciplinary>) => apiClient.put<EmployeeDisciplinary>(`${EMP}/employee-disciplinary/${id}/`, data),
+    removeDisciplinary: (id: string | number) => apiClient.delete<void>(`${EMP}/employee-disciplinary/${id}/`),
 
-  // Salary details. erp-api exposes a single salary record per employee via
-  // `PUT /hrm/employees/{id}/salary` (no list endpoint), so we read the salary
-  // off the employee record and write through the real upsert route.
-  getSalaryDetails: async (
-    employeeId: number | string,
-  ): Promise<EmployeeSalaryDetail[]> => {
-    const emp = await apiClient.get<Employee>(`${EMP}/employees/${employeeId}/`);
-    const salary = (emp as Record<string, unknown>).salary as
-      | EmployeeSalaryDetail
-      | undefined;
-    if (salary) return [salary];
-    if (emp.basic_salary != null) {
-      return [{ employee: undefined, basic_salary: emp.basic_salary }];
-    }
-    return [];
-  },
-  upsertSalary: (employeeId: number | string, data: Partial<EmployeeSalaryDetail>) =>
-    apiClient.put<EmployeeSalaryDetail>(`${EMP}/employees/${employeeId}/salary`, {
-      monthly_salary:
-        data.basic_salary != null ? String(data.basic_salary) : undefined,
-      pay_mode: data.payment_method,
-      // PAYE category: primary (full bands + relief) | secondary (flat top-rate, no relief) | none.
-      income_tax: data.income_tax,
-      currency: data.currency,
-      // KRA relief inputs (decimal strings; engine applies the statutory caps).
-      insurance_premium:
-        data.insurance_premium != null ? String(data.insurance_premium) : undefined,
-      pension_contribution:
-        data.pension_contribution != null ? String(data.pension_contribution) : undefined,
-      mortgage_interest:
-        data.mortgage_interest != null ? String(data.mortgage_interest) : undefined,
-      disability_exempt: data.disability_exempt ?? false,
-      // Preferred net-pay disbursement channel (routed per-employee at payroll disburse).
-      preferred_payout_method: data.preferred_payout_method,
-      payout_phone: data.payout_phone,
-    }),
+    // Salary details. erp-api exposes a single salary record per employee via
+    // `PUT /hrm/employees/{id}/salary` (no list endpoint), so we read the salary
+    // off the employee record and write through the real upsert route.
+    getSalaryDetails: async (employeeId: number | string): Promise<EmployeeSalaryDetail[]> => {
+        const emp = await apiClient.get<Employee>(`${EMP}/employees/${employeeId}/`);
+        const salary = (emp as Record<string, unknown>).salary as EmployeeSalaryDetail | undefined;
+        if (salary) return [salary];
+        if (emp.basic_salary != null) {
+            return [{ employee: undefined, basic_salary: emp.basic_salary }];
+        }
+        return [];
+    },
+    upsertSalary: (employeeId: number | string, data: Partial<EmployeeSalaryDetail>) =>
+        apiClient.put<EmployeeSalaryDetail>(`${EMP}/employees/${employeeId}/salary`, {
+            monthly_salary: data.basic_salary != null ? String(data.basic_salary) : undefined,
+            pay_mode: data.pay_frequency,
+            // PAYE category: primary (full bands + relief) | secondary (flat top-rate, no relief) | none.
+            income_tax: data.income_tax,
+            currency: data.currency,
+            // KRA relief inputs (decimal strings; engine applies the statutory caps).
+            insurance_premium: data.insurance_premium != null ? String(data.insurance_premium) : undefined,
+            pension_contribution: data.pension_contribution != null ? String(data.pension_contribution) : undefined,
+            mortgage_interest: data.mortgage_interest != null ? String(data.mortgage_interest) : undefined,
+            disability_exempt: data.disability_exempt,
+            // Preferred net-pay disbursement channel (routed per-employee at payroll disburse).
+            preferred_payout_method: data.preferred_payout_method,
+            payout_phone: data.payout_phone
+        }),
 
-  /** Marks a bank account primary (the only mutation erp-api exposes for banks). */
-  setPrimaryBankAccount: (employeeId: number | string, accountId: number | string) =>
-    apiClient.put<{ ok: boolean }>(
-      `${EMP}/employees/${employeeId}/bank-accounts/${accountId}/primary`,
-      {},
-    ),
+    /** Marks a bank account primary (the only mutation erp-api exposes for banks). */
+    setPrimaryBankAccount: (employeeId: number | string, accountId: number | string) => apiClient.put<{ ok: boolean }>(`${EMP}/employees/${employeeId}/bank-accounts/${accountId}/primary`, {}),
 
-  // ---- Documents (upload / list / stream) ----
-  listDocuments: (employeeId: number | string) =>
-    apiClient.get<EmployeeDocument[] | Paginated<EmployeeDocument>>(
-      `${EMP}/employees/${employeeId}/documents`,
-    ),
-  uploadDocument: (
-    employeeId: number | string,
-    data: { file: File; title: string; document_type: string },
-  ) => {
-    const fd = new FormData();
-    fd.append("file", data.file);
-    fd.append("title", data.title);
-    fd.append("document_type", data.document_type);
-    return apiClient.post<EmployeeDocument>(`${EMP}/employees/${employeeId}/documents`, fd);
-  },
-  /** Streams the stored file bytes (PDF or original) for preview/download. */
-  getDocumentFile: (
-    employeeId: number | string,
-    docId: number | string,
-    fileName = `document_${docId}.pdf`,
-  ) => apiClient.getBlob(`${EMP}/employees/${employeeId}/documents/${docId}/file`, fileName),
+    // ---- Documents (upload / list / stream) ----
+    listDocuments: (employeeId: number | string) => apiClient.get<EmployeeDocument[] | Paginated<EmployeeDocument>>(`${EMP}/employees/${employeeId}/documents`),
+    uploadDocument: (employeeId: number | string, data: { file: File; title: string; document_type: string }) => {
+        const fd = new FormData();
+        fd.append('file', data.file);
+        fd.append('title', data.title);
+        fd.append('document_type', data.document_type);
+        return apiClient.post<EmployeeDocument>(`${EMP}/employees/${employeeId}/documents`, fd);
+    },
+    /** Streams the stored file bytes (PDF or original) for preview/download. */
+    getDocumentFile: (employeeId: number | string, docId: number | string, fileName = `document_${docId}.pdf`) => apiClient.getBlob(`${EMP}/employees/${employeeId}/documents/${docId}/file`, fileName),
 
-  // ---- Employment contract (editable terms + rendered PDF) ----
-  getContractTerms: (employeeId: number | string, type: string) =>
-    apiClient.get<ContractTermsResponse>(`${EMP}/employees/${employeeId}/contract/terms`, { type }),
-  saveContractTerms: (employeeId: number | string, termsHtml: string) =>
-    apiClient.put<ContractTermsResponse>(`${EMP}/employees/${employeeId}/contract/terms`, {
-      terms_html: termsHtml,
-    }),
-  getContractPdf: (employeeId: number | string, fileName = `contract_${employeeId}.pdf`) =>
-    apiClient.getBlob(`${EMP}/employees/${employeeId}/contract/pdf`, fileName),
-  /** Renders + stores the contract as an employee document. */
-  generateContract: (employeeId: number | string) =>
-    apiClient.post<EmployeeDocument>(`${EMP}/employees/${employeeId}/contract/generate`, {}),
+    // ---- Employment contract (editable terms + rendered PDF) ----
+    getContractTerms: (employeeId: number | string, type: string) => apiClient.get<ContractTermsResponse>(`${EMP}/employees/${employeeId}/contract/terms`, { type }),
+    saveContractTerms: (employeeId: number | string, termsHtml: string) =>
+        apiClient.put<ContractTermsResponse>(`${EMP}/employees/${employeeId}/contract/terms`, {
+            terms_html: termsHtml
+        }),
+    getContractPdf: (employeeId: number | string, fileName = `contract_${employeeId}.pdf`) => apiClient.getBlob(`${EMP}/employees/${employeeId}/contract/pdf`, fileName),
+    /** Renders + stores the contract as an employee document. */
+    generateContract: (employeeId: number | string) => apiClient.post<EmployeeDocument>(`${EMP}/employees/${employeeId}/contract/generate`, {})
 };

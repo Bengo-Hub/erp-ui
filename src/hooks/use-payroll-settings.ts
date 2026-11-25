@@ -293,6 +293,7 @@ export function useSaveEmployeeComponent(employeeId: number | string) {
         mutationFn: ({ id, data }: { id?: string; data: EmployeeComponentInput }) => (id ? employeeComponentsApi.update(employeeId, id, data) : employeeComponentsApi.create(employeeId, data)),
         onSuccess: (_r, v) => {
             qc.invalidateQueries({ queryKey: ['employee-components', employeeId] });
+            qc.invalidateQueries({ queryKey: ['payroll', 'pay-summary', employeeId] });
             toast.success(v.id ? 'Assignment updated' : 'Assigned to the employee');
         },
         onError: (e) => toast.error(extractApiError(e, 'Failed to save the assignment'))
@@ -305,6 +306,7 @@ export function useDeleteEmployeeComponent(employeeId: number | string) {
         mutationFn: (id: string) => employeeComponentsApi.remove(employeeId, id),
         onSuccess: () => {
             qc.invalidateQueries({ queryKey: ['employee-components', employeeId] });
+            qc.invalidateQueries({ queryKey: ['payroll', 'pay-summary', employeeId] });
             toast.success('Assignment removed');
         },
         onError: (e) => toast.error(extractApiError(e, 'Failed to remove the assignment'))

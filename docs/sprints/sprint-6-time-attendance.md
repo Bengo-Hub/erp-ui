@@ -104,18 +104,28 @@ follows one inherit and customise model (erp-api `docs/payroll-settings.md`):
 - The SHIF KES 300 monthly minimum is set on the platform SHIF formula and inherited; the formula
   editor shows it. Treasury still does not publish it, so a synced version keeps the current one.
 
+## PAYE band 4, KRA returns and form audit (2026-11-25)
+- PAYE band 4 ends at 800,000 from the December 2026 payroll; earlier months keep 799,999.
+- P9, P9A, P10 and P10A declare taxable gross (per diem and other non-taxable pay left out).
+- Forms that did not save now do: salary tab (loads and keeps reliefs, payout channel and phone),
+  employee middle name, basic salary and job group, project allocations, appraisal template and
+  question edit and delete, job posting delete and status, claim description. Editing a course keeps
+  its capacity and editing a disapproved advance keeps it inactive.
+
 ## Open items
 - Public holidays have no screen; erp-api has only GET/POST `/hrm/leave/holidays`.
 - Shift overrides cannot be edited or deleted (API and page).
-- PAYE band 4 ends at KES 799,999 on the platform formula; the Finance Act and Treasury say 800,000.
-  The engine golden master depends on the current value, so the change needs a deliberate update.
 - The brochure keeps a four-week go-live plan that the user guide does not state (owner to confirm).
 - Shared SearchableCombobox has no Up/Down arrow navigation (Tab and Escape only).
 - zod 3 to 4 and maplibre-gl 5 to 6 upgrades are scheduled as their own sprint.
 - Treasury publishes no event when a statutory rate is approved, so erp-api pulls the rates; the
   proposed `treasury.statutory_rate.approved` event is described in erp-api `docs/payroll-settings.md`.
-- Non-taxable component earnings are part of payslip gross, so statutory reports that print gross
-  pay next to a contribution include them although the contribution is not charged on them.
+- NSSF, SHIF, NITA and Housing Levy schedules (and P10 Sheet M) print the payslip gross, which
+  includes non-taxable earnings the contribution is not charged on; KRA and SHA define those bases by
+  regular pay, so the base needs an owner decision. Remittance schedules for SACCO, HELB and similar
+  deductions are not built.
+- Job group grade and salary range, job title code, department description, contract notes and the
+  date on a claim line have no storage, so the forms no longer ask for them.
 - Timesheet and shift-override approvals still use their own approve routes, not the approvals engine.
 - Casual workers paid per piece (casual_payment) are outside the payroll run.
 - ZKTeco push 3.x registration (`/iclock/registry`) is not handled; the default door-open command

@@ -25,6 +25,7 @@ import { EmploymentTab } from './_employment-tab';
 import { KinTab } from './_kin-tab';
 import { OverviewTab } from './_overview-tab';
 import { PayComponentsTab } from './_pay-components-tab';
+import { PaySummary } from './_pay-summary';
 import { SalaryTab } from './_salary-tab';
 
 const TABS = [
@@ -118,7 +119,12 @@ export default function EmployeeProfilePage() {
 
                     {tab === 'overview' && <OverviewTab employee={employee} />}
                     {tab === 'salary' && <SalaryTab employeeId={id} />}
-                    {tab === 'pay-components' && <PayComponentsTab employeeId={id} />}
+                    {tab === 'pay-components' && (
+                        <div className="space-y-4">
+                            <PaySummary employeeId={id} />
+                            <PayComponentsTab employeeId={id} />
+                        </div>
+                    )}
                     {tab === 'bank' && <BankTab employeeId={id} />}
                     {tab === 'kin' && <KinTab employeeId={id} />}
                     {tab === 'education' && <EducationTab employeeId={id} />}

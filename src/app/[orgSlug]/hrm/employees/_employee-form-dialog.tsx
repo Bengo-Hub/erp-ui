@@ -12,7 +12,8 @@ import { Field, Input, Select } from '@/components/ui/form';
 import { Stepper } from '@/components/ui/stepper';
 import { useEmployeeOptions } from '@/hooks/use-employee-options';
 import { useSaveEmployee } from '@/hooks/use-employees';
-import { useDepartments, useJobGroups, useJobTitles } from '@/hooks/use-hrm-settings';
+import { useJobTitles } from '@/hooks/use-hrm-settings';
+import { useDepartmentOptions, useJobGroupOptions } from '@/hooks/use-option-hooks';
 import { normalizeList } from '@/lib/api/drf';
 import { type Employee } from '@/lib/api/employees';
 import { EMPLOYMENT_TYPES } from '@/lib/hrm';
@@ -79,12 +80,12 @@ function toFormValues(e?: Employee | null): FormValues {
 export function EmployeeFormDialog({ open, employee, onClose, onCreated }: { open: boolean; employee?: Employee | null; onClose: () => void; onCreated?: (id: string | number) => void }) {
     const isEdit = !!employee;
     const save = useSaveEmployee();
-    const { data: deptData } = useDepartments();
-    const { data: titleData } = useJobTitles();
-    const { data: groupData } = useJobGroups();
-    const departments = normalizeList(deptData).results;
-    const jobTitles = normalizeList(titleData).results;
-    const jobGroups = normalizeList(groupData).results;
+    // Held by the form, not by native selects: a select drops a value whose option has not loaded
+    // yet (or is past the first page of the list), so an assigned value looked unset.
+    const departments = useDepartmentOptions();
+    const jobGroups = useJobGroupOptions();
+    const { data: titleData } = useJobTitles({ limit: 500 });
+    const jobTitles = normalizeList(titleData).results.map((t) => ({ value: String(t.id), label: t.name }));
 
     // Anyone but this employee can be their manager.
     const { options: allEmployees, isLoading: employeesLoading } = useEmployeeOptions();
@@ -125,6 +126,12 @@ export function EmployeeFormDialog({ open, employee, onClose, onCreated }: { ope
         });
         // On edit an empty manager is sent as "" so removing the manager clears it.
         if (isEdit && !v.reports_to_id) payload.reports_to_id = '';
+        // Likewise a removed middle name, date joined or job group.
+        if (isEdit && employee?.middle_name && !v.middle_name) payload.middle_name = '';
+        if (isEdit && employee?.date_joined && !v.date_joined) payload.date_joined = '';
+        if (isEdit && employee?.job_group && !v.job_group) payload.job_group = '';
+        if (isEdit && !v.department) payload.department = '';
+        if (isEdit && !v.job_title) payload.job_title = '';
         save.mutate(
             { id: employee?.id, data: payload as Partial<Employee> },
             {
@@ -216,34 +223,29 @@ export function EmployeeFormDialog({ open, employee, onClose, onCreated }: { ope
                     <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Employment</h3>
                     <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                         <Field label="Department">
-                            <Select {...register('department')}>
-                                <option value="">Select…</option>
-                                {departments.map((d) => (
-                                    <option key={d.id} value={d.id}>
-                                        {d.name}
-                                    </option>
-                                ))}
-                            </Select>
+                            <Controller
+                                control={control}
+                                name="department"
+                                render={({ field }) => (
+                                    <Combobox value={field.value ?? ''} onChange={field.onChange} options={departments.options} loading={departments.isLoading} clearable placeholder="No department" searchPlaceholder="Search departments" />
+                                )}
+                            />
                         </Field>
                         <Field label="Job Title">
-                            <Select {...register('job_title')}>
-                                <option value="">Select…</option>
-                                {jobTitles.map((t) => (
-                                    <option key={t.id} value={t.id}>
-                                        {t.name}
-                                    </option>
-                                ))}
-                            </Select>
+                            <Controller
+                                control={control}
+                                name="job_title"
+                                render={({ field }) => <Combobox value={field.value ?? ''} onChange={field.onChange} options={jobTitles} clearable placeholder="No job title" searchPlaceholder="Search job titles" />}
+                            />
                         </Field>
                         <Field label="Job Group">
-                            <Select {...register('job_group')}>
-                                <option value="">Select…</option>
-                                {jobGroups.map((g) => (
-                                    <option key={g.id} value={g.id}>
-                                        {g.name}
-                                    </option>
-                                ))}
-                            </Select>
+                            <Controller
+                                control={control}
+                                name="job_group"
+                                render={({ field }) => (
+                                    <Combobox value={field.value ?? ''} onChange={field.onChange} options={jobGroups.options} loading={jobGroups.isLoading} clearable placeholder="No job group" searchPlaceholder="Search job groups" />
+                                )}
+                            />
                         </Field>
                         <Field label="Employment Type">
                             <Select {...register('employment_type')}>
