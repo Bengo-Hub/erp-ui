@@ -1,32 +1,20 @@
 import {
     Banknote,
-    Boxes,
     Briefcase,
     Building2,
     CalendarClock,
     ClipboardList,
     Clock,
-    CreditCard,
     Fingerprint,
     FileBarChart,
     GraduationCap,
-    HeartPulse,
     LayoutDashboard,
-    Megaphone,
-    Package,
-    PackageSearch,
     Receipt,
     Settings,
     ShieldCheck,
-    ShoppingCart,
     Star,
-    Ticket,
-    Truck,
     UserCog,
     Users,
-    Waypoints,
-    Workflow,
-    PiggyBank,
     type LucideIcon
 } from 'lucide-react';
 
@@ -45,23 +33,13 @@ export interface MenuLink {
      * <FeatureLock mode="badge"> — a locked chip whose click opens the UpgradeDialog.
      */
     feature?: string;
-}
-
-export interface MenuExternalLink {
-    label: string;
-    url: string;
-    icon?: LucideIcon;
-    external: true;
     /**
-     * Auth-api Layer-1 permission resource prefixes (e.g. "treasury", "pos") — visible if the
-     * user holds ANY permission under one of these resources. Omit + `adminOnly: true` for
-     * services with no dedicated resource in the Layer-1 catalog yet (CRM, notifications,
-     * projects, billing) — restricted to admin-tier roles only. Omit both = always visible.
+     * A page in another app, opened in a new tab ("{org}" becomes the current organisation); `to` is
+     * then only a key. For a specific page: whole apps live in the apps drawer, not the sidebar.
      */
+    externalUrl?: string;
+    /** Auth-api permission resource prefixes (e.g. "treasury"): the user needs any permission under one. */
     resourcePrefixes?: string[];
-    adminOnly?: boolean;
-    /** Renders disabled with a "Soon" badge and no link — no backend exists (or isn't launched) yet. */
-    comingSoon?: boolean;
 }
 
 export interface MenuGroup {
@@ -123,7 +101,9 @@ export const APP_MENU: MenuSection[] = [
                     { label: 'Project Allocations', to: '/payroll/project-allocations', permissions: ['hrm.payroll.view'] },
                     { label: 'Losses & Damages', to: '/payroll/losses-damages', permissions: ['hrm.payroll.view'] },
                     { label: 'Staff Purchases', to: '/payroll/staff-purchases', permissions: ['hrm.payroll.view'] },
-                    { label: 'Formulas', to: '/settings/payroll/formulas', permissions: ['hrm.payroll.manage'] }
+                    { label: 'Formulas', to: '/settings/payroll/formulas', permissions: ['hrm.payroll.manage'] },
+                    // Budgets live in Treasury.
+                    { label: 'Budgets', to: 'treasury-budgets', externalUrl: `${EXTERNAL_SERVICES.finance}/{org}/budgets`, resourcePrefixes: ['treasury'] }
                 ]
             },
             {
@@ -310,23 +290,4 @@ export const APP_MENU: MenuSection[] = [
 export const PLATFORM_MENU: MenuLink[] = [
     { label: 'Platform Overview', to: '/platform', icon: ShieldCheck },
     { label: 'Tenants', to: '/platform/tenants', icon: Building2 }
-];
-
-export const EXTERNAL_SERVICES_MENU: MenuExternalLink[] = [
-    { label: 'Finance', url: EXTERNAL_SERVICES.finance, icon: CreditCard, external: true, resourcePrefixes: ['treasury'] },
-    // Budgets live in treasury; "{org}" is replaced with the current organisation.
-    { label: 'Budgets', url: `${EXTERNAL_SERVICES.finance}/{org}/budgets`, icon: PiggyBank, external: true, resourcePrefixes: ['treasury'] },
-    { label: 'CRM', url: EXTERNAL_SERVICES.crm, icon: Megaphone, external: true, adminOnly: true },
-    { label: 'Inventory & Products', url: EXTERNAL_SERVICES.inventory, icon: Boxes, external: true, resourcePrefixes: ['inventory'] },
-    { label: 'Procurement', url: EXTERNAL_SERVICES.inventory, icon: Package, external: true, resourcePrefixes: ['inventory'] },
-    { label: 'Manufacturing', url: EXTERNAL_SERVICES.inventory, icon: Workflow, external: true, resourcePrefixes: ['inventory'] },
-    { label: 'Point of Sale', url: EXTERNAL_SERVICES.pos, icon: ShoppingCart, external: true, resourcePrefixes: ['pos'] },
-    { label: 'Orders & Shop', url: EXTERNAL_SERVICES.ordering, icon: Truck, external: true, resourcePrefixes: ['ordering'] },
-    { label: 'Notifications', url: EXTERNAL_SERVICES.notifications, icon: Megaphone, external: true, adminOnly: true },
-    { label: 'Projects', url: EXTERNAL_SERVICES.projects, icon: ClipboardList, external: true, adminOnly: true },
-    { label: 'Afya', url: EXTERNAL_SERVICES.afya, icon: HeartPulse, external: true, adminOnly: true },
-    { label: 'Billing & Subscriptions', url: EXTERNAL_SERVICES.billing, icon: CreditCard, external: true, adminOnly: true },
-    { label: 'Sourcing', url: '', icon: PackageSearch, external: true, adminOnly: true, comingSoon: true },
-    { label: 'Traceability', url: '', icon: Waypoints, external: true, adminOnly: true, comingSoon: true },
-    { label: 'Ticketing', url: '', icon: Ticket, external: true, adminOnly: true, comingSoon: true }
 ];

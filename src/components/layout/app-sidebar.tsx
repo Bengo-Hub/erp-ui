@@ -8,10 +8,8 @@ import { useCallback, useMemo, useState, type ReactNode } from "react";
 
 import {
   APP_MENU,
-  EXTERNAL_SERVICES_MENU,
   isMenuGroup,
   PLATFORM_MENU,
-  type MenuExternalLink,
   type MenuGroup,
   type MenuLink,
 } from "@/components/layout/menu-data";
@@ -33,7 +31,7 @@ export function AppSidebar({ open = false, onClose }: SidebarProps) {
   const user = useAuthStore((s) => s.user);
   const logout = useAuthStore((s) => s.logout);
   const { tenant, getServiceTitle } = useBranding();
-  const { hasAnyPermission, hasResourceAccess, isAdminTier, isPlatformOwner } = useAppPermissions();
+  const { hasAnyPermission, hasResourceAccess, isPlatformOwner } = useAppPermissions();
 
   const showPlatform = isPlatformOwner || !!user?.isPlatformOwner;
 
@@ -47,25 +45,10 @@ export function AppSidebar({ open = false, onClose }: SidebarProps) {
   );
 
   const canSee = useCallback(
-    (link: MenuLink) => !link.permissions?.length || hasAnyPermission(link.permissions),
-    [hasAnyPermission],
-  );
-
-  // External services (Finance/Treasury, POS, Inventory, ...) are other business domains
-  // entirely — a staff/cashier-tier role has no business opening Treasury or Billing just
-  // because they're logged into ERP. adminOnly links need an admin-tier role; resourcePrefixes
-  // links need at least one Layer-1 permission under that service's resource namespace.
-  const canSeeExternal = useCallback(
-    (link: MenuExternalLink) => {
-      if (link.adminOnly) return isAdminTier;
-      if (!link.resourcePrefixes?.length) return true;
-      return hasResourceAccess(link.resourcePrefixes);
-    },
-    [isAdminTier, hasResourceAccess],
-  );
-  const visibleExternalServices = useMemo(
-    () => EXTERNAL_SERVICES_MENU.filter(canSeeExternal),
-    [canSeeExternal],
+    (link: MenuLink) =>
+      (!link.permissions?.length || hasAnyPermission(link.permissions)) &&
+      (!link.resourcePrefixes?.length || hasResourceAccess(link.resourcePrefixes)),
+    [hasAnyPermission, hasResourceAccess],
   );
 
   const userName = user?.fullName || user?.email?.split("@")[0] || "Account";
@@ -116,7 +99,7 @@ export function AppSidebar({ open = false, onClose }: SidebarProps) {
               <ul className="space-y-0.5">
                 {visibleItems.map((item) =>
                   isMenuGroup(item) ? (
-                    <NavGroupItem key={item.label} group={item} href={href} isActive={isActive} canSee={canSee} onItemClick={onClose} />
+                    <NavGroupItem key={item.label} group={item} orgSlug={orgSlug} href={href} isActive={isActive} canSee={canSee} onItemClick={onClose} />
                   ) : (
                     <NavLinkItem key={item.to} item={item} href={href} active={isActive(item.to)} onItemClick={onClose} />
                   ),
@@ -137,53 +120,6 @@ export function AppSidebar({ open = false, onClose }: SidebarProps) {
           </div>
         )}
 
-        {visibleExternalServices.length > 0 && (
-        <div>
-          <p className="px-3 mb-1.5 text-[10px] font-bold uppercase tracking-[0.15em] text-sidebar-foreground/30">External Services</p>
-          <ul className="space-y-0.5">
-            {visibleExternalServices.map((svc) => {
-              const Icon = svc.icon;
-              if (svc.comingSoon) {
-                return (
-                  <li key={svc.label}>
-                    <div
-                      className="flex items-center gap-3 px-3 py-2 rounded-xl text-sm font-medium text-sidebar-foreground/30 cursor-default"
-                      title={`${svc.label} — coming soon`}
-                    >
-                      {Icon && (
-                        <div className="flex size-8 shrink-0 items-center justify-center rounded-full text-sidebar-foreground/25">
-                          <Icon className="size-4.5" />
-                        </div>
-                      )}
-                      <span className="truncate flex-1">{svc.label}</span>
-                      <span className="text-[9px] font-bold uppercase tracking-wider bg-sidebar-foreground/10 px-1.5 py-0.5 rounded-full shrink-0">Soon</span>
-                    </div>
-                  </li>
-                );
-              }
-              return (
-                <li key={svc.label}>
-                  <a
-                    href={svc.url.replace("{org}", orgSlug)}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    onClick={onClose}
-                    className="flex items-center gap-3 px-3 py-2 rounded-xl text-sm font-medium text-sidebar-foreground/55 hover:text-sidebar-foreground hover:bg-sidebar-foreground/8 transition-colors"
-                  >
-                    {Icon && (
-                      <div className="flex size-8 shrink-0 items-center justify-center rounded-full text-sidebar-foreground/40">
-                        <Icon className="size-4.5" />
-                      </div>
-                    )}
-                    <span className="truncate flex-1">{svc.label}</span>
-                    <ExternalLink className="size-3.5 text-sidebar-foreground/30" />
-                  </a>
-                </li>
-              );
-            })}
-          </ul>
-        </div>
-        )}
       </nav>
 
       <div className="px-3 py-4 border-t border-sidebar-border">
@@ -279,19 +215,21 @@ function NavLinkItem({
 
 function NavGroupItem({
   group,
+  orgSlug,
   href,
   isActive,
   canSee,
   onItemClick,
 }: {
   group: MenuGroup;
+  orgSlug: string;
   href: (to: string) => string;
   isActive: (to: string) => boolean | undefined;
   canSee: (link: MenuLink) => boolean;
   onItemClick?: () => void;
 }) {
   const children = useMemo(() => group.children.filter(canSee), [group.children, canSee]);
-  const hasActiveChild = children.some((c) => isActive(c.to));
+  const hasActiveChild = children.some((c) => !c.externalUrl && isActive(c.to));
   // `null` = follow active state; true/false = user override. Active children
   // always force-open; a manual toggle takes precedence until navigation changes.
   const [override, setOverride] = useState<boolean | null>(null);
@@ -319,8 +257,22 @@ function NavGroupItem({
         <ChevronDown aria-hidden className={cn("size-4 text-sidebar-foreground/30 transition-transform", expanded && "rotate-180")} />
       </button>
       </NavFeatureLock>
-      <ul className={cn("overflow-hidden transition-all", expanded ? "max-h-[40rem] opacity-100" : "max-h-0 opacity-0")}>
-        {children.map((child) => (
+      <ul className={cn("overflow-hidden transition-all", expanded ? "max-h-[80rem] opacity-100" : "invisible max-h-0 opacity-0")}>
+        {children.map((child) => child.externalUrl ? (
+          <li key={child.to}>
+            <a
+              href={child.externalUrl.replace("{org}", orgSlug)}
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={onItemClick}
+              className="flex items-center gap-3 pl-12 pr-3 py-2 rounded-xl transition-all text-sm text-sidebar-foreground/45 hover:text-sidebar-foreground hover:bg-sidebar-foreground/8"
+            >
+              <span className="flex-1 truncate">{child.label}</span>
+              <ExternalLink aria-hidden className="size-3.5 shrink-0" />
+              <span className="sr-only">(opens in a new tab)</span>
+            </a>
+          </li>
+        ) : (
           <li key={child.to}>
             <NavFeatureLock feature={child.feature}>
             <Link
