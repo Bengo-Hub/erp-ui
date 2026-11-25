@@ -24,6 +24,9 @@ export interface ErpRole {
   permission_codes?: string[];
 }
 
+/** A role shared by every company; only the platform owner may change it. */
+export const isBuiltIn = (r: ErpRole) => r.is_system_role || !r.tenant_id;
+
 export const rbacApi = {
   listPermissions: () => apiClient.get<{ permissions: ErpPermission[] }>(`/rbac/permissions`),
   listRoles: () => apiClient.get<{ roles: ErpRole[] }>(`/rbac/roles`),

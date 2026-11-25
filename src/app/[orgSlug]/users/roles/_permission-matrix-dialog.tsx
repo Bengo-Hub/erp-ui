@@ -6,15 +6,20 @@ import { Badge, Button } from "@/components/ui/base";
 import { Dialog } from "@/components/ui/dialog";
 import { Switch } from "@/components/ui/form";
 import { usePermissions, useRole, useSetRolePermissions } from "@/hooks/use-rbac";
-import { groupPermissions, type ErpRole } from "@/lib/api/rbac";
+import { useAppPermissions } from "@/hooks/use-app-permissions";
+import { groupPermissions, isBuiltIn, type ErpRole } from "@/lib/api/rbac";
 
 const WILDCARD_ROLE = "erp_admin"; // all-access role — permissions not editable
 
-/** Role→permission matrix editor. Disabled (read-only) for the all-access role. */
+/** Role→permission matrix editor. Read-only for built-in roles, except to the platform owner, and
+ *  always for the all-access role. Permissions the caller does not hold cannot be switched on
+ *  (erp-api refuses them); ones the role already has may stay or go. */
 export function PermissionMatrixDialog({ role, onClose }: { role: ErpRole | null; onClose: () => void }) {
   const { data: permsData } = usePermissions();
   const { data: full } = useRole(role?.id ?? null);
   const setPerms = useSetRolePermissions();
+  const { permissions: held, roles: myRoles, isPlatformOwner, isSuperuser } = useAppPermissions();
+  const exempt = isPlatformOwner || isSuperuser || myRoles.includes(WILDCARD_ROLE);
 
   const grouped = useMemo(() => groupPermissions(permsData?.permissions ?? []), [permsData]);
   const locked = role?.role_code === WILDCARD_ROLE;
@@ -29,6 +34,9 @@ export function PermissionMatrixDialog({ role, onClose }: { role: ErpRole | null
 
   if (!role) return null;
   const busy = setPerms.isPending;
+  const readOnly = isBuiltIn(role) && !isPlatformOwner;
+  const mayTurnOn = (code: string) =>
+    exempt || held.includes(code) || !!full?.permission_codes?.includes(code);
 
   const toggle = (code: string) =>
     setChecked((prev) => {
@@ -52,7 +60,7 @@ export function PermissionMatrixDialog({ role, onClose }: { role: ErpRole | null
           <Button variant="secondary" size="sm" onClick={onClose} disabled={busy}>
             Close
           </Button>
-          {!locked && (
+          {!locked && !readOnly && (
             <Button size="sm" onClick={save} disabled={busy}>
               {busy ? "Saving…" : "Save permissions"}
             </Button>
@@ -69,6 +77,13 @@ export function PermissionMatrixDialog({ role, onClose }: { role: ErpRole | null
         </div>
       ) : (
         <div className="max-h-[60vh] space-y-4 overflow-auto pr-1">
+          <p className="text-xs text-muted-foreground">
+            {readOnly
+              ? "This is a built-in role shared by every company, so its permissions can only be viewed. Create your own role to choose different ones."
+              : exempt
+                ? "Switch on what this role may do."
+                : "You can only switch on permissions you hold yourself."}
+          </p>
           {Object.entries(grouped).map(([module, perms]) => (
             <div key={module}>
               <h4 className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
@@ -89,6 +104,7 @@ export function PermissionMatrixDialog({ role, onClose }: { role: ErpRole | null
                     <Switch
                       id={p.permission_code}
                       checked={checked.has(p.permission_code)}
+                      disabled={readOnly || (!checked.has(p.permission_code) && !mayTurnOn(p.permission_code))}
                       onChange={() => toggle(p.permission_code)}
                     />
                   </label>

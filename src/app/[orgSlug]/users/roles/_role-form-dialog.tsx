@@ -77,7 +77,7 @@ export function RoleFormDialog({
       }
     >
       <div className="space-y-3">
-        <Field label="Role key" required={!isEdit} help={isEdit ? "Key cannot be changed." : "Lowercase, e.g. payroll_clerk"}>
+        <Field label="Role key" required={!isEdit} help={isEdit ? "Key cannot be changed." : "Lowercase, e.g. payroll_clerk. The key of a built-in role cannot be used."}>
           <Input
             value={form.role_code}
             disabled={isEdit}

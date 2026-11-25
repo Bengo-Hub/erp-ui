@@ -15,13 +15,12 @@ again, that one organisation can never reach another, and that standard settings
 | Payroll | Pay summary on the employee page: statutory, automatic and assigned items with the preview's amounts. The contract form starts from the payroll salary and says when the two differ | erp-api eada5dd |
 | Employees | A join date can be cleared | erp-api 3d60d09 |
 | Security | Role and assignment routes are limited to the caller's organisation; built-in roles are read-only to tenants. Proven by a failing test first | erp-api 0549548 |
+| Security | Grant rules: nobody gives a role or permission beyond what they hold (administrators and the platform owner excepted) or changes their own roles; the last administrator of a company stays; a custom role cannot take or stand in for a built-in key. Employee, shift, roster and leave type ids in attendance and leave bodies, and exchange rates, stay in the organisation | erp-api b98cb9d |
 | Roles | The built-in staff role no longer manages everyone's leave | erp-api 4a86076 |
 | Navigation | Apps live in the drawer and profile panel with the agreed names and groups, checked at 1440, 820 and 360 px. Sidebar external links removed; Budgets is under Payroll | erp-ui f11e0c6; shared-ui-lib v0.1.156 |
 | Theme | Dark styles follow the ERP theme instead of the computer's dark mode | erp-ui f11e0c6 |
 
 ## In progress
-- Grant rules: nobody grants more than they hold or changes their own roles; built-in role codes are
-  reserved; the last administrator cannot be removed.
 - Tenant checks on ids sent in request bodies (recruitment first, then the rest).
 - Standard settings (leave types, job groups, appraisal template, goals, national holidays) inherited
   from the platform, with customise and revert, and leave accrual on inherited types.
