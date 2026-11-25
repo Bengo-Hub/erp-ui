@@ -3,7 +3,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 
-import { leaveApi, type LeaveBalance, type LeaveCategory, type LeaveCountMode, type LeaveEntitlement, type LeavePreviewParams, type LeaveRequest, type PublicHoliday } from '@/lib/api/leave';
+import { leaveApi, type LeaveBalance, type LeaveBalanceRule, type LeaveCategory, type LeaveCountMode, type LeaveEntitlement, type LeavePreviewParams, type LeaveRequest, type PublicHoliday } from '@/lib/api/leave';
 import { type ListParams } from '@/lib/api/drf';
 import { extractApiError } from '@/lib/api/error';
 import { makeResourceHooks } from '@/hooks/use-crud-resource';
@@ -83,6 +83,18 @@ export function useSetLeaveCountMode() {
             toast.success('Day counting updated');
         },
         onError: (e) => toast.error(extractApiError(e, 'Failed to update day counting'))
+    });
+}
+
+export function useSetLeaveBalanceRule() {
+    const qc = useQueryClient();
+    return useMutation({
+        mutationFn: ({ id, rule }: { id: number | string; rule: LeaveBalanceRule }) => leaveApi.setBalanceRule(id, rule),
+        onSuccess: () => {
+            qc.invalidateQueries({ queryKey: [KEY] });
+            toast.success('Balance rule updated');
+        },
+        onError: (e) => toast.error(extractApiError(e, 'Failed to update the balance rule'))
     });
 }
 
@@ -214,7 +226,8 @@ export function useDeleteLeaveEntitlement() {
     return useMutation({
         mutationFn: (id: number | string) => leaveApi.deleteEntitlement(id),
         onSuccess: () => {
-            qc.invalidateQueries({ queryKey: [KEY, 'entitlements'] });
+            // The balance goes back to the leave type's default days.
+            qc.invalidateQueries({ queryKey: [KEY] });
             toast.success('Entitlement deleted');
         },
         onError: (e) => toast.error(extractApiError(e, 'Failed to delete entitlement'))

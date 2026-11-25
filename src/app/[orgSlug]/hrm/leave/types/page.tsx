@@ -6,16 +6,15 @@ import { Badge } from '@/components/ui/base';
 import { type Column } from '@/components/ui/data-table';
 import { Select } from '@/components/ui/form';
 import { PageHeader } from '@/components/ui/page-header';
-import { useDeleteLeaveCategory, useLeaveCategories, useSaveLeaveCategory, useSetLeaveCountMode } from '@/hooks/use-leave';
+import { useDeleteLeaveCategory, useLeaveCategories, useSaveLeaveCategory, useSetLeaveBalanceRule, useSetLeaveCountMode } from '@/hooks/use-leave';
 import { normalizeList } from '@/lib/api/drf';
-import { type LeaveCategory, type LeaveCountMode } from '@/lib/api/leave';
+import { type LeaveBalanceRule, type LeaveCategory, type LeaveCountMode } from '@/lib/api/leave';
 
 const fields: CrudFieldDef[] = [
     { name: 'name', label: 'Name', required: true },
     { name: 'max_days', label: 'Max Days / Year', type: 'number', step: '0.5' },
     { name: 'is_paid', label: 'Paid Leave', type: 'switch' },
     { name: 'carry_forward', label: 'Allow Carry-Forward', type: 'switch' },
-    { name: 'requires_approval', label: 'Requires Approval', type: 'switch' },
     { name: 'description', label: 'Description', type: 'textarea', span2: true }
 ];
 
@@ -24,10 +23,19 @@ export default function LeaveTypesPage() {
     const save = useSaveLeaveCategory();
     const del = useDeleteLeaveCategory();
     const setMode = useSetLeaveCountMode();
+    const setRule = useSetLeaveBalanceRule();
     const rows = normalizeList<LeaveCategory>(data).results;
 
     const columns: Column<LeaveCategory>[] = [
-        { header: 'Name', cell: (c) => <span className="font-medium">{c.name || '—'}</span> },
+        {
+            header: 'Name',
+            cell: (c) => (
+                <div>
+                    <span className="font-medium">{c.name || '—'}</span>
+                    {c.inherited ? <span className="block text-xs text-muted-foreground">Platform type, read-only</span> : null}
+                </div>
+            )
+        },
         { header: 'Max Days', cell: (c) => c.max_days ?? c.days_allowed ?? c.default_annual_days ?? '—' },
         {
             header: 'Paid',
@@ -53,6 +61,23 @@ export default function LeaveTypesPage() {
                     </Select>
                 </PermissionGate>
             )
+        },
+        {
+            header: 'Beyond the balance',
+            cell: (c) => (
+                <PermissionGate permission="hrm.leave.manage" fallback={c.balance_rule === 'allow' ? 'Allow with a warning' : 'Refuse'}>
+                    <Select
+                        aria-label={`What ${c.name ?? 'this type'} does beyond the balance`}
+                        value={c.balance_rule ?? 'refuse'}
+                        disabled={setRule.isPending}
+                        onChange={(e) => setRule.mutate({ id: c.id, rule: e.target.value as LeaveBalanceRule })}
+                        className="w-auto min-w-[170px]"
+                    >
+                        <option value="refuse">Refuse</option>
+                        <option value="allow">Allow with a warning</option>
+                    </Select>
+                </PermissionGate>
+            )
         }
     ];
 
@@ -68,13 +93,15 @@ export default function LeaveTypesPage() {
                 onRetry={refetch}
                 entityLabel="Leave Type"
                 perms={{ add: 'add_leavecategory', change: 'change_leavecategory', delete: 'delete_leavecategory' }}
+                // A platform type keeps its own values; only the two selects apply to it.
+                canEdit={(c) => !c.inherited}
+                canDelete={(c) => !c.inherited}
                 emptyDescription="No leave types configured yet."
                 toForm={(c) => ({
                     name: c?.name ?? '',
                     max_days: c?.max_days ?? c?.default_annual_days ?? '',
                     is_paid: c?.is_paid ?? true,
                     carry_forward: c?.carry_forward ?? c?.allow_carryover ?? false,
-                    requires_approval: c?.requires_approval ?? true,
                     description: c?.description ?? ''
                 })}
                 onSave={({ id, data }, done) => save.mutate({ id, data: data as Partial<LeaveCategory> }, { onSuccess: done })}

@@ -54,14 +54,26 @@ function PreviewNote({ preview }: { preview: LeavePreview }) {
     const off = preview.skipped.filter((s) => s.reason === 'day_off').length;
     const half = preview.skipped.filter((s) => s.reason === 'half_day').length;
     const balance = preview.remaining_balance == null ? null : Number(preview.remaining_balance);
+    const pending = Number(preview.pending_days);
     return (
         <div className="space-y-1 rounded-lg border border-border bg-muted/30 p-3 text-sm" role="status">
             <p className="font-semibold text-foreground">{days > 0 ? `${days} ${unit}` : 'These dates have no working days, so there is nothing to apply for.'}</p>
             {holidays.length > 0 ? <p className="text-muted-foreground">Public holidays not counted: {holidays.map((h) => `${h.name || 'Holiday'} (${formatDate(h.date)})`).join(', ')}</p> : null}
             {off > 0 ? <p className="text-muted-foreground">{off === 1 ? '1 non-working day not counted' : `${off} non-working days not counted`}</p> : null}
             {half > 0 ? <p className="text-muted-foreground">{half === 1 ? '1 half day counted as half' : `${half} half days counted as half`}</p> : null}
-            <p className="text-muted-foreground">{balance == null ? `No ${preview.balance_year} balance for this leave type yet` : `${preview.balance_year} balance: ${balance} days`}</p>
-            {balance != null && days > balance ? <p className="text-destructive">This is more than the remaining balance. The approver decides.</p> : null}
+            {balance == null ? (
+                <p className="text-amber-700 dark:text-amber-400">No {preview.balance_year} balance is set for this leave type, so it cannot be checked.</p>
+            ) : (
+                <p className="text-muted-foreground">
+                    {preview.balance_year} balance: {balance} days{pending > 0 ? `, ${pending} already in pending requests` : ''}
+                </p>
+            )}
+            {preview.balance_message ? (
+                <p className={preview.refused ? 'text-destructive' : 'text-amber-700 dark:text-amber-400'}>
+                    {preview.refused ? 'Cannot submit: ' : 'Warning: '}
+                    {preview.balance_message}.
+                </p>
+            ) : null}
         </div>
     );
 }
@@ -99,7 +111,7 @@ export function LeaveFormDialog({ open, onClose, self = false }: { open: boolean
               }
             : null;
     const preview = useLeavePreview(previewParams);
-    const valid = complete && Number(preview.data?.days ?? 0) > 0;
+    const valid = complete && Number(preview.data?.days ?? 0) > 0 && !preview.data?.refused;
 
     const submit = () => {
         if (!valid) return;

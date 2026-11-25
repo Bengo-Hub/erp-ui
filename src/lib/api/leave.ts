@@ -35,8 +35,10 @@ export interface LeaveCategory {
     allow_carryover?: boolean;
     is_paid?: boolean;
     carry_forward?: boolean;
-    requires_approval?: boolean;
     count_mode?: LeaveCountMode;
+    balance_rule?: LeaveBalanceRule;
+    /** A platform type: only count_mode and balance_rule can be changed. */
+    inherited?: boolean;
     [key: string]: unknown;
 }
 
@@ -72,6 +74,9 @@ export interface LeaveEntitlement {
 /** How a leave type's days are counted. */
 export type LeaveCountMode = 'working_days' | 'calendar_days';
 
+/** Whether a leave type refuses requests beyond the remaining balance. */
+export type LeaveBalanceRule = 'refuse' | 'allow';
+
 /** What filing these dates would count (GET /requests/preview). */
 export interface LeavePreview {
     days: string;
@@ -81,6 +86,14 @@ export interface LeavePreview {
     balance_year: number;
     /** Null when the person has no balance for this type in that year. */
     remaining_balance: string | null;
+    /** Days already in the person's pending requests of this type and year. */
+    pending_days: string;
+    /** Remaining less pending; null without a balance. */
+    available_balance: string | null;
+    /** True when filing would be refused for the balance. */
+    refused: boolean;
+    /** Why it would be refused, or the warning when the type allows it. */
+    balance_message?: string;
 }
 
 export interface LeavePreviewParams {
@@ -164,6 +177,7 @@ export const leaveApi = {
     updateCategory: (id: number | string, data: Partial<LeaveCategory>) => apiClient.put<LeaveCategory>(`${LEAVE}/categories/${id}/`, data),
     // Separate from the edit: it also works on a platform leave type the tenant inherits.
     setCountMode: (id: number | string, count_mode: LeaveCountMode) => apiClient.put<LeaveCategory>(`${LEAVE}/categories/${id}/count-mode`, { count_mode }),
+    setBalanceRule: (id: number | string, balance_rule: LeaveBalanceRule) => apiClient.put<LeaveCategory>(`${LEAVE}/categories/${id}/balance-rule`, { balance_rule }),
     deleteCategory: (id: number | string) => apiClient.delete<void>(`${LEAVE}/categories/${id}/`),
 
     // Balances
@@ -175,7 +189,7 @@ export const leaveApi = {
     // Entitlements
     listEntitlements: (params?: ListParams) => apiClient.get<Paginated<LeaveEntitlement> | LeaveEntitlement[]>(`${LEAVE}/entitlements/`, params),
     // erp-api exposes a single upsert (POST) keyed on employee+category+year;
-    // both create and "update" route through it. There is no delete endpoint.
+    // both create and "update" route through it.
     createEntitlement: (data: Partial<LeaveEntitlement>) => apiClient.post<LeaveEntitlement>(`${LEAVE}/entitlements/`, toEntitlementPayload(data)),
     updateEntitlement: (_id: number | string, data: Partial<LeaveEntitlement>) => apiClient.post<LeaveEntitlement>(`${LEAVE}/entitlements/`, toEntitlementPayload(data)),
     deleteEntitlement: (id: number | string) => apiClient.delete<void>(`${LEAVE}/entitlements/${id}/`),

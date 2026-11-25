@@ -59,8 +59,9 @@ export default function LeaveEntitlementPage() {
         perms={{ add: "add_leaveentitlement", change: "change_leaveentitlement", delete: "delete_leaveentitlement" }}
         emptyDescription="No leave entitlements have been allocated."
         toForm={(e) => ({
-          employee: e?.employee ?? "",
-          leave_category: e?.leave_category ?? "",
+          // erp-api names them employee_id and category_id.
+          employee: e?.employee ?? e?.employee_id ?? "",
+          leave_category: e?.leave_category ?? e?.category_id ?? "",
           days: e?.days ?? "",
           year: e?.year ?? new Date().getFullYear(),
         })}
