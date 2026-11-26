@@ -21,20 +21,21 @@ again, that one organisation can never reach another, and that standard settings
 | Leave types | An edit keeps the carryover cap and the active flag the form does not send. Removed or renamed default settings do not come back on deploy | erp-api cbf5859 |
 | Holidays | Kenya's national holidays to December 2027 are platform rows every company inherits, with the Sunday rule of the Public Holidays Act applied. A company can switch one off for itself and back on; leave counts and attendance follow | erp-api 22aa087 |
 | Roles | A test fails when a route or a page uses a permission the seed does not create | erp-api 354b3bf |
+| Shared settings | Leave types, job groups, the appraisal template with its questions, and sample goals are platform rows every company inherits without a copy. A company customises one (only the changed values are kept) and restores it; an own row of the same name takes its place. Accrual covers inherited types. A switched-off leave type takes no new requests and the request form lists only active types. Old platform rows brought up to the current defaults once | erp-api fbef908, 4961a33; erp-ui 5a17579 |
+| Shared settings | The per-company copies were merged into the platform rows in production in one reviewed transaction (dry run first): 35 leave types, 35 job groups, 5 templates, 40 questions and 50 goals; balances, requests, entitlements, salary details, appraisals and answers repointed, none orphaned. Copies never edited after seeding kept no changes | production, 2026-11-26 |
+| Holidays | The holidays page shows the platform holidays with an Observed switch | erp-ui 5a17579 |
 | Reliability | Failed events are retried after a growing delay, at most five times, then given up with a logged reason; the membership lookup backs off while auth-api is down | erp-api 5810e37 |
 | Navigation | Apps live in the drawer and profile panel with the agreed names and groups, checked at 1440, 820 and 360 px. Sidebar external links removed; Budgets is under Payroll | erp-ui f11e0c6; shared-ui-lib v0.1.156 |
 | Theme | Dark styles follow the ERP theme instead of the computer's dark mode | erp-ui f11e0c6 |
 
 ## In progress
 - Tenant checks on ids sent in request bodies (recruitment first, then the rest).
-- Standard settings (leave types, job groups, appraisal template, goals) inherited from the
-  platform, with customise and revert, and leave accrual on inherited types.
-- Holidays page: show inherited holidays with a switch, and a platform list for the platform owner.
+- A screen for the platform owner to manage the platform holiday list (the API takes
+  scope=platform today).
 
 ## Next
 - Settings shared with other services, audited pair by pair: departments and Treasury cost centres,
   timesheets and Projects, and the rest. Owner of the data, mechanism, drift, then the fix.
-- Reviewed migration of the copied standard settings, with a dry run per organisation first.
 - Recapture the leave, payroll, employee and navigation screenshots for the guide.
 
 ## Open
@@ -49,11 +50,15 @@ again, that one organisation can never reach another, and that standard settings
 - The top bar title shortens to "Co..." at 820 px.
 - Maskani, ISP Billing and Mail are not in the drawer until their links are confirmed.
 - zod 3 to 4 and maplibre-gl 5 to 6 remain their own upgrade sprint.
+- The outlet filter shows every outlet to the admin, superuser, manager and hr_admin roles by name,
+  a visibility rule separate from the exact administrator names.
 
 ## Working rules learned
 - Push and deploy erp-api before the erp-ui that calls it.
 - A 401 does not prove a route exists: probe signed in, with a bogus path as the control.
 - A screenshot does not prove a form saves: save, reload, compare.
+- A seed that skips rows already present leaves old rows behind when the defaults gain a field;
+  compare the platform rows with the defaults field by field before merging copies into them.
 - Demo data made through the API can hide a broken form.
 - A new Windows worktree checks the migration files out with CRLF endings, and atlas then reports a
   checksum mismatch. Rewrite them from HEAD with LF before generating a migration.
