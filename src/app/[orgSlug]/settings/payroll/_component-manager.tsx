@@ -33,6 +33,18 @@ interface ComponentHooks {
     remove: () => { mutate: (id: number | string, o?: { onSuccess?: () => void }) => void; isPending: boolean };
 }
 
+// How an earning is taxed. The two gratuity rules follow the Income Tax Act: on a contract of at
+// least three years, gratuity up to 31% of the contract's pay is tax free (from July 2026); paid
+// into a registered pension scheme, up to 360,000 per year of service is tax free.
+const TAX_TREATMENTS = [
+    { value: 'taxable', label: 'Taxable' },
+    { value: 'nontaxable', label: 'Tax free' },
+    { value: 'gratuity', label: 'Gratuity on a contract of 3 years or more' },
+    { value: 'gratuity_pension', label: 'Gratuity paid into a registered pension scheme' }
+];
+
+const TAX_TREATMENT_LABEL: Record<string, string> = Object.fromEntries(TAX_TREATMENTS.map((t) => [t.value, t.label]));
+
 // Per-category fields. Deductions expose the employer-contribution + checkoff/registration
 // columns (NSSF/pension), benefits/earnings expose taxable + per-unit. Built from the
 // category so each tab only shows the controls that apply to it (mirrors the legacy
@@ -82,7 +94,7 @@ function fieldsFor(category: string): CrudFieldDef[] {
               ] as CrudFieldDef[])
             : []),
         ...(isBenefit ? ([{ name: 'non_cash', label: 'Non-cash (in-kind; taxed, not paid in cash)', type: 'switch' }] as CrudFieldDef[]) : []),
-        { name: 'is_taxable', label: 'Taxable', type: 'switch' },
+        ...(isEarning ? ([{ name: 'taxable_status', label: 'Tax treatment', type: 'select', options: TAX_TREATMENTS }] as CrudFieldDef[]) : ([{ name: 'is_taxable', label: 'Taxable', type: 'switch' }] as CrudFieldDef[])),
         { name: 'is_active', label: 'Active', type: 'switch' },
         { name: 'effective_from', label: 'Effective From', type: 'date' },
         { name: 'effective_to', label: 'Effective To', type: 'date' },
@@ -152,7 +164,14 @@ export function PayComponentManager({ tabKey, entityLabel, hooks }: { tabKey: st
             : []),
         {
             header: 'Taxable',
-            cell: (c) => (c.is_taxable ? <Badge variant="warning">Taxable</Badge> : <Badge variant="secondary">Exempt</Badge>)
+            cell: (c) =>
+                c.taxable_status === 'gratuity' || c.taxable_status === 'gratuity_pension' ? (
+                    <Badge variant="default">{TAX_TREATMENT_LABEL[c.taxable_status]}</Badge>
+                ) : c.is_taxable ? (
+                    <Badge variant="warning">Taxable</Badge>
+                ) : (
+                    <Badge variant="secondary">Exempt</Badge>
+                )
         },
         {
             header: 'Applies',
@@ -214,6 +233,7 @@ export function PayComponentManager({ tabKey, entityLabel, hooks }: { tabKey: st
                     unit_rate: c?.unit_rate ?? '',
                     quantity: c?.quantity ?? '',
                     is_taxable: c?.is_taxable ?? false,
+                    taxable_status: c?.taxable_status ?? (c?.is_taxable ? 'taxable' : 'nontaxable'),
                     is_active: c?.is_active ?? true,
                     effective_from: c?.effective_from ?? '',
                     effective_to: c?.effective_to ?? '',

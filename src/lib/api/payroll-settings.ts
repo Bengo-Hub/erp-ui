@@ -54,6 +54,8 @@ export interface PayrollComponent {
     effective_from?: string;
     effective_to?: string;
     is_taxable?: boolean;
+    /** taxable | nontaxable | gratuity (contract rule) | gratuity_pension (paid into a registered scheme). */
+    taxable_status?: string;
     is_active?: boolean;
     description?: string;
     [key: string]: unknown;
