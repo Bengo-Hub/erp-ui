@@ -48,7 +48,7 @@ export function TenantFilter({ className }: { className?: string }) {
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className="flex items-center gap-2 rounded-xl border border-border bg-card px-3 py-2 text-sm font-medium text-foreground hover:bg-muted transition-colors min-w-[180px]"
+        className="flex items-center gap-2 rounded-xl border border-border bg-card px-3 py-2 text-sm font-medium text-foreground hover:bg-muted transition-colors max-w-full min-w-[130px] lg:min-w-[180px]"
         aria-haspopup="listbox"
         aria-expanded={open}
       >

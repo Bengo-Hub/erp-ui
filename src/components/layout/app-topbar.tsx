@@ -28,7 +28,10 @@ const SERVICE_URLS: Partial<Record<ServiceKey, string>> = {
     ticketing: process.env.NEXT_PUBLIC_TICKETING_UI_URL ?? 'https://ticketing.codevertexafrica.com',
     logistics: process.env.NEXT_PUBLIC_LOGISTICS_UI_URL ?? 'https://logistics.codevertexafrica.com',
     library: process.env.NEXT_PUBLIC_LIBRARY_UI_URL ?? 'https://library.codevertexafrica.com',
-    truload: process.env.NEXT_PUBLIC_TRULOAD_UI_URL ?? 'https://truload.codevertexafrica.com'
+    truload: process.env.NEXT_PUBLIC_TRULOAD_UI_URL ?? 'https://truload.codevertexafrica.com',
+    // maskaniapp is the Maskani app (owner and estate portals); maskani.* is the public marketplace.
+    maskani: process.env.NEXT_PUBLIC_MASKANI_UI_URL ?? 'https://maskaniapp.codevertexafrica.com',
+    mail: process.env.NEXT_PUBLIC_MAIL_UI_URL ?? 'https://webmail.codevertexafrica.com'
 };
 
 export function AppTopbar({ onMenuClick }: { onMenuClick?: () => void }) {
@@ -65,9 +68,11 @@ export function AppTopbar({ onMenuClick }: { onMenuClick?: () => void }) {
                 <button type="button" onClick={onMenuClick} className="md:hidden inline-flex size-10 items-center justify-center rounded-full text-muted-foreground hover:bg-muted" aria-label="Open menu">
                     <Menu className="h-5 w-5" />
                 </button>
-                <h1 className="text-base sm:text-lg font-bold text-foreground truncate max-w-40 sm:max-w-none">{getServiceTitle('HR')}</h1>
-                {isPlatformRoute && <TenantFilter className="hidden md:block" />}
-                <OutletFilter className="hidden md:block" />
+                {/* The title keeps its width (capped) and the filters shrink first: at tablet width the
+                    filters used to squeeze the title down to "Co...". */}
+                <h1 className="shrink-0 text-base sm:text-lg font-bold text-foreground truncate max-w-40 md:max-w-56 lg:max-w-none">{getServiceTitle('HR')}</h1>
+                {isPlatformRoute && <TenantFilter className="hidden md:block min-w-0 shrink" />}
+                <OutletFilter className="hidden md:block min-w-0 shrink" />
             </div>
 
             <div className="flex items-center gap-1 sm:gap-2">

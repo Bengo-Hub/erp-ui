@@ -10,6 +10,7 @@ again, that one organisation can never reach another, and that standard settings
 | Leave | Applying works again: the server counts the days per leave type (working or calendar days), staff file and cancel their own, nobody approves their own. Over-balance requests are refused or warned per type. A decision on the Approvals page reaches the leave. Checked through the real form. | erp-api 932751c, 4a86076; erp-ui f67c5fb, aa0c50c |
 | Leave and attendance | Public holidays page; overrides can be edited and deleted | erp-api 5cb44e4; erp-ui 9b91112 |
 | Payroll | Opt-in earnings and deductions per employee; SHIF monthly minimum of KES 300 | erp-api 4ce6da0; erp-ui 8edf256 |
+| Navigation | Maskani (the app at maskaniapp.codevertexafrica.com) and Mail (webmail.codevertexafrica.com) are in the app drawer. At tablet width the page title keeps its room and the outlet and tenant filters narrow first, so the title no longer shows as "Co...". | erp-ui (this change) |
 | Payroll | PAYE band 4 ends at KES 800,000 from the December 2026 payroll (earlier months keep 799,999). P9, P9A, P10 and P10A declare taxable gross | erp-api 43f4a16 |
 | Forms | Salary tab loads and keeps reliefs, payment method and phone; job group, middle name and basic salary from the employee form are stored; project allocations, appraisal template and question edit and delete, job posting status and delete, and claim description save. A course edit keeps its capacity and an edited disapproved advance stays inactive | erp-api 6745198 |
 | Payroll | Pay summary on the employee page: statutory, automatic and assigned items with the preview's amounts. The contract form starts from the payroll salary and says when the two differ | erp-api eada5dd |
@@ -47,8 +48,7 @@ again, that one organisation can never reach another, and that standard settings
 - Job group grade and salary range, job title code, department description, contract notes and the
   date on a claim line have no storage, so the forms no longer ask for them.
 - Leave requests have no half days; a request cannot be edited, only cancelled.
-- The top bar title shortens to "Co..." at 820 px.
-- Maskani, ISP Billing and Mail are not in the drawer until their links are confirmed.
+- ISP Billing stays out of the drawer (an unused service for now).
 - zod 3 to 4 and maplibre-gl 5 to 6 remain their own upgrade sprint.
 - The outlet filter shows every outlet to the admin, superuser, manager and hr_admin roles by name,
   a visibility rule separate from the exact administrator names.
