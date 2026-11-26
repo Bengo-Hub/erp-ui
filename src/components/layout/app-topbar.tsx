@@ -71,8 +71,10 @@ export function AppTopbar({ onMenuClick }: { onMenuClick?: () => void }) {
                 {/* The title keeps its width (capped) and the filters shrink first: at tablet width the
                     filters used to squeeze the title down to "Co...". */}
                 <h1 className="shrink-0 text-base sm:text-lg font-bold text-foreground truncate max-w-40 md:max-w-56 lg:max-w-none">{getServiceTitle('HR')}</h1>
-                {isPlatformRoute && <TenantFilter className="hidden md:block min-w-0 shrink" />}
-                <OutletFilter className="hidden md:block min-w-0 shrink" />
+                {/* No min-w-0 here: a filter may narrow to its button's own minimum, never below it,
+                    or the button spills out under the theme toggle. */}
+                {isPlatformRoute && <TenantFilter className="hidden md:block shrink" />}
+                <OutletFilter className="hidden md:block shrink" />
             </div>
 
             <div className="flex items-center gap-1 sm:gap-2">

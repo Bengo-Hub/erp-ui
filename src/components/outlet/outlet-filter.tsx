@@ -78,7 +78,7 @@ export function OutletFilter({ className, tenantSlug }: { className?: string; te
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className="flex items-center gap-2 rounded-xl border border-border bg-card px-3 py-2 text-sm font-medium text-foreground hover:bg-muted transition-colors max-w-full min-w-[120px] lg:min-w-[160px]"
+        className="flex items-center gap-2 rounded-xl border border-border bg-card px-3 py-2 text-sm font-medium text-foreground hover:bg-muted transition-colors max-w-full min-w-[140px] lg:min-w-[160px]"
         aria-haspopup="listbox"
         aria-expanded={open}
       >
