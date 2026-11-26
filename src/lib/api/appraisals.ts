@@ -23,6 +23,11 @@ export interface AppraisalTemplate {
     description?: string;
     is_active?: boolean;
     question_count?: number;
+    /** A platform template every organisation inherits; its description, active flag and
+     *  questions can be changed for this organisation, its name stays. */
+    inherited?: boolean;
+    /** An inherited template this organisation changed. */
+    customised?: boolean;
     [key: string]: unknown;
 }
 
@@ -40,6 +45,9 @@ export interface AppraisalQuestion {
     weight?: string | number;
     max_score?: string | number;
     order?: number;
+    /** A question of a platform template; its wording and scoring can be changed here. */
+    inherited?: boolean;
+    customised?: boolean;
     [key: string]: unknown;
 }
 
@@ -87,6 +95,10 @@ export interface Goal {
     status?: string;
     is_library?: boolean;
     created_at?: string;
+    /** A platform sample goal of the library; its description, category and weight can be
+     *  changed here, its title stays. */
+    inherited?: boolean;
+    customised?: boolean;
     [key: string]: unknown;
 }
 
@@ -147,7 +159,11 @@ export const appraisalApi = {
         close: (id: number | string) => apiClient.put<AppraisalCycle>(`${APP}/cycles/${id}/status`, { status: 'closed' }),
         reopen: (id: number | string) => apiClient.put<AppraisalCycle>(`${APP}/cycles/${id}/status`, { status: 'reopened' })
     },
-    templates: crud<AppraisalTemplate>('templates'),
+    templates: {
+        ...crud<AppraisalTemplate>('templates'),
+        // Drops this organisation's changes to an inherited template.
+        revert: (id: number | string) => apiClient.delete<AppraisalTemplate>(`${APP}/templates/${id}/customisation`)
+    },
     // Questions are scoped under a template (no top-level /questions route).
     questions: {
         list: (templateId: number | string, params?: ListParams) => apiClient.get<Paginated<AppraisalQuestion> | AppraisalQuestion[]>(`${APP}/templates/${templateId}/questions`, params),
@@ -157,7 +173,8 @@ export const appraisalApi = {
         create: (templateId: number | string, data: Partial<AppraisalQuestion>) => apiClient.post<AppraisalQuestion>(`${APP}/templates/${templateId}/questions`, questionBody(data)),
         // A question that already has answers is refused (409).
         update: (id: number | string, templateId: number | string, data: Partial<AppraisalQuestion>) => apiClient.put<AppraisalQuestion>(`${APP}/questions/${id}`, { ...questionBody(data), template_id: templateId }),
-        remove: (id: number | string) => apiClient.delete<void>(`${APP}/questions/${id}`)
+        remove: (id: number | string) => apiClient.delete<void>(`${APP}/questions/${id}`),
+        revert: (id: number | string) => apiClient.delete<AppraisalQuestion>(`${APP}/questions/${id}/customisation`)
     },
     goals: {
         ...crud<Goal>('goals'),
@@ -166,7 +183,8 @@ export const appraisalApi = {
         update: (id: number | string, data: Partial<Goal>) => apiClient.put<Goal>(`${APP}/goals/${id}/`, goalBody(data)),
         // erp-api: POST /goals/{id}/progress.
         updateProgress: (id: number | string, data: { progress: number | string; note?: string }) => apiClient.post<Goal>(`${APP}/goals/${id}/progress`, data),
-        listProgress: (id: number | string) => apiClient.get(`${APP}/goals/${id}/progress`)
+        listProgress: (id: number | string) => apiClient.get(`${APP}/goals/${id}/progress`),
+        revert: (id: number | string) => apiClient.delete<Goal>(`${APP}/goals/${id}/customisation`)
     },
     // Appraisals themselves live at the collection root (/hrm/appraisals/), not
     // a nested /appraisals segment.

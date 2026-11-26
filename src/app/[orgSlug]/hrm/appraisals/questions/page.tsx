@@ -2,12 +2,16 @@
 
 import { useMemo, useState } from 'react';
 
+import { RotateCcw } from 'lucide-react';
+import { PermissionGate } from '@/components/auth/permission-gate';
 import { CrudManager, type CrudFieldDef } from '@/components/crud/crud-manager';
+import { InheritedBadge } from '@/components/settings/inherited-badge';
 import { Card } from '@/components/ui/base';
 import { type Column } from '@/components/ui/data-table';
 import { Field, Select } from '@/components/ui/form';
 import { PageHeader } from '@/components/ui/page-header';
-import { useAppraisalQuestionsFiltered, useAppraisalTemplates, useDeleteAppraisalQuestion, useSaveAppraisalQuestion } from '@/hooks/use-appraisals';
+import { IconButton } from '@/components/ui/tooltip';
+import { useAppraisalQuestionsFiltered, useAppraisalTemplates, useDeleteAppraisalQuestion, useRevertAppraisalQuestion, useSaveAppraisalQuestion } from '@/hooks/use-appraisals';
 import { normalizeList } from '@/lib/api/drf';
 import { type AppraisalQuestion, type AppraisalTemplate } from '@/lib/api/appraisals';
 
@@ -19,6 +23,7 @@ export default function AppraisalQuestionsPage() {
     const { data, isLoading, error, refetch } = useAppraisalQuestionsFiltered(template || undefined);
     const save = useSaveAppraisalQuestion();
     const del = useDeleteAppraisalQuestion();
+    const revert = useRevertAppraisalQuestion();
     const rows = normalizeList<AppraisalQuestion>(data).results;
 
     const fields: CrudFieldDef[] = [
@@ -47,7 +52,15 @@ export default function AppraisalQuestionsPage() {
     ];
 
     const columns: Column<AppraisalQuestion>[] = [
-        { header: 'Question', cell: (q) => <span className="font-medium">{q.text || q.question_text || '—'}</span> },
+        {
+            header: 'Question',
+            cell: (q) => (
+                <div className="flex flex-wrap items-center gap-2">
+                    <span className="font-medium">{q.text || q.question_text || '—'}</span>
+                    <InheritedBadge inherited={q.inherited} customised={q.customised} />
+                </div>
+            )
+        },
         {
             header: 'Template',
             cell: (q) => q.template_name || templates.find((t) => String(t.id) === String(q.template_id))?.name || '—'
@@ -86,6 +99,19 @@ export default function AppraisalQuestionsPage() {
                 entityLabel="Question"
                 perms={{ add: 'add_appraisalquestion', change: 'change_appraisalquestion', delete: 'delete_appraisalquestion' }}
                 emptyDescription="No questions for this template yet."
+                // A question of a platform template is customised here (wording and scoring); it
+                // stays on its template and cannot be deleted.
+                canDelete={(q) => !q.inherited}
+                editTitle={(q) => (q.inherited ? 'Customise Question' : 'Edit Question')}
+                rowActions={(q) =>
+                    q.customised ? (
+                        <PermissionGate permission="hrm.appraisal.manage">
+                            <IconButton label="Restore platform values" onClick={() => revert.mutate(q.id)} disabled={revert.isPending}>
+                                <RotateCcw className="size-4" />
+                            </IconButton>
+                        </PermissionGate>
+                    ) : null
+                }
                 toForm={(q) => ({
                     template: q?.template_id ?? template ?? '',
                     text: q?.text ?? q?.question_text ?? '',

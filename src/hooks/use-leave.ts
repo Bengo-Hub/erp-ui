@@ -154,6 +154,19 @@ export function useDeleteLeaveCategory() {
     });
 }
 
+/** Drops this organisation's changes to an inherited leave type. */
+export function useRevertLeaveCategory() {
+    const qc = useQueryClient();
+    return useMutation({
+        mutationFn: (id: number | string) => leaveApi.revertCategory(id),
+        onSuccess: () => {
+            qc.invalidateQueries({ queryKey: [KEY, 'categories'] });
+            toast.success('Leave type back to the platform values');
+        },
+        onError: (e) => toast.error(extractApiError(e, 'Failed to revert the leave type'))
+    });
+}
+
 // ---- Balances ----
 export function useLeaveBalances(params?: ListParams) {
     return useQuery({
@@ -249,3 +262,16 @@ const holidays = makeResourceHooks<PublicHoliday>('public-holidays', leaveApi.ho
 export const usePublicHolidays = holidays.useList;
 export const useSavePublicHoliday = holidays.useSave;
 export const useDeletePublicHoliday = holidays.useRemove;
+
+/** Switches an inherited national holiday off for this organisation, or back on. */
+export function useSetHolidayActive() {
+    const qc = useQueryClient();
+    return useMutation({
+        mutationFn: ({ id, active }: { id: number | string; active: boolean }) => leaveApi.holidays.setActive(id, active),
+        onSuccess: (_r, v) => {
+            qc.invalidateQueries({ queryKey: ['public-holidays'] });
+            toast.success(v.active ? 'Holiday switched on' : 'Holiday switched off');
+        },
+        onError: (e) => toast.error(extractApiError(e, 'Failed to switch the holiday'))
+    });
+}

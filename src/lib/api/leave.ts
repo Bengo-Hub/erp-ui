@@ -34,11 +34,16 @@ export interface LeaveCategory {
     default_annual_days?: string | number;
     allow_carryover?: boolean;
     is_paid?: boolean;
+    /** Always sent by erp-api; a switched-off type takes no new requests. */
+    is_active?: boolean;
     carry_forward?: boolean;
     count_mode?: LeaveCountMode;
     balance_rule?: LeaveBalanceRule;
-    /** A platform type: only count_mode and balance_rule can be changed. */
+    /** A platform type every organisation inherits. Its values can be changed for this
+     *  organisation (a customisation, which revert drops); its name stays the platform's. */
     inherited?: boolean;
+    /** An inherited type this organisation changed. */
+    customised?: boolean;
     [key: string]: unknown;
 }
 
@@ -146,16 +151,22 @@ export interface PublicHoliday {
     date: string;
     is_national?: boolean;
     county?: string | null;
+    /** A national holiday of the platform calendar every organisation inherits; it can be
+     *  switched off for this organisation, not edited or deleted. */
+    inherited?: boolean;
+    /** Whether the holiday applies to this organisation (false: switched off). */
+    active?: boolean;
     [key: string]: unknown;
 }
 
 export const leaveApi = {
-    // Public holidays (tenant-owned; erp-api has no shared platform calendar).
+    // Public holidays: the organisation's own plus the platform's national calendar it inherits.
     holidays: {
         list: (params?: ListParams, signal?: AbortSignal) => apiClient.get<Paginated<PublicHoliday> | PublicHoliday[]>(`${LEAVE}/holidays/`, params, { signal }),
         create: (data: Partial<PublicHoliday>) => apiClient.post<PublicHoliday>(`${LEAVE}/holidays/`, data),
         update: (id: number | string, data: Partial<PublicHoliday>) => apiClient.put<PublicHoliday>(`${LEAVE}/holidays/${id}/`, data),
-        remove: (id: number | string) => apiClient.delete<void>(`${LEAVE}/holidays/${id}/`)
+        remove: (id: number | string) => apiClient.delete<void>(`${LEAVE}/holidays/${id}/`),
+        setActive: (id: number | string, active: boolean) => apiClient.put<PublicHoliday>(`${LEAVE}/holidays/${id}/active`, { active })
     },
 
     // Requests
@@ -179,6 +190,8 @@ export const leaveApi = {
     setCountMode: (id: number | string, count_mode: LeaveCountMode) => apiClient.put<LeaveCategory>(`${LEAVE}/categories/${id}/count-mode`, { count_mode }),
     setBalanceRule: (id: number | string, balance_rule: LeaveBalanceRule) => apiClient.put<LeaveCategory>(`${LEAVE}/categories/${id}/balance-rule`, { balance_rule }),
     deleteCategory: (id: number | string) => apiClient.delete<void>(`${LEAVE}/categories/${id}/`),
+    // Drops this organisation's changes to an inherited leave type.
+    revertCategory: (id: number | string) => apiClient.delete<LeaveCategory>(`${LEAVE}/categories/${id}/customisation`),
 
     // Balances
     listBalances: (params?: ListParams, signal?: AbortSignal) => apiClient.get<Paginated<LeaveBalance> | LeaveBalance[]>(`${LEAVE}/balances/`, params, { signal }),

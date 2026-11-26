@@ -26,6 +26,10 @@ export interface JobGroup extends NamedRecord {
   grade?: string;
   min_salary?: string | number;
   max_salary?: string | number;
+  /** A platform job group every organisation inherits; its description can be customised. */
+  inherited?: boolean;
+  /** An inherited job group this organisation changed. */
+  customised?: boolean;
 }
 
 /** Generic CRUD factory for a DRF named-record endpoint. */
@@ -42,3 +46,6 @@ function crud<T extends { id: number }>(base: string) {
 export const departmentsApi = crud<Department>(`${HRM}/departments`);
 export const jobTitlesApi = crud<NamedRecord>(`${EMP}/job-titles`);
 export const jobGroupsApi = crud<JobGroup>(`${EMP}/job-groups`);
+/** Drops this organisation's changes to an inherited job group. */
+export const revertJobGroup = (id: number | string) =>
+  apiClient.delete<JobGroup>(`${EMP}/job-groups/${id}/customisation`);

@@ -2,11 +2,13 @@
 
 import { useState } from 'react';
 
+import { PermissionGate } from '@/components/auth/permission-gate';
 import { CrudManager, type CrudFieldDef } from '@/components/crud/crud-manager';
+import { InheritedBadge } from '@/components/settings/inherited-badge';
 import { type Column } from '@/components/ui/data-table';
-import { Select } from '@/components/ui/form';
+import { Select, Switch } from '@/components/ui/form';
 import { PageHeader } from '@/components/ui/page-header';
-import { useDeletePublicHoliday, usePublicHolidays, useSavePublicHoliday } from '@/hooks/use-leave';
+import { useDeletePublicHoliday, usePublicHolidays, useSavePublicHoliday, useSetHolidayActive } from '@/hooks/use-leave';
 import { normalizeList } from '@/lib/api/drf';
 import { type PublicHoliday } from '@/lib/api/leave';
 import { PAGE_SIZE } from '@/lib/hrm';
@@ -37,19 +39,41 @@ export default function PublicHolidaysPage() {
     const { data, isLoading, error, refetch } = usePublicHolidays({ page, page_size: PAGE_SIZE, ...(year ? { year } : {}) });
     const save = useSavePublicHoliday();
     const del = useDeletePublicHoliday();
+    const setActive = useSetHolidayActive();
     const { results: rows, count } = normalizeList<PublicHoliday>(data);
 
     const columns: Column<PublicHoliday>[] = [
-        { header: 'Name', cell: (h) => <span className="font-medium">{h.name}</span> },
+        {
+            header: 'Name',
+            cell: (h) => (
+                <div className="flex flex-wrap items-center gap-2">
+                    <span className="font-medium">{h.name}</span>
+                    <InheritedBadge inherited={h.inherited} />
+                </div>
+            )
+        },
         { header: 'Date', cell: (h) => formatDate(h.date) },
-        { header: 'Applies to', cell: (h) => (h.is_national ? 'Everyone (national)' : `${h.county || '—'} county`) }
+        { header: 'Applies to', cell: (h) => (h.is_national ? 'Everyone (national)' : `${h.county || '—'} county`) },
+        {
+            // A platform holiday can be switched off for this organisation and back on; an own
+            // holiday is edited or deleted instead.
+            header: 'Observed',
+            cell: (h) =>
+                h.inherited ? (
+                    <PermissionGate permission="hrm.leave.manage" fallback={h.active === false ? 'Switched off' : 'Yes'}>
+                        <Switch id={`holiday-${h.id}`} checked={h.active !== false} disabled={setActive.isPending} onChange={(next) => setActive.mutate({ id: h.id, active: next })} />
+                    </PermissionGate>
+                ) : (
+                    'Yes'
+                )
+        }
     ];
 
     return (
         <div className="space-y-4 p-4 sm:p-6">
             <PageHeader
                 title="Public Holidays"
-                subtitle="Holidays on your calendar. Attendance does not mark anyone absent on them, hours worked on them earn the holiday rate, and they come off working capacity in project planning."
+                subtitle="Kenya's national holidays come from the platform calendar; switch one off if your organisation works that day, and add your own. Attendance does not mark anyone absent on a holiday, hours worked on it earn the holiday rate, and it comes off working capacity in project planning."
                 actions={
                     <Select
                         aria-label="Year"
@@ -78,6 +102,8 @@ export default function PublicHolidaysPage() {
                 entityLabel="Public Holiday"
                 perms={{ add: 'add_publicholiday', change: 'change_publicholiday', delete: 'delete_publicholiday' }}
                 emptyDescription="No public holidays for this period yet."
+                canEdit={(h) => !h.inherited}
+                canDelete={(h) => !h.inherited}
                 toForm={(h) => ({
                     name: h?.name ?? '',
                     date: dateOnly(h?.date),

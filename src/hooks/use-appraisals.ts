@@ -4,7 +4,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 
 import { appraisalApi, type AppraisalCycle, type AppraisalQuestion, type AppraisalTemplate, type Goal } from '@/lib/api/appraisals';
-import { type ListParams } from '@/lib/api/drf';
+import { normalizeList, type ListParams } from '@/lib/api/drf';
 import { extractApiError } from '@/lib/api/error';
 import { makeActionHook, makeResourceHooks } from '@/hooks/use-crud-resource';
 
@@ -24,6 +24,8 @@ export const useAppraisalTemplates = templates.useList;
 export const useAppraisalTemplate = templates.useDetail;
 export const useSaveAppraisalTemplate = templates.useSave;
 export const useDeleteAppraisalTemplate = templates.useRemove;
+/** Drops this organisation's changes to an inherited template. */
+export const useRevertAppraisalTemplate = makeActionHook('appraisal-templates', (id) => appraisalApi.templates.revert(id), 'Template back to the platform values', 'Failed to revert the template');
 
 // ---- Questions (scoped under a template) ----
 const QUESTIONS_KEY = 'appraisal-questions';
@@ -37,11 +39,15 @@ export function useAppraisalQuestions(templateId?: number | string) {
     });
 }
 
-/** Lists the questions of every template, or of one template when templateId is set. */
+/** Lists the questions of every template, or of one template when templateId is set. Both read
+ *  the full list, which says which questions are inherited or customised. */
 export function useAppraisalQuestionsFiltered(templateId?: number | string) {
     return useQuery({
         queryKey: [QUESTIONS_KEY, templateId ?? 'all'],
-        queryFn: () => (templateId ? appraisalApi.questions.list(templateId) : appraisalApi.questions.listAll({ page_size: 500 }))
+        queryFn: async () => {
+            const all = normalizeList<AppraisalQuestion>(await appraisalApi.questions.listAll({ page_size: 500 })).results;
+            return templateId ? all.filter((q) => String(q.template_id) === String(templateId)) : all;
+        }
     });
 }
 
@@ -70,8 +76,13 @@ export function useDeleteAppraisalQuestion() {
     });
 }
 
+/** Drops this organisation's changes to a question of an inherited template. */
+export const useRevertAppraisalQuestion = makeActionHook(QUESTIONS_KEY, (id) => appraisalApi.questions.revert(id), 'Question back to the platform values', 'Failed to revert the question');
+
 // ---- Goals ----
 const goals = makeResourceHooks<Goal>('appraisal-goals', appraisalApi.goals, 'Goal');
+/** Drops this organisation's changes to an inherited sample goal. */
+export const useRevertGoal = makeActionHook('appraisal-goals', (id) => appraisalApi.goals.revert(id), 'Goal back to the platform values', 'Failed to revert the goal');
 export const useGoals = goals.useList;
 export const useGoal = goals.useDetail;
 export const useSaveGoal = goals.useSave;

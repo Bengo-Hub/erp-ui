@@ -1,10 +1,11 @@
 "use client";
 
-import { Plus, TrendingUp } from "lucide-react";
+import { Plus, RotateCcw, TrendingUp } from "lucide-react";
 import { useMemo, useState } from "react";
 
 import { StatusBadge } from "@/components/hrm/status-badge";
 import { PermissionGate } from "@/components/auth/permission-gate";
+import { InheritedBadge } from "@/components/settings/inherited-badge";
 import { Button, Card } from "@/components/ui/base";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { DataTable, type Column } from "@/components/ui/data-table";
@@ -17,6 +18,7 @@ import { useEmployeeOptions } from "@/hooks/use-employee-options";
 import {
   useDeleteGoal,
   useGoals,
+  useRevertGoal,
   useSaveGoal,
   useUpdateGoalProgress,
 } from "@/hooks/use-appraisals";
@@ -38,6 +40,7 @@ export default function GoalsPage() {
   const save = useSaveGoal();
   const del = useDeleteGoal();
   const progress = useUpdateGoalProgress();
+  const revert = useRevertGoal();
   const rows = normalizeList<Goal>(data).results;
 
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -85,7 +88,15 @@ export default function GoalsPage() {
   };
 
   const columns: Column<Goal>[] = [
-    { header: "Goal", cell: (g) => <span className="font-medium">{g.title || "—"}</span> },
+    {
+      header: "Goal",
+      cell: (g) => (
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="font-medium">{g.title || "—"}</span>
+          {g.inherited || tab === "library" ? <InheritedBadge inherited={g.inherited} customised={g.customised} /> : null}
+        </div>
+      ),
+    },
     ...(tab === "all"
       ? [{ header: "Employee", cell: (g: Goal) => g.employee_name || "—" }]
       : []),
@@ -110,24 +121,34 @@ export default function GoalsPage() {
       cell: (g) => (
         <div className="flex justify-end gap-1">
           <PermissionGate permission="change_goal">
-            <IconButton
-              label="Update progress"
-              onClick={() => {
-                setProgressGoal(g);
-                setProgressVal(String(g.progress ?? ""));
-              }}
-            >
-              <TrendingUp className="size-4 text-primary" />
-            </IconButton>
+            {/* A platform sample goal is a library entry: no progress, and its title stays. */}
+            {g.inherited ? null : (
+              <IconButton
+                label="Update progress"
+                onClick={() => {
+                  setProgressGoal(g);
+                  setProgressVal(String(g.progress ?? ""));
+                }}
+              >
+                <TrendingUp className="size-4 text-primary" />
+              </IconButton>
+            )}
+            {g.customised ? (
+              <IconButton label="Restore platform values" onClick={() => revert.mutate(g.id)} disabled={revert.isPending}>
+                <RotateCcw className="size-4" />
+              </IconButton>
+            ) : null}
             <Button variant="ghost" size="sm" onClick={() => open(g)}>
-              Edit
+              {g.inherited ? "Customise" : "Edit"}
             </Button>
           </PermissionGate>
-          <PermissionGate permission="delete_goal">
-            <Button variant="ghost" size="sm" className="text-destructive" onClick={() => setToDelete(g)}>
-              Delete
-            </Button>
-          </PermissionGate>
+          {g.inherited ? null : (
+            <PermissionGate permission="delete_goal">
+              <Button variant="ghost" size="sm" className="text-destructive" onClick={() => setToDelete(g)}>
+                Delete
+              </Button>
+            </PermissionGate>
+          )}
         </div>
       ),
     },

@@ -9,6 +9,7 @@ import {
   departmentsApi,
   jobGroupsApi,
   jobTitlesApi,
+  revertJobGroup,
   type Department,
   type JobGroup,
   type NamedRecord,
@@ -66,3 +67,16 @@ const jobGroups = makeCrudHooks<JobGroup>("job-groups", jobGroupsApi, "Job group
 export const useJobGroups = jobGroups.useList;
 export const useSaveJobGroup = jobGroups.useSave;
 export const useDeleteJobGroup = jobGroups.useRemove;
+
+/** Drops this organisation's changes to an inherited job group. */
+export function useRevertJobGroup() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: number | string) => revertJobGroup(id),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["job-groups"] });
+      toast.success("Job group back to the platform values");
+    },
+    onError: (e) => toast.error(extractApiError(e, "Failed to revert the job group")),
+  });
+}

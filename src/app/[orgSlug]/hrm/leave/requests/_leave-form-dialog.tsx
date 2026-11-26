@@ -84,7 +84,8 @@ function PreviewNote({ preview }: { preview: LeavePreview }) {
  */
 export function LeaveFormDialog({ open, onClose, self = false }: { open: boolean; onClose: () => void; self?: boolean }) {
     const { data: catData } = useLeaveCategories({ limit: 200 });
-    const categories = normalizeList<LeaveCategory>(catData).results;
+    // Only types that take new requests: a switched-off type is refused by the API.
+    const categories = normalizeList<LeaveCategory>(catData).results.filter((c) => c.is_active !== false);
     const save = useSaveLeaveRequest();
 
     const [form, setForm] = useState(EMPTY);
