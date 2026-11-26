@@ -131,19 +131,14 @@ function normalizeLegacyPermission(perm: string): string {
   return `${moduleName}.${LEGACY_ACTION_TO_ACTION[legacyAction]}`;
 }
 
-/** True for any role name that denotes admin-tier authority: the exact "erp_admin"/
- * "superuser(s)" system roles, or any global/SSO role containing "admin" as a substring
- * (e.g. "admin", "isp_admin", "library_admin", a hypothetical "inventory_admin", ...).
- * Mirrors erp-api's MapGlobalRolesToERP admin-pattern mapping so an admin-tier tenant
- * member is never left staring at an empty sidebar because their exact permission set
- * didn't merge correctly (network hiccup, catalog drift, a not-yet-synced role) — an
- * admin role is a reliable full-access signal on its own, independent of the granular
- * permissions array. Backend mutations remain independently authorized either way. */
+/** Role names that give ERP administrator access, matched exactly (case and surrounding spaces
+ * ignored). The same list as erp-api's adminRoleNames in internal/http/middleware/rbac.go: an
+ * administrator of another product (isp_admin, library_admin, marketflow_admin and the like) is
+ * staff in ERP, not an administrator. Backend mutations are authorized on their own either way. */
+const ADMIN_ROLE_NAMES = new Set(["admin", "superuser", "superusers", "erp_admin"]);
+
 function isAdminTierRole(roles: string[]): boolean {
-  return roles.some((r) => {
-    const lower = r.toLowerCase();
-    return lower === "erp_admin" || lower === "superuser" || lower === "superusers" || lower.includes("admin");
-  });
+  return roles.some((r) => ADMIN_ROLE_NAMES.has(r.trim().toLowerCase()));
 }
 
 /**
