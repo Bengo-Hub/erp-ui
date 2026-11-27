@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { type ListParams, type Paginated } from "@/lib/api/drf";
 import { extractApiError } from "@/lib/api/error";
 import {
+  costCenterCheckApi,
   departmentsApi,
   jobGroupsApi,
   jobTitlesApi,
@@ -57,6 +58,11 @@ const departments = makeCrudHooks<Department>("departments", departmentsApi, "De
 export const useDepartments = departments.useList;
 export const useSaveDepartment = departments.useSave;
 export const useDeleteDepartment = departments.useRemove;
+
+/** The last nightly check of department and project allocation cost centres against treasury. */
+export function useCostCenterCheck() {
+  return useQuery({ queryKey: ["departments", "cost-center-check"], queryFn: () => costCenterCheckApi.get() });
+}
 
 const jobTitles = makeCrudHooks<NamedRecord>("job-titles", jobTitlesApi, "Job title");
 export const useJobTitles = jobTitles.useList;

@@ -44,6 +44,26 @@ function crud<T extends { id: number }>(base: string) {
 }
 
 export const departmentsApi = crud<Department>(`${HRM}/departments`);
+
+/** One stored cost centre id that treasury no longer lists as active. */
+export interface CostCenterProblem {
+  record: "department" | "project_allocation" | string;
+  record_id: string;
+  name: string;
+  cost_center_id: string;
+  reason: "missing" | "inactive" | string;
+}
+
+/** The nightly comparison of department and project cost centres with treasury. */
+export interface CostCenterCheck {
+  checked_at?: string;
+  problems?: CostCenterProblem[] | null;
+  error?: string;
+}
+
+export const costCenterCheckApi = {
+  get: () => apiClient.get<CostCenterCheck>(`${HRM}/departments/cost-center-check`),
+};
 export const jobTitlesApi = crud<NamedRecord>(`${EMP}/job-titles`);
 export const jobGroupsApi = crud<JobGroup>(`${EMP}/job-groups`);
 /** Drops this organisation's changes to an inherited job group. */

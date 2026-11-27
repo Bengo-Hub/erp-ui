@@ -61,7 +61,18 @@ export interface HrmDashboard {
     leave_liability: number;
     leave_days_remaining: number;
   };
+  /** Employees whose SSO login was disabled: review whether they have left. */
+  login_disabled?: LoginDisabledEmployee[];
   [key: string]: unknown;
+}
+
+/** A current employee whose login was disabled in SSO: HR reviews whether they have left. */
+export interface LoginDisabledEmployee {
+  employee_id: string;
+  name: string;
+  employee_number?: string;
+  status: string;
+  since: string;
 }
 
 /** Wire shape of erp-api reports.HRMAnalytics. Money arrives as decimal strings. */
@@ -81,6 +92,7 @@ interface HrmAnalyticsResponse {
   overtime_timesheet_hours?: string | number;
   leave_liability?: string | number;
   leave_days_remaining?: string | number;
+  login_disabled?: LoginDisabledEmployee[] | null;
 }
 
 /** erp-api summary report envelope ({report,columns,rows,totals}). */
@@ -137,6 +149,7 @@ export const analyticsApi = {
         leave_liability: numOf(a.leave_liability),
         leave_days_remaining: numOf(a.leave_days_remaining),
       },
+      login_disabled: a.login_disabled ?? [],
     };
   },
 };

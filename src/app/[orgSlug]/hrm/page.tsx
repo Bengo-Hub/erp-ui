@@ -1,6 +1,7 @@
 "use client";
 
 import { CalendarClock, FileWarning, TrendingDown, UserMinus, UserPlus, Users, Wallet } from "lucide-react";
+import Link from "next/link";
 import { useParams } from "next/navigation";
 
 import { AttendanceOverview } from "@/components/dashboard/attendance-overview";
@@ -80,6 +81,32 @@ export default function HrmDashboardPage() {
           </div>
         )}
       </section>
+
+      {data?.login_disabled && data.login_disabled.length > 0 && (
+        <section aria-labelledby="login-disabled-heading" className="space-y-3">
+          <h2 id="login-disabled-heading" className="text-base font-semibold text-foreground">
+            Login disabled, review exit
+          </h2>
+          <p className="text-sm text-muted-foreground">
+            These employees can no longer sign in. They are still on payroll: if they have left, open their profile, choose Mark as
+            exited and run their final pay. If not, restore their login under Users.
+          </p>
+          <ul className="divide-y divide-border rounded-lg border border-border bg-card">
+            {data.login_disabled.map((e) => (
+              <li key={e.employee_id} className="flex flex-wrap items-center justify-between gap-2 px-4 py-3 text-sm">
+                <Link href={`/${orgSlug}/hrm/employees/${e.employee_id}`} className="font-medium text-primary hover:underline">
+                  {e.name || "Unnamed employee"}
+                  {e.employee_number ? <span className="ml-2 text-muted-foreground">{e.employee_number}</span> : null}
+                </Link>
+                <span className="text-muted-foreground">
+                  Login {e.status || "disabled"}
+                  {e.since ? ` since ${new Date(e.since).toLocaleDateString()}` : ""}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
 
       <section aria-labelledby="month-heading" className="space-y-3">
         <h2 id="month-heading" className="text-base font-semibold text-foreground">
