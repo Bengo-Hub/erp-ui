@@ -291,6 +291,20 @@ export function useSaveSalary(employeeId: number | string) {
   });
 }
 
+/** Cancels a salary change scheduled for a later month (YYYY-MM). */
+export function useCancelScheduledSalary(employeeId: number | string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (month: string) => employeesApi.cancelScheduledSalary(employeeId, month),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: [KEY, "salary", employeeId] });
+      qc.invalidateQueries({ queryKey: [KEY, "detail", employeeId] });
+      toast.success("Scheduled change cancelled");
+    },
+    onError: (e) => toast.error(extractApiError(e, "Failed to cancel the scheduled change")),
+  });
+}
+
 // ---- Documents ----
 export function useEmployeeDocuments(employeeId: number | string | undefined) {
   return useQuery({

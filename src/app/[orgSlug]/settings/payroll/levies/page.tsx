@@ -9,7 +9,7 @@ import { Dialog } from '@/components/ui/dialog';
 import { Field, Input, Switch } from '@/components/ui/form';
 import { PageHeader } from '@/components/ui/page-header';
 import { Tabs } from '@/components/ui/tabs';
-import { useEarnings, useLevyBases, useSetLevyRule } from '@/hooks/use-payroll-settings';
+import { useCancelLevyRule, useEarnings, useLevyBases, useSetLevyRule } from '@/hooks/use-payroll-settings';
 import { normalizeList } from '@/lib/api/drf';
 import { type LevyFlags, type LevyRule, type PayrollComponent } from '@/lib/api/payroll-settings';
 
@@ -48,6 +48,7 @@ export default function LevyBasesPage() {
     const earnings = useEarnings({ limit: 200 });
     const bases = useLevyBases();
     const save = useSetLevyRule();
+    const cancel = useCancelLevyRule();
     const [editing, setEditing] = useState<{ row: Row; from: string; flags: LevyFlags } | null>(null);
 
     const month = thisMonth();
@@ -77,10 +78,28 @@ export default function LevyBasesPage() {
             header: 'Source',
             cell: (r) => {
                 const next = upcoming(r);
+                // Your own rules that start in a later month can be cancelled.
+                const ownFuture = (own[r.code] ?? []).filter((x) => x.from > month);
                 return (
-                    <span className="text-xs text-muted-foreground">
-                        {inForce(r).source}
-                        {next ? `, changes from ${next.from}` : ''}
+                    <span className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+                        <span>
+                            {inForce(r).source}
+                            {next ? `, changes from ${next.from}` : ''}
+                        </span>
+                        {ownFuture.map((x) => (
+                            <PermissionGate key={x.from} permission={['hrm.payroll.manage']}>
+                                <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    disabled={cancel.isPending}
+                                    onClick={() => {
+                                        if (window.confirm(`Cancel the ${r.title} rule from ${x.from}?`)) cancel.mutate({ code: r.code, from: x.from });
+                                    }}
+                                >
+                                    Cancel {x.from}
+                                </Button>
+                            </PermissionGate>
+                        ))}
                     </span>
                 );
             }

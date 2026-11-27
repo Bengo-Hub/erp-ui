@@ -331,7 +331,9 @@ export interface LevyBasesResponse {
 
 export const levyBasesApi = {
     list: () => apiClient.get<LevyBasesResponse>(`${PS}/levy-bases`),
-    set: (code: string, rule: LevyRule) => apiClient.put<{ own: Record<string, LevyRule[]> }>(`${PS}/levy-bases/${encodeURIComponent(code)}`, rule)
+    set: (code: string, rule: LevyRule) => apiClient.put<{ own: Record<string, LevyRule[]> }>(`${PS}/levy-bases/${encodeURIComponent(code)}`, rule),
+    /** Cancels a rule that starts in a later month. */
+    cancel: (code: string, from: string) => apiClient.delete<{ own: Record<string, LevyRule[]> }>(`${PS}/levy-bases/${encodeURIComponent(code)}/${from}`)
 };
 
 export const perDiemPolicyApi = {

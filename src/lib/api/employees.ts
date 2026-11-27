@@ -275,6 +275,8 @@ export const employeesApi = {
             // A month (YYYY-MM) schedules the change from then on; omitted changes the current salary.
             effective_from: data.effective_from || undefined
         }),
+    /** Cancels a salary change scheduled for a later month (YYYY-MM). */
+    cancelScheduledSalary: (employeeId: number | string, month: string) => apiClient.delete<void>(`${EMP}/employees/${employeeId}/salary/scheduled/${month}`),
 
     /** Marks a bank account primary (the only mutation erp-api exposes for banks). */
     setPrimaryBankAccount: (employeeId: number | string, accountId: number | string) => apiClient.put<{ ok: boolean }>(`${EMP}/employees/${employeeId}/bank-accounts/${accountId}/primary`, {}),

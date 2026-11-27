@@ -280,6 +280,18 @@ export function useSetLevyRule() {
     });
 }
 
+export function useCancelLevyRule() {
+    const qc = useQueryClient();
+    return useMutation({
+        mutationFn: ({ code, from }: { code: string; from: string }) => levyBasesApi.cancel(code, from),
+        onSuccess: () => {
+            qc.invalidateQueries({ queryKey: ['levy-bases'] });
+            toast.success('Levy rule cancelled');
+        },
+        onError: (e) => toast.error(extractApiError(e, 'Failed to cancel the levy rule'))
+    });
+}
+
 export function usePerDiemPolicy() {
     return useQuery({ queryKey: ['per-diem-policy'], queryFn: () => perDiemPolicyApi.get() });
 }

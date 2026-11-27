@@ -9,7 +9,7 @@ import { PayFields } from '@/components/hrm/pay-fields';
 import { Button, Card, CardContent, CardHeader } from '@/components/ui/base';
 import { Field, Input, Select } from '@/components/ui/form';
 import { LoadingState } from '@/components/ui/states';
-import { useEmployeeSalary, useSaveSalary } from '@/hooks/use-employees';
+import { useCancelScheduledSalary, useEmployeeSalary, useSaveSalary } from '@/hooks/use-employees';
 import { normalizeList } from '@/lib/api/drf';
 import { type EmployeeSalaryDetail } from '@/lib/api/employees';
 
@@ -41,6 +41,7 @@ const monthLabel = (m: string) => {
 export function SalaryTab({ employeeId }: { employeeId: number | string }) {
     const { data, isLoading } = useEmployeeSalary(employeeId);
     const save = useSaveSalary(employeeId);
+    const cancel = useCancelScheduledSalary(employeeId);
     const current = normalizeList<EmployeeSalaryDetail>(data).results[0];
 
     const { register, control, handleSubmit, reset, setValue } = useForm<FormValues>();
@@ -124,9 +125,24 @@ export function SalaryTab({ employeeId }: { employeeId: number | string }) {
                                 <p className="font-medium text-foreground">Scheduled changes</p>
                                 <ul className="mt-1 space-y-1">
                                     {current.scheduled.map((s) => (
-                                        <li key={s.effective_from} className="flex justify-between gap-4">
+                                        <li key={s.effective_from} className="flex items-center justify-between gap-4">
                                             <span>From {monthLabel(s.effective_from)}</span>
-                                            <span className="tabular-nums">{Number(s.basic_salary).toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+                                            <span className="flex items-center gap-3">
+                                                <span className="tabular-nums">{Number(s.basic_salary).toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+                                                <PermissionGate permission={['hrm.payroll.manage']}>
+                                                    <Button
+                                                        type="button"
+                                                        variant="outline"
+                                                        size="sm"
+                                                        disabled={cancel.isPending}
+                                                        onClick={() => {
+                                                            if (window.confirm(`Cancel the salary change from ${monthLabel(s.effective_from)}?`)) cancel.mutate(s.effective_from);
+                                                        }}
+                                                    >
+                                                        Cancel
+                                                    </Button>
+                                                </PermissionGate>
+                                            </span>
                                         </li>
                                     ))}
                                 </ul>
