@@ -11,6 +11,7 @@ import { useHrmSettingsTabs } from '../_tabs';
 
 const fields: CrudFieldDef[] = [
     { name: 'name', label: 'Title', required: true },
+    { name: 'code', label: 'Code', placeholder: 'e.g. JT-07' },
     { name: 'description', label: 'Description', type: 'textarea', span2: true }
 ];
 
@@ -23,6 +24,7 @@ export default function JobTitlesPage() {
 
     const columns: Column<NamedRecord>[] = [
         { header: 'Title', cell: (t) => <span className="font-medium">{t.name}</span> },
+        { header: 'Code', cell: (t) => t.code || '—' },
         { header: 'Description', cell: (t) => t.description || '—' }
     ];
 
@@ -39,7 +41,7 @@ export default function JobTitlesPage() {
                 onRetry={refetch}
                 entityLabel="Job Title"
                 perms={{ add: 'add_employee', change: 'change_employee', delete: 'delete_employee' }}
-                toForm={(t) => ({ name: t?.name ?? '', description: t?.description ?? '' })}
+                toForm={(t) => ({ name: t?.name ?? '', code: t?.code ?? '', description: t?.description ?? '' })}
                 onSave={({ id, data }, done) => save.mutate({ id, data }, { onSuccess: done })}
                 onDelete={(id, done) => del.mutate(id, { onSuccess: done })}
                 saving={save.isPending}

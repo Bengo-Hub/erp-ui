@@ -11,12 +11,26 @@ import { IconButton } from '@/components/ui/tooltip';
 import { useDeleteJobGroup, useJobGroups, useRevertJobGroup, useSaveJobGroup } from '@/hooks/use-hrm-settings';
 import { normalizeList } from '@/lib/api/drf';
 import { type JobGroup } from '@/lib/api/hrm-settings';
+import { formatMoney } from '@/lib/utils';
 import { useHrmSettingsTabs } from '../_tabs';
 
 const fields: CrudFieldDef[] = [
     { name: 'name', label: 'Name', required: true },
+    { name: 'grade', label: 'Grade', placeholder: 'e.g. G5' },
+    { name: 'min_salary', label: 'Minimum salary', type: 'number', step: '0.01' },
+    { name: 'max_salary', label: 'Maximum salary', type: 'number', step: '0.01' },
     { name: 'description', label: 'Description', type: 'textarea', span2: true }
 ];
+
+/** The salary range as one line ("30,000 to 50,000", "from 30,000", "up to 50,000"). */
+function salaryRange(g: JobGroup): string {
+    const lo = g.min_salary ? formatMoney(g.min_salary) : '';
+    const hi = g.max_salary ? formatMoney(g.max_salary) : '';
+    if (lo && hi) return `${lo} to ${hi}`;
+    if (lo) return `from ${lo}`;
+    if (hi) return `up to ${hi}`;
+    return '—';
+}
 
 export default function JobGroupsPage() {
     const { tabs, active, onChange } = useHrmSettingsTabs('job-groups');
@@ -36,6 +50,8 @@ export default function JobGroupsPage() {
                 </div>
             )
         },
+        { header: 'Grade', cell: (g) => g.grade || '—' },
+        { header: 'Salary range', cell: (g) => salaryRange(g) },
         { header: 'Description', cell: (g) => g.description || '—' }
     ];
 
@@ -52,7 +68,8 @@ export default function JobGroupsPage() {
                 onRetry={refetch}
                 entityLabel="Job Group"
                 perms={{ add: 'add_employee', change: 'change_employee', delete: 'delete_employee' }}
-                // A platform job group keeps its name; its description can be customised here.
+                // A platform job group keeps its name; its grade, salary range and description can
+                // be customised here.
                 canDelete={(g) => !g.inherited}
                 editTitle={(g) => (g.inherited ? `Customise ${g.name}` : 'Edit Job Group')}
                 rowActions={(g) =>
@@ -66,6 +83,9 @@ export default function JobGroupsPage() {
                 }
                 toForm={(g) => ({
                     name: g?.name ?? '',
+                    grade: g?.grade ?? '',
+                    min_salary: g?.min_salary != null ? String(g.min_salary) : '',
+                    max_salary: g?.max_salary != null ? String(g.max_salary) : '',
                     description: g?.description ?? ''
                 })}
                 onSave={({ id, data }, done) => save.mutate({ id, data }, { onSuccess: done })}

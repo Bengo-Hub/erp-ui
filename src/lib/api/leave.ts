@@ -19,6 +19,13 @@ export interface LeaveRequest {
     reason?: string;
     status?: string;
     rejection_reason?: string;
+    /** erp-api ids, used when a pending request is edited. */
+    employee_id?: string;
+    category_id?: string;
+    /** The leave starts at midday on the start date (the afternoon off). Always sent. */
+    start_half_day?: boolean;
+    /** The leave ends at midday on the end date (the morning off). Always sent. */
+    end_half_day?: boolean;
     approved_by?: number | string;
     created_at?: string;
     [key: string]: unknown;
@@ -107,16 +114,22 @@ export interface LeavePreviewParams {
     category_id: string;
     start_date: string;
     end_date: string;
+    start_half_day?: boolean;
+    end_half_day?: boolean;
+    /** The pending request being edited: its own days are not counted as pending. */
+    request_id?: string;
 }
 
-/** Maps the UI request form fields onto erp-api's CreateRequest body. The server counts the days;
- *  no employee means the signed-in person. */
+/** Maps the UI request form fields onto erp-api's CreateRequest (and edit) body. The server counts
+ *  the days; no employee means the signed-in person. */
 function toRequestPayload(data: Partial<LeaveRequest>): Record<string, unknown> {
     return {
         employee_id: data.employee,
         category_id: data.leave_category,
         start_date: data.start_date,
         end_date: data.end_date,
+        start_half_day: Boolean(data.start_half_day),
+        end_half_day: Boolean(data.end_half_day),
         reason: data.reason
     };
 }

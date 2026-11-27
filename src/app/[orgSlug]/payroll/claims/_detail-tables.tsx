@@ -34,6 +34,7 @@ export function ClaimItemsTable({ claimId }: { claimId: string }) {
     const del = useDeleteClaimItem(claimId);
 
     const [draft, setDraft] = useState({
+        date: '',
         expense_type: 'tt',
         description: '',
         quantity: '1',
@@ -46,6 +47,7 @@ export function ClaimItemsTable({ claimId }: { claimId: string }) {
         if (!draft.description.trim() || draftAmount <= 0) return;
         add.mutate(
             {
+                date: draft.date || undefined,
                 expense_type: draft.expense_type,
                 description: draft.description,
                 quantity: draft.quantity,
@@ -53,7 +55,7 @@ export function ClaimItemsTable({ claimId }: { claimId: string }) {
                 amount: String(draftAmount)
             },
             {
-                onSuccess: () => setDraft({ expense_type: 'tt', description: '', quantity: '1', unit_cost: '' })
+                onSuccess: () => setDraft({ date: '', expense_type: 'tt', description: '', quantity: '1', unit_cost: '' })
             }
         );
     };
@@ -63,6 +65,7 @@ export function ClaimItemsTable({ claimId }: { claimId: string }) {
             <table className="w-full text-sm">
                 <thead>
                     <tr className="border-b border-border text-left text-xs font-semibold text-muted-foreground">
+                        <th className="px-2 py-2">Date</th>
                         <th className="px-2 py-2">Type</th>
                         <th className="px-2 py-2">Description</th>
                         <th className="px-2 py-2 text-right">Qty</th>
@@ -74,6 +77,7 @@ export function ClaimItemsTable({ claimId }: { claimId: string }) {
                 <tbody>
                     {items.map((it) => (
                         <tr key={it.id} className="border-b border-border/60">
+                            <td className="px-2 py-2 text-muted-foreground">{it.date || '—'}</td>
                             <td className="px-2 py-2">{EXPENSE_TYPES.find((e) => e.value === it.expense_type)?.label || it.expense_type || '—'}</td>
                             <td className="px-2 py-2">{it.description || '—'}</td>
                             <td className="px-2 py-2 text-right">{it.quantity ?? '—'}</td>
@@ -88,13 +92,16 @@ export function ClaimItemsTable({ claimId }: { claimId: string }) {
                     ))}
                     {!isLoading && items.length === 0 && (
                         <tr>
-                            <td colSpan={6} className="px-2 py-6 text-center text-sm text-muted-foreground">
+                            <td colSpan={7} className="px-2 py-6 text-center text-sm text-muted-foreground">
                                 No lines yet. Add the first expense line below.
                             </td>
                         </tr>
                     )}
                     {/* Draft row */}
                     <tr className="bg-accent/5">
+                        <td className="px-2 py-2">
+                            <input type="date" aria-label="Date" className={cellInput} value={draft.date} onChange={(e) => setDraft((d) => ({ ...d, date: e.target.value }))} />
+                        </td>
                         <td className="px-2 py-2">
                             <Select value={draft.expense_type} onChange={(e) => setDraft((d) => ({ ...d, expense_type: e.target.value }))} className="h-9 py-1">
                                 {EXPENSE_TYPES.map((e) => (
@@ -123,7 +130,7 @@ export function ClaimItemsTable({ claimId }: { claimId: string }) {
                 </tbody>
                 <tfoot>
                     <tr className="border-t border-border font-semibold">
-                        <td colSpan={4} className="px-2 py-2 text-right">
+                        <td colSpan={5} className="px-2 py-2 text-right">
                             Total
                         </td>
                         <td className="px-2 py-2 text-right">{formatMoney(total)}</td>

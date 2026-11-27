@@ -9,7 +9,7 @@ import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import { DataTable, Pagination, type Column } from '@/components/ui/data-table';
 import { Dialog } from '@/components/ui/dialog';
 import { PayFields } from '@/components/hrm/pay-fields';
-import { Field, Input, Select, Switch } from '@/components/ui/form';
+import { Field, Input, Select, Switch, Textarea } from '@/components/ui/form';
 import { PageHeader } from '@/components/ui/page-header';
 import { SearchInput } from '@/components/ui/search-input';
 import { IconButton } from '@/components/ui/tooltip';
@@ -55,6 +55,7 @@ type Form = {
     salary?: string;
     pay_type?: string;
     status: string;
+    notes: string;
 };
 
 function toForm(c?: Contract): Form {
@@ -65,7 +66,8 @@ function toForm(c?: Contract): Form {
         contract_end_date: c?.contract_end_date ?? '',
         salary: c ? String(c.salary ?? '') : undefined,
         pay_type: c?.pay_type,
-        status: c?.status ?? 'active'
+        status: c?.status ?? 'active',
+        notes: c?.notes ?? ''
     };
 }
 
@@ -118,7 +120,9 @@ export default function ContractsPage() {
             contract_end_date: form.contract_end_date || undefined,
             salary: shown.salary || undefined,
             pay_type: shown.pay_type,
-            status: form.status
+            status: form.status,
+            // Sent as is, so clearing the notes clears them.
+            notes: form.notes.trim()
         };
         save.mutate(
             { id: editing?.id, data: payload },
@@ -284,6 +288,9 @@ export default function ContractsPage() {
                                 </option>
                             ))}
                         </Select>
+                    </Field>
+                    <Field label="Notes" htmlFor="c-notes" className="sm:col-span-2">
+                        <Textarea id="c-notes" value={form.notes} onChange={(e) => set('notes', e.target.value)} placeholder="e.g. six months' probation, notice period" />
                     </Field>
                     {differs && (
                         <div className="rounded-lg border border-border bg-accent/5 p-3 text-sm sm:col-span-2">

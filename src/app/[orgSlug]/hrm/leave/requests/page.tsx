@@ -1,6 +1,6 @@
 'use client';
 
-import { Plus } from 'lucide-react';
+import { Pencil, Plus } from 'lucide-react';
 import { useMemo, useState } from 'react';
 
 import { ApprovalActions } from '@/components/hrm/approval-actions';
@@ -11,6 +11,7 @@ import { Select } from '@/components/ui/form';
 import { PageHeader } from '@/components/ui/page-header';
 import { SearchInput } from '@/components/ui/search-input';
 import { Tabs } from '@/components/ui/tabs';
+import { IconButton } from '@/components/ui/tooltip';
 import { normalizeSearchTerm, useDebouncedValue } from '@bengo-hub/shared-ui-lib/search';
 import { useAppPermissions } from '@/hooks/use-app-permissions';
 import { useApproveLeave, useLeaveRequests, useRejectLeave } from '@/hooks/use-leave';
@@ -23,6 +24,7 @@ import { LeaveFormDialog } from './_leave-form-dialog';
 
 export default function LeaveRequestsPage() {
     const [applyOpen, setApplyOpen] = useState(false);
+    const [toEdit, setToEdit] = useState<LeaveRequest | null>(null);
     const [tab, setTab] = useState<'all' | 'approvals'>('all');
     const [search, setSearch] = useState('');
     const [status, setStatus] = useState('');
@@ -60,6 +62,12 @@ export default function LeaveRequestsPage() {
             headerClassName: 'text-right',
             className: 'text-right',
             cell: (r) => (
+                <div className="flex items-center justify-end gap-1">
+                    {canManage && (r.status || '').toLowerCase() === 'pending' ? (
+                        <IconButton label="Edit request" onClick={() => setToEdit(r)}>
+                            <Pencil className="size-4" />
+                        </IconButton>
+                    ) : null}
                 <ApprovalActions
                     size="sm"
                     pending={(r.status || '').toLowerCase() === 'pending'}
@@ -69,6 +77,7 @@ export default function LeaveRequestsPage() {
                     approving={approve.isPending}
                     rejecting={reject.isPending}
                 />
+                </div>
             )
         }
     ];
@@ -145,6 +154,7 @@ export default function LeaveRequestsPage() {
 
             {/* HR files for anyone; everyone else files for themselves. */}
             <LeaveFormDialog self={!canManage} open={applyOpen} onClose={() => setApplyOpen(false)} />
+            <LeaveFormDialog open={!!toEdit} request={toEdit} onClose={() => setToEdit(null)} />
         </div>
     );
 }

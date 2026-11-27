@@ -20,7 +20,8 @@ const fields: CrudFieldDef[] = [
         type: 'combobox',
         optionsHook: useCostCenterOptions,
         placeholder: 'Select cost center'
-    }
+    },
+    { name: 'description', label: 'Description', type: 'textarea', span2: true }
 ];
 
 export default function DepartmentsPage() {
@@ -50,6 +51,7 @@ export default function DepartmentsPage() {
                 );
             }
         },
+        { header: 'Description', cell: (d) => d.description || '—' },
         {
             header: 'Status',
             cell: (d) => <Badge variant={d.is_active === false ? 'secondary' : 'success'}>{d.is_active === false ? 'Inactive' : 'Active'}</Badge>
@@ -91,7 +93,8 @@ export default function DepartmentsPage() {
                 toForm={(d) => ({
                     name: d?.name ?? '',
                     code: d?.code ?? '',
-                    cost_center_id: d?.cost_center_id ?? ''
+                    cost_center_id: d?.cost_center_id ?? '',
+                    description: d?.description ?? ''
                 })}
                 onSave={({ id, data }, done) => save.mutate({ id, data }, { onSuccess: done })}
                 onDelete={(id, done) => del.mutate(id, { onSuccess: done })}

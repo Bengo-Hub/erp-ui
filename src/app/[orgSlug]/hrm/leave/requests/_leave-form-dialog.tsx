@@ -10,11 +10,60 @@ import { useEmployeeOptions } from '@/hooks/use-employee-options';
 import { useLeaveCategories, useLeavePreview, useSaveLeaveRequest } from '@/hooks/use-leave';
 import { normalizeList } from '@/lib/api/drf';
 import { extractApiError } from '@/lib/api/error';
-import { type LeaveCategory, type LeavePreview, type LeavePreviewParams } from '@/lib/api/leave';
+import { type LeaveCategory, type LeavePreview, type LeavePreviewParams, type LeaveRequest } from '@/lib/api/leave';
 import { formatDate } from '@/lib/utils';
 import { endNotBeforeStart } from '@/lib/validation';
 
-const EMPTY = { employee: '', leave_category: '', start_date: '', end_date: '', reason: '' };
+// start_half: the leave starts at midday on the start date; end_half: it ends at midday on the
+// end date. On a one-day request they mean the afternoon off and the morning off.
+const EMPTY = { employee: '', leave_category: '', start_date: '', end_date: '', start_half: false, end_half: false, reason: '' };
+type LeaveForm = typeof EMPTY;
+
+/** The form values of a request being edited. */
+function formOf(r: LeaveRequest): LeaveForm {
+    return {
+        employee: String(r.employee_id ?? r.employee ?? ''),
+        leave_category: String(r.category_id ?? r.leave_category ?? ''),
+        start_date: (r.start_date ?? '').slice(0, 10),
+        end_date: (r.end_date ?? '').slice(0, 10),
+        start_half: Boolean(r.start_half_day),
+        end_half: Boolean(r.end_half_day),
+        reason: r.reason ?? ''
+    };
+}
+
+/** Which part of the day(s) the request takes: one select for a one-day request, two otherwise. */
+function DayParts({ form, onChange }: { form: LeaveForm; onChange: (start: boolean, end: boolean) => void }) {
+    if (!form.start_date || !form.end_date || form.end_date < form.start_date) return null;
+    if (form.start_date === form.end_date) {
+        const value = form.start_half ? 'afternoon' : form.end_half ? 'morning' : 'full';
+        return (
+            <Field label="Part of the day" htmlFor="day_part">
+                <Select id="day_part" value={value} onChange={(e) => onChange(e.target.value === 'afternoon', e.target.value === 'morning')}>
+                    <option value="full">Full day</option>
+                    <option value="morning">Morning only (half day)</option>
+                    <option value="afternoon">Afternoon only (half day)</option>
+                </Select>
+            </Field>
+        );
+    }
+    return (
+        <>
+            <Field label="First day" htmlFor="start_part">
+                <Select id="start_part" value={form.start_half ? 'half' : 'full'} onChange={(e) => onChange(e.target.value === 'half', form.end_half)}>
+                    <option value="full">Full day</option>
+                    <option value="half">From midday (half day)</option>
+                </Select>
+            </Field>
+            <Field label="Last day" htmlFor="end_part">
+                <Select id="end_part" value={form.end_half ? 'half' : 'full'} onChange={(e) => onChange(form.start_half, e.target.value === 'half')}>
+                    <option value="full">Full day</option>
+                    <option value="half">Until midday (half day)</option>
+                </Select>
+            </Field>
+        </>
+    );
+}
 
 const leaveSchema = z
     .object({
@@ -80,35 +129,41 @@ function PreviewNote({ preview }: { preview: LeavePreview }) {
 
 /**
  * Apply-for-leave modal. With `self` the request is for the signed-in person and the employee
- * picker is hidden; otherwise HR picks the employee.
+ * picker is hidden; otherwise HR picks the employee. With `request` it edits that pending request
+ * (the employee stays; the days and the balance check are counted again).
  */
-export function LeaveFormDialog({ open, onClose, self = false }: { open: boolean; onClose: () => void; self?: boolean }) {
+export function LeaveFormDialog({ open, onClose, self = false, request = null }: { open: boolean; onClose: () => void; self?: boolean; request?: LeaveRequest | null }) {
     const { data: catData } = useLeaveCategories({ limit: 200 });
-    // Only types that take new requests: a switched-off type is refused by the API.
-    const categories = normalizeList<LeaveCategory>(catData).results.filter((c) => c.is_active !== false);
+    // Only types that take new requests (a switched-off type is refused by the API), plus the
+    // type of the request being edited.
+    const categories = normalizeList<LeaveCategory>(catData).results.filter((c) => c.is_active !== false || (request != null && String(c.id) === String(request.category_id)));
     const save = useSaveLeaveRequest();
+    const editing = request != null;
 
-    const [form, setForm] = useState(EMPTY);
+    const [form, setForm] = useState<LeaveForm>(EMPTY);
     // Reset the form each time the dialog opens, without a setState-in-effect (React's
     // "store previous value during render" pattern).
     const [wasOpen, setWasOpen] = useState(open);
     if (open !== wasOpen) {
         setWasOpen(open);
-        if (open) setForm(EMPTY);
+        if (open) setForm(request ? formOf(request) : EMPTY);
     }
     const set = (k: string, v: string) => setForm((f) => ({ ...f, [k]: v }));
 
     const parsed = useMemo(() => leaveSchema.safeParse(form), [form]);
-    const complete = parsed.success && (self || form.employee !== '');
+    const complete = parsed.success && (self || editing || form.employee !== '');
     const fieldErrors = parsed.success ? {} : parsed.error.flatten().fieldErrors;
 
     const previewParams: LeavePreviewParams | null =
         open && complete
             ? {
-                  employee_id: self ? undefined : form.employee,
+                  employee_id: request ? request.employee_id : self ? undefined : form.employee,
                   category_id: form.leave_category,
                   start_date: form.start_date,
-                  end_date: form.end_date
+                  end_date: form.end_date,
+                  start_half_day: form.start_half,
+                  end_half_day: form.end_half,
+                  request_id: request ? String(request.id) : undefined
               }
             : null;
     const preview = useLeavePreview(previewParams);
@@ -118,13 +173,18 @@ export function LeaveFormDialog({ open, onClose, self = false }: { open: boolean
         if (!valid) return;
         save.mutate(
             {
+                id: request?.id,
                 data: {
-                    // employee/category ids are UUID strings; do not Number() them.
-                    employee: self ? undefined : form.employee,
+                    // employee/category ids are UUID strings; do not Number() them. An edit keeps
+                    // the employee.
+                    employee: self || editing ? undefined : form.employee,
                     leave_category: form.leave_category,
                     start_date: form.start_date,
                     end_date: form.end_date,
-                    reason: form.reason || undefined
+                    start_half_day: form.start_half,
+                    end_half_day: form.end_half,
+                    // An edit sends the reason as is, so clearing it clears it.
+                    reason: editing ? form.reason : form.reason || undefined
                 }
             },
             { onSuccess: onClose }
@@ -135,8 +195,8 @@ export function LeaveFormDialog({ open, onClose, self = false }: { open: boolean
         <Dialog
             open={open}
             onClose={onClose}
-            title="Apply for Leave"
-            description="Submit a new leave request for approval."
+            title={editing ? 'Edit Leave Request' : 'Apply for Leave'}
+            description={request ? `Change this pending request${request.employee_name ? ` for ${request.employee_name}` : ''}; the days and the balance are counted again.` : 'Submit a new leave request for approval.'}
             maxWidth="max-w-2xl"
             footer={
                 <>
@@ -144,15 +204,15 @@ export function LeaveFormDialog({ open, onClose, self = false }: { open: boolean
                         Cancel
                     </Button>
                     <Button size="sm" onClick={submit} disabled={!valid || save.isPending}>
-                        {save.isPending ? 'Submitting…' : 'Submit Request'}
+                        {save.isPending ? 'Saving…' : editing ? 'Save Changes' : 'Submit Request'}
                     </Button>
                 </>
             }
         >
             <div className="space-y-4">
                 <div className="grid gap-4 sm:grid-cols-2">
-                    {self ? null : <EmployeePicker value={form.employee} onChange={(v) => set('employee', v)} />}
-                    <Field label="Leave Type" htmlFor="leave_category" required className={self ? 'sm:col-span-2' : undefined}>
+                    {self || editing ? null : <EmployeePicker value={form.employee} onChange={(v) => set('employee', v)} />}
+                    <Field label="Leave Type" htmlFor="leave_category" required className={self || editing ? 'sm:col-span-2' : undefined}>
                         <Select id="leave_category" value={form.leave_category} onChange={(e) => set('leave_category', e.target.value)}>
                             <option value="">Select type…</option>
                             {categories.map((c) => (
@@ -168,6 +228,7 @@ export function LeaveFormDialog({ open, onClose, self = false }: { open: boolean
                     <Field label="End Date" htmlFor="end_date" required error={fieldErrors.end_date?.[0]}>
                         <Input id="end_date" type="date" value={form.end_date} onChange={(e) => set('end_date', e.target.value)} />
                     </Field>
+                    <DayParts form={form} onChange={(start, end) => setForm((f) => ({ ...f, start_half: start, end_half: end }))} />
                 </div>
                 {preview.data ? <PreviewNote preview={preview.data} /> : null}
                 {preview.isFetching && !preview.data ? <p className="text-sm text-muted-foreground">Counting days…</p> : null}

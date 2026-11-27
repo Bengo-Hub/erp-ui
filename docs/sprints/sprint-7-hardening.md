@@ -28,11 +28,15 @@ again, that one organisation can never reach another, and that standard settings
 | Reliability | Failed events are retried after a growing delay, at most five times, then given up with a logged reason; the membership lookup backs off while auth-api is down | erp-api 5810e37 |
 | Navigation | Apps live in the drawer and profile panel with the agreed names and groups, checked at 1440, 820 and 360 px. Sidebar external links removed; Budgets is under Payroll | erp-ui f11e0c6; shared-ui-lib v0.1.156 |
 | Theme | Dark styles follow the ERP theme instead of the computer's dark mode | erp-ui f11e0c6 |
+| Shared settings | Checked live on the demo company (save, reload, compare, then undone): a customised leave type shows Customised and restores every field; a switched-off type refuses a request; a holiday's Observed switch survives a reload both ways; an inherited job group shows on the employee list and page. A saved or restored leave type now comes back as the list shows it (is_active even when off, inherited and customised) | erp-api 6cb9e8a |
+| Holidays | Platform > Platform Holidays: the platform owner adds, edits and deletes the national calendar every company inherits (scope=platform), with the same screen as the company list minus the Observed switch | erp-ui 3940fe4 |
+| Outlets | The outlet filter follows the hrm.outlets.view_all permission instead of role names: platform owner, superusers, HQ users and roles holding it (administrators hold every permission). erp-api honours the filter by the same rule: a member pinned to an outlet whose role holds it picks any outlet or all; a member limited to a list of outlets stays limited. The manager and hr_admin names map to staff in ERP and the API never honoured their filter, so they lose a control that did nothing; a company grants the permission to any role it wants | erp-api 6cb9e8a; erp-ui 458171f |
+| Leave | Half days: a one-day request is the full day, the morning or the afternoon; a longer one can start or end at midday. A half counts 0.5 of that day under the type's count mode (nothing on a day that does not count), and the morning and afternoon of one day can be two requests. Employment Act s.28(2) allows annual leave in parts by agreement; the source is in the guide | erp-api 69123d9; erp-ui (this change) |
+| Leave | A pending request can be changed by the person who filed it (My Leave) or by HR (Requests): type, dates, half days and reason. The days and the balance are counted again without its own old days, the change is logged, and a decided request stays as it is | erp-api 69123d9; erp-ui (this change) |
+| Forms | Stored again and back on the forms: job group grade and salary range (minimum not above maximum; a platform job group's are customised and restored like its description), job title code, department description, contract notes and the date on a claim line. Each round-trips in a test and on the demo company | erp-api 69123d9; erp-ui (this change) |
 
 ## In progress
 - Tenant checks on ids sent in request bodies (recruitment first, then the rest).
-- A screen for the platform owner to manage the platform holiday list (the API takes
-  scope=platform today).
 
 ## Next
 - Settings shared with other services, audited pair by pair: departments and Treasury cost centres,
@@ -45,13 +49,8 @@ again, that one organisation can never reach another, and that standard settings
 - NSSF, SHIF, NITA and Housing Levy schedules and P10 Sheet M print the payslip gross, which includes
   non-taxable pay. KRA and SHA define those bases by regular pay, so the base needs an owner decision.
 - A salary change cannot be scheduled for a later date (salary details have no effective date).
-- Job group grade and salary range, job title code, department description, contract notes and the
-  date on a claim line have no storage, so the forms no longer ask for them.
-- Leave requests have no half days; a request cannot be edited, only cancelled.
 - ISP Billing stays out of the drawer (an unused service for now).
 - zod 3 to 4 and maplibre-gl 5 to 6 remain their own upgrade sprint.
-- The outlet filter shows every outlet to the admin, superuser, manager and hr_admin roles by name,
-  a visibility rule separate from the exact administrator names.
 
 ## Working rules learned
 - Push and deploy erp-api before the erp-ui that calls it.

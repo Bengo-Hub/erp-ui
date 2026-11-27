@@ -1,6 +1,6 @@
 'use client';
 
-import { Plus, X } from 'lucide-react';
+import { Pencil, Plus, X } from 'lucide-react';
 import { useState } from 'react';
 
 import { LeaveFormDialog } from '@/app/[orgSlug]/hrm/leave/requests/_leave-form-dialog';
@@ -21,6 +21,7 @@ export default function MyLeavePage() {
     const [applyOpen, setApplyOpen] = useState(false);
     const [page, setPage] = useState(1);
     const [toCancel, setToCancel] = useState<LeaveRequest | null>(null);
+    const [toEdit, setToEdit] = useState<LeaveRequest | null>(null);
     const requests = useLeaveRequests({ mine: true, page, page_size: PAGE_SIZE });
     const year = new Date().getFullYear();
     const balances = useLeaveBalances({ mine: true, year, limit: 100 });
@@ -41,9 +42,14 @@ export default function MyLeavePage() {
             className: 'text-right',
             cell: (r) =>
                 r.status === 'pending' ? (
-                    <IconButton label="Cancel request" onClick={() => setToCancel(r)}>
-                        <X className="size-4 text-destructive" />
-                    </IconButton>
+                    <div className="flex justify-end gap-1">
+                        <IconButton label="Edit request" onClick={() => setToEdit(r)}>
+                            <Pencil className="size-4" />
+                        </IconButton>
+                        <IconButton label="Cancel request" onClick={() => setToCancel(r)}>
+                            <X className="size-4 text-destructive" />
+                        </IconButton>
+                    </div>
                 ) : null
         }
     ];
@@ -97,6 +103,7 @@ export default function MyLeavePage() {
                 />
             </Card>
             <LeaveFormDialog self open={applyOpen} onClose={() => setApplyOpen(false)} />
+            <LeaveFormDialog self open={!!toEdit} request={toEdit} onClose={() => setToEdit(null)} />
             <ConfirmDialog
                 open={!!toCancel}
                 title="Cancel this leave request?"
