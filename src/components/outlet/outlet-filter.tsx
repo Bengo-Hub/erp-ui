@@ -3,6 +3,7 @@
 import { Check, ChevronDown, Store, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
+import { useAppPermissions } from "@/hooks/use-app-permissions";
 import { useOutlets } from "@/hooks/use-outlets";
 import { apiClient } from "@/lib/api/client";
 import { cn } from "@/lib/utils";
@@ -11,16 +12,19 @@ import { useOutletFilterStore } from "@/store/outlet-filter";
 import { useTenantFilterStore } from "@/store/tenant-filter";
 
 /**
- * Single-select outlet/branch filter for HQ/admin users. Hidden for staff pinned
- * to a single outlet (the backend scopes them automatically).
+ * Single-select outlet/branch filter for the platform owner, superusers, HQ users and anyone
+ * whose role holds hrm.outlets.view_all (administrators hold every permission). erp-api honours
+ * the filter by the same rule. Hidden for staff pinned to a single outlet (the backend scopes
+ * them automatically).
  */
 export function OutletFilter({ className, tenantSlug }: { className?: string; tenantSlug?: string }) {
   const user = useAuthStore((s) => s.user);
+  const { hasPermission } = useAppPermissions();
   const canFilter = !!(
     user?.isPlatformOwner ||
     user?.isSuperUser ||
     user?.isHqUser ||
-    user?.roles?.some((r) => ["admin", "superuser", "manager", "hr_admin"].includes(r))
+    hasPermission("hrm.outlets.view_all")
   );
 
   // For a platform owner drilled into a tenant, scope outlets to the SELECTED tenant
