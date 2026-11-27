@@ -308,6 +308,32 @@ export interface PerDiemPolicy {
     auto_approve?: boolean;
 }
 
+/** Which levies an earning counts for, and whether it is pensionable. */
+export interface LevyFlags {
+    paye: boolean;
+    nssf: boolean;
+    shif: boolean;
+    housing_levy: boolean;
+    pensionable: boolean;
+}
+
+/** Flags in force from a month (YYYY-MM). */
+export interface LevyRule {
+    from: string;
+    flags: LevyFlags;
+}
+
+/** Rules per earning code: the organisation's own and the platform's. */
+export interface LevyBasesResponse {
+    own: Record<string, LevyRule[]>;
+    platform: Record<string, LevyRule[]>;
+}
+
+export const levyBasesApi = {
+    list: () => apiClient.get<LevyBasesResponse>(`${PS}/levy-bases`),
+    set: (code: string, rule: LevyRule) => apiClient.put<{ own: Record<string, LevyRule[]> }>(`${PS}/levy-bases/${encodeURIComponent(code)}`, rule)
+};
+
 export const perDiemPolicyApi = {
     get: () => apiClient.get<PerDiemPolicy>(`/hrm/payroll/per-diem-policy`),
     save: (data: PerDiemPolicy) => apiClient.put<PerDiemPolicy>(`/hrm/payroll/per-diem-policy`, data)

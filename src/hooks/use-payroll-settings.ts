@@ -16,6 +16,8 @@ import {
     generalHrApi,
     loansApi,
     loanTypesApi,
+    levyBasesApi,
+    type LevyRule,
     perDiemPolicyApi,
     type LoanType,
     type PerDiemPolicy,
@@ -259,6 +261,22 @@ export function useSaveGeneralHrSettings() {
             toast.success('Statutory settings saved');
         },
         onError: (e) => toast.error(extractApiError(e, 'Failed to save settings'))
+    });
+}
+
+export function useLevyBases() {
+    return useQuery({ queryKey: ['levy-bases'], queryFn: () => levyBasesApi.list() });
+}
+
+export function useSetLevyRule() {
+    const qc = useQueryClient();
+    return useMutation({
+        mutationFn: ({ code, rule }: { code: string; rule: LevyRule }) => levyBasesApi.set(code, rule),
+        onSuccess: () => {
+            qc.invalidateQueries({ queryKey: ['levy-bases'] });
+            toast.success('Levy rule saved');
+        },
+        onError: (e) => toast.error(extractApiError(e, 'Failed to save the levy rule'))
     });
 }
 

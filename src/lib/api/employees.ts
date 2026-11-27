@@ -125,6 +125,10 @@ export interface EmployeeSalaryDetail {
     /** Preferred net-pay disbursement channel + mobile-money number. */
     preferred_payout_method?: string;
     payout_phone?: string;
+    /** Month the salary shown started (YYYY-MM); empty when it applies from the beginning. */
+    effective_from?: string;
+    /** Salaries already set for later months. */
+    scheduled?: { effective_from: string; basic_salary: string }[];
     [key: string]: unknown;
 }
 
@@ -267,7 +271,9 @@ export const employeesApi = {
             disability_exempt: data.disability_exempt,
             // Preferred net-pay disbursement channel (routed per-employee at payroll disburse).
             preferred_payout_method: data.preferred_payout_method,
-            payout_phone: data.payout_phone
+            payout_phone: data.payout_phone,
+            // A month (YYYY-MM) schedules the change from then on; omitted changes the current salary.
+            effective_from: data.effective_from || undefined
         }),
 
     /** Marks a bank account primary (the only mutation erp-api exposes for banks). */

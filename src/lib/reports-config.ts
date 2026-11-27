@@ -197,6 +197,7 @@ const PAYROLL_REPORTS: ReportConfig[] = [
             PIN,
             { field: 'nssf_number', header: 'NSSF No' },
             { field: 'gross_pay', header: 'Gross Pay', money: true },
+            { field: 'pensionable_earnings', header: 'Pensionable Earnings', money: true },
             { field: 'tier_1', header: 'Tier I', money: true },
             { field: 'tier_2', header: 'Tier II', money: true },
             { field: 'employee_total', header: 'Employee', money: true },
@@ -220,7 +221,8 @@ const PAYROLL_REPORTS: ReportConfig[] = [
         columns: [
             EMP,
             PIN,
-            { field: 'gross_pay', header: 'Gross Pay', money: true },
+            { field: 'national_id', header: 'ID Number' },
+            { field: 'gross_salary', header: 'Gross Salary', money: true },
             { field: 'employee_levy', header: 'Employee 1.5%', money: true },
             { field: 'employer_levy', header: 'Employer 1.5%', money: true },
             { field: 'total_levy', header: 'Total Levy', money: true }
@@ -240,6 +242,7 @@ const PAYROLL_REPORTS: ReportConfig[] = [
             PIN,
             { field: 'nhif_number', header: 'SHA / NHIF Number' },
             { field: 'gross_pay', header: 'Gross Pay', money: true },
+            { field: 'gross_salary', header: 'Gross Salary (levy base)', money: true },
             { field: 'nhif_contribution', header: 'Contribution', money: true },
             { field: 'coverage_type', header: 'Coverage Type' }
         ],

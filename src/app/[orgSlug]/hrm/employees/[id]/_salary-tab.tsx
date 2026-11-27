@@ -26,6 +26,16 @@ type FormValues = {
     // Preferred net-pay disbursement channel (routed per-employee at payroll disburse).
     preferred_payout_method?: string;
     payout_phone?: string;
+    // Month the change applies from (YYYY-MM); empty changes the salary in force now.
+    effective_from?: string;
+};
+
+// This month as YYYY-MM: the earliest month a salary change can start.
+const thisMonth = () => new Date().toISOString().slice(0, 7);
+
+const monthLabel = (m: string) => {
+    const [y, mo] = m.split('-').map(Number);
+    return new Date(y, (mo || 1) - 1, 1).toLocaleDateString(undefined, { month: 'long', year: 'numeric' });
 };
 
 export function SalaryTab({ employeeId }: { employeeId: number | string }) {
@@ -48,7 +58,8 @@ export function SalaryTab({ employeeId }: { employeeId: number | string }) {
                 mortgage_interest: current.mortgage_interest != null ? String(current.mortgage_interest) : '',
                 disability_exempt: Boolean(current.disability_exempt),
                 preferred_payout_method: (current.preferred_payout_method as string) ?? 'bank_transfer',
-                payout_phone: (current.payout_phone as string) ?? ''
+                payout_phone: (current.payout_phone as string) ?? '',
+                effective_from: ''
             });
         } else {
             reset({ currency: 'KES', pay_frequency: 'monthly', income_tax: 'primary', preferred_payout_method: 'bank_transfer' });
@@ -101,7 +112,28 @@ export function SalaryTab({ employeeId }: { employeeId: number | string }) {
                 accept E.164 input. */}
                         <Controller name="payout_phone" control={control} render={({ field }) => <PhoneInputField value={field.value ?? ''} onChange={field.onChange} />} />
                     </Field>
+                    <Field label="Applies from" help="Leave empty to change the current salary. Pick a later month to schedule a change: payroll pays the old salary until then, and months already paid keep theirs.">
+                        <Input type="month" min={thisMonth()} {...register('effective_from')} />
+                    </Field>
                 </CardContent>
+                {current?.effective_from || current?.scheduled?.length ? (
+                    <CardContent className="border-t border-border pt-4 text-sm">
+                        {current?.effective_from ? <p className="text-muted-foreground">The current salary applies from {monthLabel(current.effective_from)}.</p> : null}
+                        {current?.scheduled?.length ? (
+                            <div className="mt-2">
+                                <p className="font-medium text-foreground">Scheduled changes</p>
+                                <ul className="mt-1 space-y-1">
+                                    {current.scheduled.map((s) => (
+                                        <li key={s.effective_from} className="flex justify-between gap-4">
+                                            <span>From {monthLabel(s.effective_from)}</span>
+                                            <span className="tabular-nums">{Number(s.basic_salary).toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+                                        </li>
+                                    ))}
+                                </ul>
+                            </div>
+                        ) : null}
+                    </CardContent>
+                ) : null}
             </Card>
 
             <Card className="mt-4">
