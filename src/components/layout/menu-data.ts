@@ -289,5 +289,6 @@ export const APP_MENU: MenuSection[] = [
 /** Platform-admin section — only rendered for platform owners. */
 export const PLATFORM_MENU: MenuLink[] = [
     { label: 'Platform Overview', to: '/platform', icon: ShieldCheck },
-    { label: 'Tenants', to: '/platform/tenants', icon: Building2 }
+    { label: 'Tenants', to: '/platform/tenants', icon: Building2 },
+    { label: 'Platform Holidays', to: '/platform/holidays', icon: CalendarClock }
 ];

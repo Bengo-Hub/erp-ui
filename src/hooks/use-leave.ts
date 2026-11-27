@@ -262,6 +262,12 @@ const holidays = makeResourceHooks<PublicHoliday>('public-holidays', leaveApi.ho
 export const usePublicHolidays = holidays.useList;
 export const useSavePublicHoliday = holidays.useSave;
 export const useDeletePublicHoliday = holidays.useRemove;
+// The platform's national calendar itself, for the platform owner. The same query key, so a
+// change refreshes both lists.
+const platformHolidays = makeResourceHooks<PublicHoliday>('public-holidays', leaveApi.platformHolidays, 'Platform holiday');
+export const usePlatformHolidays = platformHolidays.useList;
+export const useSavePlatformHoliday = platformHolidays.useSave;
+export const useDeletePlatformHoliday = platformHolidays.useRemove;
 
 /** Switches an inherited national holiday off for this organisation, or back on. */
 export function useSetHolidayActive() {

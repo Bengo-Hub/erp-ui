@@ -168,6 +168,14 @@ export const leaveApi = {
         remove: (id: number | string) => apiClient.delete<void>(`${LEAVE}/holidays/${id}/`),
         setActive: (id: number | string, active: boolean) => apiClient.put<PublicHoliday>(`${LEAVE}/holidays/${id}/active`, { active })
     },
+    // The platform's national calendar itself (platform owner only; the API answers anyone else
+    // with their own organisation's list).
+    platformHolidays: {
+        list: (params?: ListParams, signal?: AbortSignal) => apiClient.get<Paginated<PublicHoliday> | PublicHoliday[]>(`${LEAVE}/holidays/`, { ...params, scope: 'platform' }, { signal }),
+        create: (data: Partial<PublicHoliday>) => apiClient.post<PublicHoliday>(`${LEAVE}/holidays/?scope=platform`, data),
+        update: (id: number | string, data: Partial<PublicHoliday>) => apiClient.put<PublicHoliday>(`${LEAVE}/holidays/${id}/?scope=platform`, data),
+        remove: (id: number | string) => apiClient.delete<void>(`${LEAVE}/holidays/${id}/?scope=platform`)
+    },
 
     // Requests
     listRequests: (params?: ListParams, signal?: AbortSignal) => apiClient.get<Paginated<LeaveRequest> | LeaveRequest[]>(`${LEAVE}/requests/`, params, { signal }),
