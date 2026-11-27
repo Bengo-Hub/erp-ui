@@ -94,7 +94,9 @@ export function AppTopbar({ onMenuClick }: { onMenuClick?: () => void }) {
                             aria-label="Open profile menu"
                         >
                             <div className="size-9 rounded-full bg-primary flex items-center justify-center text-primary-foreground text-xs font-bold">{name[0]?.toUpperCase() ?? <User className="h-4 w-4" />}</div>
-                            <div className="hidden md:block text-left">
+                            {/* Name and role only from desktop width: at tablet width they took the room
+                                the title and outlet filter need, and the filter ran under the right group. */}
+                            <div className="hidden lg:block text-left">
                                 <p className="text-xs font-semibold text-foreground truncate max-w-30">{name}</p>
                                 <p className="text-[10px] font-medium text-muted-foreground capitalize">{role}</p>
                             </div>
