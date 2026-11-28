@@ -336,6 +336,26 @@ export const levyBasesApi = {
     cancel: (code: string, from: string) => apiClient.delete<{ own: Record<string, LevyRule[]> }>(`${PS}/levy-bases/${encodeURIComponent(code)}/${from}`)
 };
 
+/**
+ * Employment Act s.19 deduction limits. Shares are a decimal ("0.5") or a ratio ("2/3"). `own` holds
+ * only what the organisation set (a field left out follows the platform); `effective` is in force.
+ */
+export interface DeductionLimitsDoc {
+    max_share?: string;
+    loan_share?: string;
+    by_law?: string[];
+}
+export interface DeductionLimitsResponse {
+    own: DeductionLimitsDoc;
+    platform: DeductionLimitsDoc;
+    effective: { max_share: string; loan_share: string; by_law: string[] };
+}
+
+export const deductionLimitsApi = {
+    get: () => apiClient.get<DeductionLimitsResponse>(`${PS}/deduction-limits`),
+    set: (doc: DeductionLimitsDoc) => apiClient.put<Omit<DeductionLimitsResponse, 'platform'>>(`${PS}/deduction-limits`, doc)
+};
+
 export const perDiemPolicyApi = {
     get: () => apiClient.get<PerDiemPolicy>(`/hrm/payroll/per-diem-policy`),
     save: (data: PerDiemPolicy) => apiClient.put<PerDiemPolicy>(`/hrm/payroll/per-diem-policy`, data)

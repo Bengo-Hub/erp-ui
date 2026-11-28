@@ -17,6 +17,8 @@ import {
     loansApi,
     loanTypesApi,
     levyBasesApi,
+    deductionLimitsApi,
+    type DeductionLimitsDoc,
     type LevyRule,
     perDiemPolicyApi,
     type LoanType,
@@ -289,6 +291,22 @@ export function useCancelLevyRule() {
             toast.success('Levy rule cancelled');
         },
         onError: (e) => toast.error(extractApiError(e, 'Failed to cancel the levy rule'))
+    });
+}
+
+export function useDeductionLimits() {
+    return useQuery({ queryKey: ['deduction-limits'], queryFn: () => deductionLimitsApi.get() });
+}
+
+export function useSetDeductionLimits() {
+    const qc = useQueryClient();
+    return useMutation({
+        mutationFn: (doc: DeductionLimitsDoc) => deductionLimitsApi.set(doc),
+        onSuccess: () => {
+            qc.invalidateQueries({ queryKey: ['deduction-limits'] });
+            toast.success('Deduction limits saved');
+        },
+        onError: (e) => toast.error(extractApiError(e, 'Failed to save the deduction limits'))
     });
 }
 

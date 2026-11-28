@@ -12,6 +12,7 @@ const PAYROLL_SETTINGS_TABS: { key: string; label: string }[] = [
   { key: "formulas", label: "Formulas" },
   { key: "statutory", label: "Tax & Statutory" },
   { key: "levies", label: "Levy bases" },
+  { key: "limits", label: "Deduction limits" },
   { key: "per-diem", label: "Per diem" },
   { key: "piece-rates", label: "Piece rates" },
 ];

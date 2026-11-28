@@ -215,7 +215,12 @@ export const APP_MENU: MenuSection[] = [
                 children: [
                     { label: 'Bank Net Pay', to: '/reports/bank-net-pay', permissions: ['reports.view'] },
                     { label: 'Muster Roll', to: '/reports/muster-roll', permissions: ['reports.view'] },
-                    { label: 'Variance', to: '/reports/variance', permissions: ['reports.view'] }
+                    { label: 'Variance', to: '/reports/variance', permissions: ['reports.view'] },
+                    { label: 'HELB Remittance', to: '/reports/remittance-helb', permissions: ['reports.view'] },
+                    { label: 'SACCO Remittance', to: '/reports/remittance-sacco', permissions: ['reports.view'] },
+                    { label: 'Union Dues Remittance', to: '/reports/remittance-union_dues', permissions: ['reports.view'] },
+                    { label: 'Pension Remittance', to: '/reports/remittance-pension', permissions: ['reports.view'] },
+                    { label: 'Court Order Remittance', to: '/reports/remittance-court_order', permissions: ['reports.view'] }
                 ]
             },
             {

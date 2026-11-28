@@ -61,6 +61,41 @@ export interface ReportConfig {
 const EMP = { field: 'employee_name', header: 'Employee Name' };
 const PIN = { field: 'employee_pin', header: 'KRA PIN' };
 
+/**
+ * Check-off remittance schedules: one per body a deduction is paid to. The API reads the payslip
+ * deduction lines of that code for the month (only what was actually deducted) and the member or
+ * account number from each employee's assignment of the deduction.
+ */
+function remittanceReports(): ReportConfig[] {
+    const bodies: { code: string; title: string; number: string; description: string }[] = [
+        { code: 'helb', title: 'HELB Remittance', number: 'HELB Account / ID', description: 'HELB loan repayments deducted this month, to remit to HELB.' },
+        { code: 'sacco', title: 'SACCO Remittance', number: 'SACCO Member No.', description: 'SACCO check-offs deducted this month, to remit to the SACCO.' },
+        { code: 'union_dues', title: 'Union Dues Remittance', number: 'Union Member No.', description: 'Trade union dues deducted this month, to remit to the union.' },
+        { code: 'pension', title: 'Pension Remittance', number: 'Scheme Member No.', description: 'Pension contributions deducted this month, to remit to the scheme.' },
+        { code: 'court_order', title: 'Court Order Remittance', number: 'Case / Order No.', description: 'Court-ordered deductions taken this month, to pay as the order directs.' }
+    ];
+    return bodies.map((b) => ({
+        key: `remittance-${b.code}`,
+        title: b.title,
+        description: b.description,
+        path: 'remittance',
+        exportType: 'remittance',
+        staticParams: { deduction: b.code },
+        filters: ['year', 'month', 'department'],
+        required: ['year', 'month'],
+        audience: 'Payroll',
+        columns: [
+            EMP,
+            { field: 'staff_number', header: 'Staff No.' },
+            { field: 'national_id', header: 'ID Number' },
+            PIN,
+            { field: 'member_number', header: b.number },
+            { field: 'amount', header: 'Amount', money: true }
+        ],
+        summary: [{ label: 'Total to remit', field: 'amount', money: true }]
+    }));
+}
+
 const PAYROLL_REPORTS: ReportConfig[] = [
     {
         key: 'p9',
@@ -229,6 +264,7 @@ const PAYROLL_REPORTS: ReportConfig[] = [
         ],
         summary: [{ label: 'Total Levy', field: 'total_levy', money: true }]
     },
+    ...remittanceReports(),
     {
         key: 'nhif',
         title: 'NHIF / SHA Contributions',
