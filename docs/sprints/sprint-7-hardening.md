@@ -34,21 +34,22 @@ again, that one organisation can never reach another, and that standard settings
 | Leave | Half days: a one-day request is the full day, the morning or the afternoon; a longer one can start or end at midday. A half counts 0.5 of that day under the type's count mode (nothing on a day that does not count), and the morning and afternoon of one day can be two requests. Employment Act s.28(2) allows annual leave in parts by agreement; the source is in the guide | erp-api 69123d9; erp-ui 5032caa |
 | Leave | A pending request can be changed by the person who filed it (My Leave) or by HR (Requests): type, dates, half days and reason. The days and the balance are counted again without its own old days, the change is logged, and a decided request stays as it is | erp-api 69123d9; erp-ui 5032caa |
 | Forms | Stored again and back on the forms: job group grade and salary range (minimum not above maximum; a platform job group's are customised and restored like its description), job title code, department description, contract notes and the date on a claim line. Each round-trips in a test and on the demo company | erp-api 69123d9; erp-ui 5032caa |
+| Claims | A claim line keeps its quantity and unit cost (they were taken and dropped); when all three are given the amount must equal quantity times unit cost. Checked on the demo company: 2 x 617.00 = 1,234.00 after reload | erp-api 80da93b |
+| Payroll | Deductions stay within the Employment Act s.19 limits: all deductions at most two-thirds of wages, an employer loan at most half of what is left. Statutory deductions and those another law requires (HELB, court orders) come first and are never cut; what the limits leave unrecovered stays on the balance and shows as deferred. Limits are platform data a company can override | erp-api 5d81d69 |
+| Payroll | A scheduled salary change or a future levy rule can be cancelled before its month; salaries take effect from a month; levy bases per earning; returns show each levy's own base | erp-api db79f07, 38030d5, c15c7c5; erp-ui 64c9c69, eb7f28e |
+| Shared settings | Settings shared with other services audited pair by pair and synced: auth events no longer reset outlet and tenant fields, deactivated logins flagged for HR, project close ends allocations, cost centres checked against Treasury, daily statutory rates pull, payroll GL split in Treasury | erp-api db79f07; treasury-api 6889ed7a |
 
 ## In progress
 - Tenant checks on ids sent in request bodies (recruitment first, then the rest).
 
 ## Next
-- Settings shared with other services, audited pair by pair: departments and Treasury cost centres,
-  timesheets and Projects, and the rest. Owner of the data, mechanism, drift, then the fix.
 - Recapture the leave, payroll, employee and navigation screenshots for the guide.
 
 ## Open
-- A loan can still take net pay below zero (an assigned deduction cannot).
 - SACCO, HELB and similar remittance schedules do not exist.
-- NSSF, SHIF, NITA and Housing Levy schedules and P10 Sheet M print the payslip gross, which includes
-  non-taxable pay. KRA and SHA define those bases by regular pay, so the base needs an owner decision.
-- A salary change cannot be scheduled for a later date (salary details have no effective date).
+- A screen for the deduction limits (the API is GET and PUT /hrm/payroll-settings/deduction-limits).
+- For the owner: the Platform Holidays screen as the platform owner, and the HELB Act section for
+  the employer's duty to deduct and remit (kenyalaw.org blocks automated reads).
 - ISP Billing stays out of the drawer (an unused service for now).
 - zod 3 to 4 and maplibre-gl 5 to 6 remain their own upgrade sprint.
 
